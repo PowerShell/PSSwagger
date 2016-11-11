@@ -56,7 +56,7 @@ function Export-CommandFromSwagger
     $null = New-Item -ItemType Directory $outputDirectory -ErrorAction Stop
 
     $namespace = "Microsoft.PowerShell.$moduleName"
-    $Global:parameters.Add('namespace', $namespace)
+    $Global:parameters['namespace'] = $namespace
 
     GenerateCsharpCode -swaggerSpecPath $swaggerSpecPath -path $outputDirectory -moduleName $moduleName -nameSpace $namespace
     GenerateModuleManifest -path $outputDirectory -moduleName $moduleName -rootModule "$moduleName.psm1"
