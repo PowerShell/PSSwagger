@@ -12,21 +12,34 @@ function Export-CommandFromSwagger
 {
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory = $true)]
-        [string] $swaggerSpecPath,
+        [Parameter(Mandatory = $true, ParameterSetName = "PathParameterSet")]
+        [String] $SwaggerSpecPath,
+
+        [Parameter(Mandatory = $true, ParameterSetName = "URIParameterSet")]
+        [Uri] $SwaggerSpecUri,
 
         [Parameter(Mandatory = $true)]
-        [string] $path,
+        [String] $Path,
 
         [Parameter(Mandatory = $true)]
-        [string] $moduleName
+        [String] $ModuleName
 
         )
 
-    if (-not (Test-path $swaggerSpecPath))
+    if ($PSCmdlet.ParameterSetName -eq 'PathParameterSet')
     {
-        throw "Swagger file $swaggerSpecPath does not exist. Check the path"
+        if (-not (Test-path $swaggerSpecPath))
+        {
+            throw "Swagger file $swaggerSpecPath does not exist. Check the path"
+        }
     }
+    elseif ($PSCmdlet.ParameterSetName -eq 'URIParameterSet')
+    {
+        $SwaggerSpecPath = [io.path]::GetTempFileName() + ".json"
+        Write-Verbose "Swagger spec from $URI is downloaded to $SwaggerSpecPath"
+        Invoke-WebRequest -Uri $SwaggerSpecUri -OutFile $SwaggerSpecPath
+    }
+
 
     if ($path.EndsWith($moduleName))
     {
