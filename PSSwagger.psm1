@@ -292,3 +292,91 @@ function removeSpecialChars
 }
 
 #endregion
+
+#region Module Generation Helpers
+
+function GenerateCsharpCode
+{
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $swaggerSpecPath,
+
+        [Parameter(Mandatory = $true)]
+        [string] $path,
+
+        [Parameter(Mandatory = $true)]
+        [string] $moduleName,
+
+        [Parameter(Mandatory = $true)]
+        [string] $nameSpace
+        
+        )
+
+    Write-Verbose "Generating CSharp Code using AutoRest"
+
+    $autoRestExePath = get-command autorest.exe | % source
+    if (-not $autoRestExePath)
+    {
+        throw "Unable to find AutoRest.exe in PATH environment. Ensure the PATH is updated."
+    }
+
+    $outputDirectory = $path
+    $outAssembly = join-path $outputDirectory azure.csharp.ps.generated.dll
+    $net45Dir = join-path $outputDirectory "Net45"
+    $generatedCSharpPath = Join-Path $outputDirectory "Generated.Csharp"
+    $startUpScriptFile = (join-path $outputDirectory $moduleName) + ".StartupScript.ps1"
+    $moduleManifestFile = (join-path $outputDirectory $moduleName) + ".psd1"
+
+    if (Test-Path $outAssembly)
+    {
+        del $outAssembly -Force
+    }
+
+    if (Test-Path $net45Dir)
+    {
+        del $net45Dir -Force -Recurse
+    }
+
+    & $autoRestExePath -input $swaggerSpecPath -CodeGenerator CSharp -OutputDirectory $generatedCSharpPath -NameSpace $nameSpace
+    if ($LastExitCode)
+    {
+        throw "AutoRest resulted in an error"
+    }
+
+    Write-Verbose "Generating assembly from the CSharp code"
+
+    $srcContent = dir $generatedCSharpPath  -Filter *.cs -Recurse -Exclude Program.cs,TemporaryGeneratedFile* | ? DirectoryName -notlike '*Azure.Csharp.Generated*' | % { "// File $($_.FullName)"; get-content $_.FullName }
+    $oneSrc = $srcContent -join "`n"
+
+    $refassemlbiles = @("System.dll","System.Core.dll","System.Net.Http.dll",
+                    "System.Net.Http.WebRequest","System.Runtime.Serialization.dll","System.Xml.dll",
+                    "$PSScriptRoot\Generated.Azure.Common.Helpers\Net45\Microsoft.Rest.ClientRuntime.dll",
+                    "$PSScriptRoot\Generated.Azure.Common.Helpers\Net45\Newtonsoft.Json.dll")
+
+    Add-Type -TypeDefinition $oneSrc -ReferencedAssemblies $refassemlbiles -OutputAssembly $outAssembly
+}
+
+function GenerateModuleManifest
+{
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $path,
+
+        [Parameter(Mandatory = $true)]
+        [string] $moduleName,
+
+        [Parameter(Mandatory = $true)]
+        [string] $rootModule
+    )
+
+    $startUpScriptFile = (join-path $path $moduleName) + ".StartupScript.ps1"
+    $moduleManifestFile = (join-path $path $moduleName) + ".psd1"
+    
+    @'
+    Add-Type -LiteralPath "$PSScriptRoot\azure.csharp.ps.generated.dll"
+'@ | out-file -Encoding Ascii $startUpScriptFile
+
+    New-ModuleManifest -Path $moduleManifestFile -Guid (New-Guid) -Author (whoami) -ScriptsToProcess ($moduleName + ".StartupScript.ps1") -RequiredModules "Generated.Azure.Common.Helpers" -RootModule "$rootModule"
+}
+
+#endregion
