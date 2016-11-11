@@ -126,13 +126,21 @@ $helpParamStr = @'
 '@
 
 $functionBodyStr = @'
-    $serviceCredentials = Get-AzCredentials
-    $subscriptionId = Get-SubscriptionId
 
-    $clientName = [$fullModuleName]::new($serviceCredentials, [System.Net.Http.DelegatingHandler[]]::new(0))
-    $clientName.ApiVersion = $infoVersion
+    $serviceCredentials =  Get-AzServiceCredential
+    $subscriptionId = Get-AzSubscriptionId
+    $delegatingHandler = Get-AzDelegatingHandler
+
+    $clientName = [$fullModuleName]::new($serviceCredentials, $delegatingHandler)
+    $clientName.ApiVersion = '$infoVersion'
     $clientName.SubscriptionId = $subscriptionId
-    $operationVar = $clientName.$operations.$methodName($requiredParamList)
+    
+    Write-Verbose 'Performing operation $methodName on $clientName.'
+    $taskResult = $clientName.$operations.$methodName($requiredParamList)
+    Write-Verbose "Waiting for the operation to complete."
+    $taskResult.AsyncWaitHandle.WaitOne() | out-null
+    Write-Verbose "Operation Completed."
+    $taskResult.Result.Body.Value
 '@
 
     $commandName = ProcessOperationId $jsonPathItemObject.operationId
@@ -190,9 +198,9 @@ $functionBodyStr = @'
     # Handle the function body
     #region Function Body
     $infoVersion = $Global:parameters['infoVersion']
-    $modulePostfix = $Global:parameters['infoTitle'] + '.'  + $Global:parameters['infoName']
+    $modulePostfix = $Global:parameters['infoName']
     $fullModuleName = $Global:parameters['namespace'] + '.' + $modulePostfix
-    $clientName = '$' + $modulePostfix.Split('.')[$_.count - 1]
+    $clientName = '$' + $modulePostfix
 
     $operationName = $jsonPathItemObject.operationId.Split('_')[0]
     $operationType = $jsonPathItemObject.operationId.Split('_')[1]
@@ -202,6 +210,8 @@ $functionBodyStr = @'
 
     $serviceCredentials = '$' + 'serviceCredentials'
     $subscriptionId = '$' + 'subscriptionId'
+    $delegatingHandler = '$' + 'delegatingHandler'
+    $taskResult = '$taskResult'
 
     $body = $executionContext.InvokeCommand.ExpandString($functionBodyStr)
 
@@ -219,7 +229,7 @@ function ProcessOperationId
     param([string] $opId)
     
     $cmdNounMap = @{"Create" = "New"; "Activate" = "Enable"; "Delete" = "Remove";
-                    "List"   = "Get"}
+                    "List"   = "GetAll"}
     $opIdValues = $opId.Split('_')
     $cmdNoun = $opIdValues[0]
     $cmdVerb = $opIdValues[1]
@@ -337,7 +347,7 @@ function GenerateCsharpCode
         del $net45Dir -Force -Recurse
     }
 
-    & $autoRestExePath -input $swaggerSpecPath -CodeGenerator CSharp -OutputDirectory $generatedCSharpPath -NameSpace $nameSpace
+    & $autoRestExePath -AddCredentials -input $swaggerSpecPath -CodeGenerator CSharp -OutputDirectory $generatedCSharpPath -NameSpace $nameSpace
     if ($LastExitCode)
     {
         throw "AutoRest resulted in an error"
@@ -376,7 +386,7 @@ function GenerateModuleManifest
     Add-Type -LiteralPath "$PSScriptRoot\azure.csharp.ps.generated.dll"
 '@ | out-file -Encoding Ascii $startUpScriptFile
 
-    New-ModuleManifest -Path $moduleManifestFile -Guid (New-Guid) -Author (whoami) -ScriptsToProcess ($moduleName + ".StartupScript.ps1") -RequiredModules "Generated.Azure.Common.Helpers" -RootModule "$rootModule"
+    New-ModuleManifest -Path $moduleManifestFile -Guid (New-Guid) -Author (whoami) -ScriptsToProcess ($moduleName + ".StartupScript.ps1") -RequiredModules "Generated.Azure.Common.Helpers" -RootModule "$rootModule" -FunctionsToExport '*'
 }
 
 #endregion
