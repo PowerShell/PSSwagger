@@ -14,31 +14,36 @@ function Export-CommandFromSwagger
 {
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory = $true, ParameterSetName = "PathParameterSet")]
+        [Parameter(Mandatory = $true, ParameterSetName = 'SwaggerPath')]
         [String] $SwaggerSpecPath,
 
-        [Parameter(Mandatory = $true, ParameterSetName = "URIParameterSet")]
+        [Parameter(Mandatory = $true, ParameterSetName = 'SwaggerURI')]
         [Uri] $SwaggerSpecUri,
 
         [Parameter(Mandatory = $true)]
         [String] $Path,
 
         [Parameter(Mandatory = $true)]
-
         [String] $ModuleName
     )
 
-    if ($PSCmdlet.ParameterSetName -eq 'PathParameterSet')
+    if ($PSCmdlet.ParameterSetName -eq 'SwaggerPath')
     {
         if (-not (Test-path $swaggerSpecPath))
         {
             throw "Swagger file $swaggerSpecPath does not exist. Check the path"
         }
     }
-    elseif ($PSCmdlet.ParameterSetName -eq 'URIParameterSet')
+    elseif ($PSCmdlet.ParameterSetName -eq 'SwaggerURI')
     {
+        # Ensure that if the URI is coming from github, it is getting the raw content
+        if($SwaggerSpecUri.Host -eq 'github.com'){
+            $SwaggerSpecUri = "https://raw.githubusercontent.com$($SwaggerSpecUri.AbsolutePath)"
+            Write-Verbose "Converting SwaggerSpecUri to raw giuthub content $SwaggerSpecUri" -Verbose
+        }
+
         $SwaggerSpecPath = [io.path]::GetTempFileName() + ".json"
-        Write-Verbose "Swagger spec from $URI is downloaded to $SwaggerSpecPath"
+        Write-Verbose "Swagger spec from $SwaggerSpecURI is downloaded to $SwaggerSpecPath" -Verbose
         Invoke-WebRequest -Uri $SwaggerSpecUri -OutFile $SwaggerSpecPath
     }
 
@@ -49,11 +54,7 @@ function Export-CommandFromSwagger
     }
 
     $outputDirectory = join-path $path $moduleName
-    if (Test-Path $outputDirectory)
-    {
-        throw "Directory $outputDirectory exists. Remove this directory and try again."
-    }
-    $null = New-Item -ItemType Directory $outputDirectory -ErrorAction Stop
+    $null = New-Item -ItemType Directory $outputDirectory -Force -ErrorAction Stop
 
     $namespace = "Microsoft.PowerShell.$moduleName"
     $Global:parameters['namespace'] = $namespace
@@ -390,3 +391,5 @@ function GenerateModuleManifest
 }
 
 #endregion
+
+Export-ModuleMember -Function Export-CommandFromSwagger
