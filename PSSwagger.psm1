@@ -215,7 +215,7 @@ $functionBodyStr = @'
     $operationName = $jsonPathItemObject.operationId.Split('_')[0]
     $operationType = $jsonPathItemObject.operationId.Split('_')[1]
     $operations = $operationName 
-    if (-not $UseAzureCsharpGenerator)
+    if ((-not $UseAzureCsharpGenerator) -and (IsOperationNameDefinedInSchema $operationName))
     { 
         $operations = $operations + 'Operations'
     }
@@ -314,6 +314,18 @@ function ProcessSpecialCharecters
     $resultStr = $strWithSpecialChars -replace $pattern, ''
 
     return $resultStr
+}
+
+function IsOperationNameDefinedInSchema
+{
+    param([string] $operationName)
+
+    $definitionList = $Global:parameters['definitionList']
+    if ($definitionList.ContainsKey($operationName))
+    {
+        return $true
+    }
+    return $false
 }
 
 #endregion
