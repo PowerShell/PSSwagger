@@ -165,7 +165,7 @@ $functionBodyStr = @'
         if($_.name)
         {
             $isParamMandatory = '$false'
-            $paramName = '$' + $_.Name
+            $paramName = '$' + (ProcessSpecialCharecters -strWithSpecialChars $_.Name)
             $paramType = if ($_.type) { $_.type } else { "object" }
             if ($_.required)
             { 
@@ -277,13 +277,14 @@ function ProcessGlobalParams
     )
 
     $globalParams.parameters.PSObject.Properties | ForEach-Object {
-        $name = removeSpecialChars -strWithSpecialChars $_.name
+        $name = ProcessSpecialCharecters -strWithSpecialChars $_.name
         $Global:parameters[$name] = $jsonObject.parameters.$name
     }
 
     $infoVersion = $info.version
     $infoTitle = $info.title
     $infoName = $info.'x-ms-code-generation-settings'.name
+    if (-not $infoName) { $infoName = $infoTitle }
 
     $Global:parameters['infoVersion'] = $infoVersion
     $Global:parameters['infoTitle'] = $infoTitle
@@ -305,7 +306,7 @@ function ProcessDefinitions
     $Global:parameters['definitionList'] = $definitionList
 }
 
-function removeSpecialChars
+function ProcessSpecialCharecters
 {
     param([string] $strWithSpecialChars)
 
