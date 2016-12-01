@@ -8,8 +8,8 @@ Export-CommandFromSwagger -SwaggerSpecPath <string> -Path <string> -ModuleName <
 
 Export-CommandFromSwagger -SwaggerSpecUri <uri> -Path <string> -ModuleName <string> [-UseAzureCsharpGenerator] [<CommonParameters>]
 
-| Parameter | Description |
-| --------- | ----------- |
+| Parameter       | Description                           |
+| ----------------| ------------------------------------- |
 | SwaggerSpecPath | Full Path to a Swagger based JSON spec|
 | Path            | Full Path to a folder where the commands/modules are exported to |
 | ModuleName      | Name of the module to be generated. A folder with this name will be created in the location specified by Path parameter |
@@ -41,9 +41,14 @@ Note: Please run this steps on a Windows 10 Anniversary Update or Windows Server
 
    ```powershell
    Import-Module .\PSSwagger.psd1
-   Export-CommandFromSwagger -SwaggerSpecUri https://github.com/Azure/azure-rest-api-specs/blob/master/arm-batch/2015-12-01/swagger/BatchManagement.json -Path C:\Temp\generatedmodule\ -ModuleName Generated.Azure.BatchManagement
+   $param = @{
+       SwaggerSpecUri = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-batch/2015-12-01/swagger/BatchManagement.json'
+       Path           = 'C:\Temp\generatedmodule\'
+       ModuleName     = 'Generated.Azure.BatchManagement'
+   }
+   Export-CommandFromSwagger @param
    ```
 
-After step 4, the module will be in `C:\Temp\GeneratedModule\Generated.Azure.BatchManagement` folder.
+After step 4, the module will be in `C:\Temp\GeneratedModule\Generated.Azure.BatchManagement ($param.Path)` folder.
 
-Before importing that module and using it, you need to import Generated.Azure.Common.Helpers module which is under PSSwagger folder.
+Before importing that module and using it, you need to import `Generated.Azure.Common.Helpers` module which is under PSSwagger folder.
