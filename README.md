@@ -56,10 +56,10 @@ Before importing that module and using it, you need to import `Generated.Azure.C
 ## Upcoming additions
 
 1. Enabe PowerShell Best practices
-   (a)	Using approved Verbs
-   (b)	Verbs that change system like New/Update/Remove need to implement ShouldProcess (-WhatIf/-Confirm)
-   (c)	Mapping properties to ValueFromPipeline semantics so that  Get-<Noun> | Remove-<Noun>  (and other pipeline scenarios) work.
-   (d)	Long running operations need to have -AsJob variants and use *-Job cmdlets for further processing.
+   * Using approved Verbs
+   * Verbs that change system like New/Update/Remove need to implement ShouldProcess (-WhatIf/-Confirm)
+   * Mapping properties to ValueFromPipeline semantics so that  Get-<Noun> | Remove-<Noun>  (and other pipeline scenarios) work.
+   * Long running operations need to have -AsJob variants and use -Job cmdlets for further processing.
 2. Representing complex objects as parameters
 3. Identifying / driving common extensions in Swagger not just MAS but for entire PowerShell ecosystem.
 4. Test Cases
