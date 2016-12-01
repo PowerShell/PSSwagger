@@ -52,3 +52,20 @@ Note: Please run this steps on a Windows 10 Anniversary Update or Windows Server
 After step 4, the module will be in `C:\Temp\GeneratedModule\Generated.Azure.BatchManagement ($param.Path)` folder.
 
 Before importing that module and using it, you need to import `Generated.Azure.Common.Helpers` module which is under PSSwagger folder.
+
+## Upcoming additions
+
+1. Enabe PowerShell Best practices
+   (a)	Using approved Verbs
+   (b)	Verbs that change system like New/Update/Remove need to implement ShouldProcess (-WhatIf/-Confirm)
+   (c)	Mapping properties to ValueFromPipeline semantics so that  Get-<Noun> | Remove-<Noun>  (and other pipeline scenarios) work.
+   (d)	Long running operations need to have -AsJob variants and use *-Job cmdlets for further processing.
+2. Representing complex objects as parameters
+3. Identifying / driving common extensions in Swagger not just MAS but for entire PowerShell ecosystem.
+4. Test Cases
+5. Make generated cmdlets work with PowerShell Core on Linux / Mac
+
+## Notes
+
+1. Swagger Specification is at: http://swagger.io/specification/
+2. Azure ARM based Swagger documents at: https://github.com/Azure/azure-rest-api-specs
