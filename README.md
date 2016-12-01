@@ -21,7 +21,8 @@ Note: Please run this steps on a Windows 10 Anniversary Update or Windows Server
 
 1. Git clone this repository.
 
-     ```code
+
+```code
     git clone https://github.com/PowerShell/PSSwagger.git
     ```
 
@@ -69,3 +70,5 @@ Before importing that module and using it, you need to import `Generated.Azure.C
 
 1. Swagger Specification is at: http://swagger.io/specification/
 2. Azure ARM based Swagger documents at: https://github.com/Azure/azure-rest-api-specs
+3. AutoRest Generators: https://github.com/Azure/autorest/tree/master/src/generator
+
