@@ -8,8 +8,8 @@ Export-CommandFromSwagger -SwaggerSpecPath <string> -Path <string> -ModuleName <
 
 Export-CommandFromSwagger -SwaggerSpecUri <uri> -Path <string> -ModuleName <string> [-UseAzureCsharpGenerator] [<CommonParameters>]
 
-| Parameter | Description |
-| --------- | ----------- |
+| Parameter       | Description                           |
+| ----------------| ------------------------------------- |
 | SwaggerSpecPath | Full Path to a Swagger based JSON spec|
 | Path            | Full Path to a folder where the commands/modules are exported to |
 | ModuleName      | Name of the module to be generated. A folder with this name will be created in the location specified by Path parameter |
@@ -21,7 +21,8 @@ Note: Please run this steps on a Windows 10 Anniversary Update or Windows Server
 
 1. Git clone this repository.
 
-     ```code
+
+```code
     git clone https://github.com/PowerShell/PSSwagger.git
     ```
 
@@ -41,9 +42,33 @@ Note: Please run this steps on a Windows 10 Anniversary Update or Windows Server
 
    ```powershell
    Import-Module .\PSSwagger.psd1
-   Export-CommandFromSwagger -SwaggerSpecUri https://github.com/Azure/azure-rest-api-specs/blob/master/arm-batch/2015-12-01/swagger/BatchManagement.json -Path C:\Temp\generatedmodule\ -ModuleName Generated.Azure.BatchManagement
+   $param = @{
+       SwaggerSpecUri = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-batch/2015-12-01/swagger/BatchManagement.json'
+       Path           = 'C:\Temp\generatedmodule\'
+       ModuleName     = 'Generated.Azure.BatchManagement'
+   }
+   Export-CommandFromSwagger @param
    ```
 
-After step 4, the module will be in `C:\Temp\GeneratedModule\Generated.Azure.BatchManagement` folder.
+After step 4, the module will be in `C:\Temp\GeneratedModule\Generated.Azure.BatchManagement ($param.Path)` folder.
 
-Before importing that module and using it, you need to import Generated.Azure.Common.Helpers module which is under PSSwagger folder.
+Before importing that module and using it, you need to import `Generated.Azure.Common.Helpers` module which is under PSSwagger folder.
+
+## Upcoming additions
+
+1. Enabe PowerShell Best practices
+   * Using approved Verbs
+   * Verbs that change system like New/Update/Remove need to implement ShouldProcess (-WhatIf/-Confirm)
+   * Mapping properties to ValueFromPipeline semantics so that  Get-<Noun> | Remove-<Noun>  (and other pipeline scenarios) work.
+   * Long running operations need to have -AsJob variants and use -Job cmdlets for further processing.
+2. Representing complex objects as parameters
+3. Identifying / driving common extensions in Swagger not just MAS but for entire PowerShell ecosystem.
+4. Test Cases
+5. Make generated cmdlets work with PowerShell Core on Linux / Mac
+
+## Notes
+
+1. Swagger Specification is at: http://swagger.io/specification/
+2. Azure ARM based Swagger documents at: https://github.com/Azure/azure-rest-api-specs
+3. AutoRest Generators: https://github.com/Azure/autorest/tree/master/src/generator
+

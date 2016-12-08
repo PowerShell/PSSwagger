@@ -24,7 +24,10 @@ function Export-CommandFromSwagger
         [String] $Path,
 
         [Parameter(Mandatory = $true)]
-        [String] $ModuleName
+        [String] $ModuleName,
+
+        [Parameter()]
+        [switch] $UseAzureCsharpGenerator
     )
 
     if ($PSCmdlet.ParameterSetName -eq 'SwaggerPath')
@@ -59,7 +62,7 @@ function Export-CommandFromSwagger
     $namespace = "Microsoft.PowerShell.$moduleName"
     $Global:parameters['namespace'] = $namespace
 
-    GenerateCsharpCode -swaggerSpecPath $swaggerSpecPath -path $outputDirectory -moduleName $moduleName -nameSpace $namespace
+    GenerateCsharpCode -swaggerSpecPath $swaggerSpecPath -path $outputDirectory -moduleName $moduleName -nameSpace $namespace -UseAzureCsharpGenerator:$UseAzureCsharpGenerator
     GenerateModuleManifest -path $outputDirectory -moduleName $moduleName -rootModule "$moduleName.psm1"
 
     $modulePath = Join-Path $outputDirectory "$moduleName.psm1"
@@ -73,10 +76,10 @@ function Export-CommandFromSwagger
     $null = ProcessDefinitions -definitions $jsonObject.definitions
 
     # Handle the paths
-    $jsonObject.Paths.PSObject.Properties | % {
+    $jsonObject.Paths.PSObject.Properties | ForEach-Object {
         $jsonPathObject = $_.Value
-        $jsonPathObject.psobject.Properties | % {
-               $cmd = GenerateCommand $_.Value
+        $jsonPathObject.psobject.Properties | ForEach-Object {
+               $cmd = GenerateCommand $_.Value -UseAzureCsharpGenerator:$UseAzureCsharpGenerator
                Write-Verbose $cmd
                $cmds.Add($cmd)
             } # jsonPathObject
@@ -91,7 +94,10 @@ function Export-CommandFromSwagger
 .DESCRIPTION
   Generates a cmdlet given a JSON custom object (from paths)
 #>
-function GenerateCommand([PSObject] $jsonPathItemObject)
+function GenerateCommand(
+    [PSObject] $jsonPathItemObject,
+    [switch] $UseAzureCsharpGenerator 
+)
 {
 $helpDescStr = @'
 .DESCRIPTION
@@ -133,7 +139,7 @@ $functionBodyStr = @'
     $delegatingHandler = Get-AzDelegatingHandler
 
     $clientName = [$fullModuleName]::new($serviceCredentials, $delegatingHandler)
-    $clientName.ApiVersion = '$infoVersion'
+    $apiVersion
     $clientName.SubscriptionId = $subscriptionId
     
     Write-Verbose 'Performing operation $methodName on $clientName.'
@@ -141,7 +147,7 @@ $functionBodyStr = @'
     Write-Verbose "Waiting for the operation to complete."
     $taskResult.AsyncWaitHandle.WaitOne() | out-null
     Write-Verbose "Operation Completed."
-    $taskResult.Result.Body.Value
+    $taskResult.Result.Body
 '@
 
     $commandName = ProcessOperationId $jsonPathItemObject.operationId
@@ -161,7 +167,7 @@ $functionBodyStr = @'
         if($_.name)
         {
             $isParamMandatory = '$false'
-            $paramName = '$' + $_.Name
+            $paramName = '$' + (ProcessSpecialCharecters -strWithSpecialChars $_.Name)
             $paramType = if ($_.type) { $_.type } else { "object" }
             if ($_.required)
             { 
@@ -202,10 +208,19 @@ $functionBodyStr = @'
     $modulePostfix = $Global:parameters['infoName']
     $fullModuleName = $Global:parameters['namespace'] + '.' + $modulePostfix
     $clientName = '$' + $modulePostfix
+    $apiVersion = ''
+    if (-not $UseAzureCsharpGenerator)
+    {
+        $apiVersion = '{0}.ApiVersion = "{1}"' -f $clientName,$infoVersion
+    }
 
     $operationName = $jsonPathItemObject.operationId.Split('_')[0]
     $operationType = $jsonPathItemObject.operationId.Split('_')[1]
-    $operations = $operationName + 'Operations'
+    $operations = $operationName 
+    if ((-not $UseAzureCsharpGenerator) -and (IsOperationNameDefinedInSchema $operationName))
+    { 
+        $operations = $operations + 'Operations'
+    }
     $methodName = $operationType + 'WithHttpMessagesAsync'
     $operationVar = '$' + $operationName
 
@@ -263,18 +278,19 @@ function ProcessGlobalParams
         [PSCustomObject] $info
     )
 
-    $globalParams.parameters.PSObject.Properties | % {
-        $name = removeSpecialChars -strWithSpecialChars $_.name
-        $Global:parameters.Add($name, $jsonObject.parameters.$name)
+    $globalParams.parameters.PSObject.Properties | ForEach-Object {
+        $name = ProcessSpecialCharecters -strWithSpecialChars $_.name
+        $Global:parameters[$name] = $jsonObject.parameters.$name
     }
 
     $infoVersion = $info.version
     $infoTitle = $info.title
     $infoName = $info.'x-ms-code-generation-settings'.name
+    if (-not $infoName) { $infoName = $infoTitle }
 
-    $Global:parameters.Add('infoVersion', $infoVersion)
-    $Global:parameters.Add('infoTitle', $infoTitle)
-    $Global:parameters.Add('infoName', $infoName)
+    $Global:parameters['infoVersion'] = $infoVersion
+    $Global:parameters['infoTitle'] = $infoTitle
+    $Global:parameters['infoName'] = $infoName
 }
 
 function ProcessDefinitions
@@ -284,15 +300,15 @@ function ProcessDefinitions
     )
     
     $definitionList = @{}
-    $definitions.PSObject.Properties | % {
+    $definitions.PSObject.Properties | ForEach-Object {
         $name = $_.name
         $definitionList.Add($name, $_)
     }
 
-    $Global:parameters.Add('definitionList', $definitionList)
+    $Global:parameters['definitionList'] = $definitionList
 }
 
-function removeSpecialChars
+function ProcessSpecialCharecters
 {
     param([string] $strWithSpecialChars)
 
@@ -300,6 +316,18 @@ function removeSpecialChars
     $resultStr = $strWithSpecialChars -replace $pattern, ''
 
     return $resultStr
+}
+
+function IsOperationNameDefinedInSchema
+{
+    param([string] $operationName)
+
+    $definitionList = $Global:parameters['definitionList']
+    if ($definitionList.ContainsKey($operationName))
+    {
+        return $true
+    }
+    return $false
 }
 
 #endregion
@@ -319,8 +347,10 @@ function GenerateCsharpCode
         [string] $moduleName,
 
         [Parameter(Mandatory = $true)]
-        [string] $nameSpace
-        
+        [string] $nameSpace,
+
+        [Parameter()]
+        [switch] $UseAzureCsharpGenerator        
         )
 
     Write-Verbose "Generating CSharp Code using AutoRest"
@@ -348,7 +378,21 @@ function GenerateCsharpCode
         del $net45Dir -Force -Recurse
     }
 
-    & $autoRestExePath -AddCredentials -input $swaggerSpecPath -CodeGenerator CSharp -OutputDirectory $generatedCSharpPath -NameSpace $nameSpace
+    $codeGenerator = "CSharp"
+    
+    $refassemlbiles = @("System.dll","System.Core.dll","System.Net.Http.dll",
+                    "System.Net.Http.WebRequest","System.Runtime.Serialization.dll","System.Xml.dll",
+                    "$PSScriptRoot\Generated.Azure.Common.Helpers\Net45\Microsoft.Rest.ClientRuntime.dll",
+                    "$PSScriptRoot\Generated.Azure.Common.Helpers\Net45\Newtonsoft.Json.dll")
+
+    if ($UseAzureCsharpGenerator) 
+    { 
+        $codeGenerator = "Azure.CSharp"
+        $refassemlbiles = $($refassemlbiles | % { $_ } ; "$PSScriptRoot\Generated.Azure.Common.Helpers\Net45\Microsoft.Rest.ClientRuntime.Azure.dll")
+        $null = [reflection.assembly]::LoadFrom("$PSScriptRoot\Generated.Azure.Common.Helpers\Net45\Microsoft.Rest.ClientRuntime.dll")
+    }
+
+    & $autoRestExePath -AddCredentials -input $swaggerSpecPath -CodeGenerator $codeGenerator -OutputDirectory $generatedCSharpPath -NameSpace $nameSpace
     if ($LastExitCode)
     {
         throw "AutoRest resulted in an error"
@@ -359,10 +403,6 @@ function GenerateCsharpCode
     $srcContent = dir $generatedCSharpPath  -Filter *.cs -Recurse -Exclude Program.cs,TemporaryGeneratedFile* | ? DirectoryName -notlike '*Azure.Csharp.Generated*' | % { "// File $($_.FullName)"; get-content $_.FullName }
     $oneSrc = $srcContent -join "`n"
 
-    $refassemlbiles = @("System.dll","System.Core.dll","System.Net.Http.dll",
-                    "System.Net.Http.WebRequest","System.Runtime.Serialization.dll","System.Xml.dll",
-                    "$PSScriptRoot\Generated.Azure.Common.Helpers\Net45\Microsoft.Rest.ClientRuntime.dll",
-                    "$PSScriptRoot\Generated.Azure.Common.Helpers\Net45\Newtonsoft.Json.dll")
 
     Add-Type -TypeDefinition $oneSrc -ReferencedAssemblies $refassemlbiles -OutputAssembly $outAssembly
 }
