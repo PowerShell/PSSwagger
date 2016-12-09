@@ -1,0 +1,276 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "CatDog",
+    "version": "2015-12-01",
+    "x-ms-code-generation-settings": {
+      "name": "CatDogClient"
+    }
+  },
+  "paths": {
+    "VerifyBasicPath": {
+      "put": {
+        "tags": [
+          "CatDog"
+        ],
+        "operationId": "CatDog_Create",
+        "description": "Creates a new CatDog with the specified parameters.",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "Name of the CatDog to create."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The operation was successful. The response contains the CatDog entity.",
+            "schema": {
+              "$ref": "#/definitions/CatDog"
+            }
+          },
+          "202": {
+            "description": "The operation will be completed asynchronously.",
+            "headers": {
+              "Location": {
+                "description": "The URL of the resource used to check the status of the asynchronous operation.",
+                "type": "string"
+              },
+              "Retry-After": {
+                "description": "Suggested delay to check the status of the asynchronous operation. The value is an integer that represents the seconds.",
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorBody"
+            }
+          }
+        },
+        "x-ms-long-running-operation": true
+      }
+    },
+    "VerifyBasicPathAzure": {
+      "get": {
+        "tags": [
+          "CatDog"
+        ],
+        "operationId": "CatDog_List",
+        "description": "Gets all CatDogs registered to owner with name ownerName.",
+        "parameters": [
+          {
+            "name": "ownerName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "Name of CatDog owner."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The operation was successful. The response contains a list of CatDog entities associated with the owner.",
+            "schema": {
+              "$ref": "#/definitions/CatDogListResult"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorBody"
+            }
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+	"VerifyNoAzureWithOperation": {
+      "put": {
+        "tags": [
+          "CatDog"
+        ],
+        "operationId": "CatDog_Create",
+        "description": "Creates a new CatDog with the specified parameters.",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "Name of the CatDog to create."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The operation was successful. The response contains the CatDog entity.",
+            "schema": {
+              "$ref": "#/definitions/CatDog"
+            }
+          },
+          "202": {
+            "description": "The operation will be completed asynchronously.",
+            "headers": {
+              "Location": {
+                "description": "The URL of the resource used to check the status of the asynchronous operation.",
+                "type": "string"
+              },
+              "Retry-After": {
+                "description": "Suggested delay to check the status of the asynchronous operation. The value is an integer that represents the seconds.",
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorBody"
+            }
+          }
+        },
+        "x-ms-long-running-operation": true
+      }
+    },
+	"VerifyKnownDataTypes": {
+      "get": {
+        "tags": [
+          "BatchAccount"
+        ],
+        "operationId": "CatDog_ListParameters",
+        "description": "Gets all CatDogs with matching parameters.",
+        "parameters": [
+          {
+            "name": "catdogName",
+            "in": "path",
+            "required": false,
+            "type": "string",
+            "description": "Name of CatDog."
+          },
+		  {
+            "name": "birthday",
+            "in": "path",
+            "required": false,
+            "type": "string",
+			"format": "date",
+            "description": "Full date birthday of CatDog."
+          },
+		  {
+            "name": "adoptionTime",
+            "in": "path",
+            "required": false,
+            "type": "string",
+			"format": "date-time",
+            "description": "Date-time of CatDog's adoption."
+          },
+		  {
+            "name": "secretAgentName",
+            "in": "path",
+            "required": false,
+            "type": "string",
+			"format": "password",
+            "description": "CatDog's secret agent name. Don't tell anyone."
+          },
+		  {
+            "name": "isSecretAgent",
+            "in": "path",
+            "required": false,
+            "type": "boolean",
+            "description": "Whether or not CatDog is a secret agent."
+          },
+		  {
+            "name": "age",
+            "in": "path",
+            "required": false,
+            "type": "integer",
+            "description": "CatDog's age in years."
+          },
+		  {
+            "name": "ageInSeconds",
+            "in": "path",
+            "required": false,
+            "type": "integer",
+			"format": "int64",
+            "description": "CatDog's age in seconds."
+          },
+		  {
+            "name": "score",
+            "in": "path",
+            "required": false,
+            "type": "number",
+			"format": "float",
+            "description": "CatDog's score."
+          },
+		  {
+            "name": "scoreAdjustedForInflation",
+            "in": "path",
+            "required": false,
+            "type": "number",
+			"format": "double",
+            "description": "CatDog's score, adjusted for score inflation."
+          },
+		  {
+            "name": "base64string",
+            "in": "path",
+            "required": false,
+            "type": "string",
+			"format": "binary",
+            "description": "Any string of binary data."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The operation was successful. The response contains a list of CatDog entities matching parameters.",
+            "schema": {
+              "$ref": "#/definitions/CatDogListResult"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorBody"
+            }
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "AutoStorageBaseProperties": {
+      "properties": {
+        "storageAccountId": {
+          "type": "string",
+          "description": "The resource ID of the storage account to be used for auto storage account."
+        }
+      },
+      "required": [
+        "storageAccountId"
+      ],
+      "description": "The properties related to auto storage account."
+    }
+  },
+  "parameters": {
+    "SubscriptionIdParameter": {
+      "name": "subscriptionId",
+      "in": "path",
+      "required": true,
+      "type": "string",
+      "description": "A unique identifier of a Microsoft Azure subscription. The subscription ID forms part of the URI for every service call."
+    },  
+    "ApiVersionParameter": {
+      "name": "api-version",
+      "in": "query",
+      "required": true,
+      "type": "string",
+      "description": "The API version to be used with the HTTP request."
+    }
+  }
+}
