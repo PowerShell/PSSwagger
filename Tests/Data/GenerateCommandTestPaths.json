@@ -140,7 +140,7 @@
 	"VerifyKnownDataTypes": {
       "get": {
         "tags": [
-          "BatchAccount"
+          "CatDog"
         ],
         "operationId": "CatDog_ListParameters",
         "description": "Gets all CatDogs with matching parameters.",

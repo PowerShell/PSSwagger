@@ -83,10 +83,6 @@ Describe 'ProcessDefinitions' -Tag UnitTest {
         # Ensure the globals required by PSSwagger are initialized
         $Global:parameters = @{}
     }
-    AfterEach {
-        # Clean up globals after each test
-        Clear-Variable -Name "parameters" -Scope Global
-    }
 
     InModuleScope PSSwagger {
         It 'Basic definitions test can be processed' {
@@ -98,6 +94,11 @@ Describe 'ProcessDefinitions' -Tag UnitTest {
             $Global:parameters['definitionList'].Contains("AutoStorageProperties") | Should Be $true
             $Global:parameters['definitionList'].Contains("BatchAccountProperties") | Should Be $true
         }
+    }
+
+    AfterEach {
+        # Clean up globals after each test
+        Clear-Variable -Name "parameters" -Scope Global
     }
 }
 
@@ -112,10 +113,6 @@ Describe 'ProcessGlobalParams' -Tag UnitTest {
     BeforeEach {
         # Ensure the globals required by PSSwagger are initialized
         $Global:parameters = @{}
-    }
-    AfterEach {
-        # Clean up globals after each test
-        Clear-Variable -Name "parameters" -Scope Global
     }
 
     InModuleScope PSSwagger {
@@ -137,6 +134,11 @@ Describe 'ProcessGlobalParams' -Tag UnitTest {
              $Global:parameters['infoName'] | Should Be "BatchManagement"
         }
     }
+
+    AfterEach {
+        # Clean up globals after each test
+        Clear-Variable -Name "parameters" -Scope Global
+    }
 }
 
 Describe 'GenerateCommand' -Tag UnitTest {
@@ -150,10 +152,6 @@ Describe 'GenerateCommand' -Tag UnitTest {
     BeforeEach {
         # Ensure the globals required by PSSwagger are initialized
         $Global:parameters = @{}
-    }
-    AfterEach {
-        # Clean up globals after each test
-        Clear-Variable -Name "parameters" -Scope Global
     }
 
     It 'Verify basic path without Azure C#' {
@@ -324,5 +322,10 @@ Describe 'GenerateCommand' -Tag UnitTest {
                     $actualBody | Should Be $expectedBody
                 }
             }
+    }
+
+    AfterEach {
+        # Clean up globals after each test
+        Clear-Variable -Name "parameters" -Scope Global
     }
 }
