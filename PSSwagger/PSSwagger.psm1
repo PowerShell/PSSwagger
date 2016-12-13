@@ -42,11 +42,11 @@ function Export-CommandFromSwagger
         # Ensure that if the URI is coming from github, it is getting the raw content
         if($SwaggerSpecUri.Host -eq 'github.com'){
             $SwaggerSpecUri = "https://raw.githubusercontent.com$($SwaggerSpecUri.AbsolutePath)"
-            Write-Verbose "Converting SwaggerSpecUri to raw giuthub content $SwaggerSpecUri" -Verbose
+            Write-Verbose "Converting SwaggerSpecUri to raw github content $SwaggerSpecUri" -Verbose
         }
 
         $SwaggerSpecPath = [io.path]::GetTempFileName() + ".json"
-        Write-Verbose "Swagger spec from $SwaggerSpecURI is downloaded to $SwaggerSpecPath" -Verbose
+        Write-Verbose "Swagger spec from $SwaggerSpecURI is downloaded to $SwaggerSpecPath"
         Invoke-WebRequest -Uri $SwaggerSpecUri -OutFile $SwaggerSpecPath
     }
 
