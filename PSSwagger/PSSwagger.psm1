@@ -44,14 +44,7 @@ function Export-CommandFromSwagger
         $UseAzureCsharpGenerator
     )
 
-    if ($PSCmdlet.ParameterSetName -eq 'SwaggerPath')
-    {
-        if (-not (Test-path $SwaggerSpecPath))
-        {
-            throw "Swagger file $SwaggerSpecPath does not exist. Check the path"
-        }
-    }
-    elseif ($PSCmdlet.ParameterSetName -eq 'SwaggerURI')
+    if ($PSCmdlet.ParameterSetName -eq 'SwaggerURI')
     {
         # Ensure that if the URI is coming from github, it is getting the raw content
         if($SwaggerSpecUri.Host -eq 'github.com'){
@@ -61,7 +54,17 @@ function Export-CommandFromSwagger
 
         $SwaggerSpecPath = [io.path]::GetTempFileName() + ".json"
         Write-Verbose "Swagger spec from $SwaggerSpecURI is downloaded to $SwaggerSpecPath"
-        Invoke-WebRequest -Uri $SwaggerSpecUri -OutFile $SwaggerSpecPath
+        
+        $ev = $null
+        Invoke-WebRequest -Uri $SwaggerSpecUri -OutFile $SwaggerSpecPath -ErrorVariable ev
+        if($ev) {
+            return 
+        }
+    }
+
+    if (-not (Test-path $SwaggerSpecPath))
+    {
+        throw "Swagger file $SwaggerSpecPath does not exist. Check the path"
     }
 
     $outputDirectory = $Path
@@ -93,8 +96,10 @@ function Export-CommandFromSwagger
         $jsonPathObject = $_.Value
         $jsonPathObject.psobject.Properties | ForEach-Object {
                $cmd = New-SwaggerSpecCommand $_.Value -UseAzureCsharpGenerator:$UseAzureCsharpGenerator -SwaggerSpecDefinitionsAndParameters $SwaggerSpecDefinitionsAndParameters
-               Write-Verbose $cmd
-               $cmds.Add($cmd)
+               if($cmd) {
+                   Write-Verbose $cmd
+                   $cmds.Add($cmd)
+               }
             } # jsonPathObject
     } # jsonObject
 
@@ -113,12 +118,15 @@ function New-SwaggerSpecCommand
 {
     [CmdletBinding()]
     param (
+        [Parameter(Mandatory=$true)]
         [PSObject]
         $JsonPathItemObject,
         
+        [Parameter(Mandatory=$false)]
         [switch]
         $UseAzureCsharpGenerator,
         
+        [Parameter(Mandatory=$true)]
         [PSCustomObject] 
         $SwaggerSpecDefinitionsAndParameters 
     )
@@ -158,24 +166,42 @@ $helpParamStr = @'
 
 $functionBodyStr = @'
 
-    $serviceCredentials =  Get-AzServiceCredential
-    $subscriptionId = Get-AzSubscriptionId
-    $delegatingHandler = Get-AzDelegatingHandler
+    `$serviceCredentials =  Get-AzServiceCredential
+    `$subscriptionId = Get-AzSubscriptionId
+    `$delegatingHandler = Get-AzDelegatingHandler
 
-    $clientName = New-Object -TypeName $fullModuleName -ArgumentList $serviceCredentials,$delegatingHandler
+    $clientName = New-Object -TypeName $fullModuleName -ArgumentList `$serviceCredentials,`$delegatingHandler
     $apiVersion
-    $clientName.SubscriptionId = $subscriptionId
+    $clientName.SubscriptionId = `$subscriptionId
     
     Write-Verbose 'Performing operation $methodName on $clientName.'
-    $taskResult = $clientName.$operations.$methodName($requiredParamList)
+    `$taskResult = $clientName.$operations.$methodName($requiredParamList)
     Write-Verbose "Waiting for the operation to complete."
-    $taskResult.AsyncWaitHandle.WaitOne() | out-null
-    Write-Verbose "Operation Completed."
-    $taskResult.Result.Body
-'@
+    `$taskResult.AsyncWaitHandle.WaitOne() | out-null
+    Write-Debug "`$(`$taskResult | Out-String)"
 
-    $commandName = Get-SwaggerCommandName $JsonPathItemObject.operationId
-    $description = $JsonPathItemObject.description
+    if(`$taskResult.IsFaulted) {
+       Write-Verbose 'Operation failed.'
+       Throw "`$(`$taskResult.Exception.InnerExceptions | Out-String)"
+    } elseif (`$taskResult.IsCanceled) {
+       Write-Verbose 'Operation got cancelled.'
+       Throw 'Operation got cancelled.'
+    } else {
+        Write-Verbose 'Operation completed successfully.'
+
+        if(`$taskResult.Result -and `$taskResult.Result.Body) {
+            Write-Verbose -Message "`$(`$taskResult.Result.Body | Out-String)"
+            `$taskResult.Result.Body
+        }
+    }
+    
+'@
+ 
+    $commandName = Get-SwaggerCommandName $JsonPathItemObject
+    $description = ""
+    if((Get-Member -InputObject $JsonPathItemObject -Name 'Description') -and $JsonPathItemObject.Description) {
+        $description = $JsonPathItemObject.Description
+    }
     $commandHelp = $executionContext.InvokeCommand.ExpandString($helpDescStr)
 
     [string]$paramHelp = ""
@@ -194,7 +220,7 @@ $functionBodyStr = @'
             $parameterName = Remove-SpecialCharecters -Name $_.Name
             $paramName = "`$$parameterName" 
             $paramType = if ( (Get-Member -InputObject $_ -Name 'Type') -and $_.Type) { $_.Type } else { "object" }
-            if ($_.required)
+            if ($_.Required)
             { 
                 $isParamMandatory = '$true'
                 $requiredParamList += $paramName
@@ -205,9 +231,10 @@ $functionBodyStr = @'
             }
 
             $paramblock += $executionContext.InvokeCommand.ExpandString($parameterDefString)
-            if ($_.description)
+
+            if ((Get-Member -InputObject $_ -Name 'Description') -and $_.Description)
             {
-                $pDescription = $_.description
+                $pDescription = $_.Description
                 $paramHelp += $executionContext.InvokeCommand.ExpandString($helpParamStr)
             }
         }
@@ -244,11 +271,6 @@ $functionBodyStr = @'
     $methodName = $operationType + 'WithHttpMessagesAsync'
     $operationVar = '$' + $operationName
 
-    $serviceCredentials = '$serviceCredentials'
-    $subscriptionId = '$subscriptionId'
-    $delegatingHandler = '$delegatingHandler'
-    $taskResult = '$taskResult'
-
     $body = $executionContext.InvokeCommand.ExpandString($functionBodyStr)
 
     #endregion Function Body
@@ -262,10 +284,23 @@ $functionBodyStr = @'
 #>
 function Get-SwaggerCommandName
 {
-    param([string] $opId)
-    
-    $cmdNounMap = @{"Create" = "New"; "Activate" = "Enable"; "Delete" = "Remove";
-                    "List"   = "GetAll"}
+    param(
+        [Parameter(Mandatory=$true)]
+        [PSObject]
+        $JsonPathItemObject    
+    )
+
+    if((Get-Member -InputObject $JsonPathItemObject -Name 'x-ms-cmdlet-name') -and $JsonPathItemObject.'x-ms-cmdlet-name') { 
+        return $JsonPathItemObject.'x-ms-cmdlet-name'
+    }
+
+    $opId = $JsonPathItemObject.OperationId
+    $cmdNounMap = @{
+                    Create = 'New'
+                    Activate = 'Enable'
+                    Delete = 'Remove'
+                    List   = 'GetAll'
+                }
     $opIdValues = $opId.Split('_')
     $cmdNoun = $opIdValues[0]
     $cmdVerb = $opIdValues[1]
@@ -287,9 +322,13 @@ function Get-SwaggerCommandName
                 }
             }
             
-            $cmdNoun = $cmdNoun + $opIdValues[1].Substring($idx)
-            $cmdVerb = $opIdValues[1].Substring(0,$idx)
+            $cmdNounSuffix = $opIdValues[1].Substring($idx)
+            # Add command noun suffix only when the current noun is not ending with the same suffix. 
+            if(-not $cmdNoun.EndsWith($cmdNounSuffix, [System.StringComparison]::OrdinalIgnoreCase)) {
+                $cmdNoun = $cmdNoun + $opIdValues[1].Substring($idx)
+            }
             
+            $cmdVerb = $opIdValues[1].Substring(0,$idx)            
             if ($cmdNounMap.ContainsKey($cmdVerb)) { 
                 $cmdVerb = $cmdNounMap[$cmdVerb]
             }          
@@ -297,6 +336,7 @@ function Get-SwaggerCommandName
             Write-Verbose "Using Noun $cmdNoun. Using Verb $cmdVerb"
         }
     }
+
     return "$cmdVerb-$cmdNoun"
 }
 
@@ -320,9 +360,18 @@ function Get-SwaggerSpecDefinitionsAndParameters
 
     # Get info entries
     $info = $SwaggerSpecJsonObject.info 
-    $infoVersion = $info.version
+    
+    $infoVersion = '1-0-0'
+    if((Get-Member -InputObject $info -Name 'Version') -and $info.Version) { 
+        $infoVersion = $info.Version
+    }
+
     $infoTitle = $info.title
-    $infoName = $info.'x-ms-code-generation-settings'.name
+    $infoName = ''
+    if((Get-Member -InputObject $info -Name 'x-ms-code-generation-settings') -and $info.'x-ms-code-generation-settings'.Name) { 
+        $infoName = $info.'x-ms-code-generation-settings'.Name
+    }
+
     if (-not $infoName) {
          $infoName = $infoTitle
     }
