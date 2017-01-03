@@ -323,15 +323,14 @@ function $commandName
            (Get-Member -InputObject `$taskResult.Result -Name 'Body') -and
            `$taskResult.Result.Body) 
         {
-            Write-Verbose -Message "`$(`$taskResult.Result.Body | Out-String)"
-            `$taskResult.Result.Body
+            `$result = `$taskResult.Result.Body
+            Write-Verbose -Message "`$result | Out-String)"
+            `$result
 
-            if((Get-Member -InputObject `$taskResult.Result.Body -Name 'ProvisioningState') -and 
-               (`$taskResult.Result.Body.ProvisioningState -ne 'Succeeded')) 
+            if((Get-Member -InputObject `$result -Name 'ProvisioningState') -and 
+               (`$result.ProvisioningState -ne 'Succeeded')) 
             {
-                Write-Warning -Message "Please wait until the provisioning state of resource is updated to 'Succeeded' state. Consider using the corresponding Get command to get the provisioning state."
-            } else {
-                Write-Verbose -Message "Successfully provisioned the specified resource."
+                Write-Warning -Message "Resource '`$(`$result.Name)' is in '`$(`$result.ProvisioningState)' ProvisioningState. Please wait until the provisioning state of resource is updated to 'Succeeded' state. Consider using the corresponding Get command to get the provisioning state."
             }
         } else {
             Write-Warning -Message "Please wait until the specified resource gets provisioned. Consider using the corresponding Get command to get the provisioning state."
