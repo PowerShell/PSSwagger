@@ -326,14 +326,6 @@ function $commandName
             `$result = `$taskResult.Result.Body
             Write-Verbose -Message "`$result | Out-String)"
             `$result
-
-            if((Get-Member -InputObject `$result -Name 'ProvisioningState') -and 
-               (`$result.ProvisioningState -ne 'Succeeded')) 
-            {
-                Write-Warning -Message "Resource '`$(`$result.Name)' is in '`$(`$result.ProvisioningState)' ProvisioningState. Please wait until the provisioning state of resource is updated to 'Succeeded' state. Consider using the corresponding Get command to get the provisioning state."
-            }
-        } else {
-            Write-Warning -Message "Please wait until the specified resource gets provisioned. Consider using the corresponding Get command to get the provisioning state."
         }
     }
    
