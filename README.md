@@ -40,12 +40,13 @@ Export-CommandFromSwagger -SwaggerSpecUri <uri> -Path <string> -ModuleName <stri
   $param = @{
     SwaggerSpecUri = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-batch/2015-12-01/swagger/BatchManagement.json'
     Path           = 'C:\Temp\generatedmodule\'
-    ModuleName     = 'Generated.Azure.BatchManagement'
+    ModuleName     = 'Generated.AzureRM.BatchManagement'
+    UseAzureCsharpGenerator = $true
   }
   Export-CommandFromSwagger @param
   ```
 
-After step 4, the module will be in `C:\Temp\GeneratedModule\Generated.Azure.BatchManagement ($param.Path)` folder.
+After step 4, the module will be in `C:\Temp\GeneratedModule\Generated.AzureRM.BatchManagement ($param.Path)` folder.
 
 Before importing that module and using it, you need to import `Generated.Azure.Common.Helpers` module which is under PSSwagger folder.
     
