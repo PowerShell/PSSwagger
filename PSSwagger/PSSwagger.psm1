@@ -271,11 +271,13 @@ $paramHelp
 #>
 function $commandName
 {
-   [CmdletBinding()]
-   param($paramblock
-   )
+    $outputTypeBlock
 
-   $body
+    [CmdletBinding()]
+    param($paramblock
+    )
+
+    $body
 }
 '@
 
@@ -323,12 +325,10 @@ function $commandName
            (Get-Member -InputObject `$taskResult.Result -Name 'Body') -and
            `$taskResult.Result.Body) 
         {
-            `$result = `$taskResult.Result.Body
-            Write-Verbose -Message "`$result | Out-String)"
-            `$result
+            $responseStatusCode = `$taskResult.Result.Response.StatusCode.value__
+            $responseBody
         }
-    }
-   
+    }   
 '@
  
     $commandName = Get-SwaggerPathCommandName $JsonPathItemObject
@@ -431,6 +431,15 @@ function $commandName
         $methodName = $operationType + 'WithHttpMessagesAsync'
     }
 
+    $responseBodyParams = @{
+                                "responses" = $jsonPathItemObject.responses.PSObject.Properties
+                                "namespace" = $Namespace
+    
+    }
+
+    $responseBody, $outputTypeBlock = ProcessResponses @responseBodyParams
+    $responseStatusCode = '$responseStatusCode'
+    
     $body = $executionContext.InvokeCommand.ExpandString($functionBodyStr)
 
     #endregion Function Body
@@ -960,7 +969,7 @@ function Remove-SpecialCharecter
 function Test-OperationNameInDefinitionList
 {
     param(
-        [string] 
+        [string]
         $Name,
 
         [Parameter(Mandatory=$true)]
@@ -974,6 +983,87 @@ function Test-OperationNameInDefinitionList
         return $true
     }
     return $false
+}
+
+function ProcessResponses
+{
+    param
+    (
+        [Parameter(Mandatory=$true)]
+        [PSCustomObject] $responses,
+        
+        [Parameter(Mandatory=$true)]
+        [String] $NameSpace
+    )
+
+    $successHandled = $false
+    $responseBody = ""
+    $outputType = ""
+    $httpSuccessCode = '200'
+    $taskResult = '$taskResult'
+
+$successReturn = @'
+
+    Write-Verbose "Operation Completed."
+    $result = $taskResult.Result.Body
+    Write-Verbose -Message "$result | Out-String)"
+    $result    
+'@
+
+$responseBodyTemplate = @'
+
+    if($responseStatusCode -eq $responseStatusValue)
+    {
+        $responseCondition
+    }
+
+'@
+    $responseStatusCode = '$responseStatusCode'
+    $responseCondition = ""
+    $responses | ForEach-Object {
+        $responseStatusValue = "'" + $_.Name + "'"
+        
+        $value = $_.Value
+
+        # Handle Success
+        if($_.Name -eq $httpSuccessCode)
+        {
+            $successHandled = $true
+            if((Get-member -inputobject $value).Name -contains "schema")
+            {
+                if((Get-member -inputobject $value.schema).Name -contains '$ref')
+                {
+                    # Add the [OutputType] for the function
+                    $ref = $value.schema.'$ref'
+                    $key = $ref.split("/")[-1]
+                    $fullPathDataType = $NameSpace + ".Models.$key"
+                    $outputType = "[OutputType([" + $fullPathDataType + "])]"
+                }
+            }
+
+            $responseCondition = $successReturn
+        }
+        else
+        {# Handle Error            
+            if($Value.description -and -not ([string]::IsNullOrEmpty($value.description)))
+            {
+                $responseCondition = "Write-Error '" + $value.description + "'"
+            }        
+            else
+            {
+                $responseCondition = "Write-Error 'Status: " + $_.Name + " received.'"
+            }
+        }
+
+        $responseBody += $executionContext.InvokeCommand.ExpandString($responseBodyTemplate)
+    }
+
+    if(-not $successHandled)
+    {
+        $responseBody += $successReturn
+    }
+
+    return $responseBody, $outputType
 }
 
 #endregion

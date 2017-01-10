@@ -1,11 +1,26 @@
 param(
     [string]
-    $PSSwaggerClonePath = 'C:\code\PSSwagger',
+    $PSSwaggerClonePath = 'D:\Work\PS\Swagger\PSSwagger',
 
     [string]
     $TargetPath = 'C:\Temp\generatedmodule'
 )
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
+
+#region Handle Autorest installation
+
+$autoRestVersion = "0.16.0"
+$autoRestInstalledStatus = get-package -Name AutoRest -RequiredVersion $autoRestVersion
+if(-not $autoRestInstalledStatus) {
+    $autoRestInstallation = Install-Package -Name AutoRest -Source https://www.nuget.org/api/v2 -RequiredVersion 0.16.0 -Scope CurrentUser -Force
+}
+
+$autoRestInstallationLocation = (get-package -Name AutoRest -RequiredVersion $autoRestVersion).Source
+$autoRestInstallPath = Join-Path -ChildPath "tools" -Path (Split-Path $autoRestInstallationLocation)
+
+if(-not (($env:Path -split ';') -match [regex]::Escape($autoRestInstallPath))){$env:Path += ";$autoRestInstallPath"}
+
+#endregion Handle Autorest installation
 
 #region Generate AzureRM commands
 if(-not (Test-Path -Path $PSSwaggerClonePath -PathType Container))
@@ -20,6 +35,15 @@ $param = @{
     SwaggerSpecUri  = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-resources/resources/2015-11-01/swagger/resources.json'
     Path            = $TargetPath
     ModuleName      = 'Generated.AzureRM.Resources'
+    UseAzureCsharpGenerator = $true
+}
+Export-CommandFromSwagger @param
+
+# AzureRM.Compute
+$param = @{
+    SwaggerSpecUri  = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-compute/2015-06-15/swagger/compute.json'
+    Path            = $TargetPath
+    ModuleName      = 'Generated.AzureRM.Compute'
     UseAzureCsharpGenerator = $true
 }
 Export-CommandFromSwagger @param
@@ -39,15 +63,6 @@ $param = @{
     SwaggerSpecUri  = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-network/2015-06-15/swagger/network.json'
     Path            = $TargetPath
     ModuleName      = 'Generated.AzureRM.Network'
-    UseAzureCsharpGenerator = $true
-}
-Export-CommandFromSwagger @param
-
-# AzureRM.Compute
-$param = @{
-    SwaggerSpecUri  = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-compute/2015-06-15/swagger/compute.json'
-    Path            = $TargetPath
-    ModuleName      = 'Generated.AzureRM.Compute'
     UseAzureCsharpGenerator = $true
 }
 Export-CommandFromSwagger @param
@@ -106,7 +121,6 @@ $Tags.Add('CreatedUsingGeneratedCommands','CreatedUsingGeneratedCommands')
 $Tags.Add('ContosTag1','ContosoTag1')
 $Tags.Add('ContosTag2','ContosoTag2')
 $Tags.Add('ContosTag3','ContosoTag3')
-
 
 #region Resource Group
 
@@ -177,8 +191,6 @@ $Interface
 Write-Host -BackgroundColor DarkGreen -ForegroundColor Green "Successfully created the Network Interface '$InterfaceName'"
 
 #endregion Network
-
-
 
 #region Compute
 Write-Host -BackgroundColor DarkGreen -ForegroundColor Yellow "Creating the Virtual Machine '$VMName'"
