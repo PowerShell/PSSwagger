@@ -10,12 +10,12 @@ Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 #region Handle Autorest installation
 
 $autoRestVersion = "0.16.0"
-$autoRestInstalledStatus = get-package -Name AutoRest -RequiredVersion $autoRestVersion
-if(-not $autoRestInstalledStatus) {
+$autoRestInstallation = get-package -Name AutoRest -RequiredVersion $autoRestVersion
+if(-not $autoRestInstallation) {
     $autoRestInstallation = Install-Package -Name AutoRest -Source https://www.nuget.org/api/v2 -RequiredVersion 0.16.0 -Scope CurrentUser -Force
 }
 
-$autoRestInstallationLocation = (get-package -Name AutoRest -RequiredVersion $autoRestVersion).Source
+$autoRestInstallationLocation = ($autoRestInstallation).Source
 $autoRestInstallPath = Join-Path -ChildPath "tools" -Path (Split-Path $autoRestInstallationLocation)
 
 if(-not (($env:Path -split ';') -match [regex]::Escape($autoRestInstallPath))){$env:Path += ";$autoRestInstallPath"}
@@ -39,15 +39,6 @@ $param = @{
 }
 Export-CommandFromSwagger @param
 
-# AzureRM.Compute
-$param = @{
-    SwaggerSpecUri  = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-compute/2015-06-15/swagger/compute.json'
-    Path            = $TargetPath
-    ModuleName      = 'Generated.AzureRM.Compute'
-    UseAzureCsharpGenerator = $true
-}
-Export-CommandFromSwagger @param
-
 # AzureRM.Storage
 $param = @{
     SwaggerSpecUri  = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-storage/2015-06-15/swagger/storage.json'
@@ -63,6 +54,15 @@ $param = @{
     SwaggerSpecUri  = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-network/2015-06-15/swagger/network.json'
     Path            = $TargetPath
     ModuleName      = 'Generated.AzureRM.Network'
+    UseAzureCsharpGenerator = $true
+}
+Export-CommandFromSwagger @param
+
+# AzureRM.Compute
+$param = @{
+    SwaggerSpecUri  = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-compute/2015-06-15/swagger/compute.json'
+    Path            = $TargetPath
+    ModuleName      = 'Generated.AzureRM.Compute'
     UseAzureCsharpGenerator = $true
 }
 Export-CommandFromSwagger @param
@@ -97,7 +97,6 @@ $SubnetName = 'ContosoSubnet07'
 $VNetName = 'ContosoVNet07'
 $VNetAddressPrefix = '10.0.0.0/16'
 $VNetSubnetAddressPrefix = '10.0.0.0/24'
-
 $IPConfigurationName = 'ContosoIpConfig'
 
 ## Compute
@@ -105,17 +104,13 @@ $VMName = 'ContosoVirtualMachine07'
 $ComputerName = 'ContosoServer07'
 $VMSize = 'Standard_A2'
 $OSDiskName = $VMName + 'OSDisk'
-
 $ImagePublisher = 'MicrosoftWindowsServer'
 $ImageOffer = 'WindowsServer'
 $ImageSKU = '2012-R2-Datacenter'
 $ImageVersion = 'latest'
-
 $AdminUsername = 'ContosoUser'
 $AdminPassword = 'ContosoUserPassword~1'
-
 $VMExtensionName = 'BGInfo'
-
 $Tags = new-object 'System.Collections.Generic.Dictionary[[string],[string]]'
 $Tags.Add('CreatedUsingGeneratedCommands','CreatedUsingGeneratedCommands')
 $Tags.Add('ContosTag1','ContosoTag1')
@@ -141,7 +136,6 @@ Write-Host -BackgroundColor DarkGreen -ForegroundColor Yellow "Creating the stor
 $StorageAccountCreateParameters = New-StorageAccountCreateParametersObject -Location $Location -AccountType $StorageType
 $StorageAccount = New-StorageAccounts -ResourceGroupName $ResourceGroupName -AccountName $StorageName -Parameters $StorageAccountCreateParameters
 $StorageAccount
-
 $StorageAccount = Get-StorageAccountsProperties -ResourceGroupName $ResourceGroupName -AccountName $StorageName
 $StorageAccount
 
@@ -162,7 +156,6 @@ Write-Host -BackgroundColor DarkGreen -ForegroundColor Green "Successfully creat
 Write-Host -BackgroundColor DarkGreen -ForegroundColor Yellow "Creating the Virtual Network '$VNetName'"
 $AddressSpace = New-AddressSpaceObject -AddressPrefixes $VNetAddressPrefix
 $VirtualNetworkParameters = New-VirtualNetworkObject -Location $Location -AddressSpace $AddressSpace
-
 $VNet = New-VirtualNetworksOrUpdate -ResourceGroupName $ResourceGroupName -VirtualNetworkName $VNetName -Parameters $VirtualNetworkParameters
 $VNet
 Write-Host -BackgroundColor DarkGreen -ForegroundColor Green "Successfully created the Virtual Network '$VNetName'"
@@ -173,7 +166,6 @@ $SubnetParameters = New-SubnetObject -AddressPrefix $VNetSubnetAddressPrefix
 $SubnetConfig = New-SubnetsOrUpdate -ResourceGroupName $ResourceGroupName -VirtualNetworkName $VNetName -SubnetName $SubnetName -SubnetParameters $SubnetParameters
 $SubnetConfig
 Write-Host -BackgroundColor DarkGreen -ForegroundColor Green "Successfully created the Subnet '$SubnetName'"
-
 
 ## NetworkInterface
 Write-Host -BackgroundColor DarkGreen -ForegroundColor Yellow "Creating the Network Interface '$InterfaceName'"

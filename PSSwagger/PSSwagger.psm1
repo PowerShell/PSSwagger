@@ -434,10 +434,11 @@ function $commandName
     $responseBodyParams = @{
                                 "responses" = $jsonPathItemObject.responses.PSObject.Properties
                                 "namespace" = $Namespace
+                                "definitionList" = $SwaggerSpecDefinitionsAndParameters['definitionList']
     
     }
 
-    $responseBody, $outputTypeBlock = ProcessResponses @responseBodyParams
+    $responseBody, $outputTypeBlock = Add-Response @responseBodyParams
     $responseStatusCode = '$responseStatusCode'
     
     $body = $executionContext.InvokeCommand.ExpandString($functionBodyStr)
@@ -985,7 +986,7 @@ function Test-OperationNameInDefinitionList
     return $false
 }
 
-function ProcessResponses
+function Add-Response
 {
     param
     (
@@ -993,77 +994,165 @@ function ProcessResponses
         [PSCustomObject] $responses,
         
         [Parameter(Mandatory=$true)]
-        [String] $NameSpace
+        [String] $NameSpace, 
+
+        [Parameter(Mandatory=$true)]        
+        [hashtable] $definitionList
     )
 
     $successHandled = $false
     $responseBody = ""
     $outputType = ""
     $httpSuccessCode = '200'
-    $taskResult = '$taskResult'
 
 $successReturn = @'
 
     Write-Verbose "Operation Completed."
     $result = $taskResult.Result.Body
-    Write-Verbose -Message "$result | Out-String)"
+    Write-Verbose -Message "$($result | Out-String)"
     $result    
 '@
 
-$responseBodyTemplate = @'
-
-    if($responseStatusCode -eq $responseStatusValue)
+$responseBodySwitchCase = @'
+    switch ($responseStatusCode)
     {
-        $responseCondition
+        200 {$successReturn}
+        $failWithDesc
+        Default {Write-Error "Status: $responseStatusCode received."}
     }
-
 '@
+
+$failCase = @'
+    $responseStatusValue {$failureDescription}
+'@
+
     $responseStatusCode = '$responseStatusCode'
-    $responseCondition = ""
+    $failWithDesc = ""
     $responses | ForEach-Object {
         $responseStatusValue = "'" + $_.Name + "'"
-        
         $value = $_.Value
 
         # Handle Success
         if($_.Name -eq $httpSuccessCode)
         {
             $successHandled = $true
-            if((Get-member -inputobject $value).Name -contains "schema")
+            if(Get-member -inputobject $value -name "schema")
             {
-                if((Get-member -inputobject $value.schema).Name -contains '$ref')
-                {
-                    # Add the [OutputType] for the function
-                    $ref = $value.schema.'$ref'
-                    $key = $ref.split("/")[-1]
-                    $fullPathDataType = $NameSpace + ".Models.$key"
-                    $outputType = "[OutputType([" + $fullPathDataType + "])]"
+                # Add the [OutputType] for the function
+                $OutputTypeParams = @{
+                    "schema"  = $value.schema
+                    "namespace" = $NameSpace 
+                    "definitionList" = $definitionList
                 }
-            }
 
-            $responseCondition = $successReturn
+                $outputType = Get-OutputType @OutputTypeParams
+            }
         }
         else
         {# Handle Error            
             if($Value.description -and -not ([string]::IsNullOrEmpty($value.description)))
             {
-                $responseCondition = "Write-Error '" + $value.description + "'"
-            }        
-            else
+                $failureDescription = "Write-Error '" + $value.description + "'"
+                $failWithDesc += $executionContext.InvokeCommand.ExpandString($failCase)
+            }
+        }        
+    }
+
+    $responseBody += $executionContext.InvokeCommand.ExpandString($responseBodySwitchCase)
+    
+    return $responseBody, $outputType
+}
+
+function Get-OutputType
+{
+    param
+    (
+        [Parameter(Mandatory=$true)]
+        [PSCustomObject] $schema,
+
+        [Parameter(Mandatory=$true)]
+        [String] $NameSpace, 
+
+        [Parameter(Mandatory=$true)]
+        [hashtable] $definitionList
+    )
+
+    if(Get-member -inputobject $schema -name '$ref')
+    {
+        $ref = $schema.'$ref'
+        $outputType = ""
+
+        if($ref.StartsWith("#/definitions"))
+        {
+            $key = $ref.split("/")[-1]
+            if ($definitionList.ContainsKey($key))
             {
-                $responseCondition = "Write-Error 'Status: " + $_.Name + " received.'"
+                $definition = ($definitionList[$key]).Value
+                if(Get-Member -InputObject $definition -name 'properties')
+                {
+                    $defProperties = $definition.properties
+                    $fullPathDataType = ""
+
+                    # If this data type is actually a collection of another $ref 
+                    if(Get-member -InputObject $defProperties -Name 'value')
+                    {
+                        $defValue = $defProperties.value
+                        $outputValueType = ""
+                        
+                        # Iff the value has items with $ref nested properties,
+                        # this is a collection and hence we need to find the type of collection
+
+                        if((Get-Member -InputObject $defValue -Name 'items') -and 
+                            (Get-Member -InputObject $defValue.items -Name '$ref'))
+                        {
+                            $defRef = $defValue.items.'$ref'
+                            if($ref.StartsWith("#/definitions")) 
+                            {
+                                $defKey = $defRef.split("/")[-1]
+                                $fullPathDataType = $NameSpace + ".Models.$defKey"
+                            }
+
+                            if(Get-member -InputObject $defValue -Name 'type') 
+                            {
+                                $defType = $defValue.type
+                                switch ($defType) 
+                                {
+                                    "array" { $outputValueType = '[]' }
+                                    Default { 
+                                        throw [System.NotImplementedException] "Please get an implementation of $defType for $ref"
+                                    }
+                                }
+                            }
+
+                            if(-not [string]::IsNullOrEmpty($outputValueType)) {$fullPathDataType = $fullPathDataType + " " + $outputValueType}
+                        }
+                        else
+                        { # if this datatype has value, but no $ref and items
+                            $fullPathDataType = $NameSpace + ".Models.$key"
+                            $outputType = "[OutputType([" + $fullPathDataType + "])]"
+                            return $outputType
+                        }
+
+                        $outputType = "[OutputType([" + $fullPathDataType + "])]"
+                        return $outputType
+                    }
+                    else
+                    { # if this datatype is not a collection of another $ref
+                        $fullPathDataType = $NameSpace + ".Models.$key"
+                        $outputType = "[OutputType([" + $fullPathDataType + "])]"
+                        return $outputType
+                    }
+                }
+            }
+            else {
+                return $outputType
             }
         }
-
-        $responseBody += $executionContext.InvokeCommand.ExpandString($responseBodyTemplate)
     }
-
-    if(-not $successHandled)
-    {
-        $responseBody += $successReturn
+    else {
+        Write-Verbose "No schema in the response."
+        return $outputType
     }
-
-    return $responseBody, $outputType
 }
 
 #endregion
