@@ -271,9 +271,7 @@ $paramHelp
 #>
 function $commandName
 {
-    $outputTypeBlock
-
-    [CmdletBinding()]
+    $outputTypeBlock[CmdletBinding()]
     param($paramblock
     )
 
@@ -1000,26 +998,25 @@ function Add-Response
         [hashtable] $definitionList
     )
 
-    $successHandled = $false
+    $outputTypeFlag = $false
     $responseBody = ""
     $outputType = ""
     $httpSuccessCode = '200'
 
 $successReturn = @'
-
-    Write-Verbose "Operation Completed."
-    $result = $taskResult.Result.Body
-    Write-Verbose -Message "$($result | Out-String)"
-    $result    
+                    Write-Verbose "Operation completed with return code: $responseStatusCode."
+                    $result = $taskResult.Result.Body
+                    Write-Verbose -Message "$($result | Out-String)"
+                    $result
+                
 '@
 
 $responseBodySwitchCase = @'
-    switch ($responseStatusCode)
-    {
-        200 {$successReturn}
-        $failWithDesc
-        Default {Write-Error "Status: $responseStatusCode received."}
-    }
+switch ($responseStatusCode)
+            {
+                {200..299 -contains $responseStatusCode} {$successReturn}
+                Default {Write-Error "Status: $responseStatusCode received."}
+            }
 '@
 
 $failCase = @'
@@ -1032,30 +1029,38 @@ $failCase = @'
         $responseStatusValue = "'" + $_.Name + "'"
         $value = $_.Value
 
-        # Handle Success
-        if($_.Name -eq $httpSuccessCode)
-        {
-            $successHandled = $true
-            if(Get-member -inputobject $value -name "schema")
-            {
-                # Add the [OutputType] for the function
-                $OutputTypeParams = @{
-                    "schema"  = $value.schema
-                    "namespace" = $NameSpace 
-                    "definitionList" = $definitionList
-                }
+        switch($_.Name) {
+            # Handle Success
+            {200..299 -contains $_} {
+                if(-not $outputTypeFlag -and (Get-member -inputobject $value -name "schema"))
+                {
+                    # Add the [OutputType] for the function
+                    $OutputTypeParams = @{
+                        "schema"  = $value.schema
+                        "namespace" = $NameSpace 
+                        "definitionList" = $definitionList
+                    }
 
-                $outputType = Get-OutputType @OutputTypeParams
+                    $outputType = Get-OutputType @OutputTypeParams
+                }
+            }
+            # Handle Client Error
+            {400..499 -contains $_} {
+                if($Value.description -and -not ([string]::IsNullOrEmpty($value.description)))
+                {
+                    $failureDescription = "Write-Error 'CLIENT ERROR: " + $value.description + "'"
+                    $failWithDesc += $executionContext.InvokeCommand.ExpandString($failCase)
+                }
+            }
+            # Handle Server Error
+            {500..599 -contains $_} {
+                if($Value.description -and -not ([string]::IsNullOrEmpty($value.description)))
+                {
+                    $failureDescription = "Write-Error 'SERVER ERROR: " + $value.description + "'"
+                    $failWithDesc += $executionContext.InvokeCommand.ExpandString($failCase)
+                }
             }
         }
-        else
-        {# Handle Error            
-            if($Value.description -and -not ([string]::IsNullOrEmpty($value.description)))
-            {
-                $failureDescription = "Write-Error '" + $value.description + "'"
-                $failWithDesc += $executionContext.InvokeCommand.ExpandString($failCase)
-            }
-        }        
     }
 
     $responseBody += $executionContext.InvokeCommand.ExpandString($responseBodySwitchCase)
@@ -1129,17 +1134,17 @@ function Get-OutputType
                         else
                         { # if this datatype has value, but no $ref and items
                             $fullPathDataType = $NameSpace + ".Models.$key"
-                            $outputType = "[OutputType([" + $fullPathDataType + "])]"
+                            $outputType = "[OutputType([" + $fullPathDataType + "])] "
                             return $outputType
                         }
 
-                        $outputType = "[OutputType([" + $fullPathDataType + "])]"
+                        $outputType = "[OutputType([" + $fullPathDataType + "])] "
                         return $outputType
                     }
                     else
                     { # if this datatype is not a collection of another $ref
                         $fullPathDataType = $NameSpace + ".Models.$key"
-                        $outputType = "[OutputType([" + $fullPathDataType + "])]"
+                        $outputType = "[OutputType([" + $fullPathDataType + "])] "
                         return $outputType
                     }
                 }
