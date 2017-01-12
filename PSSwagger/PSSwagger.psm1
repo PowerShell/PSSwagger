@@ -1015,12 +1015,15 @@ $responseBodySwitchCase = @'
 switch ($responseStatusCode)
             {
                 {200..299 -contains $responseStatusCode} {$successReturn}
+                $failWithDesc
                 Default {Write-Error "Status: $responseStatusCode received."}
             }
 '@
 
 $failCase = @'
-    $responseStatusValue {$failureDescription}
+    {$responseStatusCode} {
+        $responseStatusValue {$failureDescription}
+    }
 '@
 
     $responseStatusCode = '$responseStatusCode'
@@ -1042,6 +1045,7 @@ $failCase = @'
                     }
 
                     $outputType = Get-OutputType @OutputTypeParams
+                    $outputTypeFlag = $true
                 }
             }
             # Handle Client Error
