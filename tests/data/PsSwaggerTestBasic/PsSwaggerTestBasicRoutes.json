@@ -1,0 +1,3 @@
+{
+    "/cupcakes/:flavor": "/cupcakes?flavor=:flavor"
+}
