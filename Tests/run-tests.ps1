@@ -9,7 +9,6 @@ param(
     [switch]$SkipBootstrap
 )
 
-$global:jsonServerPath = $null
 $executeTestsCommand = ""
 
 # Import test utilities
@@ -35,7 +34,7 @@ if ($TestSuite.Contains("All") -or $TestSuite.Contains("ScenarioTest")) {
     # Ensure the location exists where we keep node and node modules
     $nodeModulePath = Join-Path -Path $PSScriptRoot -ChildPath "NodeModules"
     $nodeExePath = Join-Path -Path $nodeModulePath -ChildPath "node.exe"
-    $global:jsonServerPath = Join-Path -Path $nodeModulePath -ChildPath "json-server.cmd"
+    $jsonServerPath = Join-Path -Path $nodeModulePath -ChildPath "json-server.cmd"
     if (-not (Test-Path $nodeModulePath)) {
         Write-Verbose "Creating local node modules directory $nodeModulePath"
         New-Item -Path $nodeModulePath -ItemType Directory -Force 
@@ -48,8 +47,8 @@ if ($TestSuite.Contains("All") -or $TestSuite.Contains("ScenarioTest")) {
     }
 
     # Ensure we have json-server
-    if (-not (Test-Path $global:jsonServerPath)) {
-        Write-Verbose "Couldn't find $global:jsonServerPath. Running npm install -g json-server."
+    if (-not (Test-Path $jsonServerPath)) {
+        Write-Verbose "Couldn't find $jsonServerPath. Running npm install -g json-server."
         & $nodeExePath (Join-Path -Path $npmInstallPath -ChildPath "node_modules\npm\bin\npm-cli.js") "install" "-g" "json-server"
     }
 
