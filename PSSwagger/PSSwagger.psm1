@@ -1088,11 +1088,10 @@ function Get-OutputType
 
 '@
 
+    $outputType = ""
     if(Get-member -inputobject $schema -name '$ref')
     {
         $ref = $schema.'$ref'
-        $outputType = ""
-
         if($ref.StartsWith("#/definitions"))
         {
             $key = $ref.split("/")[-1]
@@ -1141,27 +1140,19 @@ function Get-OutputType
                         { # if this datatype has value, but no $ref and items
                             $fullPathDataType = $NameSpace + ".Models.$key"
                         }
-
-                        $outputType += $executionContext.InvokeCommand.ExpandString($outputTypeStr)
-                        return $outputType
                     }
                     else
                     { # if this datatype is not a collection of another $ref
                         $fullPathDataType = $NameSpace + ".Models.$key"
-                        $outputType += $executionContext.InvokeCommand.ExpandString($outputTypeStr)
-                        return $outputType
                     }
+
+                    $outputType += $executionContext.InvokeCommand.ExpandString($outputTypeStr)
                 }
-            }
-            else {
-                return $outputType
             }
         }
     }
-    else {
-        Write-Verbose "No schema in the response."
-        return $outputType
-    }
+
+    return $outputType
 }
 
 #endregion
