@@ -271,7 +271,7 @@ $paramHelp
 #>
 function $commandName
 {
-   [CmdletBinding()]
+   $outputTypeBlock[CmdletBinding()]
    param($paramblock
    )
 
@@ -295,8 +295,7 @@ function $commandName
 '@
 
     $functionBodyStr = @'
-
-    `$serviceCredentials =  Get-AzServiceCredential
+ `$serviceCredentials =  Get-AzServiceCredential
     `$subscriptionId = Get-AzSubscriptionId
     `$delegatingHandler = Get-AzDelegatingHandler
 
@@ -323,12 +322,10 @@ function $commandName
            (Get-Member -InputObject `$taskResult.Result -Name 'Body') -and
            `$taskResult.Result.Body) 
         {
-            `$result = `$taskResult.Result.Body
-            Write-Verbose -Message "`$result | Out-String)"
-            `$result
+            `$responseStatusCode = `$taskResult.Result.Response.StatusCode.value__
+            $responseBody
         }
-    }
-   
+    }   
 '@
  
     $commandName = Get-SwaggerPathCommandName $JsonPathItemObject
@@ -431,6 +428,15 @@ function $commandName
         $methodName = $operationType + 'WithHttpMessagesAsync'
     }
 
+    $responseBodyParams = @{
+                                responses = $jsonPathItemObject.responses.PSObject.Properties
+                                namespace = $Namespace
+                                definitionList = $SwaggerSpecDefinitionsAndParameters['definitionList']
+    
+    }
+
+    $responseBody, $outputTypeBlock = Get-Response @responseBodyParams
+    
     $body = $executionContext.InvokeCommand.ExpandString($functionBodyStr)
 
     #endregion Function Body
@@ -960,7 +966,7 @@ function Remove-SpecialCharecter
 function Test-OperationNameInDefinitionList
 {
     param(
-        [string] 
+        [string]
         $Name,
 
         [Parameter(Mandatory=$true)]
@@ -974,6 +980,180 @@ function Test-OperationNameInDefinitionList
         return $true
     }
     return $false
+}
+
+function Get-Response
+{
+    param
+    (
+        [Parameter(Mandatory=$true)]
+        [PSCustomObject] $responses,
+        
+        [Parameter(Mandatory=$true)]
+        [String] $NameSpace, 
+
+        [Parameter(Mandatory=$true)]        
+        [hashtable] $definitionList
+    )
+
+    $outputTypeFlag = $false
+    $responseBody = ""
+    $outputType = ""
+    $failWithDesc = ""
+    
+$successReturn = @'
+Write-Verbose "Operation completed with return code: `$responseStatusCode."
+                    $result = $taskResult.Result.Body
+                    Write-Verbose -Message "$($result | Out-String)"
+                    $result
+'@
+
+$responseBodySwitchCase = @'
+switch (`$responseStatusCode)
+            {
+                {200..299 -contains `$responseStatusCode}{
+                    $successReturn
+                }$failWithDesc
+                Default {Write-Error "Status: `$responseStatusCode received."}
+            }
+'@
+
+$failCase = @'
+
+    {`$responseStatusCode} {
+        $responseStatusValue {$failureDescription}
+    }
+'@
+
+    $failWithDesc = ""
+    $responses | ForEach-Object {
+        $responseStatusValue = "'" + $_.Name + "'"
+        $value = $_.Value
+
+        switch($_.Name) {
+            # Handle Success
+            {200..299 -contains $_} {
+                if(-not $outputTypeFlag -and (Get-member -inputobject $value -name "schema"))
+                {
+                    # Add the [OutputType] for the function
+                    $OutputTypeParams = @{
+                        "schema"  = $value.schema
+                        "namespace" = $NameSpace 
+                        "definitionList" = $definitionList
+                    }
+
+                    $outputType = Get-OutputType @OutputTypeParams
+                    $outputTypeFlag = $true
+                }
+            }
+            # Handle Client Error
+            {400..499 -contains $_} {
+                if($Value.description)
+                {
+                    $failureDescription = "Write-Error 'CLIENT ERROR: " + $value.description + "'"
+                    $failWithDesc += $executionContext.InvokeCommand.ExpandString($failCase)
+                }
+            }
+            # Handle Server Error
+            {500..599 -contains $_} {
+                if($Value.description)
+                {
+                    $failureDescription = "Write-Error 'SERVER ERROR: " + $value.description + "'"
+                    $failWithDesc += $executionContext.InvokeCommand.ExpandString($failCase)
+                }
+            }
+        }
+    }
+
+    $responseBody += $executionContext.InvokeCommand.ExpandString($responseBodySwitchCase)
+    
+    return $responseBody, $outputType
+}
+
+function Get-OutputType
+{
+    param
+    (
+        [Parameter(Mandatory=$true)]
+        [PSCustomObject] $schema,
+
+        [Parameter(Mandatory=$true)]
+        [String] $NameSpace, 
+
+        [Parameter(Mandatory=$true)]
+        [hashtable] $definitionList
+    )
+
+    $outputTypeStr = @'
+[OutputType([$fullPathDataType])]
+   
+'@
+
+    $outputType = ""
+    if(Get-member -inputobject $schema -name '$ref')
+    {
+        $ref = $schema.'$ref'
+        if($ref.StartsWith("#/definitions"))
+        {
+            $key = $ref.split("/")[-1]
+            if ($definitionList.ContainsKey($key))
+            {
+                $definition = ($definitionList[$key]).Value
+                if(Get-Member -InputObject $definition -name 'properties')
+                {
+                    $defProperties = $definition.properties
+                    $fullPathDataType = ""
+
+                    # If this data type is actually a collection of another $ref 
+                    if(Get-member -InputObject $defProperties -Name 'value')
+                    {
+                        $defValue = $defProperties.value
+                        $outputValueType = ""
+                        
+                        # Iff the value has items with $ref nested properties,
+                        # this is a collection and hence we need to find the type of collection
+
+                        if((Get-Member -InputObject $defValue -Name 'items') -and 
+                            (Get-Member -InputObject $defValue.items -Name '$ref'))
+                        {
+                            $defRef = $defValue.items.'$ref'
+                            if($ref.StartsWith("#/definitions")) 
+                            {
+                                $defKey = $defRef.split("/")[-1]
+                                $fullPathDataType = $NameSpace + ".Models.$defKey"
+                            }
+
+                            if(Get-member -InputObject $defValue -Name 'type') 
+                            {
+                                $defType = $defValue.type
+                                switch ($defType) 
+                                {
+                                    "array" { $outputValueType = '[]' }
+                                    Default { 
+                                        throw [System.NotImplementedException] "Please get an implementation of $defType for $ref"
+                                    }
+                                }
+                            }
+
+                            if($outputValueType -and $fullPathDataType) {$fullPathDataType = $fullPathDataType + " " + $outputValueType}
+                        }
+                        else
+                        { # if this datatype has value, but no $ref and items
+                            $fullPathDataType = $NameSpace + ".Models.$key"
+                        }
+                    }
+                    else
+                    { # if this datatype is not a collection of another $ref
+                        $fullPathDataType = $NameSpace + ".Models.$key"
+                    }
+
+                    $outputType += $executionContext.InvokeCommand.ExpandString($outputTypeStr)
+                }
+            }
+        }
+    }
+
+    return $outputType
 }
 
 #endregion
