@@ -12,19 +12,20 @@ param(
 $executeTestsCommand = ""
 
 # Import test utilities
-Import-Module "$PSScriptRoot\TestUtilities.psm1"
+Import-Module "$PSScriptRoot\TestUtilities.psm1" -Force
+$nugetPackageSource = Test-NugetPackageSource
 
 # Set up scenario test requirements
 if ($TestSuite.Contains("All") -or $TestSuite.Contains("ScenarioTest")) {
     # Ensure node.js is installed
-    $nodejsModule = Ensure-Package -packageName "Node.JS"
+    $nodejsModule = Test-Package -packageName "Node.JS" -packageSourceName $nugetPackageSource.Name
     if ($nodejsModule -eq $null) {
         throw "Node.JS failed to install."
     }
 
     $nodejsInstallPath = Split-Path -Path $nodejsModule.Source
     # Ensure npm is installed
-    $npmModule = Ensure-Package -packageName "Npm"
+    $npmModule = Test-Package -packageName "Npm" -packageSourceName $nugetPackageSource.Name
     if ($npmModule -eq $null) {
         throw "NPM failed to install."
     }
@@ -70,7 +71,7 @@ if ($TestSuite.Contains("All") -or $TestSuite.Contains("ScenarioTest")) {
 }
 
 # Set up AutoRest
-$autoRestModule = Ensure-Package -packageName "AutoRest"
+$autoRestModule = Test-Package -packageName "AutoRest" -packageSourceName $nugetPackageSource.Name
 $autoRestInstallPath = Split-Path -Path $autoRestModule.Source
 $executeTestsCommand += ";`$env:Path+=`";$autoRestInstallPath\tools`""
 

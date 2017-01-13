@@ -1,7 +1,7 @@
 Describe "Basic API" {
     BeforeAll {
         # TODO: Pass all these locations dynamically
-        # Ensure PSSwagger isn't loaded
+        # Ensure PSSwagger isn't loaded (including the one installed on the machine, if any)
         Get-Module PSSwagger | Remove-Module
 
         # Import PSSwagger
@@ -11,9 +11,11 @@ Describe "Basic API" {
         $testCaseDataLocation = "$PSScriptRoot\Data\PsSwaggerTestBasic"
 
         # Generate module
+        Write-Host "Generating module"
         Export-CommandFromSwagger -SwaggerSpecPath "$testCaseDataLocation\PsSwaggerTestBasicSpec.json" -Path "$generatedModulesPath" -ModuleName "Generated.Basic.Module"
 
         # Import generated module
+        Write-Host "Importing module"
         Import-Module "$PSScriptRoot\..\PSSwagger\Generated.Azure.Common.Helpers\Generated.Azure.Common.Helpers.psd1" -Force
         Import-Module "$PSScriptRoot\Generated\Generated.Basic.Module\2017.1.1\Generated.Basic.Module.psd1"
         
@@ -28,11 +30,14 @@ Describe "Basic API" {
         if ($nodeProcesses -eq $null) {
             $nodeProcesses = @()
         }
+
         $jsonServerProcess = Start-Process -FilePath "$PSScriptRoot\NodeModules\json-server.cmd" -ArgumentList "--watch `"$PSScriptRoot\NodeModules\db.json`" --routes `"$testCaseDataLocation\PsSwaggerTestBasicRoutes.json`"" -PassThru -WindowStyle Hidden
         $nodeProcessToStop = Get-Process -Name "node" -ErrorAction SilentlyContinue | Where-Object {-not $nodeProcesses.Contains($_)}
         while ($nodeProcessToStop -eq $null) {
             $nodeProcessToStop = Get-Process -Name "node" -ErrorAction SilentlyContinue | Where-Object {-not $nodeProcesses.Contains($_)}
         }
+
+        Write-Host "json-server started at: $($nodeProcessToStop.ID)"
     }
 
     Context "Basic API tests" {
@@ -53,7 +58,9 @@ Describe "Basic API" {
 
     AfterAll {
         # Stop json-server
+        Write-Host "Stopping process: $($jsonServerProcess.ID)"
         $jsonServerProcess | Stop-Process
+        Write-Host "Stopping process: $($nodeProcessToStop.ID)"
         $nodeProcessToStop | Stop-Process
     }
 }
