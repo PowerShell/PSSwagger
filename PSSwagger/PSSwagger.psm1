@@ -469,8 +469,8 @@ function Get-SwaggerSpecDefinitionInfo
         $Namespace 
     )
 
-    $Name = $JsonDefinitionItemObject.Name
-
+    $Name = $JsonDefinitionItemObject.Name -split "\[",2 | Select-Object -First 1 -ErrorAction Ignore
+    
     $FunctionDescription = ""
     if((Get-Member -InputObject $JsonDefinitionItemObject.Value -Name 'Description') -and 
        $JsonDefinitionItemObject.Value.Description)
