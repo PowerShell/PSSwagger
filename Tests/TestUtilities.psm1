@@ -7,6 +7,8 @@ function Test-NugetPackageSource {
         Write-Verbose "No NuGet package source found for location $bestNugetLocation. Registering source PSSwaggerNuget."
         $nugetPackageSource = Register-PackageSource "PSSwaggerNuget" -Location $bestNugetLocation -ProviderName "NuGet" -Trusted -Force
     }
+
+    return $nugetPackageSource
 }
 
 # Ensures a given package exists. Caller should validate if returned module is null or not (null indicates the package failed to install)
