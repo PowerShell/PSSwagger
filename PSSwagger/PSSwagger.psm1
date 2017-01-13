@@ -271,11 +271,11 @@ $paramHelp
 #>
 function $commandName
 {
-    $outputTypeBlock[CmdletBinding()]
-    param($paramblock
-    )
+   $outputTypeBlock[CmdletBinding()]
+   param($paramblock
+   )
 
-    $body
+   $body
 }
 '@
 
@@ -295,8 +295,7 @@ function $commandName
 '@
 
     $functionBodyStr = @'
-
-    `$serviceCredentials =  Get-AzServiceCredential
+ `$serviceCredentials =  Get-AzServiceCredential
     `$subscriptionId = Get-AzSubscriptionId
     `$delegatingHandler = Get-AzDelegatingHandler
 
@@ -1003,22 +1002,24 @@ function Get-Response
     $failWithDesc = ""
     
 $successReturn = @'
-                    Write-Verbose "Operation completed with return code: `$responseStatusCode."
+Write-Verbose "Operation completed with return code: `$responseStatusCode."
                     $result = $taskResult.Result.Body
                     Write-Verbose -Message "$($result | Out-String)"
                     $result
-                
 '@
 
 $responseBodySwitchCase = @'
 switch (`$responseStatusCode)
             {
-                {200..299 -contains `$responseStatusCode} {$successReturn}$failWithDesc
+                {200..299 -contains `$responseStatusCode}{
+                    $successReturn
+                }$failWithDesc
                 Default {Write-Error "Status: `$responseStatusCode received."}
             }
 '@
 
 $failCase = @'
+
     {`$responseStatusCode} {
         $responseStatusValue {$failureDescription}
     }
@@ -1084,8 +1085,8 @@ function Get-OutputType
     )
 
     $outputTypeStr = @'
-        [OutputType([$fullPathDataType])]
-
+[OutputType([$fullPathDataType])]
+   
 '@
 
     $outputType = ""
