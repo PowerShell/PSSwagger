@@ -323,7 +323,7 @@ function $commandName
            (Get-Member -InputObject `$taskResult.Result -Name 'Body') -and
            `$taskResult.Result.Body) 
         {
-            $responseStatusCode = `$taskResult.Result.Response.StatusCode.value__
+            `$responseStatusCode = `$taskResult.Result.Response.StatusCode.value__
             $responseBody
         }
     }   
@@ -430,14 +430,13 @@ function $commandName
     }
 
     $responseBodyParams = @{
-                                "responses" = $jsonPathItemObject.responses.PSObject.Properties
-                                "namespace" = $Namespace
-                                "definitionList" = $SwaggerSpecDefinitionsAndParameters['definitionList']
+                                responses = $jsonPathItemObject.responses.PSObject.Properties
+                                namespace = $Namespace
+                                definitionList = $SwaggerSpecDefinitionsAndParameters['definitionList']
     
     }
 
-    $responseBody, $outputTypeBlock = Add-Response @responseBodyParams
-    $responseStatusCode = '$responseStatusCode'
+    $responseBody, $outputTypeBlock = Get-Response @responseBodyParams
     
     $body = $executionContext.InvokeCommand.ExpandString($functionBodyStr)
 
@@ -984,7 +983,7 @@ function Test-OperationNameInDefinitionList
     return $false
 }
 
-function Add-Response
+function Get-Response
 {
     param
     (
@@ -1001,10 +1000,10 @@ function Add-Response
     $outputTypeFlag = $false
     $responseBody = ""
     $outputType = ""
-    $httpSuccessCode = '200'
-
+    $failWithDesc = ""
+    
 $successReturn = @'
-                    Write-Verbose "Operation completed with return code: $responseStatusCode."
+                    Write-Verbose "Operation completed with return code: `$responseStatusCode."
                     $result = $taskResult.Result.Body
                     Write-Verbose -Message "$($result | Out-String)"
                     $result
@@ -1012,21 +1011,19 @@ $successReturn = @'
 '@
 
 $responseBodySwitchCase = @'
-switch ($responseStatusCode)
+switch (`$responseStatusCode)
             {
-                {200..299 -contains $responseStatusCode} {$successReturn}
-                $failWithDesc
-                Default {Write-Error "Status: $responseStatusCode received."}
+                {200..299 -contains `$responseStatusCode} {$successReturn}$failWithDesc
+                Default {Write-Error "Status: `$responseStatusCode received."}
             }
 '@
 
 $failCase = @'
-    {$responseStatusCode} {
+    {`$responseStatusCode} {
         $responseStatusValue {$failureDescription}
     }
 '@
 
-    $responseStatusCode = '$responseStatusCode'
     $failWithDesc = ""
     $responses | ForEach-Object {
         $responseStatusValue = "'" + $_.Name + "'"
@@ -1050,7 +1047,7 @@ $failCase = @'
             }
             # Handle Client Error
             {400..499 -contains $_} {
-                if($Value.description -and -not ([string]::IsNullOrEmpty($value.description)))
+                if($Value.description)
                 {
                     $failureDescription = "Write-Error 'CLIENT ERROR: " + $value.description + "'"
                     $failWithDesc += $executionContext.InvokeCommand.ExpandString($failCase)
@@ -1058,7 +1055,7 @@ $failCase = @'
             }
             # Handle Server Error
             {500..599 -contains $_} {
-                if($Value.description -and -not ([string]::IsNullOrEmpty($value.description)))
+                if($Value.description)
                 {
                     $failureDescription = "Write-Error 'SERVER ERROR: " + $value.description + "'"
                     $failWithDesc += $executionContext.InvokeCommand.ExpandString($failCase)
@@ -1085,6 +1082,11 @@ function Get-OutputType
         [Parameter(Mandatory=$true)]
         [hashtable] $definitionList
     )
+
+    $outputTypeStr = @'
+        [OutputType([$fullPathDataType])]
+
+'@
 
     if(Get-member -inputobject $schema -name '$ref')
     {
@@ -1133,22 +1135,20 @@ function Get-OutputType
                                 }
                             }
 
-                            if(-not [string]::IsNullOrEmpty($outputValueType)) {$fullPathDataType = $fullPathDataType + " " + $outputValueType}
+                            if($outputValueType -and $fullPathDataType) {$fullPathDataType = $fullPathDataType + " " + $outputValueType}
                         }
                         else
                         { # if this datatype has value, but no $ref and items
                             $fullPathDataType = $NameSpace + ".Models.$key"
-                            $outputType = "[OutputType([" + $fullPathDataType + "])] "
-                            return $outputType
                         }
 
-                        $outputType = "[OutputType([" + $fullPathDataType + "])] "
+                        $outputType += $executionContext.InvokeCommand.ExpandString($outputTypeStr)
                         return $outputType
                     }
                     else
                     { # if this datatype is not a collection of another $ref
                         $fullPathDataType = $NameSpace + ".Models.$key"
-                        $outputType = "[OutputType([" + $fullPathDataType + "])] "
+                        $outputType += $executionContext.InvokeCommand.ExpandString($outputTypeStr)
                         return $outputType
                     }
                 }
