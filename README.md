@@ -73,3 +73,36 @@ Get-Command -Module $param.ModuleName
 2. Azure ARM based Swagger documents at: https://github.com/Azure/azure-rest-api-specs
 3. AutoRest Generators: https://github.com/Azure/autorest/tree/master/src/generator
 
+## Developers
+
+###  Testing
+You can run tests right after cloning the repository. The test scripts should install the required packages. To run the tests, navigate to the Tests directory, then run:
+
+```powershell
+.\run-tests.ps1 -TestFramework <framework> -Runtime <runtime> -Verbose -TestSuite <TestSuite> -TestName <TestName>
+```
+
+TestFramework should be one of "net452" | "netstandard1.6". If you are on Windows, you can use either net452, which uses the full CLR, or netstandard1.6, which uses the Core CLR. For Linux, Darwin, or Nano Server users, you will have to use netstandard1.6.
+
+    Only net452 is supported at the moment.
+
+Runtime should be the runtime of your OS. Currently only win10-x64 is supported (but it should be easy to add others).
+
+    TestFramework defaults to net452 and Runtime defaults to win10x64
+
+Use TestSuite or TestName parameters to filter by Pester Tag or test name.
+
+#### What does the script do?
+The script will ensure dependencies exist on your machine, like AutoRest, node.js, npm, json-server, and dotnet CLI. Then it will run pester tests in a separate PS session and validate no tests failed.
+
+    If dotnet CLI is already in your PS session's path, and you don't need to upgrade, you can use the parameter -SkipBootstrap to skip dotnet CLI bootstrapping and save lots of time.
+
+#### Unit tests
+TODO: fill out
+
+#### Scenario tests
+The scenario test suite contains tests that hit actual (local) web API endpoints. The following scenarios are covered:
+
+| Scenario        | Description                           |
+| ----------------| ------------------------------------- |
+| PsSwaggerTestsBasic | A very basic test of a single string-only path using get and post.|
