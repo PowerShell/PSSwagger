@@ -76,7 +76,7 @@ $autoRestInstallPath = Split-Path -Path $autoRestModule.Source
 $executeTestsCommand += ";`$env:Path+=`";$autoRestInstallPath\tools`""
 
 if ($TestFramework -eq "netstandard1.6") {
-    # TODO: Find PowerShell Core folder and Pester folder, add to executeTestsCommand
+    # TODO: Find PowerShell Core folder and Pester folder, add to executeTestsCommand - See issues/15
 }
 
 $executeTestsCommand += ";Invoke-Pester -ExcludeTag KnownIssue -OutputFormat NUnitXml -OutputFile ScenarioTestResults.xml -Verbose"
@@ -104,7 +104,7 @@ if (-not (Test-Path $nodeExePath)) {
 Write-Verbose "Executing: $executeTestsCommand"
 $executeTestsCommand | Out-File pesterCommand.ps1
 
-# TODO: Run PowerShell Core if testframework is core CLR
+# TODO: Run PowerShell Core if testframework is core CLR - See issues/15
 powershell -command .\pesterCommand.ps1
 
 # Verify output

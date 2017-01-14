@@ -1,6 +1,6 @@
 Describe "Basic API" {
     BeforeAll {
-        # TODO: Pass all these locations dynamically
+        # TODO: Pass all these locations dynamically - See issues/17
         # Ensure PSSwagger isn't loaded (including the one installed on the machine, if any)
         Get-Module PSSwagger | Remove-Module
 
@@ -23,7 +23,7 @@ Describe "Basic API" {
         Copy-Item "$testCaseDataLocation\PsSwaggerTestBasicData.json" "$PSScriptRoot\NodeModules\db.json" -Force
 
         # Start json-server
-        # TODO: Pick a port in a certain range that's open instead of hardcoding to 3000, replace the URI in Swagger spec
+        # TODO: Pick a port in a certain range that's open instead of hardcoding to 3000, replace the URI in Swagger spec  - See issues/16
         # Snapshot the node processes before starting json-server so we can stop the right one later
         # Not sure if we need it, but we'll also keep the returned process to stop later as well (which does not, by itself, stop json-server)
         $nodeProcesses = Get-Process -Name "node" -ErrorAction SilentlyContinue
