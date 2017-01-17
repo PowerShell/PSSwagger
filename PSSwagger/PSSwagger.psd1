@@ -12,6 +12,10 @@ CmdletsToExport = ''
 VariablesToExport = ''
 AliasesToExport = ''
 
+FileList = @('PSSwagger.Constants.ps1',
+             'PSSwagger.psm1',
+             'PSSwagger.Resources.psd1')
+
 PrivateData = @{
     PSData = @{
         Tags = @('Azure',
