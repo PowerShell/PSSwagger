@@ -1,5 +1,4 @@
-﻿
-#########################################################################################
+﻿#########################################################################################
 #
 # Copyright (c) Microsoft Corporation. All rights reserved.
 #
@@ -8,6 +7,8 @@
 #########################################################################################
 
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
+. "$PSScriptRoot\PSSwagger.Constants.ps1"
+Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwagger.Resources.psd1
 
 <#
 .DESCRIPTION
@@ -49,11 +50,13 @@ function Export-CommandFromSwagger
         # Ensure that if the URI is coming from github, it is getting the raw content
         if($SwaggerSpecUri.Host -eq 'github.com'){
             $SwaggerSpecUri = "https://raw.githubusercontent.com$($SwaggerSpecUri.AbsolutePath)"
-            Write-Verbose "Converting SwaggerSpecUri to raw github content $SwaggerSpecUri" -Verbose
+            $message = $LocalizedData.ConvertingSwaggerSpecToGithubContent -f ($SwaggerSpecUri)
+            Write-Verbose -Message $message -Verbose
         }
 
         $SwaggerSpecPath = [io.path]::GetTempFileName() + ".json"
-        Write-Verbose "Swagger spec from $SwaggerSpecURI is downloaded to $SwaggerSpecPath"
+        $message = $LocalizedData.SwaggerSpecDownloadedTo -f ($SwaggerSpecURI, $SwaggerSpecPath)
+        Write-Verbose -Message $message
         
         $ev = $null
         Invoke-WebRequest -Uri $SwaggerSpecUri -OutFile $SwaggerSpecPath -ErrorVariable ev
@@ -64,7 +67,7 @@ function Export-CommandFromSwagger
 
     if (-not (Test-path $SwaggerSpecPath))
     {
-        throw "Swagger file $SwaggerSpecPath does not exist. Check the path"
+        throw $LocalizedData.SwaggerSpecPathNotExist
     }
 
     $jsonObject = ConvertFrom-Json ((Get-Content $SwaggerSpecPath) -join [Environment]::NewLine) -ErrorAction Stop
@@ -134,7 +137,8 @@ function Export-CommandFromSwagger
 
             if(-not $FunctionDetails.ExpandedParameters)
             {
-                Write-Verbose -Message "Trying to expand the $($FunctionDetails.Name) defnition."
+                $message = $LocalizedData.ExpandDefinition -f ($($FunctionDetails.Name))
+                Write-Verbose -Message $message
 
                 $Unexpanded_AllOf_DefinitionNames = $FunctionDetails.Unexpanded_AllOf_DefinitionNames | ForEach-Object {
                                                         $ReferencedDefinitionName = $_
@@ -147,7 +151,7 @@ function Export-CommandFromSwagger
                                                                 $RefParameterName = $_
                                                                 if($FunctionDetails.ParametersTable.ContainsKey($RefParameterName))
                                                                 {
-                                                                    Throw "Same property name should not be defined in a definition with AllOf inheritance."
+                                                                    Throw $LocalizedData.SamePropertyName
                                                                 }
                                                                 else
                                                                 {
@@ -196,7 +200,8 @@ function Export-CommandFromSwagger
 
                 if(-not $FunctionDetails.ExpandedParameters)
                 {
-                    Write-Verbose -Message "Unable to expand the $($FunctionDetails.Name) definition in current iteration."
+                    $message = $LocalizedData.UnableToExpandDefinition -f ($($FunctionDetails.Name))
+                    Write-Verbose -Message $message
                     $ExpandedAllDefinitions = $false
                 }
             } # ExpandedParameters
@@ -216,11 +221,6 @@ function Export-CommandFromSwagger
         }
     }
 
-    $RootModuleContents = @'
-Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
-
-Get-ChildItem -Path "`$PSScriptRoot\$GeneratedCommandsName" -Recurse -Filter *.ps1 -File | ForEach-Object { . `$_.FullName}
-'@
     $RootModuleFilePath = Join-Path $outputDirectory "$ModuleName.psm1"
     Out-File -FilePath $RootModuleFilePath `
              -InputObject $ExecutionContext.InvokeCommand.ExpandString($RootModuleContents)`
@@ -259,26 +259,7 @@ function New-SwaggerSpecPathCommand
         $SwaggerSpecDefinitionsAndParameters 
     )
 
-    $helpDescStr = @'
-.DESCRIPTION
-    $description
-'@
-
-    $advFnSignature = @'
-<#
-$commandHelp
-$paramHelp
-#>
-function $commandName
-{
-   $outputTypeBlock[CmdletBinding()]
-   param($paramblock
-   )
-
-   $body
-}
-'@
-
+    # TODO: remove as part of issue 21: Unify Functions
     $parameterDefString = @'
     
     [Parameter(Mandatory = $isParamMandatory)]
@@ -287,47 +268,6 @@ function $commandName
 
 '@
 
-    $helpParamStr = @'
-
-.PARAMETER $parameterName
-    $pDescription
-
-'@
-
-    $functionBodyStr = @'
- `$serviceCredentials =  Get-AzServiceCredential
-    `$subscriptionId = Get-AzSubscriptionId
-    `$delegatingHandler = Get-AzDelegatingHandler
-
-    $clientName = New-Object -TypeName $fullModuleName -ArgumentList `$serviceCredentials,`$delegatingHandler
-    $apiVersion
-    $clientName.SubscriptionId = `$subscriptionId
-    
-    Write-Verbose 'Performing operation $methodName on $clientName.'
-    `$taskResult = $clientName$operations.$methodName($requiredParamList)
-    Write-Verbose "Waiting for the operation to complete."
-    `$null = `$taskResult.AsyncWaitHandle.WaitOne()
-    Write-Debug "`$(`$taskResult | Out-String)"
-
-    if(`$taskResult.IsFaulted) {
-       Write-Verbose 'Operation failed.'
-       Throw "`$(`$taskResult.Exception.InnerExceptions | Out-String)"
-    } elseif (`$taskResult.IsCanceled) {
-       Write-Verbose 'Operation got cancelled.'
-       Throw 'Operation got cancelled.'
-    } else {
-        Write-Verbose 'Operation completed successfully.'
-
-        if(`$taskResult.Result -and 
-           (Get-Member -InputObject `$taskResult.Result -Name 'Body') -and
-           `$taskResult.Result.Body) 
-        {
-            `$responseStatusCode = `$taskResult.Result.Response.StatusCode.value__
-            $responseBody
-        }
-    }   
-'@
- 
     $commandName = Get-SwaggerPathCommandName $JsonPathItemObject
     $description = ""
     if((Get-Member -InputObject $JsonPathItemObject -Name 'Description') -and $JsonPathItemObject.Description) {
@@ -442,7 +382,7 @@ function $commandName
     #endregion Function Body
 
     $CommandString = $executionContext.InvokeCommand.ExpandString($advFnSignature)
-    Write-Verbose $CommandString
+    Write-Verbose -Message $CommandString
 
     if(-not (Test-Path -Path $GeneratedCommandsPath -PathType Container)) {
         $null = New-Item -Path $GeneratedCommandsPath -ItemType Directory
@@ -695,12 +635,8 @@ function New-SwaggerSpecDefinitionCommand
         [string] 
         $Namespace 
     )
-
-    $helpDescStr = @'
-.DESCRIPTION
-    $description
-'@
-
+    
+    # TODO: remove as part of issue 21: Unify Functions
     $advFnSignature = @'
 <#
 $commandHelp
@@ -714,42 +650,6 @@ function $commandName
 }
 '@
 
-    $parameterDefString = @'
-    
-    [Parameter(Mandatory = $isParamMandatory)] $ValidateSetDefinition    
-    [$paramType]
-    $paramName,
-
-'@
-
-    $ValidateSetDefinitionString = @'
-
-    [ValidateSet($ValidateSetString)]
-'@
-
-    $helpParamStr = @'
-
-.PARAMETER $parameterName
-    $pDescription
-
-'@
-
-    $functionBodyStr = @'
-
-   `$Object = New-Object -TypeName $DefinitionTypeName
-
-   `$PSBoundParameters.Keys | ForEach-Object { 
-       `$Object.`$_ = `$PSBoundParameters[`$_]
-   }
-
-   if(Get-Member -InputObject `$Object -Name Validate -MemberType Method)
-   {
-       `$Object.Validate()
-   }
-
-   return `$Object
-'@
- 
     $commandName = "New-$($FunctionDetails.Name)Object"
 
     $description = $FunctionDetails.description
@@ -783,10 +683,10 @@ function $commandName
     $paramblock = $paramBlock.TrimEnd().TrimEnd(",")
 
     $DefinitionTypeName = $DefinitionTypeNamePrefix + $FunctionDetails.Name
-    $body = $executionContext.InvokeCommand.ExpandString($functionBodyStr)
+    $body = $executionContext.InvokeCommand.ExpandString($createObjectStr)
 
     $CommandString = $executionContext.InvokeCommand.ExpandString($advFnSignature)
-    Write-Verbose $CommandString
+    Write-Verbose -Message $CommandString
 
     if(-not (Test-Path -Path $GeneratedCommandsPath -PathType Container)) {
         $null = New-Item -Path $GeneratedCommandsPath -ItemType Directory
@@ -832,10 +732,12 @@ function Get-SwaggerPathCommandName
     $cmdVerb = $opIdValues[1]
     if (-not (get-verb $cmdVerb))
     {
+        $message = $LocalizedData.UnapprovedVerb -f ($cmdVerb)
         Write-Verbose "Verb $cmdVerb not an approved verb."
         if ($cmdNounMap.ContainsKey($cmdVerb))
         {
-            Write-Verbose "Using Verb $($cmdNounMap[$cmdVerb]) in place of $cmdVerb."
+            $message = $LocalizedData.ReplacedVerb -f ($($cmdNounMap[$cmdVerb]), $cmdVerb)
+            Write-Verbose -Message $message
             $cmdVerb = $cmdNounMap[$cmdVerb]
         }
         else
@@ -859,7 +761,8 @@ function Get-SwaggerPathCommandName
                 $cmdVerb = $cmdNounMap[$cmdVerb]
             }          
 
-            Write-Verbose "Using Noun $cmdNoun. Using Verb $cmdVerb"
+            $message = $LocalizedData.UsingNounVerb -f ($cmdNoun, $cmdVerb)
+            Write-Verbose -Message $message
         }
     }
 
@@ -879,7 +782,7 @@ function Get-SwaggerSpecDefinitionAndParameter
     )
 
     if(-not (Get-Member -InputObject $jsonObject -Name 'info')) {
-        Throw "Invalid Swagger specification file. Info section doesn't exists."
+        Throw $LocalizedData.InvalidSwaggerSpecification
     }
 
     $SwaggerSpecificationDetails = @{}    
@@ -1000,30 +903,6 @@ function Get-Response
     $responseBody = ""
     $outputType = ""
     $failWithDesc = ""
-    
-$successReturn = @'
-Write-Verbose "Operation completed with return code: `$responseStatusCode."
-                    $result = $taskResult.Result.Body
-                    Write-Verbose -Message "$($result | Out-String)"
-                    $result
-'@
-
-$responseBodySwitchCase = @'
-switch (`$responseStatusCode)
-            {
-                {200..299 -contains `$responseStatusCode}{
-                    $successReturn
-                }$failWithDesc
-                Default {Write-Error "Status: `$responseStatusCode received."}
-            }
-'@
-
-$failCase = @'
-
-    {`$responseStatusCode} {
-        $responseStatusValue {$failureDescription}
-    }
-'@
 
     $failWithDesc = ""
     $responses | ForEach-Object {
@@ -1084,11 +963,6 @@ function Get-OutputType
         [hashtable] $definitionList
     )
 
-    $outputTypeStr = @'
-[OutputType([$fullPathDataType])]
-   
-'@
-
     $outputType = ""
     if(Get-member -inputobject $schema -name '$ref')
     {
@@ -1129,7 +1003,8 @@ function Get-OutputType
                                 switch ($defType) 
                                 {
                                     "array" { $outputValueType = '[]' }
-                                    Default { 
+                                    Default {
+                                        $exception = $LocalizedData.DataTypeNotImplemented -f ($defType, $ref)
                                         throw [System.NotImplementedException] "Please get an implementation of $defType for $ref"
                                     }
                                 }
@@ -1179,12 +1054,13 @@ function ConvertTo-CsharpCode
         [switch] $UseAzureCsharpGenerator        
         )
 
-    Write-Verbose "Generating CSharp Code using AutoRest"
+    $message = $LocalizedData.GenerateCodeUsingAutoRest
+    Write-Verbose -Message $message
 
     $autoRestExePath = get-command autorest.exe | ForEach-Object source
     if (-not $autoRestExePath)
     {
-        throw "Unable to find AutoRest.exe in PATH environment. Ensure the PATH is updated."
+        throw $LocalizedData.AutoRestNotInPath
     }
 
     $outputDirectory = $Path
@@ -1222,10 +1098,11 @@ function ConvertTo-CsharpCode
     $null = & $autoRestExePath -AddCredentials -input $SwaggerSpecPath -CodeGenerator $codeGenerator -OutputDirectory $generatedCSharpPath -NameSpace $Namespace
     if ($LastExitCode)
     {
-        throw "AutoRest resulted in an error"
+        throw $LocalizedData.AutoRestError
     }
 
-    Write-Verbose "Generating assembly from the CSharp code"
+    $message = $LocalizedData.GenerateAssemblyFromCode
+    Write-Verbose -Message $message
 
     $srcContent = Get-ChildItem -Path $generatedCSharpPath  -Filter *.cs -Recurse -Exclude Program.cs,TemporaryGeneratedFile* | Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*' | ForEach-Object { "// File $($_.FullName)"; get-content $_.FullName }
     $oneSrc = $srcContent -join "`n"
@@ -1233,7 +1110,8 @@ function ConvertTo-CsharpCode
     Add-Type -TypeDefinition $oneSrc -ReferencedAssemblies $refassemlbiles -OutputAssembly $outAssembly
 
     if(Test-Path -Path $outAssembly -PathType Leaf){
-        Write-Verbose -Message "Generated $outAssembly assembly"
+        $message = $LocalizedData.GeneratedAssembly -f ($outAssembly)
+        Write-Verbose -Message $message
     } else {
         Throw "Unable to generated $outAssembly assembly"
     }
