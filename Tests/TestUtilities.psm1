@@ -1,7 +1,7 @@
 # Ensures a package source exists for the location "http://nuget.org/api/v2/"
 function Test-NugetPackageSource {
     $bestNugetLocation = "http://nuget.org/api/v2/"
-    $nugetPackageSource = Get-PackageSource | Where-Object {($_.ProviderName -eq "NuGet") -and ($_.Location -eq $bestNugetLocation) }
+    $nugetPackageSource = Get-PackageSource | Where-Object {($_.ProviderName -eq "NuGet") -and ($_.Location -eq $bestNugetLocation) } | Select-Object -First 1
     Write-Verbose "Attempted to find NuGet package source. Got: $nugetPackageSource"
     if ($nugetPackageSource -eq $null) {
         Write-Verbose "No NuGet package source found for location $bestNugetLocation. Registering source PSSwaggerNuget."
@@ -22,7 +22,7 @@ function Test-Package {
     $module = Get-Package $packageName -ErrorAction SilentlyContinue
     if ($module -eq $null) {
         Write-Verbose "Trying to install missing package $packageName from source $packageSourceName"
-        $null = Install-Package $packageName -ProviderName $providerName -Source $packageSouceName -Force
+        $null = Install-Package $packageName -ProviderName $providerName -Source $packageSourceName -Force
         $module = Get-Package $packageName -ErrorAction SilentlyContinue
     }
 
