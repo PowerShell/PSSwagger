@@ -1,4 +1,4 @@
-Describe "Basic API" {
+Describe "Basic API" -Tag ScenarioTest {
     BeforeAll {
         # TODO: Pass all these locations dynamically - See issues/17
         # Ensure PSSwagger isn't loaded (including the one installed on the machine, if any)
