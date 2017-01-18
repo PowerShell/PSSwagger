@@ -6,7 +6,7 @@ param(
     [string]$TestFramework = "net452",
     [ValidateSet("win10-x64")]
     [string]$Runtime = "win10-x64",
-    [switch]$SkipBootstrap
+    [switch]$BootstrapDotNet
 )
 
 $executeTestsCommand = ""
@@ -14,6 +14,13 @@ $executeTestsCommand = ""
 # Import test utilities
 Import-Module "$PSScriptRoot\TestUtilities.psm1" -Force
 $nugetPackageSource = Test-NugetPackageSource
+
+if ($BootstrapDotNet -eq $false) {
+    if ((Get-Command "dotnet.exe" -ErrorAction SilentlyContinue) -eq $null) {
+        Write-Warning "WARNING: dotnet CLI was not found in your Path and -BootstrapDotNet not set. Setting -BootstrapDotNet automatically."
+        $BootstrapDotNet = $true
+    }
+}
 
 # Set up scenario test requirements
 if ($TestSuite.Contains("All") -or $TestSuite.Contains("ScenarioTest")) {
@@ -56,7 +63,7 @@ if ($TestSuite.Contains("All") -or $TestSuite.Contains("ScenarioTest")) {
     $executeTestsCommand += ";`$env:Path+=`";$nodeModulePath`""
 
     # Build PSSwagger.Test.dll using dotnet CLI
-    if ($SkipBootstrap -eq $false) {
+    if ($BootstrapDotNet -eq $true) {
         & "$PSScriptRoot\..\tools\bootstrap.ps1"
     }
 
