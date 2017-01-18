@@ -40,6 +40,11 @@ function Export-CommandFromSwagger
         [String]
         $ModuleName,
 
+        [Parameter(Mandatory = $false)]
+        [ValidateSet('Azure', 'AzureStack')]
+        [String]
+        $Authentication = 'Azure',
+
         [Parameter()]
         [switch]
         $UseAzureCsharpGenerator
@@ -112,6 +117,7 @@ function Export-CommandFromSwagger
                $FunctionsToExport += New-SwaggerSpecPathCommand -JsonPathItemObject $_.Value `
                                                                 -GeneratedCommandsPath $SwaggerPathCommandsPath `
                                                                 -UseAzureCsharpGenerator:$UseAzureCsharpGenerator `
+                                                                -Authentication $Authentication `
                                                                 -SwaggerSpecDefinitionsAndParameters $SwaggerSpecDefinitionsAndParameters
             } # jsonPathObject
     } # jsonObject
@@ -250,6 +256,11 @@ function New-SwaggerSpecPathCommand
         [string] 
         $GeneratedCommandsPath,
 
+        [Parameter(Mandatory = $false)]
+        [ValidateSet('Azure', 'AzureStack')]
+        [String]
+        $Authentication = 'Azure',
+
         [Parameter(Mandatory=$false)]
         [switch]
         $UseAzureCsharpGenerator,
@@ -345,10 +356,21 @@ function New-SwaggerSpecPathCommand
     $modulePostfix = $SwaggerSpecDefinitionsAndParameters['infoName']
     $fullModuleName = $Namespace + '.' + $modulePostfix
     $clientName = '$' + $modulePostfix
-    $apiVersion = ''
-    if (-not $UseAzureCsharpGenerator)
+    $apiVersion = $null
+    $SubscriptionId = $null
+    $BaseUri = $null
+
+    if($Authentication -eq 'AzureStack')
     {
-        $apiVersion = '{0}.ApiVersion = "{1}"' -f $clientName,$infoVersion
+        $BaseUri = $AzureStackBaseUriStr -f ($clientName)
+    }
+    else
+    {
+        $SubscriptionId = $SubscriptionIdStr -f ($clientName)
+        if (-not $UseAzureCsharpGenerator)
+        {
+            $apiVersion = $ApiVersionStr -f ($clientName, $infoVersion)
+        }
     }
 
     $operationId = $JsonPathItemObject.operationId
@@ -376,6 +398,14 @@ function New-SwaggerSpecPathCommand
     }
 
     $responseBody, $outputTypeBlock = Get-Response @responseBodyParams
+    if ($Authentication -eq 'AzureStack') {
+        $GetServiceCredentialStr = 'Get-AzSServiceCredential'
+        $AdvancedFunctionEndCodeBlock = $AzSAdvancedFunctionEndCodeBlockStr
+    }
+    else {
+        $GetServiceCredentialStr = 'Get-AzServiceCredential'
+        $AdvancedFunctionEndCodeBlock = ''
+    }    
     
     $body = $executionContext.InvokeCommand.ExpandString($functionBodyStr)
 
@@ -415,7 +445,7 @@ function Get-SwaggerSpecDefinitionInfo
         $Namespace 
     )
 
-    $Name = $JsonDefinitionItemObject.Name -split "\[",2 | Select-Object -First 1 -ErrorAction Ignore
+    $Name = $JsonDefinitionItemObject.Name.Replace('[','').Replace(']','')
     
     $FunctionDescription = ""
     if((Get-Member -InputObject $JsonDefinitionItemObject.Value -Name 'Description') -and 
@@ -1022,6 +1052,7 @@ function Get-OutputType
                         $fullPathDataType = $NameSpace + ".Models.$key"
                     }
 
+                    $fullPathDataType = $fullPathDataType.Replace('[','').Replace(']','')
                     $outputType += $executionContext.InvokeCommand.ExpandString($outputTypeStr)
                 }
             }
