@@ -165,3 +165,5 @@ $SubscriptionIdStr = @'
 
         {0}.SubscriptionId = $subscriptionId
 '@
+
+$GeneratedCommandsName = 'Generated.PowerShell.Commands'

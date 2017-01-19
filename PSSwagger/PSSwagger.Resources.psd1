@@ -19,11 +19,15 @@ ConvertFrom-StringData @'
     GenerateCodeUsingAutoRest=Generating CSharp Code using AutoRest
     GenerateAssemblyFromCode=Generating assembly from the CSharp code
     GeneratedAssembly=Generated '{0}' assembly
+    UnableToGenerateAssembly=Unable to generate '{0}' assembly
     InvalidSwaggerSpecification=Invalid Swagger specification file. Info section doesn't exists.
     SwaggerSpecPathNotExist=Swagger file $SwaggerSpecPath does not exist. Check the path
     SamePropertyName=Same property name should not be defined in a definition with AllOf inheritance.
     DataTypeNotImplemented=Please get an implementation of '{0}' for '{1}'
     AutoRestNotInPath=Unable to find AutoRest.exe in PATH environment. Ensure the PATH is updated.
     AutoRestError=AutoRest resulted in an error
+    SwaggerParamsMissing=No parameters in the Swagger
+    SwaggerDefinitionsMissing=No definitions in the Swagger
+    SwaggerPathsMissing=No paths in the Swagger
 ###PSLOC
 '@
