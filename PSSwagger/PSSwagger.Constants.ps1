@@ -130,3 +130,5 @@ $failCase = @'
 
    return `$Object
 '@
+
+$GeneratedCommandsName = 'Generated.PowerShell.Commands'
