@@ -48,37 +48,52 @@ function $commandName
 '@
 
     $functionBodyStr = @'
- `$serviceCredentials =  Get-AzServiceCredential
-    `$subscriptionId = Get-AzSubscriptionId
-    `$delegatingHandler = Get-AzDelegatingHandler
+ `Begin
+    {
+        `$serviceCredentials = $GetServiceCredentialStr
+        `$subscriptionId = Get-AzSubscriptionId
+    }
 
-    $clientName = New-Object -TypeName $fullModuleName -ArgumentList `$serviceCredentials,`$delegatingHandler
-    $apiVersion
-    $clientName.SubscriptionId = `$subscriptionId
-    
-    Write-Verbose 'Performing operation $methodName on $clientName.'
-    `$taskResult = $clientName$operations.$methodName($requiredParamList)
-    Write-Verbose "Waiting for the operation to complete."
-    `$null = `$taskResult.AsyncWaitHandle.WaitOne()
-    Write-Debug "`$(`$taskResult | Out-String)"
+    Process
+    {
+        `$delegatingHandler = Get-AzDelegatingHandler
 
-    if(`$taskResult.IsFaulted) {
-       Write-Verbose 'Operation failed.'
-       Throw "`$(`$taskResult.Exception.InnerExceptions | Out-String)"
-    } elseif (`$taskResult.IsCanceled) {
-       Write-Verbose 'Operation got cancelled.'
-       Throw 'Operation got cancelled.'
-    } else {
-        Write-Verbose 'Operation completed successfully.'
+        $clientName = New-Object -TypeName $fullModuleName -ArgumentList `$serviceCredentials,`$delegatingHandler$apiVersion$BaseUri$SubscriptionId
 
-        if(`$taskResult.Result -and 
-           (Get-Member -InputObject `$taskResult.Result -Name 'Body') -and
-           `$taskResult.Result.Body) 
+        Write-Verbose 'Performing operation $methodName on $clientName.'
+        `$taskResult = $clientName$operations.$methodName($requiredParamList)
+        Write-Verbose "Waiting for the operation to complete."
+        `$null = `$taskResult.AsyncWaitHandle.WaitOne()
+        Write-Debug "`$(`$taskResult | Out-String)"
+
+        if(`$taskResult.IsFaulted)
         {
-            `$responseStatusCode = `$taskResult.Result.Response.StatusCode.value__
-            $responseBody
+            Write-Verbose 'Operation failed.'
+            Throw "`$(`$taskResult.Exception.InnerExceptions | Out-String)"
+        } 
+        elseif (`$taskResult.IsCanceled)
+        {
+            Write-Verbose 'Operation got cancelled.'
+            Throw 'Operation got cancelled.'
         }
-    }   
+        else
+        {
+            Write-Verbose 'Operation completed successfully.'
+
+            if(`$taskResult.Result -and 
+               (Get-Member -InputObject `$taskResult.Result -Name 'Body') -and
+               `$taskResult.Result.Body) 
+            {
+                `$responseStatusCode = `$taskResult.Result.Response.StatusCode.value__
+                $responseBody
+            }
+        }
+    }
+
+    End
+    {
+        $AdvancedFunctionEndCodeBlock
+    }
 '@
 
     $ValidateSetDefinitionString = @'
@@ -88,26 +103,27 @@ function $commandName
 
 $successReturn = @'
 Write-Verbose "Operation completed with return code: `$responseStatusCode."
-                    $result = $taskResult.Result.Body
-                    Write-Verbose -Message "$($result | Out-String)"
-                    $result
+                        $result = $taskResult.Result.Body
+                        Write-Verbose -Message "$($result | Out-String)"
+                        $result
 '@
 
 $responseBodySwitchCase = @'
 switch (`$responseStatusCode)
-            {
-                {200..299 -contains `$responseStatusCode}{
-                    $successReturn
-                }$failWithDesc
-                Default {Write-Error "Status: `$responseStatusCode received."}
-            }
+                {
+                    {200..299 -contains `$responseStatusCode} {
+                        $successReturn
+                    }$failWithDesc
+                    
+                    Default {Write-Error "Status: `$responseStatusCode received."}
+                }
 '@
 
 $failCase = @'
 
-    {`$responseStatusCode} {
-        $responseStatusValue {$failureDescription}
-    }
+                    {`$responseStatusCode} {
+                        $responseStatusValue {$failureDescription}
+                    }
 '@
 
     $outputTypeStr = @'
@@ -129,4 +145,23 @@ $failCase = @'
    }
 
    return `$Object
+'@
+
+$AzSAdvancedFunctionEndCodeBlockStr = @'
+$null = Remove-AzSEnvironment
+'@
+
+$ApiVersionStr = @'
+
+        {0}.ApiVersion = "{1}"
+'@
+
+$AzureStackBaseUriStr = @'
+
+        {0}.BaseUri = "https://api.$azureStackDomain"
+'@
+
+$SubscriptionIdStr = @'
+
+        {0}.SubscriptionId = $subscriptionId
 '@

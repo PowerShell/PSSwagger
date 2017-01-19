@@ -10,9 +10,9 @@ Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 #region Handle Autorest installation
 
 $autoRestVersion = "0.16.0"
-$autoRestInstallation = get-package -Name AutoRest -RequiredVersion $autoRestVersion
+$autoRestInstallation = get-package -Name AutoRest -RequiredVersion $autoRestVersion -ProviderName NuGet
 if(-not $autoRestInstallation) {
-    $autoRestInstallation = Install-Package -Name AutoRest -Source https://www.nuget.org/api/v2 -RequiredVersion 0.16.0 -Scope CurrentUser -Force
+    $autoRestInstallation = Install-Package -Name AutoRest -Source https://www.nuget.org/api/v2 -RequiredVersion 0.16.0 -ProviderName NuGet -Scope CurrentUser -Force
 }
 
 $autoRestInstallationLocation = ($autoRestInstallation).Source
@@ -77,6 +77,13 @@ Import-Module $TargetPath\Generated.AzureRM.Network -WarningAction SilentlyConti
 Import-Module $TargetPath\Generated.AzureRM.Compute -WarningAction SilentlyContinue
 #endregion initialization
 
+# List Commands
+Get-Command -Module Generated.AzureRM.Resources
+Get-Command -Module Generated.AzureRM.Storage
+Get-Command -Module Generated.AzureRM.Network
+Get-Command -Module Generated.AzureRM.Compute
+
+
 # Get syntax of the generated commands
 Get-Command -Module Generated.AzureRM.Resources -Syntax
 Get-Command -Module Generated.AzureRM.Storage -Syntax
@@ -84,40 +91,49 @@ Get-Command -Module Generated.AzureRM.Network -Syntax
 Get-Command -Module Generated.AzureRM.Compute -Syntax
 
 ## Global
-$ResourceGroupName = 'ContosoResourceGroup'
+$USERNAME = $env:USERNAME.ToLower()
+$ResourceGroupName = "ContosoResourceGroup$USERNAME"
 $Location = 'WestEurope'
 
 ## Storage
-$StorageName = 'contosogeneralstorage'
+$StorageName = "contosostorage$USERNAME"
 $StorageType = 'StandardGRS'
 
 ## Network
-$InterfaceName = 'ContosoServerInterface07'
-$SubnetName = 'ContosoSubnet07'
-$VNetName = 'ContosoVNet07'
+$InterfaceName = "ContosoServerInterface07$USERNAME"
+$SubnetName = "ContosoSubnet07$USERNAME"
+$VNetName = "ContosoVNet07$USERNAME"
 $VNetAddressPrefix = '10.0.0.0/16'
 $VNetSubnetAddressPrefix = '10.0.0.0/24'
-$IPConfigurationName = 'ContosoIpConfig'
+
+$IPConfigurationName = "ContosoIpConfig$USERNAME"
 
 ## Compute
-$VMName = 'ContosoVirtualMachine07'
-$ComputerName = 'ContosoServer07'
+$VMName = "ContosoVirtualMachine07$USERNAME"
+$ComputerName = "$($USERNAME)VM"
 $VMSize = 'Standard_A2'
 $OSDiskName = $VMName + 'OSDisk'
+
 $ImagePublisher = 'MicrosoftWindowsServer'
 $ImageOffer = 'WindowsServer'
 $ImageSKU = '2012-R2-Datacenter'
 $ImageVersion = 'latest'
+
 $AdminUsername = 'ContosoUser'
 $AdminPassword = 'ContosoUserPassword~1'
+
 $VMExtensionName = 'BGInfo'
+
 $Tags = new-object 'System.Collections.Generic.Dictionary[[string],[string]]'
 $Tags.Add('CreatedUsingGeneratedCommands','CreatedUsingGeneratedCommands')
 $Tags.Add('ContosTag1','ContosoTag1')
 $Tags.Add('ContosTag2','ContosoTag2')
 $Tags.Add('ContosTag3','ContosoTag3')
 
+
 #region Resource Group
+
+Login-AzureRmAccount -SubscriptionName PSSwagger
 
 # ResourceGroup Cleanup
 if(Get-ResourceGroups -ResourceGroupName $ResourceGroupName -ErrorAction silentlycontinue) {
@@ -136,6 +152,7 @@ Write-Host -BackgroundColor DarkGreen -ForegroundColor Yellow "Creating the stor
 $StorageAccountCreateParameters = New-StorageAccountCreateParametersObject -Location $Location -AccountType $StorageType
 $StorageAccount = New-StorageAccounts -ResourceGroupName $ResourceGroupName -AccountName $StorageName -Parameters $StorageAccountCreateParameters
 $StorageAccount
+
 $StorageAccount = Get-StorageAccountsProperties -ResourceGroupName $ResourceGroupName -AccountName $StorageName
 $StorageAccount
 
@@ -156,6 +173,7 @@ Write-Host -BackgroundColor DarkGreen -ForegroundColor Green "Successfully creat
 Write-Host -BackgroundColor DarkGreen -ForegroundColor Yellow "Creating the Virtual Network '$VNetName'"
 $AddressSpace = New-AddressSpaceObject -AddressPrefixes $VNetAddressPrefix
 $VirtualNetworkParameters = New-VirtualNetworkObject -Location $Location -AddressSpace $AddressSpace
+
 $VNet = New-VirtualNetworksOrUpdate -ResourceGroupName $ResourceGroupName -VirtualNetworkName $VNetName -Parameters $VirtualNetworkParameters
 $VNet
 Write-Host -BackgroundColor DarkGreen -ForegroundColor Green "Successfully created the Virtual Network '$VNetName'"
@@ -166,6 +184,7 @@ $SubnetParameters = New-SubnetObject -AddressPrefix $VNetSubnetAddressPrefix
 $SubnetConfig = New-SubnetsOrUpdate -ResourceGroupName $ResourceGroupName -VirtualNetworkName $VNetName -SubnetName $SubnetName -SubnetParameters $SubnetParameters
 $SubnetConfig
 Write-Host -BackgroundColor DarkGreen -ForegroundColor Green "Successfully created the Subnet '$SubnetName'"
+
 
 ## NetworkInterface
 Write-Host -BackgroundColor DarkGreen -ForegroundColor Yellow "Creating the Network Interface '$InterfaceName'"
@@ -183,6 +202,8 @@ $Interface
 Write-Host -BackgroundColor DarkGreen -ForegroundColor Green "Successfully created the Network Interface '$InterfaceName'"
 
 #endregion Network
+
+
 
 #region Compute
 Write-Host -BackgroundColor DarkGreen -ForegroundColor Yellow "Creating the Virtual Machine '$VMName'"
@@ -251,3 +272,8 @@ $VMExtension
 Write-Host -BackgroundColor DarkGreen -ForegroundColor Green "Successfully created the Virtual Machine Extension '$VMExtensionName'"
 
 #endregion Compute
+
+# ResourceGroup Cleanup
+if(Get-ResourceGroups -ResourceGroupName $ResourceGroupName -ErrorAction silentlycontinue) {
+    Remove-ResourceGroups -ResourceGroupName $ResourceGroupName
+}
