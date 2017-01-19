@@ -77,6 +77,9 @@ function Export-CommandFromSwagger
 
     $jsonObject = ConvertFrom-Json ((Get-Content $SwaggerSpecPath) -join [Environment]::NewLine) -ErrorAction Stop
 
+    # Parse the JSON and populate the dictionary
+    $swaggerDict = ConvertTo-SwaggerDictionary -SwaggerSpecPath $SwaggerSpecPath -ModuleName $ModuleName
+
     # Populate the metadata, definitions and parameters from the provided Swagger specification
     $SwaggerSpecDefinitionsAndParameters = Get-SwaggerSpecDefinitionAndParameter -SwaggerSpecJsonObject $jsonObject -ModuleName $ModuleName
     
@@ -99,15 +102,14 @@ function Export-CommandFromSwagger
 
     $null = New-Item -ItemType Directory $outputDirectory -Force -ErrorAction Stop
 
+    $swaggerDict.Add("outputDirectory", $outputDirectory);
+    $swaggerDict.Add("UseAzureCsharpGenerator", $UseAzureCsharpGenerator)
+
     $Namespace = $SwaggerSpecDefinitionsAndParameters['Namespace']
-    ConvertTo-CsharpCode -SwaggerSpecPath $SwaggerSpecPath `
-                         -Path $outputDirectory `
-                         -ModuleName $ModuleName `
-                         -NameSpace $Namespace `
-                         -UseAzureCsharpGenerator:$UseAzureCsharpGenerator
+    $null = ConvertTo-CsharpCode -SwaggerDict $swaggerDict `
+                                    -SwaggerSpecPath $SwaggerSpecPath
 
     $FunctionsToExport = @()
-    $GeneratedCommandsName = 'Generated.PowerShell.Commands'
     $SwaggerPathCommandsPath = Join-Path -Path (Join-Path -Path $outputDirectory -ChildPath $GeneratedCommandsName) -ChildPath 'SwaggerPathCommands'
 
     # Handle the Paths
@@ -866,11 +868,12 @@ function Get-SwaggerSpecDefinitionAndParameter
     return $SwaggerSpecificationDetails
 }
 
-function Get-PascalCasedString {
+function Get-PascalCasedString
+{
     param([string] $Name)
 
     if($Name) {
-        $Name = Remove-SpecialCharecter -Name $Name
+        $Name = Remove-SpecialCharacter -Name $Name
         $startIndex = 0
         $subStringLength = 1
 
@@ -888,7 +891,7 @@ function Get-PascalCasedString {
 
 }
 
-function Remove-SpecialCharecter
+function Remove-SpecialCharacter
 {
     param([string] $Name)
 
@@ -1068,22 +1071,14 @@ function Get-OutputType
 
 function ConvertTo-CsharpCode
 {
-    param(
+    param (
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $swaggerDict,
+        
         [Parameter(Mandatory = $true)]
-        [string] $SwaggerSpecPath,
-
-        [Parameter(Mandatory = $true)]
-        [string] $Path,
-
-        [Parameter(Mandatory = $true)]
-        [string] $ModuleName,
-
-        [Parameter(Mandatory = $true)]
-        [string] $Namespace,
-
-        [Parameter()]
-        [switch] $UseAzureCsharpGenerator        
-        )
+        [string] $SwaggerSpecPath
+    )
 
     $message = $LocalizedData.GenerateCodeUsingAutoRest
     Write-Verbose -Message $message
@@ -1094,19 +1089,20 @@ function ConvertTo-CsharpCode
         throw $LocalizedData.AutoRestNotInPath
     }
 
-    $outputDirectory = $Path
-    $outAssembly = join-path $outputDirectory "$Namespace.dll"
-    $net45Dir = join-path $outputDirectory "Net45"
+    $outputDirectory = $swaggerDict['outputDirectory']
+    $nameSpace = $swaggerDict['info'].NameSpace
+    $outAssembly = Join-Path $outputDirectory "$NameSpace.dll"
+    $net45Dir = Join-Path $outputDirectory "Net45"
     $generatedCSharpPath = Join-Path $outputDirectory "Generated.Csharp"
 
     if (Test-Path $outAssembly)
     {
-        Remove-Item -Path $outAssembly -Force
+        $null = Remove-Item -Path $outAssembly -Force
     }
 
     if (Test-Path $net45Dir)
     {
-        Remove-Item -Path $net45Dir -Force -Recurse
+        $null = Remove-Item -Path $net45Dir -Force -Recurse
     }
 
     $codeGenerator = "CSharp"
@@ -1120,7 +1116,7 @@ function ConvertTo-CsharpCode
                         "$PSScriptRoot\Generated.Azure.Common.Helpers\Net45\Microsoft.Rest.ClientRuntime.dll",
                         "$PSScriptRoot\Generated.Azure.Common.Helpers\Net45\Newtonsoft.Json.dll")
 
-    if ($UseAzureCsharpGenerator) 
+    if ($swaggerDict['UseAzureCsharpGenerator'])
     { 
         $codeGenerator = "Azure.CSharp"
         $refassemlbiles += "$PSScriptRoot\Generated.Azure.Common.Helpers\Net45\Microsoft.Rest.ClientRuntime.Azure.dll"
@@ -1135,7 +1131,7 @@ function ConvertTo-CsharpCode
     $message = $LocalizedData.GenerateAssemblyFromCode
     Write-Verbose -Message $message
 
-    $srcContent = Get-ChildItem -Path $generatedCSharpPath  -Filter *.cs -Recurse -Exclude Program.cs,TemporaryGeneratedFile* | Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*' | ForEach-Object { "// File $($_.FullName)"; get-content $_.FullName }
+    $srcContent = Get-ChildItem -Path $generatedCSharpPath -Filter *.cs -Recurse -Exclude Program.cs,TemporaryGeneratedFile* | Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*' | ForEach-Object { "// File $($_.FullName)"; get-content $_.FullName }
     $oneSrc = $srcContent -join "`n"
 
     Add-Type -TypeDefinition $oneSrc -ReferencedAssemblies $refassemlbiles -OutputAssembly $outAssembly
@@ -1144,7 +1140,8 @@ function ConvertTo-CsharpCode
         $message = $LocalizedData.GeneratedAssembly -f ($outAssembly)
         Write-Verbose -Message $message
     } else {
-        Throw "Unable to generated $outAssembly assembly"
+        $message = $LocalizedData.UnableToGenerateAssembly -f ($outAssembly)
+        Throw $message
     }
 }
 
@@ -1212,5 +1209,130 @@ function Write-TerminatingError
 }
 
 #endregion
+
+#region Parse Swagger File
+
+function ConvertTo-SwaggerDictionary
+{
+    param(
+        [Parameter(Mandatory=$true)]
+        [String]
+        $SwaggerSpecPath,
+
+        [Parameter(Mandatory=$true)]
+        [string]
+        $ModuleName
+    )
+
+    $swaggerObject = ConvertFrom-Json ((Get-Content $SwaggerSpecPath) -join [Environment]::NewLine) -ErrorAction Stop
+    $swaggerDict = @{}
+
+    if(-not (Get-Member -InputObject $swaggerObject -Name 'info')) {
+        Throw $LocalizedData.InvalidSwaggerSpecification
+    }
+
+    $swaggerInfo = Get-SwaggerInfo -Info $swaggerObject.info
+    $swaggerDict.Add("info", $swaggerInfo)
+
+    if(-not (Get-Member -InputObject $swaggerObject -Name 'parameters')) {
+        Throw "No parameters in the Swagger"
+    }
+
+    $swaggerParameters = Get-SwaggerParameters -Parameters $swaggerObject.parameters
+    $swaggerDict.Add("parameters", $swaggerParameters)
+
+    if(-not (Get-Member -InputObject $swaggerObject -Name 'definitions')) {
+        Throw "No definitions in the Swagger"
+    }
+
+    $swaggerDefinitions = Get-SwaggerMultiItemObject -Object $swaggerObject.definitions
+    $swaggerDict.Add("definitions", $swaggerDefinitions)
+
+    if(-not (Get-Member -InputObject $swaggerObject -Name 'paths')) {
+        Throw "No paths in the Swagger"
+    }
+
+    $swaggerPaths = Get-SwaggerMultiItemObject -Object $swaggerObject.paths
+    $swaggerDict.Add("paths", $swaggerPaths)
+
+    return $swaggerDict
+}
+
+function Get-SwaggerInfo
+{
+    param(
+        [Parameter(Mandatory=$true)]
+        [PSCustomObject]
+        $Info
+    )
+
+    $infoVersion = '1-0-0'
+    if((Get-Member -InputObject $Info -Name 'Version') -and $Info.Version) { 
+        $infoVersion = $Info.Version
+    }
+
+    $infoTitle = $Info.title
+    $infoName = ''
+    if((Get-Member -InputObject $Info -Name 'x-ms-code-generation-settings') -and $Info.'x-ms-code-generation-settings'.Name) { 
+        $infoName = $Info.'x-ms-code-generation-settings'.Name
+    }
+
+    if (-not $infoName) {
+         $infoName = $infoTitle
+    }
+
+    $version = [Version](($infoVersion -split "-",4) -join '.')
+
+    $NamespaceVersionSuffix = "v$(($infoVersion -split '-',4) -join '')"
+    $Namespace = "Microsoft.PowerShell.$ModuleName.$NamespaceVersionSuffix"
+    $ModuleName = $ModuleName
+
+    $swaggerInfo = [PSCustomObject] @{ infoVersion = $infoVersion;
+                                       infoTitle = $infoTitle;
+                                       infoName = $infoName;
+                                       version = $version;
+                                       NameSpace = $Namespace;
+                                       ModuleName = $ModuleName;
+                                     }
+
+    return $swaggerInfo
+}
+
+function Get-SwaggerParameters
+{
+    param(
+        [Parameter(Mandatory=$true)]
+        [PSCustomObject]
+        $Parameters
+    )
+
+    $swaggerParameters = [PSObject]::new()
+
+    $Parameters.PSObject.Properties | ForEach-Object {
+        $name = Get-PascalCasedString -Name $_.name
+        $swaggerParameters | Add-Member -MemberType NoteProperty $name -Value $Parameters.$name
+    }
+
+    return $swaggerParameters
+}
+
+function Get-SwaggerMultiItemObject
+{
+    param(
+        [Parameter(Mandatory=$true)]
+        [PSCustomObject]
+        $Object
+    )
+
+    $swaggerMultiItemObject = [PSObject]::new()
+
+    $Object.PSObject.Properties | ForEach-Object {
+        $swaggerMultiItemObject | Add-Member -MemberType NoteProperty $_.name -Value $_
+    }
+
+    return $swaggerMultiItemObject
+}
+
+#endregion Parse Swagger File
 
 Export-ModuleMember -Function Export-CommandFromSwagger

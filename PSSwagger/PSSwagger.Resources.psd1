@@ -19,6 +19,7 @@ ConvertFrom-StringData @'
     GenerateCodeUsingAutoRest=Generating CSharp Code using AutoRest
     GenerateAssemblyFromCode=Generating assembly from the CSharp code
     GeneratedAssembly=Generated '{0}' assembly
+    UnableToGenerateAssembly=Unable to generate '{0}' assembly
     InvalidSwaggerSpecification=Invalid Swagger specification file. Info section doesn't exists.
     SwaggerSpecPathNotExist=Swagger file $SwaggerSpecPath does not exist. Check the path
     SamePropertyName=Same property name should not be defined in a definition with AllOf inheritance.
