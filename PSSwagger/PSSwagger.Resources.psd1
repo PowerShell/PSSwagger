@@ -26,5 +26,8 @@ ConvertFrom-StringData @'
     DataTypeNotImplemented=Please get an implementation of '{0}' for '{1}'
     AutoRestNotInPath=Unable to find AutoRest.exe in PATH environment. Ensure the PATH is updated.
     AutoRestError=AutoRest resulted in an error
+    SwaggerParamsMissing=No parameters in the Swagger
+    SwaggerDefinitionsMissing=No definitions in the Swagger
+    SwaggerPathsMissing=No paths in the Swagger
 ###PSLOC
 '@

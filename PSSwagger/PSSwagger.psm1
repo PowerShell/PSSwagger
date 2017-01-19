@@ -1074,7 +1074,7 @@ function ConvertTo-CsharpCode
     param (
         [Parameter(Mandatory=$true)]
         [hashtable]
-        $swaggerDict,
+        $SwaggerDict,
         
         [Parameter(Mandatory = $true)]
         [string] $SwaggerSpecPath
@@ -1089,8 +1089,8 @@ function ConvertTo-CsharpCode
         throw $LocalizedData.AutoRestNotInPath
     }
 
-    $outputDirectory = $swaggerDict['outputDirectory']
-    $nameSpace = $swaggerDict['info'].NameSpace
+    $outputDirectory = $SwaggerDict['outputDirectory']
+    $nameSpace = $SwaggerDict['info'].NameSpace
     $outAssembly = Join-Path $outputDirectory "$NameSpace.dll"
     $net45Dir = Join-Path $outputDirectory "Net45"
     $generatedCSharpPath = Join-Path $outputDirectory "Generated.Csharp"
@@ -1116,7 +1116,7 @@ function ConvertTo-CsharpCode
                         "$PSScriptRoot\Generated.Azure.Common.Helpers\Net45\Microsoft.Rest.ClientRuntime.dll",
                         "$PSScriptRoot\Generated.Azure.Common.Helpers\Net45\Newtonsoft.Json.dll")
 
-    if ($swaggerDict['UseAzureCsharpGenerator'])
+    if ($SwaggerDict['UseAzureCsharpGenerator'])
     { 
         $codeGenerator = "Azure.CSharp"
         $refassemlbiles += "$PSScriptRoot\Generated.Azure.Common.Helpers\Net45\Microsoft.Rest.ClientRuntime.Azure.dll"
@@ -1235,21 +1235,24 @@ function ConvertTo-SwaggerDictionary
     $swaggerDict.Add("info", $swaggerInfo)
 
     if(-not (Get-Member -InputObject $swaggerObject -Name 'parameters')) {
-        Throw "No parameters in the Swagger"
+        $message = $LocalizedData.SwaggerParamsMissing
+        Throw $message
     }
 
     $swaggerParameters = Get-SwaggerParameters -Parameters $swaggerObject.parameters
     $swaggerDict.Add("parameters", $swaggerParameters)
 
     if(-not (Get-Member -InputObject $swaggerObject -Name 'definitions')) {
-        Throw "No definitions in the Swagger"
+        $message = $LocalizedData.SwaggerDefinitionsMissing
+        Throw  $message
     }
 
     $swaggerDefinitions = Get-SwaggerMultiItemObject -Object $swaggerObject.definitions
     $swaggerDict.Add("definitions", $swaggerDefinitions)
 
     if(-not (Get-Member -InputObject $swaggerObject -Name 'paths')) {
-        Throw "No paths in the Swagger"
+        $message = $LocalizedData.SwaggerPathsMissing
+        Throw $message
     }
 
     $swaggerPaths = Get-SwaggerMultiItemObject -Object $swaggerObject.paths
@@ -1287,10 +1290,10 @@ function Get-SwaggerInfo
     $Namespace = "Microsoft.PowerShell.$ModuleName.$NamespaceVersionSuffix"
     $ModuleName = $ModuleName
 
-    $swaggerInfo = [PSCustomObject] @{ infoVersion = $infoVersion;
-                                       infoTitle = $infoTitle;
-                                       infoName = $infoName;
-                                       version = $version;
+    $swaggerInfo = [PSCustomObject] @{ InfoVersion = $infoVersion;
+                                       InfoTitle = $infoTitle;
+                                       InfoName = $infoName;
+                                       Version = $version;
                                        NameSpace = $Namespace;
                                        ModuleName = $ModuleName;
                                      }
@@ -1306,11 +1309,11 @@ function Get-SwaggerParameters
         $Parameters
     )
 
-    $swaggerParameters = [PSObject]::new()
+    $swaggerParameters = @{}
 
     $Parameters.PSObject.Properties | ForEach-Object {
         $name = Get-PascalCasedString -Name $_.name
-        $swaggerParameters | Add-Member -MemberType NoteProperty $name -Value $Parameters.$name
+        $swaggerParameters[$name] = $Parameters.$name
     }
 
     return $swaggerParameters
@@ -1324,10 +1327,10 @@ function Get-SwaggerMultiItemObject
         $Object
     )
 
-    $swaggerMultiItemObject = [PSObject]::new()
+    $swaggerMultiItemObject = @{}
 
     $Object.PSObject.Properties | ForEach-Object {
-        $swaggerMultiItemObject | Add-Member -MemberType NoteProperty $_.name -Value $_
+        $swaggerMultiItemObject[$_.name] = $_
     }
 
     return $swaggerMultiItemObject
