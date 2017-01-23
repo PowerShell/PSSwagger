@@ -301,7 +301,7 @@ function New-SwaggerPathCommand
     $requiredParamList = $paramObject['RequiredParamList']
     $optionalParamList = $paramObject['OptionalParamList']
 
-    $bodyObject = Get-Body -PathObject $PathObject `
+    $bodyObject = Get-FunctionBody -PathObject $PathObject `
                                         -SwaggerMetaDict $SwaggerMetaDict `
                                         -DefinitionList $DefinitionList `
                                         -RequiredParamList $requiredParamList `
@@ -1247,7 +1247,7 @@ function Get-ParamInfo
     return $paramObject
 }
 
-function Get-Body
+function Get-FunctionBody
 {
     [OutputType([hashtable])]
     param
