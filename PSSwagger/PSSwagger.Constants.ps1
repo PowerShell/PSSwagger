@@ -13,7 +13,7 @@
 
     $parameterDefString = @'
     
-    [Parameter(Mandatory = $isParamMandatory)] $ValidateSetDefinition    
+    [Parameter(Mandatory = $isParamMandatory)]$ValidateSetDefinition
     [$paramType]
     $paramName,
 
@@ -98,7 +98,7 @@ function $commandName
 
     $ValidateSetDefinitionString = @'
 
-    [ValidateSet($ValidateSetString)]
+     [ValidateSet($ValidateSetString)]
 '@
 
 $successReturn = @'

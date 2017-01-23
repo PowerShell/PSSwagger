@@ -82,6 +82,7 @@ function Export-CommandFromSwagger
 
     # Populate the metadata, definitions and parameters from the provided Swagger specification
     $SwaggerSpecDefinitionsAndParameters = Get-SwaggerSpecDefinitionAndParameter -SwaggerSpecJsonObject $jsonObject -ModuleName $ModuleName
+    $swaggerMetaDict = @{}
     
     $outputDirectory = $Path.TrimEnd('\').TrimEnd('/')
 
@@ -102,27 +103,20 @@ function Export-CommandFromSwagger
 
     $null = New-Item -ItemType Directory $outputDirectory -Force -ErrorAction Stop
 
-    $swaggerDict.Add("outputDirectory", $outputDirectory);
-    $swaggerDict.Add("UseAzureCsharpGenerator", $UseAzureCsharpGenerator)
+    $swaggerMetaDict.Add("outputDirectory", $outputDirectory);
+    $swaggerMetaDict.Add("UseAzureCsharpGenerator", $UseAzureCsharpGenerator)
+    $swaggerMetaDict.Add("Authentication", $Authentication);
+    $swaggerMetaDict.Add("SwaggerSpecPath", $SwaggerSpecPath);
 
     $Namespace = $SwaggerSpecDefinitionsAndParameters['Namespace']
     $null = ConvertTo-CsharpCode -SwaggerDict $swaggerDict `
-                                    -SwaggerSpecPath $SwaggerSpecPath
+                                    -SwaggerMetaDict $swaggerMetaDict
 
-    $FunctionsToExport = @()
-    $SwaggerPathCommandsPath = Join-Path -Path (Join-Path -Path $outputDirectory -ChildPath $GeneratedCommandsName) -ChildPath 'SwaggerPathCommands'
-
-    # Handle the Paths
-    $jsonObject.Paths.PSObject.Properties | ForEach-Object {
-        $jsonPathObject = $_.Value
-        $jsonPathObject.psobject.Properties | ForEach-Object {
-               $FunctionsToExport += New-SwaggerSpecPathCommand -JsonPathItemObject $_.Value `
-                                                                -GeneratedCommandsPath $SwaggerPathCommandsPath `
-                                                                -UseAzureCsharpGenerator:$UseAzureCsharpGenerator `
-                                                                -Authentication $Authentication `
-                                                                -SwaggerSpecDefinitionsAndParameters $SwaggerSpecDefinitionsAndParameters
-            } # jsonPathObject
-    } # jsonObject
+    $FunctionsToExport = @()    
+    $FunctionsToExport+= New-SwaggerPathCommands -CommandsObject $swaggerDict['paths'] `
+                                                    -SwaggerMetaDict $swaggerMetaDict `
+                                                    -DefinitionList $swaggerDict['definitions'] `
+                                                    -Info $swaggerDict['info']
 
     $SwaggerDefinitionCommandsPath = Join-Path -Path (Join-Path -Path $outputDirectory -ChildPath $GeneratedCommandsName) -ChildPath 'SwaggerDefinitionCommands'
 
@@ -241,6 +235,95 @@ function Export-CommandFromSwagger
 }
 
 #region Cmdlet Generation Helpers
+
+function New-SwaggerPathCommands
+{
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSObject]
+        $CommandsObject,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $SwaggerMetaDict,
+
+        [Parameter(Mandatory = $true)]
+        [hashTable]
+        $DefinitionList,
+
+        [Parameter(Mandatory = $true)]
+        [hashTable]
+        $Info
+    )
+
+    $functionsToExport = @()
+    $CommandsObject.Keys | ForEach-Object {
+        $CommandsObject[$_].value.PSObject.Properties | ForEach-Object {
+            $functionsToExport += New-SwaggerPathCommand -SwaggerMetaDict $SwaggerMetaDict `
+                                                            -PathObject $_.Value `
+                                                            -DefinitionList $DefinitionList `
+                                                            -Info $Info
+        }
+    }
+
+    return $functionsToExport
+}
+
+function New-SwaggerPathCommand
+{
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [hashtable]
+        $SwaggerMetaDict,
+
+        [Parameter(Mandatory = $true)]
+        [PSObject]
+        $PathObject,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]
+        $DefinitionList,
+
+        [Parameter(Mandatory = $true)]
+        [hashTable]
+        $Info
+    )
+
+    $commandHelp = Get-CommandHelp -PathObject $PathObject
+    
+    $commandName = Get-SwaggerPathCommandName -JsonPathItemObject $PathObject
+
+    $paramObject = Get-ParamInfo -PathObject $PathObject 
+
+    $paramHelp = $paramObject['ParamHelp']
+    $paramblock = $paramObject['ParamBlock']
+    $requiredParamList = $paramObject['RequiredParamList']
+    $optionalParamList = $paramObject['OptionalParamList']
+
+    $bodyObject = Get-FunctionBody -PathObject $PathObject `
+                                        -SwaggerMetaDict $SwaggerMetaDict `
+                                        -DefinitionList $DefinitionList `
+                                        -RequiredParamList $requiredParamList `
+                                        -OptionalParamList $optionalParamList `
+                                        -Info $Info
+
+    $outputTypeBlock = $bodyObject['outputTypeBlock']
+    $body = $bodyObject['body']
+
+    $CommandString = $executionContext.InvokeCommand.ExpandString($advFnSignature)
+
+    $GeneratedCommandsPath = Join-Path -Path (Join-Path -Path $SwaggerMetaDict['outputDirectory'] -ChildPath $GeneratedCommandsName) -ChildPath 'SwaggerPathCommands'
+
+    if(-not (Test-Path -Path $GeneratedCommandsPath -PathType Container)) {
+        $null = New-Item -Path $GeneratedCommandsPath -ItemType Directory
+    }
+
+    $CommandFilePath = Join-Path -Path $GeneratedCommandsPath -ChildPath "$CommandName.ps1"
+    Out-File -InputObject $CommandString -FilePath $CommandFilePath -Encoding ascii -Force -Confirm:$false -WhatIf:$false
+
+    return $CommandName
+}
 
 <#
 .DESCRIPTION
@@ -736,7 +819,8 @@ function $commandName
 #>
 function Get-SwaggerPathCommandName
 {
-    param(
+    param
+    (
         [Parameter(Mandatory=$true)]
         [PSObject]
         $JsonPathItemObject    
@@ -1065,19 +1149,216 @@ function Get-OutputType
     return $outputType
 }
 
+function Get-CommandHelp
+{
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [PSObject]
+        $PathObject
+    )
+
+    if((Get-Member -InputObject $PathObject -Name 'Description') -and $PathObject.Description) {
+        $description = $PathObject.Description
+    }
+
+    $commandHelp = $executionContext.InvokeCommand.ExpandString($helpDescStr)
+
+    return $commandHelp
+}
+
+function Get-ParamInfo
+{
+    [OutputType([hashtable])]
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [PSObject]
+        $PathObject
+    )
+
+    $paramblock = ""
+    $paramHelp = ""
+    $requiredParamList = @()
+    $optionalParamList = @()
+
+    $PathObject.parameters | ForEach-Object {
+        if((Get-Member -InputObject $_ -Name 'Name') -and $_.Name) 
+        {
+            $isParamMandatory = '$false'
+            $parameterName = Get-PascalCasedString -Name $_.Name
+            $paramName = "`$$parameterName"
+            $paramType = if ( (Get-Member -InputObject $_ -Name 'Type') -and $_.Type)
+                         {
+                            # Use the format as parameter type if that is available as a type in PowerShell
+                            if ( (Get-Member -InputObject $_ -Name 'Format') -and $_.Format -and ($null -ne ($_.Format -as [Type])) ) 
+                            {
+                                $_.Format
+                            }
+                            else {
+                                $_.Type
+                            }
+                         } elseif ( (Get-Member -InputObject $_ -Name 'Schema') -and ($_.Schema) -and
+                             (Get-Member -InputObject $_.Schema -Name '$ref') -and ($_.Schema.'$ref') )
+                         {
+                            $ReferenceParameterValue = $_.Schema.'$ref'
+                            $Namespace + '.Models.' + $ReferenceParameterValue.Substring( $( $ReferenceParameterValue.LastIndexOf('/') ) + 1 )
+                         }
+                         else {
+                             'object'
+                         }
+            if ($_.Required)
+            { 
+                $isParamMandatory = '$true'
+                $requiredParamList += $paramName
+            }
+            else
+            {
+                $optionalParamList += $paramName
+            }
+
+            $ValidateSetDefinition = $null
+            if ((Get-Member -InputObject $_ -Name 'ValidateSet') -and $_.ValidateSet)
+            {
+                $ValidateSetString = $_.ValidateSet
+                $ValidateSetDefinition = $executionContext.InvokeCommand.ExpandString($ValidateSetDefinitionString)
+            }
+
+            $paramblock += $executionContext.InvokeCommand.ExpandString($parameterDefString)
+
+            if ((Get-Member -InputObject $_ -Name 'Description') -and $_.Description)
+            {
+                $pDescription = $_.Description
+                $paramHelp += $executionContext.InvokeCommand.ExpandString($helpParamStr)
+            }            
+        }
+    }
+
+    $paramblock = $paramBlock.TrimEnd().TrimEnd(",")
+    $requiredParamList = $requiredParamList -join ', '
+    $optionalParamList = $optionalParamList -join ', '
+
+    $paramObject = @{ ParamHelp = $paramhelp;
+                      ParamBlock = $paramBlock;
+                      RequiredParamList = $requiredParamList;
+                      OptionalParamList = $optionalParamList;
+                    }
+
+    return $paramObject
+}
+
+function Get-FunctionBody
+{
+    [OutputType([hashtable])]
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [PSObject]
+        $PathObject,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]
+        $SwaggerMetaDict,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]
+        $DefinitionList,
+
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyString()]
+        [string]
+        $RequiredParamList,
+
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyString()]
+        [string]
+        $OptionalParamList,
+
+        [Parameter(Mandatory = $true)]
+        [hashTable]
+        $Info
+    )
+
+    $infoVersion = $Info['infoVersion']
+    $modulePostfix = $Info['infoName']
+    $fullModuleName = $Namespace + '.' + $modulePostfix
+    $clientName = '$' + $modulePostfix
+    $apiVersion = $null
+    $SubscriptionId = $null
+    $BaseUri = $null
+
+    if($Authentication -eq 'AzureStack')
+    {
+        $BaseUri = $AzureStackBaseUriStr -f ($clientName)
+    }
+    else
+    {
+        $SubscriptionId = $SubscriptionIdStr -f ($clientName)
+        if (-not $UseAzureCsharpGenerator)
+        {
+            $apiVersion = $ApiVersionStr -f ($clientName, $infoVersion)
+        }
+    }
+
+    $operationId = $PathObject.operationId
+    $opIdValues = $operationId -split '_',2
+
+    if(-not $opIdValues -or ($opIdValues.count -ne 2)) {
+        $methodName = $operationId + 'WithHttpMessagesAsync'
+        $operations = ''
+    } else {            
+        $operationName = $PathObject.operationId.Split('_')[0]
+        $operationType = $PathObject.operationId.Split('_')[1]
+        $operations = ".$operationName"
+        if ((-not $SwaggerMetaDict['UseAzureCsharpGenerator']) -and 
+                ($DefinitionList.containsKey($operationName)))
+        { 
+            $operations = $operations + 'Operations'
+        }
+        $methodName = $operationType + 'WithHttpMessagesAsync'
+    }
+
+    $responseBodyParams = @{
+                            responses = $PathObject.responses.PSObject.Properties
+                            namespace = $Namespace
+                            definitionList = $DefinitionList
+                        }
+
+    $responseBody, $outputTypeBlock = Get-Response @responseBodyParams
+    
+    if ($SwaggerMetaDict['Authentication'] -eq 'AzureStack') {
+        $GetServiceCredentialStr = 'Get-AzSServiceCredential'
+        $AdvancedFunctionEndCodeBlock = $AzSAdvancedFunctionEndCodeBlockStr
+    }
+    else {
+        $GetServiceCredentialStr = 'Get-AzServiceCredential'
+        $AdvancedFunctionEndCodeBlock = ''
+    }
+
+    $body = $executionContext.InvokeCommand.ExpandString($functionBodyStr)
+
+    $bodyObject = @{ OutputTypeBlock = $outputTypeBlock;
+                     Body = $body;
+                    }
+
+    return $bodyObject
+}
+
 #endregion
 
 #region Module Generation Helpers
 
 function ConvertTo-CsharpCode
 {
-    param (
+    param
+    (
         [Parameter(Mandatory=$true)]
         [hashtable]
         $SwaggerDict,
         
         [Parameter(Mandatory = $true)]
-        [string] $SwaggerSpecPath
+        [hashtable]
+        $SwaggerMetaDict
     )
 
     $message = $LocalizedData.GenerateCodeUsingAutoRest
@@ -1089,7 +1370,7 @@ function ConvertTo-CsharpCode
         throw $LocalizedData.AutoRestNotInPath
     }
 
-    $outputDirectory = $SwaggerDict['outputDirectory']
+    $outputDirectory = $SwaggerMetaDict['outputDirectory']
     $nameSpace = $SwaggerDict['info'].NameSpace
     $outAssembly = Join-Path $outputDirectory "$NameSpace.dll"
     $net45Dir = Join-Path $outputDirectory "Net45"
@@ -1116,13 +1397,13 @@ function ConvertTo-CsharpCode
                         "$PSScriptRoot\Generated.Azure.Common.Helpers\Net45\Microsoft.Rest.ClientRuntime.dll",
                         "$PSScriptRoot\Generated.Azure.Common.Helpers\Net45\Newtonsoft.Json.dll")
 
-    if ($SwaggerDict['UseAzureCsharpGenerator'])
+    if ($SwaggerMetaDict['UseAzureCsharpGenerator'])
     { 
         $codeGenerator = "Azure.CSharp"
         $refassemlbiles += "$PSScriptRoot\Generated.Azure.Common.Helpers\Net45\Microsoft.Rest.ClientRuntime.Azure.dll"
     }
 
-    $null = & $autoRestExePath -AddCredentials -input $SwaggerSpecPath -CodeGenerator $codeGenerator -OutputDirectory $generatedCSharpPath -NameSpace $Namespace
+    $null = & $autoRestExePath -AddCredentials -input $swaggerMetaDict['SwaggerSpecPath'] -CodeGenerator $codeGenerator -OutputDirectory $generatedCSharpPath -NameSpace $Namespace
     if ($LastExitCode)
     {
         throw $LocalizedData.AutoRestError
@@ -1290,13 +1571,13 @@ function Get-SwaggerInfo
     $Namespace = "Microsoft.PowerShell.$ModuleName.$NamespaceVersionSuffix"
     $ModuleName = $ModuleName
 
-    $swaggerInfo = [PSCustomObject] @{ InfoVersion = $infoVersion;
-                                       InfoTitle = $infoTitle;
-                                       InfoName = $infoName;
-                                       Version = $version;
-                                       NameSpace = $Namespace;
-                                       ModuleName = $ModuleName;
-                                     }
+    $swaggerInfo = @{}
+    $swaggerInfo.Add('InfoVersion',$infoVersion);
+    $swaggerInfo.Add('InfoTitle',$infoTitle);
+    $swaggerInfo.Add('InfoName',$infoName);
+    $swaggerInfo.Add('Version',$version);
+    $swaggerInfo.Add('NameSpace', $Namespace);
+    $swaggerInfo.Add('ModuleName', $ModuleName);
 
     return $swaggerInfo
 }
