@@ -99,7 +99,7 @@ function Export-CommandFromSwagger
             $Frameworks = @('netstandard1.7')
         }
 
-        $message = $LocalizedData.DiscoveredFrameworks -f ($SwaggerSpecUri)
+        $message = $LocalizedData.DiscoveredFrameworks -f ($Frameworks)
         Write-Verbose -Message $message -Verbose
     }
 
@@ -110,7 +110,7 @@ function Export-CommandFromSwagger
         # But again, for now, only support x64
         $Runtimes = @('win10-x64')
 
-        $message = $LocalizedData.DiscoveredRuntimes -f ($SwaggerSpecUri)
+        $message = $LocalizedData.DiscoveredRuntimes -f ($Runtimes)
         Write-Verbose -Message $message -Verbose
     }
 
