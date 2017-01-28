@@ -1615,8 +1615,10 @@ function Compile-CoreClr {
     Copy-Item "$GeneratedCSharpPath\bin\Debug\$Framework\$Runtime\publish\*" $OutputDirectory
 
     # Rename the generated dll to the expected dll
-    # TODO: This only works for the default project.json
-    Rename-Item -Path "$OutputDirectory\PSSwagger.Generated.Module.dll" -NewName "$AssemblyName"
+    # TODO: This only works for project.json based building
+    $projectJsonObject = ConvertFrom-Json ((Get-Content (Join-Path $GeneratedCSharpPath "project.json")) -join [Environment]::NewLine) -ErrorAction Stop
+    $dllName = $projectJsonObject.name
+    Rename-Item -Path "$OutputDirectory\$dllName.dll" -NewName "$AssemblyName"
     if (-not $?) {
         return $false
     }
