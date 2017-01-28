@@ -99,7 +99,8 @@ function Export-CommandFromSwagger
             $Frameworks = @('netstandard1.7')
         }
 
-        Write-Verbose "Automatically set Frameworks to: $Frameworks"
+        $message = $LocalizedData.DiscoveredFrameworks -f ($SwaggerSpecUri)
+        Write-Verbose -Message $message -Verbose
     }
 
     if ($null -eq $Runtimes) {
@@ -109,7 +110,8 @@ function Export-CommandFromSwagger
         # But again, for now, only support x64
         $Runtimes = @('win10-x64')
 
-        Write-Verbose "Automatically set Runtimes to: $Runtimes"
+        $message = $LocalizedData.DiscoveredRuntimes -f ($SwaggerSpecUri)
+        Write-Verbose -Message $message -Verbose
     }
 
     $jsonObject = ConvertFrom-Json ((Get-Content $SwaggerSpecPath) -join [Environment]::NewLine) -ErrorAction Stop
@@ -1476,18 +1478,17 @@ function Compile-Type {
         $framework = $_
         $Runtimes | %{
             $compileSuccess = $false
-            Write-Verbose "Compiling for framework $framework and runtime $_"
+            $message = $LocalizedData.CompileForFrameworkAndRuntime -f ($framework, $_)
+            Write-Verbose -Message $message
             $outAssembly = $null
             if ($framework -eq 'net45' -and (-not $fullClrCompiled)) {
                 $outAssembly = Join-Path $outputDirectory "ref\net45\$nameSpace.dll"
-                Write-Verbose "Output assembly: $outAssembly"
                 $compileSuccess = Compile-FullClr -GeneratedCSharpPath $GeneratedCSharpPath -OutputAssembly $outAssembly -SwaggerMetaDict $SwaggerMetaDict -Namespace $nameSpace
                 # Even if this fails, don't try full CLR again!
                 $fullClrCompiled = $true
             } else {
                 $outAssembly = Join-Path $outputDirectory "ref\$framework\$_\$nameSpace.dll"
                 $outDir = Join-Path $outputDirectory "ref\$framework\$_"
-                Write-Verbose "Output assembly: $outAssembly"
                 $compileSuccess = Compile-CoreClr -GeneratedCSharpPath $GeneratedCSharpPath -Framework $framework -Runtime $_ -BuildProject $BuildProject -BuildConfig $BuildConfig -AutomaticBootstrap $AutomaticBootstrap -OutputDirectory $outDir -AssemblyName "$nameSpace.dll"
             }
 
@@ -1504,7 +1505,7 @@ function Compile-Type {
     }
 
     if (-not $allCompileSuccess) {
-        throw 'One or more assemblies failed to compile. See preceding error messages for specific errors.'
+        throw $LocalizedData.CompileFailed
     }
 }
 
@@ -1567,13 +1568,15 @@ function Compile-CoreClr {
 
     # Validate build project type
     if (-not $BuildProject.EndsWith($ext)) {
-        Write-Error "dotnet CLI version found in path does not support build project $BuildProject. Supported project type: $ext"
+        $message = $LocalizedData.CoreClrWrongBuildType -f ($BuildProject, $ext)
+        Write-Error -Message $message
         return $false
     }
 
     # TODO: Remove when we support dotnet preview4+
     if (-not ($ext -eq 'json')) {
-        Write-Error "PSSwagger currently only supports building with dotnet CLI preview3 or earlier."
+        $message = $LocalizedData.PsSwaggerSupportedDotNetCliVersion
+        Write-Error -Message $message
         return $false
     }
 
@@ -1590,13 +1593,15 @@ function Compile-CoreClr {
     Push-Location $GeneratedCSharpPath
     & dotnet restore
     if (-not $?) {
-        Write-Error 'Failed to restore packages.'
+        $message = $LocalizedData.DotNetFailedToRestorePackages
+        Write-Error -Message $message
         return $false
     }
 
     & dotnet publish --framework $Framework --runtime $Runtime
     if (-not $?) {
-        Write-Error 'Failed to build and publish.'
+        $message = $LocalizedData.DotNetFailedToBuild
+        Write-Error -Message $message
         return $false
     }
 
@@ -1627,7 +1632,8 @@ function Setup-DotNetCli {
     $extension = ''
     if ($null -eq (Get-Command dotnet -ErrorAction SilentlyContinue)) {
         if (-not $AutomaticBootstrap) {
-            Write-Error 'dotnet.exe not found in Path and -AutomaticBootstrap not specified. Please download your preferred version of dotnet CLI and add dotnet.exe to your Path variable.'
+            $message = $LocalizedData.DotNetExeNotFound
+            Write-Error -Message $message
             # Returns empty string indicating issue
             return $extension
         }
@@ -1640,7 +1646,8 @@ function Setup-DotNetCli {
     } else {
         # Run dotnet --version, assume preview versioning format
         $dotnetVersionOutput = & "dotnet" "--version"
-        Write-Verbose "Output of dotnet --version: $dotnetVersionOutput"
+        $message = $LocalizedData.DotNetExeNotFound -f ($dotnetVersionOutput)
+        Write-Verbose -Message $message
         $regex = [regex]::Match($dotnetVersionOutput, '(.*?)preview([0-9]+)(.*)')
         $previewVersion = [int]$regex.captures.groups[2].value
         if ($previewVersion -ge 4) {
@@ -1660,12 +1667,13 @@ function Copy-HelperModuleToGeneratedModule {
         [string]$HelperModuleName
     )
 
-    Write-Verbose "Copying $HelperDirectory to $ModuleDirectory"
+    $message = $LocalizedData.DotNetExeNotFound -f ($HelperDirectory, $ModuleDirectory)
+    Write-Verbose -Message $message
     if (-not (Test-Path "$ModuleDirectory\$HelperModuleName")) {
         New-Item "$ModuleDirectory\$HelperModuleName" -ItemType Directory
     }
 
-    Copy-Item "$HelperDirectory\*" "$ModuleDirectory\$HelperModuleName" -Recurse -Force
+    $null = Copy-Item "$HelperDirectory\*" "$ModuleDirectory\$HelperModuleName" -Recurse -Force
 }
 
 function New-ModuleManifestUtility
@@ -1688,9 +1696,6 @@ function New-ModuleManifestUtility
                        -ModuleVersion $SwaggerSpecDefinitionsAndParameters['Version'] `
                        -RootModule "$($SwaggerSpecDefinitionsAndParameters['ModuleName']).psm1" `
                        -FunctionsToExport $FunctionsToExport
-
-                       #-RequiredModules @('Generated.Azure.Common.Helpers') `
-                       #-RequiredAssemblies @("$($SwaggerSpecDefinitionsAndParameters['Namespace']).dll") `
 }
 
 # Utility to throw an errorrecord
