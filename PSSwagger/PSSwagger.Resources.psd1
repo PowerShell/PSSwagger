@@ -40,5 +40,8 @@ ConvertFrom-StringData @'
     DotNetExeNotFound=dotnet.exe not found in Path and -AutomaticBootstrap not specified. Please download your preferred version of dotnet CLI and add dotnet.exe to your Path variable.
     DotNetExeVersion=Output of dotnet --version: {0}
     CopyDirectoryToDestination=Copying directory '{0}' to '{1}'
+    SupportedFrameworks=Frameworks: {0}
+    SupportedRuntimes=Runtimes: {0}
+    SupportedFileGeneral=This module has been published for the following frameworks and runtimes:
 ###PSLOC
 '@

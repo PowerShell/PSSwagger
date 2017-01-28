@@ -274,6 +274,8 @@ function Export-CommandFromSwagger
                               -SwaggerSpecDefinitionsAndParameters $SwaggerSpecDefinitionsAndParameters
 
     Copy-HelperModuleToGeneratedModule -ModuleDirectory $outputDirectory -HelperDirectory "$PSScriptRoot\Generated.Azure.Common.Helpers" -HelperModuleName "Generated.Azure.Common.Helpers"
+
+    New-PublishedFrameworksFile -Frameworks $Frameworks -Runtimes $Runtimes -ModuleRootDirectory $outputDirectory
 }
 
 #region Cmdlet Generation Helpers
@@ -1648,7 +1650,7 @@ function Setup-DotNetCli {
     } else {
         # Run dotnet --version, assume preview versioning format
         $dotnetVersionOutput = & "dotnet" "--version"
-        $message = $LocalizedData.DotNetExeNotFound -f ($dotnetVersionOutput)
+        $message = $LocalizedData.DotNetExeVersion -f ($dotnetVersionOutput)
         Write-Verbose -Message $message
         $regex = [regex]::Match($dotnetVersionOutput, '(.*?)preview([0-9]+)(.*)')
         $previewVersion = [int]$regex.captures.groups[2].value
@@ -1669,7 +1671,7 @@ function Copy-HelperModuleToGeneratedModule {
         [string]$HelperModuleName
     )
 
-    $message = $LocalizedData.DotNetExeNotFound -f ($HelperDirectory, $ModuleDirectory)
+    $message = $LocalizedData.CopyDirectoryToDestination -f ($HelperDirectory, $ModuleDirectory)
     Write-Verbose -Message $message
     if (-not (Test-Path "$ModuleDirectory\$HelperModuleName")) {
         New-Item "$ModuleDirectory\$HelperModuleName" -ItemType Directory
@@ -1698,6 +1700,23 @@ function New-ModuleManifestUtility
                        -ModuleVersion $SwaggerSpecDefinitionsAndParameters['Version'] `
                        -RootModule "$($SwaggerSpecDefinitionsAndParameters['ModuleName']).psm1" `
                        -FunctionsToExport $FunctionsToExport
+}
+
+function New-PublishedFrameworksFile {
+    param(
+        [string[]]$Frameworks,
+        [string[]]$Runtimes,
+        [string]$ModuleRootDirectory
+    )
+    
+    $supportedFrameworksFile = Join-Path $ModuleRootDirectory 'supportedFrameworks.txt'
+    if (Test-Path $supportedFrameworksFile) {
+        $null = Remove-Item $supportedFrameworksFile -Force
+    }
+
+    $frameworksSupported = $LocalizedData.SupportedFrameworks -f ($Frameworks -join ', ')
+    $runtimesSupported = $LocalizedData.SupportedRuntimes -f ($Runtimes -join ', ')
+    @($LocalizedData.SupportedFileGeneral, $frameworksSupported, $runtimesSupported) -join "$([Environment]::NewLine)" | Out-File -FilePath $supportedFrameworksFile
 }
 
 # Utility to throw an errorrecord
