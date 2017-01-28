@@ -5,19 +5,18 @@ Describe "Basic API" -Tag ScenarioTest {
         Get-Module PSSwagger | Remove-Module
 
         # Import PSSwagger
-        Import-Module "$PSScriptRoot\..\PSSwagger\PSSwagger.psd1" -Force
+        Import-Module "$PSScriptRoot\..\PSSwagger\PSSwagger.psd1" -Force -Verbose
 
         $generatedModulesPath = Join-Path -Path "$PSScriptRoot" -ChildPath "Generated"
         $testCaseDataLocation = "$PSScriptRoot\Data\PsSwaggerTestBasic"
 
         # Generate module
         Write-Host "Generating module"
-        Export-CommandFromSwagger -SwaggerSpecPath "$testCaseDataLocation\PsSwaggerTestBasicSpec.json" -Path "$generatedModulesPath" -ModuleName "Generated.Basic.Module"
+        Export-CommandFromSwagger -SwaggerSpecPath "$testCaseDataLocation\PsSwaggerTestBasicSpec.json" -Path "$generatedModulesPath" -ModuleName "Generated.Basic.Module" -Verbose
 
         # Import generated module
         Write-Host "Importing module"
-        Import-Module "$PSScriptRoot\..\PSSwagger\Generated.Azure.Common.Helpers\Generated.Azure.Common.Helpers.psd1" -Force
-        Import-Module "$PSScriptRoot\Generated\Generated.Basic.Module\2017.1.1\Generated.Basic.Module.psd1"
+        Import-Module "$PSScriptRoot\Generated\Generated.Basic.Module\2017.1.1\Generated.Basic.Module.psd1" -Verbose
         
         # Copy json-server data since it's updated live
         Copy-Item "$testCaseDataLocation\PsSwaggerTestBasicData.json" "$PSScriptRoot\NodeModules\db.json" -Force

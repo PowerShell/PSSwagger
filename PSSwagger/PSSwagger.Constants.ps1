@@ -22,6 +22,22 @@
     $RootModuleContents = @'
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 
+# Load Helper module and required DLLs
+if (`$null -eq (Import-Module "`$PSScriptRoot\Generated.Azure.Common.Helpers\Generated.Azure.Common.Helpers.psd1" -PassThru)) {
+    throw "Required module is missing: Generated.Azure.Common.Helpers"
+}
+
+if ((`$null -eq (Get-Variable IsCoreCLR -ErrorAction SilentlyContinue)) -or (`$false -eq `$IsCoreCLR)) {
+    # Full CLR
+    Add-Type -Path "`$PSScriptRoot\ref\net45\$Namespace.dll"
+} else {
+    # Core CLR
+    # TODO: Figure out the framework and runtime to load
+    `$framework = "netstandard1.7"
+    `$runtime = "win10-x64"
+    # TODO: Load all the prereq dlls too
+    Add-Type -Path "`$PSScriptRoot\ref\`$framework\`$runtime\$Namespace.dll"
+}
 Get-ChildItem -Path "`$PSScriptRoot\$GeneratedCommandsName" -Recurse -Filter *.ps1 -File | ForEach-Object { . `$_.FullName}
 '@
 

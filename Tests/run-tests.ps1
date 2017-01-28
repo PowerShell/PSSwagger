@@ -64,7 +64,7 @@ if ($TestSuite.Contains("All") -or $TestSuite.Contains("ScenarioTest")) {
 
     # Build PSSwagger.Test.dll using dotnet CLI
     if ($BootstrapDotNet -eq $true) {
-        & "$PSScriptRoot\..\tools\bootstrap.ps1"
+        & "$PSScriptRoot\..\PSSwagger\tools\bootstrap.ps1"
     }
 
     Push-Location "PSSwagger.TestUtilities"

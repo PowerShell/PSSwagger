@@ -6,10 +6,15 @@ function Get-AzServiceCredential
 {
     [CmdletBinding()]
     param()
-
-    $AzureContext = AzureRM.Profile\Get-AzureRmContext -ErrorAction Stop
+    $AzureContext = Get-AzRmContext
     $authenticationFactory = [Microsoft.Azure.Commands.Common.Authentication.Factories.AuthenticationFactory]::new() 
-    $serviceCredentials = $authenticationFactory.GetServiceClientCredentials($AzureContext)
+    if ('Desktop' -eq $PSEdition) {
+        $serviceCredentials = $authenticationFactory.GetServiceClientCredentials($AzureContext)
+    } else {
+        [Action[string]]$stringAction = {param($s) Write-Host "Prompt Message: $stringAction"}
+        $serviceCredentials = $authenticationFactory.GetServiceClientCredentials($AzureContext, $stringAction)
+    }
+
     $serviceCredentials
 }
 
@@ -25,8 +30,7 @@ function Get-AzSubscriptionId
 {
     [CmdletBinding()]
     param()
-
-    $AzureContext = AzureRM.Profile\Get-AzureRmContext -ErrorAction Stop    
+    $AzureContext = Get-AzRmContext
     $AzureContext.Subscription.SubscriptionId
 }
 
@@ -101,6 +105,45 @@ function Get-AzSServiceCredential
     # Create Service Credentials
     $AzureProfile = Login-AzureRmAccount -EnvironmentName $script:AzSEnvironmentName -Credential $Credential
     $authenticationFactory = [Microsoft.Azure.Commands.Common.Authentication.Factories.AuthenticationFactory]::new() 
-    $serviceCredentials = $authenticationFactory.GetServiceClientCredentials($AzureProfile.Context)
+    if ('Desktop' -eq $PSEdition) {
+        $serviceCredentials = $authenticationFactory.GetServiceClientCredentials($AzureContext)
+    } else {
+        [Action[string]]$stringAction = {param($s) Write-Host "Prompt Message: $stringAction"}
+        $serviceCredentials = $authenticationFactory.GetServiceClientCredentials($AzureContext, $stringAction)
+    }
+
     $serviceCredentials
+}
+
+function Get-AzRmContext {
+    if ('Desktop' -eq $PSEdition) {
+        AzureRM.Profile\Get-AzureRmContext -ErrorAction Stop
+    } else {
+        AzureRM.Profile.NetCore.Preview\Get-AzureRmContext -ErrorAction Stop
+    }
+}
+
+$asm = @()
+if ($PSEdition -eq 'Desktop') {
+    $asm += Join-Path "$PSScriptRoot" ".." | Join-Path -ChildPath "ref" | Join-Path -ChildPath "net45" | Join-Path -ChildPath "Newtonsoft.Json.dll"
+    $asm += Join-Path "$PSScriptRoot" ".." | Join-Path -ChildPath "ref" | Join-Path -ChildPath "net45" | Join-Path -ChildPath "Microsoft.Rest.ClientRuntime.dll"
+    $asm += Join-Path "$PSScriptRoot" ".." | Join-Path -ChildPath "ref" | Join-Path -ChildPath "net45" | Join-Path -ChildPath "Microsoft.IdentityModel.Clients.ActiveDirectory.dll"
+    $asm += Join-Path "$PSScriptRoot" ".." | Join-Path -ChildPath "ref" | Join-Path -ChildPath "net45" | Join-Path -ChildPath "Microsoft.Rest.ClientRuntime.Azure.dll"
+} else {
+    # TODO: Figure out the framework and runtime to load
+    $framework = "netstandard1.7"
+    $runtime = "win10-x64"
+    # NOTE: This import order is very specific
+    $asm += Join-Path "$PSScriptRoot" ".." | Join-Path -ChildPath "ref" | Join-Path -ChildPath "$framework" | Join-Path -ChildPath "$runtime" | Join-Path -ChildPath "Microsoft.IdentityModel.Clients.ActiveDirectory.dll"
+    $asm += Join-Path "$PSScriptRoot" ".." | Join-Path -ChildPath "ref" | Join-Path -ChildPath "$framework" | Join-Path -ChildPath "$runtime" | Join-Path -ChildPath "Microsoft.IdentityModel.Clients.ActiveDirectory.Platform.dll"
+    $asm += Join-Path "$PSScriptRoot" ".." | Join-Path -ChildPath "ref" | Join-Path -ChildPath "$framework" | Join-Path -ChildPath "$runtime" | Join-Path -ChildPath "Newtonsoft.Json.dll"
+    $asm += Join-Path "$PSScriptRoot" ".." | Join-Path -ChildPath "ref" | Join-Path -ChildPath "$framework" | Join-Path -ChildPath "$runtime" | Join-Path -ChildPath "Microsoft.Rest.ClientRuntime.dll"
+    $asm += Join-Path "$PSScriptRoot" ".." | Join-Path -ChildPath "ref" | Join-Path -ChildPath "$framework" | Join-Path -ChildPath "$runtime" | Join-Path -ChildPath "Microsoft.Rest.ClientRuntime.Azure.dll" 
+    $asm += Join-Path "$PSScriptRoot" ".." | Join-Path -ChildPath "ref" | Join-Path -ChildPath "$framework" | Join-Path -ChildPath "$runtime" | Join-Path -ChildPath "Microsoft.Azure.Management.ResourceManager.dll" 
+}
+
+$asm | %{
+    if (Test-Path $_) { 
+        Add-Type -Path $_ -PassThru
+    }
 }

@@ -45,9 +45,26 @@ function Export-CommandFromSwagger
         [String]
         $Authentication = 'Azure',
 
+        [ValidateSet('net45', 'netstandard1.7')]
+        [String[]]
+        $Frameworks,
+
+        [ValidateSet('win10-x64')]
+        [String[]]
+        $Runtimes,
+        
+        [String]
+        $BuildProject = "$PSScriptRoot\tools\project.json",
+
+        [String]
+        $BuildConfig = "$PSScriptRoot\tools\nuget.config",
+
         [Parameter()]
         [switch]
-        $UseAzureCsharpGenerator
+        $UseAzureCsharpGenerator,
+
+        [switch]
+        $AutomaticBootstrap
     )
 
     if ($PSCmdlet.ParameterSetName -eq 'SwaggerURI')
@@ -73,6 +90,26 @@ function Export-CommandFromSwagger
     if (-not (Test-path $SwaggerSpecPath))
     {
         throw $LocalizedData.SwaggerSpecPathNotExist
+    }
+
+    if ($null -eq $Frameworks) {
+        if ('Desktop' -eq $PSEdition) {
+            $Frameworks = @('net45')
+        } else {
+            $Frameworks = @('netstandard1.7')
+        }
+
+        Write-Verbose "Automatically set Frameworks to: $Frameworks"
+    }
+
+    if ($null -eq $Runtimes) {
+        # If Get-WmiObject works, we know we're on Windows at least
+        # But for now, since Ubuntu 16.04 seems fine with win10 runtime, let's keep using that
+        # Also need a way to support x86 on Linux
+        # But again, for now, only support x64
+        $Runtimes = @('win10-x64')
+
+        Write-Verbose "Automatically set Runtimes to: $Runtimes"
     }
 
     $jsonObject = ConvertFrom-Json ((Get-Content $SwaggerSpecPath) -join [Environment]::NewLine) -ErrorAction Stop
@@ -109,9 +146,10 @@ function Export-CommandFromSwagger
     $swaggerMetaDict.Add("SwaggerSpecPath", $SwaggerSpecPath);
 
     $Namespace = $SwaggerSpecDefinitionsAndParameters['Namespace']
-    $null = ConvertTo-CsharpCode -SwaggerDict $swaggerDict `
+    $generatedCSharpPath = ConvertTo-CsharpCode -SwaggerDict $swaggerDict `
                                     -SwaggerMetaDict $swaggerMetaDict
-
+    
+    Compile-Type -GeneratedCSharpPath $generatedCSharpPath -Frameworks $Frameworks -Runtimes $Runtimes -BuildProject $BuildProject -BuildConfig $BuildConfig -AutomaticBootstrap $AutomaticBootstrap -SwaggerMetaDict $SwaggerMetaDict -SwaggerDict $swaggerDict
     $FunctionsToExport = @()    
     $FunctionsToExport+= New-SwaggerPathCommands -CommandsObject $swaggerDict['paths'] `
                                                     -SwaggerMetaDict $swaggerMetaDict `
@@ -232,6 +270,8 @@ function Export-CommandFromSwagger
     New-ModuleManifestUtility -Path $outputDirectory `
                               -FunctionsToExport $FunctionsToExport `
                               -SwaggerSpecDefinitionsAndParameters $SwaggerSpecDefinitionsAndParameters
+
+    Copy-HelperModuleToGeneratedModule -ModuleDirectory $outputDirectory -HelperDirectory "$PSScriptRoot\Generated.Azure.Common.Helpers" -HelperModuleName "Generated.Azure.Common.Helpers"
 }
 
 #region Cmdlet Generation Helpers
@@ -1409,21 +1449,223 @@ function ConvertTo-CsharpCode
         throw $LocalizedData.AutoRestError
     }
 
+    return $generatedCSharpPath
+}
+
+function Compile-Type {
+    param(
+        [string]$GeneratedCSharpPath,
+        [string[]]$Frameworks,
+        [string[]]$Runtimes,
+        [string]$BuildProject,
+        [string]$BuildConfig,
+        [bool]$AutomaticBootstrap,
+        [hashtable]$SwaggerMetaDict,
+        [hashtable]$SwaggerDict
+    )
+
+    $outputDirectory = $SwaggerMetaDict['outputDirectory']
+    $nameSpace = $SwaggerDict['info'].NameSpace
+
     $message = $LocalizedData.GenerateAssemblyFromCode
     Write-Verbose -Message $message
 
-    $srcContent = Get-ChildItem -Path $generatedCSharpPath -Filter *.cs -Recurse -Exclude Program.cs,TemporaryGeneratedFile* | Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*' | ForEach-Object { "// File $($_.FullName)"; get-content $_.FullName }
+    $allCompileSuccess = $true
+    $fullClrCompiled = $false
+    $Frameworks | %{
+        $framework = $_
+        $Runtimes | %{
+            $compileSuccess = $false
+            Write-Verbose "Compiling for framework $framework and runtime $_"
+            $outAssembly = $null
+            if ($framework -eq 'net45' -and (-not $fullClrCompiled)) {
+                $outAssembly = Join-Path $outputDirectory "ref\net45\$nameSpace.dll"
+                Write-Verbose "Output assembly: $outAssembly"
+                $compileSuccess = Compile-FullClr -GeneratedCSharpPath $GeneratedCSharpPath -OutputAssembly $outAssembly -SwaggerMetaDict $SwaggerMetaDict -Namespace $nameSpace
+                # Even if this fails, don't try full CLR again!
+                $fullClrCompiled = $true
+            } else {
+                $outAssembly = Join-Path $outputDirectory "ref\$framework\$_\$nameSpace.dll"
+                $outDir = Join-Path $outputDirectory "ref\$framework\$_"
+                Write-Verbose "Output assembly: $outAssembly"
+                $compileSuccess = Compile-CoreClr -GeneratedCSharpPath $GeneratedCSharpPath -Framework $framework -Runtime $_ -BuildProject $BuildProject -BuildConfig $BuildConfig -AutomaticBootstrap $AutomaticBootstrap -OutputDirectory $outDir -AssemblyName "$nameSpace.dll"
+            }
+
+            if ($compileSuccess) {
+                $message = $LocalizedData.GeneratedAssembly -f ($outAssembly)
+                Write-Verbose -Message $message
+            } else {
+                $message = $LocalizedData.UnableToGenerateAssembly -f ($outAssembly)
+                Write-Error -Message $message
+            }
+
+            $allCompileSuccess = $allCompileSuccess -and $compileSuccess
+        }
+    }
+
+    if (-not $allCompileSuccess) {
+        throw 'One or more assemblies failed to compile. See preceding error messages for specific errors.'
+    }
+}
+
+function Compile-FullClr {
+    param(
+        [string]$GeneratedCSharpPath,
+        [string]$OutputAssembly,
+        [hashtable]$SwaggerMetaDict,
+        [string]$Namespace
+    )
+
+    if (-not (Test-Path (Split-Path $OutputAssembly -Parent))) {
+        New-Item (Split-Path $OutputAssembly -Parent) -ItemType Directory
+    }
+
+    $refassemblies = @("System.dll",
+                        "System.Core.dll",
+                        "System.Net.Http.dll",
+                        "System.Net.Http.WebRequest",
+                        "System.Runtime.Serialization.dll",
+                        "System.Xml.dll",
+                        "$PSScriptRoot\ref\Net45\Microsoft.Rest.ClientRuntime.dll",
+                        "$PSScriptRoot\ref\Net45\Newtonsoft.Json.dll")
+
+    if ($SwaggerMetaDict['UseAzureCsharpGenerator'])
+    { 
+        $refassemblies += "$PSScriptRoot\ref\Net45\Microsoft.Rest.ClientRuntime.Azure.dll"
+    }
+
+    $srcContent = Get-ChildItem -Path $GeneratedCSharpPath -Filter *.cs -Recurse -Exclude Program.cs,TemporaryGeneratedFile* | Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*' | ForEach-Object { "// File $($_.FullName)"; get-content $_.FullName }
     $oneSrc = $srcContent -join "`n"
 
-    Add-Type -TypeDefinition $oneSrc -ReferencedAssemblies $refassemlbiles -OutputAssembly $outAssembly
+    Add-Type -TypeDefinition $oneSrc -ReferencedAssemblies $refassemblies -OutputAssembly $OutputAssembly
 
-    if(Test-Path -Path $outAssembly -PathType Leaf){
-        $message = $LocalizedData.GeneratedAssembly -f ($outAssembly)
-        Write-Verbose -Message $message
-    } else {
-        $message = $LocalizedData.UnableToGenerateAssembly -f ($outAssembly)
-        Throw $message
+    # Copy net45 ref assemblies to common ref folder
+    $commonRefFolder = Split-Path $OutputAssembly -Parent
+    Copy-Item "$PSScriptRoot\ref\net45\*" "$commonRefFolder"
+
+    return Test-Path -Path $OutputAssembly -PathType Leaf
+}
+
+function Compile-CoreClr {
+    param(
+        [string]$GeneratedCSharpPath,
+        [string]$Framework,
+        [string]$Runtime,
+        [string]$BuildProject,
+        [string]$BuildConfig,
+        [bool]$AutomaticBootstrap,
+        [string]$OutputDirectory,
+        [string]$AssemblyName
+    )
+
+    # Setup dotnet CLI
+    $ext = Setup-DotNetCli -AutomaticBootstrap $AutomaticBootstrap
+    if ('' -eq $ext) {
+        # dotnet CLI failed setup, which means we can't compile!
+        return $false
     }
+
+    # Validate build project type
+    if (-not $BuildProject.EndsWith($ext)) {
+        Write-Error "dotnet CLI version found in path does not support build project $BuildProject. Supported project type: $ext"
+        return $false
+    }
+
+    # TODO: Remove when we support dotnet preview4+
+    if (-not ($ext -eq 'json')) {
+        Write-Error "PSSwagger currently only supports building with dotnet CLI preview3 or earlier."
+        return $false
+    }
+
+    # Copy specified BuildProject and BuildConfig to C# path
+    if ($null -ne $BuildConfig) {
+        $buildConfigFileName = Split-Path $BuildConfig -Leaf
+        Copy-Item $BuildConfig "$GeneratedCSharpPath\$buildConfigFileName" -Force
+    }
+
+    $buildProjectFileName = Split-Path $BuildProject -Leaf
+    Copy-Item $BuildProject "$GeneratedCSharpPath\$buildProjectFileName" -Force
+
+    # Compile with dotnet
+    Push-Location $GeneratedCSharpPath
+    & dotnet restore
+    if (-not $?) {
+        Write-Error 'Failed to restore packages.'
+        return $false
+    }
+
+    & dotnet publish --framework $Framework --runtime $Runtime
+    if (-not $?) {
+        Write-Error 'Failed to build and publish.'
+        return $false
+    }
+
+    Pop-Location
+
+    # Copy everything in publish directory as-is to ref folder
+    if (-not (Test-Path $OutputDirectory)) {
+        New-Item $OutputDirectory -ItemType Directory
+    }
+
+    Copy-Item "$GeneratedCSharpPath\bin\Debug\$Framework\$Runtime\publish\*" $OutputDirectory
+
+    # Rename the generated dll to the expected dll
+    # TODO: This only works for the default project.json
+    Rename-Item -Path "$OutputDirectory\PSSwagger.Generated.Module.dll" -NewName "$AssemblyName"
+    if (-not $?) {
+        return $false
+    }
+
+    return $true
+}
+
+function Setup-DotNetCli {
+    param(
+        [bool]$AutomaticBootstrap
+    )
+
+    $extension = ''
+    if ($null -eq (Get-Command dotnet -ErrorAction SilentlyContinue)) {
+        if (-not $AutomaticBootstrap) {
+            Write-Error 'dotnet.exe not found in Path and -AutomaticBootstrap not specified. Please download your preferred version of dotnet CLI and add dotnet.exe to your Path variable.'
+            # Returns empty string indicating issue
+            return $extension
+        }
+
+        # Run bootstrap.ps1 from tooling directory to download dotnet to tooling directory
+        & "$PSScriptRoot\bootstrap.ps1"
+
+        # bootstrap.ps1 is currently hardcoded to the json version of dotnet
+        $extension = 'json'
+    } else {
+        # Run dotnet --version, assume preview versioning format
+        $dotnetVersionOutput = & "dotnet" "--version"
+        Write-Verbose "Output of dotnet --version: $dotnetVersionOutput"
+        $regex = [regex]::Match($dotnetVersionOutput, '(.*?)preview([0-9]+)(.*)')
+        $previewVersion = [int]$regex.captures.groups[2].value
+        if ($previewVersion -ge 4) {
+            $extension = 'csproj'
+        } else {
+            $extension = 'json'
+        }
+    }
+
+    return $extension
+}
+
+function Copy-HelperModuleToGeneratedModule {
+    param(
+        [string]$ModuleDirectory,
+        [string]$HelperDirectory,
+        [string]$HelperModuleName
+    )
+
+    Write-Verbose "Copying $HelperDirectory to $ModuleDirectory"
+    if (-not (Test-Path "$ModuleDirectory\$HelperModuleName")) {
+        New-Item "$ModuleDirectory\$HelperModuleName" -ItemType Directory
+    }
+
+    Copy-Item "$HelperDirectory\*" "$ModuleDirectory\$HelperModuleName" -Recurse -Force
 }
 
 function New-ModuleManifestUtility
@@ -1444,10 +1686,11 @@ function New-ModuleManifestUtility
 
     New-ModuleManifest -Path "$(Join-Path -Path $Path -ChildPath $SwaggerSpecDefinitionsAndParameters['ModuleName']).psd1" `
                        -ModuleVersion $SwaggerSpecDefinitionsAndParameters['Version'] `
-                       -RequiredModules @('Generated.Azure.Common.Helpers') `
-                       -RequiredAssemblies @("$($SwaggerSpecDefinitionsAndParameters['Namespace']).dll") `
                        -RootModule "$($SwaggerSpecDefinitionsAndParameters['ModuleName']).psm1" `
                        -FunctionsToExport $FunctionsToExport
+
+                       #-RequiredModules @('Generated.Azure.Common.Helpers') `
+                       #-RequiredAssemblies @("$($SwaggerSpecDefinitionsAndParameters['Namespace']).dll") `
 }
 
 # Utility to throw an errorrecord
