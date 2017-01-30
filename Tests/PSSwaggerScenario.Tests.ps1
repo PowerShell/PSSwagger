@@ -10,6 +10,9 @@ Describe "Basic API" -Tag ScenarioTest {
         $generatedModulesPath = Join-Path -Path "$PSScriptRoot" -ChildPath "Generated"
         $testCaseDataLocation = "$PSScriptRoot\Data\PsSwaggerTestBasic"
 
+        # Note: This only works if these tests are never run in parallel, but our current usage of json-server is the same way, so...
+        $global:testDataSpec = ConvertFrom-Json ((Get-Content (Join-Path $testCaseDataLocation "PsSwaggerTestBasicSpec.json")) -join [Environment]::NewLine) -ErrorAction Stop
+        
         # Generate module
         Write-Host "Generating module"
         Export-CommandFromSwagger -SwaggerSpecPath "$testCaseDataLocation\PsSwaggerTestBasicSpec.json" -Path "$generatedModulesPath" -ModuleName "Generated.Basic.Module" -Verbose
@@ -47,6 +50,10 @@ Describe "Basic API" -Tag ScenarioTest {
 
         Mock Get-AzSubscriptionId -ModuleName Generated.Basic.Module {
             return "Test"
+        }
+
+        Mock Get-AzResourceManagerUrl -ModuleName Generated.Basic.Module {
+            return "$($global:testDataSpec.schemes[0])://$($global:testDataSpec.host)"
         }
 
         It "Basic test" {
