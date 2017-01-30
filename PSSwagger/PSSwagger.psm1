@@ -1497,9 +1497,9 @@ function Compile-FullClr {
         $refassemblies += "$PSScriptRoot\ref\Net45\Microsoft.Rest.ClientRuntime.Azure.dll"
     }
 
-    $srcContent = Get-ChildItem -Path $GeneratedCSharpPath -Filter *.cs -Recurse -Exclude Program.cs,TemporaryGeneratedFile* | Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*' | ForEach-Object { "// File $($_.FullName)"; get-content $_.FullName }
+    $srcContent = Get-ChildItem -Path $GeneratedCSharpPath -Filter *.cs -Recurse -Exclude Program.cs,TemporaryGeneratedFile*,dotnet-compile* | Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*' | ForEach-Object { "// File $($_.FullName)"; get-content $_.FullName }
     $oneSrc = $srcContent -join "`n"
-
+    $oneSrc | Out-File "debug.cs"
     Add-Type -TypeDefinition $oneSrc -ReferencedAssemblies $refassemblies -OutputAssembly $OutputAssembly
 
     # Copy net45 ref assemblies to common ref folder
@@ -1580,6 +1580,10 @@ function Compile-CoreClr {
     # TODO: This only works for project.json based building
     $projectJsonObject = ConvertFrom-Json ((Get-Content (Join-Path $GeneratedCSharpPath "project.json")) -join [Environment]::NewLine) -ErrorAction Stop
     $dllName = $projectJsonObject.name
+    if (Test-Path "$OutputDirectory\$AssemblyName" ) {
+        Remove-Item "$OutputDirectory\$AssemblyName" -Force
+    }
+
     Rename-Item -Path "$OutputDirectory\$dllName.dll" -NewName "$AssemblyName"
     if (-not $?) {
         return $false
