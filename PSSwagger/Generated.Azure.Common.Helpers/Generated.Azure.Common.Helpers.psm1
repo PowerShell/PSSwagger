@@ -36,7 +36,12 @@ function Get-AzResourceManagerUrl
     [CmdletBinding()]
     param()
 
-    $AzureContext = AzureRM.Profile\Get-AzureRmContext -ErrorAction Stop    
+    if ('Desktop' -eq $PSEdition) {
+        $AzureContext = AzureRM.Profile\Get-AzureRmContext -ErrorAction Stop
+    } else {
+        $AzureContext = AzureRM.Profile.NetCore.Preview\Get-AzureRmContext -ErrorAction Stop
+    }
+
     $AzureContext.Environment.ResourceManagerUrl
 }
 
@@ -68,12 +73,21 @@ function Add-AzSRmEnvironment
     $ActiveDirectoryServiceEndpointResourceId = $Endpoints.authentication.audiences[0]
 
     # Add the Microsoft Azure Stack environment
-    AzureRM.Profile\Add-AzureRmEnvironment -Name $Name `
+    if ('Desktop' -eq $PSEdition) {
+        AzureRM.Profile\Add-AzureRmEnvironment -Name $Name `
+                                            -ActiveDirectoryEndpoint "https://login.windows.net/$AadTenantId/" `
+                                            -ActiveDirectoryServiceEndpointResourceId $ActiveDirectoryServiceEndpointResourceId `
+                                            -ResourceManagerEndpoint "https://api.$azureStackDomain/" `
+                                            -GalleryEndpoint "https://gallery.$azureStackDomain/" `
+                                            -GraphEndpoint $Graphendpoint
+    } else {
+        AzureRM.Profile.NetCore.Preview\Add-AzureRmEnvironment -Name $Name `
                                            -ActiveDirectoryEndpoint "https://login.windows.net/$AadTenantId/" `
                                            -ActiveDirectoryServiceEndpointResourceId $ActiveDirectoryServiceEndpointResourceId `
                                            -ResourceManagerEndpoint "https://api.$azureStackDomain/" `
                                            -GalleryEndpoint "https://gallery.$azureStackDomain/" `
                                            -GraphEndpoint $Graphendpoint
+    }
 }
 
 function Remove-AzSRmEnvironment
