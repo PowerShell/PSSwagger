@@ -204,6 +204,7 @@ function Export-CommandFromSwagger
         } # Foeach-Object
     } # while()
 
+    $FormatFilesPath = Join-Path -Path (Join-Path -Path $outputDirectory -ChildPath $GeneratedCommandsName) -ChildPath 'FormatFiles'
     $DefinitionFunctionsDetails.Keys | ForEach-Object {
         
         $FunctionDetails = $DefinitionFunctionsDetails[$_]
@@ -214,6 +215,10 @@ function Export-CommandFromSwagger
             $FunctionsToExport += New-SwaggerSpecDefinitionCommand -FunctionDetails $FunctionDetails `
                                                                    -GeneratedCommandsPath $SwaggerDefinitionCommandsPath `
                                                                    -Namespace $Namespace
+
+            New-SwaggerDefinitionFormatFile -FunctionDetails $FunctionDetails `
+                                            -FormatFilesPath $FormatFilesPath `
+                                            -Namespace $NameSpace
         }
     }
 
@@ -783,6 +788,62 @@ function $commandName
     Out-File -InputObject $CommandString -FilePath $CommandFilePath -Encoding ascii -Force -Confirm:$false -WhatIf:$false
 
     return $CommandName
+}
+
+<#
+.DESCRIPTION
+  Creates a format file for the given definition details
+#>
+function New-SwaggerDefinitionFormatFile
+{
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true)]
+        [PSCustomObject]
+        $FunctionDetails,
+
+        [Parameter(Mandatory=$true)]
+        [string] 
+        $FormatFilesPath,
+
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Namespace
+    )
+    
+    $ViewName = "$Namespace.Models.$($FunctionDetails.Name)"
+    $ViewTypeName = $ViewName
+    $TableColumnItemsList = @()
+    $TableColumnItemCount = 0
+    $ParametersCount = $FunctionDetails.ParametersTable.Keys.Count
+    $SkipParameterList = @('id', 'tags')
+
+    $FunctionDetails.ParametersTable.Keys | ForEach-Object {
+        $ParameterDetails = $FunctionDetails.ParametersTable[$_]
+
+        # Add all properties when definition has 4 or less properties.
+        # Otherwise add the first 4 properties with basic types by skipping the complex types, id and tags.
+        if(($ParametersCount -le 4) -or
+           (($TableColumnItemCount -le 4) -and
+            ($SkipParameterList -notcontains $ParameterDetails.Name) -and
+            (-not $ParameterDetails.Type.StartsWith($Namespace, [System.StringComparison]::OrdinalIgnoreCase))))
+        {
+            $TableColumnItemsList += $TableColumnItemStr -f ($ParameterDetails.Name)
+            $TableColumnItemCount += 1
+        }
+    }
+
+    $TableColumnHeaders = $null
+    $TableColumnItems = $TableColumnItemsList -join "`r`n"
+    $FormatViewDefinition = $FormatViewDefinitionStr -f ($ViewName, $ViewTypeName, $TableColumnHeaders, $TableColumnItems)
+    Write-Verbose -Message $FormatViewDefinition
+
+    if(-not (Test-Path -Path $FormatFilesPath -PathType Container))
+    {
+        $null = New-Item -Path $FormatFilesPath -ItemType Directory
+    }
+    $FormatFilePath = Join-Path -Path $FormatFilesPath -ChildPath "$($FunctionDetails.Name).ps1xml"
+    Out-File -InputObject $FormatViewDefinition -FilePath $FormatFilePath -Encoding ascii -Force -Confirm:$false -WhatIf:$false
 }
 
 <#
@@ -1397,11 +1458,14 @@ function New-ModuleManifestUtility
         $SwaggerSpecDefinitionsAndParameters
     )
 
+    $FormatsToProcess = Get-ChildItem -Path "$Path\$GeneratedCommandsName\FormatFiles\*.ps1xml" -File | Foreach-Object { $_.FullName.Replace($Path, '.') }
+
     New-ModuleManifest -Path "$(Join-Path -Path $Path -ChildPath $SwaggerSpecDefinitionsAndParameters['ModuleName']).psd1" `
                        -ModuleVersion $SwaggerSpecDefinitionsAndParameters['Version'] `
                        -RequiredModules @('Generated.Azure.Common.Helpers') `
                        -RequiredAssemblies @("$($SwaggerSpecDefinitionsAndParameters['Namespace']).dll") `
                        -RootModule "$($SwaggerSpecDefinitionsAndParameters['ModuleName']).psm1" `
+                       -FormatsToProcess $FormatsToProcess `
                        -FunctionsToExport $FunctionsToExport
 }
 

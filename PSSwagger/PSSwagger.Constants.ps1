@@ -22,7 +22,7 @@
     $RootModuleContents = @'
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 
-Get-ChildItem -Path "`$PSScriptRoot\$GeneratedCommandsName" -Recurse -Filter *.ps1 -File | ForEach-Object { . `$_.FullName}
+Get-ChildItem -Path "`$PSScriptRoot\$GeneratedCommandsName\*.ps1" -Recurse -File | ForEach-Object { . `$_.FullName}
 '@
 
     $advFnSignature = @'
@@ -162,3 +162,40 @@ $ApiVersionStr = @'
 '@
 
 $GeneratedCommandsName = 'Generated.PowerShell.Commands'
+
+$FormatViewDefinitionStr = @'
+<?xml version="1.0" encoding="utf-8" ?>
+<Configuration>
+    <ViewDefinitions>
+        <View>
+            <Name>{0}</Name>
+            <ViewSelectedBy>
+                <TypeName>{1}</TypeName>
+            </ViewSelectedBy>
+            <TableControl>
+                <TableHeaders>{2}
+                </TableHeaders>
+                <TableRowEntries>
+                    <TableRowEntry>
+                        <TableColumnItems>
+{3}
+                        </TableColumnItems>
+                    </TableRowEntry>
+                </TableRowEntries>
+            </TableControl>
+        </View>
+    </ViewDefinitions>
+</Configuration>
+'@
+
+$TableColumnItemStr = @'
+                            <TableColumnItem>
+                                <PropertyName>{0}</PropertyName>
+                            </TableColumnItem>
+'@
+
+$TableColumnHeaderStr = @'
+                    <TableColumnHeader>
+                        <Width>{0}</Width>
+                    </TableColumnHeader>
+'@
