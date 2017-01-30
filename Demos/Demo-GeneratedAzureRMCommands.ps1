@@ -30,41 +30,32 @@ if(-not (Test-Path -Path $PSSwaggerClonePath -PathType Container))
 Set-Location -Path $PSSwaggerClonePath
 Import-Module .\PSSwagger\PSSwagger.psd1 -Force
 
-# AzureRM.Resources
+Get-Command -Module PSSwagger
+Get-Command Export-CommandFromSwagger -Syntax
+
 $param = @{
-    SwaggerSpecUri  = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-resources/resources/2015-11-01/swagger/resources.json'
-    Path            = $TargetPath
-    ModuleName      = 'Generated.AzureRM.Resources'
+    Path = $TargetPath
     UseAzureCsharpGenerator = $true
 }
+
+# AzureRM.Resources
+$param['SwaggerSpecUri'] = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-resources/resources/2015-11-01/swagger/resources.json'
+$param['ModuleName']     = 'Generated.AzureRM.Resources'
 Export-CommandFromSwagger @param
 
 # AzureRM.Storage
-$param = @{
-    SwaggerSpecUri  = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-storage/2015-06-15/swagger/storage.json'
-    Path            = $TargetPath
-    ModuleName      = 'Generated.AzureRM.Storage'
-    UseAzureCsharpGenerator = $true
-}
-
+$param['SwaggerSpecUri'] = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-storage/2015-06-15/swagger/storage.json'
+$param['ModuleName']     = 'Generated.AzureRM.Storage'
 Export-CommandFromSwagger @param
 
 # AzureRM.Network
-$param = @{
-    SwaggerSpecUri  = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-network/2015-06-15/swagger/network.json'
-    Path            = $TargetPath
-    ModuleName      = 'Generated.AzureRM.Network'
-    UseAzureCsharpGenerator = $true
-}
+$param['SwaggerSpecUri'] = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-network/2015-06-15/swagger/network.json'
+$param['ModuleName']     = 'Generated.AzureRM.Network'
 Export-CommandFromSwagger @param
 
 # AzureRM.Compute
-$param = @{
-    SwaggerSpecUri  = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-compute/2015-06-15/swagger/compute.json'
-    Path            = $TargetPath
-    ModuleName      = 'Generated.AzureRM.Compute'
-    UseAzureCsharpGenerator = $true
-}
+$param['SwaggerSpecUri'] = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-compute/2015-06-15/swagger/compute.json'
+$param['ModuleName']     = 'Generated.AzureRM.Compute'
 Export-CommandFromSwagger @param
 
 #endregion Generate AzureRM commands

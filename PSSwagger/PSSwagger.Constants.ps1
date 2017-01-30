@@ -66,15 +66,22 @@ function $commandName
     $functionBodyStr = @'
  `Begin
     {
-        `$serviceCredentials = $GetServiceCredentialStr
+        `$serviceCredentials = Get-AzServiceCredential
         `$subscriptionId = Get-AzSubscriptionId
+        `$ResourceManagerUrl = Get-AzResourceManagerUrl
     }
 
     Process
     {
         `$delegatingHandler = Get-AzDelegatingHandler
 
-        $clientName = New-Object -TypeName $fullModuleName -ArgumentList `$serviceCredentials,`$delegatingHandler$apiVersion$BaseUri$SubscriptionId
+        $clientName = New-Object -TypeName $fullModuleName -ArgumentList `$serviceCredentials,`$delegatingHandler$apiVersion
+
+        if(Get-Member -InputObject $clientName -Name 'SubscriptionId' -MemberType Property)
+        {
+            $clientName.SubscriptionId = `$SubscriptionId
+        }
+        $clientName.BaseUri = `$ResourceManagerUrl
 
         Write-Verbose 'Performing operation $methodName on $clientName.'
         `$taskResult = $clientName$operations.$methodName($requiredParamList)
@@ -108,7 +115,6 @@ function $commandName
 
     End
     {
-        $AdvancedFunctionEndCodeBlock
     }
 '@
 
@@ -163,23 +169,12 @@ $failCase = @'
    return `$Object
 '@
 
-$AzSAdvancedFunctionEndCodeBlockStr = @'
-$null = Remove-AzSEnvironment
-'@
-
 $ApiVersionStr = @'
 
-        {0}.ApiVersion = "{1}"
-'@
-
-$AzureStackBaseUriStr = @'
-
-        {0}.BaseUri = "https://api.$azureStackDomain"
-'@
-
-$SubscriptionIdStr = @'
-
-        {0}.SubscriptionId = $subscriptionId
+        if(Get-Member -InputObject $clientName -Name 'ApiVersion' -MemberType Property)
+        {
+            $clientName.ApiVersion = "$infoVersion"
+        }
 '@
 
 $GeneratedCommandsName = 'Generated.PowerShell.Commands'

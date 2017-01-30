@@ -144,7 +144,6 @@ function Export-CommandFromSwagger
 
     $swaggerMetaDict.Add("outputDirectory", $outputDirectory);
     $swaggerMetaDict.Add("UseAzureCsharpGenerator", $UseAzureCsharpGenerator)
-    $swaggerMetaDict.Add("Authentication", $Authentication);
     $swaggerMetaDict.Add("SwaggerSpecPath", $SwaggerSpecPath);
 
     $Namespace = $SwaggerSpecDefinitionsAndParameters['Namespace']
@@ -385,11 +384,6 @@ function New-SwaggerSpecPathCommand
         [string] 
         $GeneratedCommandsPath,
 
-        [Parameter(Mandatory = $false)]
-        [ValidateSet('Azure', 'AzureStack')]
-        [String]
-        $Authentication = 'Azure',
-
         [Parameter(Mandatory=$false)]
         [switch]
         $UseAzureCsharpGenerator,
@@ -489,17 +483,9 @@ function New-SwaggerSpecPathCommand
     $SubscriptionId = $null
     $BaseUri = $null
 
-    if($Authentication -eq 'AzureStack')
-    {
-        $BaseUri = $AzureStackBaseUriStr -f ($clientName)
-    }
-    else
-    {
-        $SubscriptionId = $SubscriptionIdStr -f ($clientName)
-        if (-not $UseAzureCsharpGenerator)
-        {
-            $apiVersion = $ApiVersionStr -f ($clientName, $infoVersion)
-        }
+    if (-not $UseAzureCsharpGenerator)
+    {        
+        $apiVersion = $executionContext.InvokeCommand.ExpandString($ApiVersionStr)
     }
 
     $operationId = $JsonPathItemObject.operationId
@@ -527,15 +513,6 @@ function New-SwaggerSpecPathCommand
     }
 
     $responseBody, $outputTypeBlock = Get-Response @responseBodyParams
-    if ($Authentication -eq 'AzureStack') {
-        $GetServiceCredentialStr = 'Get-AzSServiceCredential'
-        $AdvancedFunctionEndCodeBlock = $AzSAdvancedFunctionEndCodeBlockStr
-    }
-    else {
-        $GetServiceCredentialStr = 'Get-AzServiceCredential'
-        $AdvancedFunctionEndCodeBlock = ''
-    }    
-    
     $body = $executionContext.InvokeCommand.ExpandString($functionBodyStr)
 
     #endregion Function Body
@@ -1202,6 +1179,7 @@ function Get-CommandHelp
         $PathObject
     )
 
+    $description = $null
     if((Get-Member -InputObject $PathObject -Name 'Description') -and $PathObject.Description) {
         $description = $PathObject.Description
     }
@@ -1331,17 +1309,9 @@ function Get-FunctionBody
     $SubscriptionId = $null
     $BaseUri = $null
 
-    if($Authentication -eq 'AzureStack')
+    if (-not $UseAzureCsharpGenerator)
     {
-        $BaseUri = $AzureStackBaseUriStr -f ($clientName)
-    }
-    else
-    {
-        $SubscriptionId = $SubscriptionIdStr -f ($clientName)
-        if (-not $UseAzureCsharpGenerator)
-        {
-            $apiVersion = $ApiVersionStr -f ($clientName, $infoVersion)
-        }
+        $apiVersion = $executionContext.InvokeCommand.ExpandString($ApiVersionStr)
     }
 
     $operationId = $PathObject.operationId
@@ -1369,16 +1339,6 @@ function Get-FunctionBody
                         }
 
     $responseBody, $outputTypeBlock = Get-Response @responseBodyParams
-    
-    if ($SwaggerMetaDict['Authentication'] -eq 'AzureStack') {
-        $GetServiceCredentialStr = 'Get-AzSServiceCredential'
-        $AdvancedFunctionEndCodeBlock = $AzSAdvancedFunctionEndCodeBlockStr
-    }
-    else {
-        $GetServiceCredentialStr = 'Get-AzServiceCredential'
-        $AdvancedFunctionEndCodeBlock = ''
-    }
-
     $body = $executionContext.InvokeCommand.ExpandString($functionBodyStr)
 
     $bodyObject = @{ OutputTypeBlock = $outputTypeBlock;
@@ -1784,20 +1744,16 @@ function ConvertTo-SwaggerDictionary
     $swaggerInfo = Get-SwaggerInfo -Info $swaggerObject.info
     $swaggerDict.Add("info", $swaggerInfo)
 
-    if(-not (Get-Member -InputObject $swaggerObject -Name 'parameters')) {
-        $message = $LocalizedData.SwaggerParamsMissing
-        Throw $message
+    $swaggerParameters = $null
+    if(Get-Member -InputObject $swaggerObject -Name 'parameters') {
+        $swaggerParameters = Get-SwaggerParameters -Parameters $swaggerObject.parameters
     }
-
-    $swaggerParameters = Get-SwaggerParameters -Parameters $swaggerObject.parameters
     $swaggerDict.Add("parameters", $swaggerParameters)
 
-    if(-not (Get-Member -InputObject $swaggerObject -Name 'definitions')) {
-        $message = $LocalizedData.SwaggerDefinitionsMissing
-        Throw  $message
+    $swaggerDefinitions = $null
+    if(Get-Member -InputObject $swaggerObject -Name 'definitions') {
+        $swaggerDefinitions = Get-SwaggerMultiItemObject -Object $swaggerObject.definitions
     }
-
-    $swaggerDefinitions = Get-SwaggerMultiItemObject -Object $swaggerObject.definitions
     $swaggerDict.Add("definitions", $swaggerDefinitions)
 
     if(-not (Get-Member -InputObject $swaggerObject -Name 'paths')) {
