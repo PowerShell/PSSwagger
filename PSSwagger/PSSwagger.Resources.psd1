@@ -29,5 +29,19 @@ ConvertFrom-StringData @'
     SwaggerParamsMissing=No parameters in the Swagger
     SwaggerDefinitionsMissing=No definitions in the Swagger
     SwaggerPathsMissing=No paths in the Swagger
+    DiscoveredFrameworks=Automatically set Frameworks to: '{0}'
+    DiscoveredRuntimes=Automatically set Runtimes to: '{0}'
+    CompileForFrameworkAndRuntime=Compiling for framework '{0}' and runtime '{1}'
+    CompileFailed=One or more assemblies failed to compile. See preceding error messages for specific errors.
+    CoreClrWrongBuildType=dotnet CLI version found in path does not support build project '{0}'. Supported project type: '{1}'
+    PsSwaggerSupportedDotNetCliVersion=PSSwagger currently only supports building with dotnet CLI preview3 or earlier.
+    DotNetFailedToRestorePackages=Failed to restore packages.
+    DotNetFailedToBuild=Failed to build and publish.
+    DotNetExeNotFound=dotnet.exe not found in Path and -AutomaticBootstrap not specified. Please download your preferred version of dotnet CLI and add dotnet.exe to your Path variable.
+    DotNetExeVersion=Output of dotnet --version: {0}
+    CopyDirectoryToDestination=Copying directory '{0}' to '{1}'
+    SupportedFrameworks=Frameworks: {0}
+    SupportedRuntimes=Runtimes: {0}
+    SupportedFileGeneral=This module has been published for the following frameworks and runtimes:
 ###PSLOC
 '@
