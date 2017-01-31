@@ -2,7 +2,7 @@ param(
     [ValidateSet("All","UnitTest","ScenarioTest")]
     [string[]]$TestSuite = "All",
     [string[]]$TestName,
-    [ValidateSet("net452", "netstandard1.6")]
+    [ValidateSet("net452", "netstandard1.7")]
     [string]$TestFramework = "net452",
     [ValidateSet("win10-x64")]
     [string]$Runtime = "win10-x64",
@@ -17,7 +17,7 @@ $nugetPackageSource = Test-NugetPackageSource
 
 if ($BootstrapDotNet -eq $false) {
     if ((Get-Command "dotnet.exe" -ErrorAction SilentlyContinue) -eq $null) {
-        Write-Warning "WARNING: dotnet CLI was not found in your Path and -BootstrapDotNet not set. Setting -BootstrapDotNet automatically."
+        Write-Warning -Message "WARNING: dotnet CLI was not found in your Path and -BootstrapDotNet not set. Setting -BootstrapDotNet automatically."
         $BootstrapDotNet = $true
     }
 }
@@ -44,19 +44,19 @@ if ($TestSuite.Contains("All") -or $TestSuite.Contains("ScenarioTest")) {
     $nodeExePath = Join-Path -Path $nodeModulePath -ChildPath "node.exe"
     $jsonServerPath = Join-Path -Path $nodeModulePath -ChildPath "json-server.cmd"
     if (-not (Test-Path $nodeModulePath)) {
-        Write-Verbose "Creating local node modules directory $nodeModulePath"
+        Write-Verbose -Message "Creating local node modules directory $nodeModulePath"
         New-Item -Path $nodeModulePath -ItemType Directory -Force 
     }
 
     # Let's copy node.exe to the other directory so we can keep everything in one place
     if (-not (Test-Path $nodeExePath)) {
-        Write-Verbose "Copying node.exe from NuGet package to $nodeExePath"
+        Write-Verbose -Message "Copying node.exe from NuGet package to $nodeExePath"
         Copy-Item -Path (Join-Path -Path $nodejsInstallPath -ChildPath "node.exe") -Destination $nodeExePath
     }
 
     # Ensure we have json-server
     if (-not (Test-Path $jsonServerPath)) {
-        Write-Verbose "Couldn't find $jsonServerPath. Running npm install -g json-server."
+        Write-Verbose -Message "Couldn't find $jsonServerPath. Running npm install -g json-server."
         & $nodeExePath (Join-Path -Path $npmInstallPath -ChildPath "node_modules\npm\bin\npm-cli.js") "install" "-g" "json-server"
     }
 
@@ -81,9 +81,14 @@ if ($TestSuite.Contains("All") -or $TestSuite.Contains("ScenarioTest")) {
 $autoRestModule = Test-Package -packageName "AutoRest" -packageSourceName $nugetPackageSource.Name
 $autoRestInstallPath = Split-Path -Path $autoRestModule.Source
 $executeTestsCommand += ";`$env:Path+=`";$autoRestInstallPath\tools`""
+$powershellFolder = $null
+if ($TestFramework -eq "netstandard1.7") {
+    $powershellCore = Get-Package PowerShell
+    if ($null -eq $powershellCore) {
+        throw "PowerShellCore not found on this machine. Run: Install-Package PowerShell"
+    }
 
-if ($TestFramework -eq "netstandard1.6") {
-    # TODO: Find PowerShell Core folder and Pester folder, add to executeTestsCommand - See issues/15
+    $powershellFolder = "$Env:ProgramFiles\PowerShell\$($powershellCore.Version)"
 }
 
 $executeTestsCommand += ";Invoke-Pester -ExcludeTag KnownIssue -OutputFormat NUnitXml -OutputFile ScenarioTestResults.xml -Verbose"
@@ -95,24 +100,35 @@ if ($PSBoundParameters.ContainsKey('TestName')) {
 }
 
 if ($TestSuite.Contains("All")) {
-    Write-Verbose "Invoking all tests."
+    Write-Verbose -Message "Invoking all tests."
 } else {
-    Write-Verbose "Running only tests with tag: $TestSuite"
+    Write-Verbose -Message "Running only tests with tag: $TestSuite"
     $executeTestsCommand += " -Tag $TestSuite"
 }
 
 # Set up the common generated modules location
 $generatedModulesPath = Join-Path -Path "$PSScriptRoot" -ChildPath "Generated"
 if (-not (Test-Path $nodeExePath)) {
-        Write-Verbose "Copying node.exe from NuGet package to $nodeExePath"
-        Copy-Item -Path (Join-Path -Path $nodejsInstallPath -ChildPath "node.exe") -Destination $nodeExePath
-    }
+    Write-Verbose -Message "Copying node.exe from NuGet package to $nodeExePath"
+    Copy-Item -Path (Join-Path -Path $nodejsInstallPath -ChildPath "node.exe") -Destination $nodeExePath
+}
 
-Write-Verbose "Executing: $executeTestsCommand"
+Write-Verbose -Message "Executing: $executeTestsCommand"
 $executeTestsCommand | Out-File pesterCommand.ps1
 
 # TODO: Run PowerShell Core if testframework is core CLR - See issues/15
-powershell -command .\pesterCommand.ps1
+if ($TestFramework -eq "netstandard1.7") {
+    try {
+        $null = Get-WmiObject Win32_OperatingSystem
+        Write-Verbose -Message "Invoking PowerShell Core at: $powershellFolder"
+        & "$powershellFolder\powershell" -command .\pesterCommand.ps1
+    } catch {
+        # For non-Windows, keep using the basic command
+        powershell -command .\pesterCommand.ps1
+    }
+} else {
+    powershell -command .\pesterCommand.ps1
+}
 
 # Verify output
 $x = [xml](Get-Content -raw "ScenarioTestResults.xml")

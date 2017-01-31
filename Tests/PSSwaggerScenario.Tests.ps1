@@ -33,7 +33,11 @@ Describe "Basic API" -Tag ScenarioTest {
             $nodeProcesses = @()
         }
 
-        $jsonServerProcess = Start-Process -FilePath "$PSScriptRoot\NodeModules\json-server.cmd" -ArgumentList "--watch `"$PSScriptRoot\NodeModules\db.json`" --routes `"$testCaseDataLocation\PsSwaggerTestBasicRoutes.json`"" -PassThru -WindowStyle Hidden
+        if ('Desktop' -eq $PSEdition) {
+            $jsonServerProcess = Start-Process -FilePath "$PSScriptRoot\NodeModules\json-server.cmd" -ArgumentList "--watch `"$PSScriptRoot\NodeModules\db.json`" --routes `"$testCaseDataLocation\PsSwaggerTestBasicRoutes.json`"" -PassThru -WindowStyle Hidden
+        } else {
+            $jsonServerProcess = Start-Process -FilePath "$PSScriptRoot\NodeModules\json-server.cmd" -ArgumentList "--watch `"$PSScriptRoot\NodeModules\db.json`" --routes `"$testCaseDataLocation\PsSwaggerTestBasicRoutes.json`"" -PassThru
+        }
         $nodeProcessToStop = Get-Process -Name "node" -ErrorAction SilentlyContinue | Where-Object {-not $nodeProcesses.Contains($_)}
         while ($nodeProcessToStop -eq $null) {
             $nodeProcessToStop = Get-Process -Name "node" -ErrorAction SilentlyContinue | Where-Object {-not $nodeProcesses.Contains($_)}
