@@ -106,8 +106,8 @@ function Export-CommandFromSwagger
     $null = ConvertTo-CsharpCode -SwaggerDict $swaggerDict `
                                     -SwaggerMetaDict $swaggerMetaDict
 
-    $FunctionsToExport = @()    
-    
+    $FunctionsToExport = @()
+
     # Handle the Paths
     $PathFunctionDetails = @{}
     $jsonObject.Paths.PSObject.Properties | ForEach-Object {
@@ -140,6 +140,97 @@ function Export-CommandFromSwagger
     New-ModuleManifestUtility -Path $outputDirectory `
                               -FunctionsToExport $FunctionsToExport `
                               -SwaggerSpecDefinitionsAndParameters $SwaggerSpecDefinitionsAndParameters
+}
+
+#region Cmdlet Generation Helpers
+
+function New-SwaggerPathCommands
+{
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSObject]
+        $CommandsObject,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $SwaggerMetaDict,
+
+        [Parameter(Mandatory = $true)]
+        [hashTable]
+        $DefinitionList,
+
+        [Parameter(Mandatory = $true)]
+        [hashTable]
+        $Info
+    )
+
+    $functionsToExport = @()
+    $CommandsObject.Keys | ForEach-Object {
+        $CommandsObject[$_].value.PSObject.Properties | ForEach-Object {
+            $functionsToExport += New-SwaggerPathCommand -SwaggerMetaDict $SwaggerMetaDict `
+                                                            -PathObject $_.Value `
+                                                            -DefinitionList $DefinitionList `
+                                                            -Info $Info
+        }
+    }
+
+    return $functionsToExport
+}
+
+function New-SwaggerPathCommand
+{
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [hashtable]
+        $SwaggerMetaDict,
+
+        [Parameter(Mandatory = $true)]
+        [PSObject]
+        $PathObject,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]
+        $DefinitionList,
+
+        [Parameter(Mandatory = $true)]
+        [hashTable]
+        $Info
+    )
+
+    $commandHelp = Get-CommandHelp -PathObject $PathObject
+    
+    $commandName = Get-SwaggerPathCommandName -JsonPathItemObject $PathObject
+
+    $paramObject = Get-ParamInfo -PathObject $PathObject 
+
+    $paramHelp = $paramObject['ParamHelp']
+    $paramblock = $paramObject['ParamBlock']
+    $requiredParamList = $paramObject['RequiredParamList']
+    $optionalParamList = $paramObject['OptionalParamList']
+
+    $bodyObject = Get-FunctionBody -PathObject $PathObject `
+                                        -SwaggerMetaDict $SwaggerMetaDict `
+                                        -DefinitionList $DefinitionList `
+                                        -RequiredParamList $requiredParamList `
+                                        -OptionalParamList $optionalParamList `
+                                        -Info $Info
+
+    $outputTypeBlock = $bodyObject['outputTypeBlock']
+    $body = $bodyObject['body']
+
+    $CommandString = $executionContext.InvokeCommand.ExpandString($advFnSignature)
+
+    $GeneratedCommandsPath = Join-Path -Path (Join-Path -Path $SwaggerMetaDict['outputDirectory'] -ChildPath $GeneratedCommandsName) -ChildPath 'SwaggerPathCommands'
+
+    if(-not (Test-Path -Path $GeneratedCommandsPath -PathType Container)) {
+        $null = New-Item -Path $GeneratedCommandsPath -ItemType Directory
+    }
+
+    $CommandFilePath = Join-Path -Path $GeneratedCommandsPath -ChildPath "$CommandName.ps1"
+    Out-File -InputObject $CommandString -FilePath $CommandFilePath -Encoding ascii -Force -Confirm:$false -WhatIf:$false
+
+    return $CommandName
 }
 
 #region Cmdlet Generation Helpers
@@ -1665,6 +1756,7 @@ function Get-CommandHelp
         $PathObject
     )
 
+    $description = $null
     if((Get-Member -InputObject $PathObject -Name 'Description') -and $PathObject.Description) {
         $description = $PathObject.Description
     }
@@ -1796,7 +1888,7 @@ function Get-FunctionBody
 
     if (-not $UseAzureCsharpGenerator)
     {
-        $apiVersion = $executionContext.InvokeCommand.ExpandString($ApiVersionStr) 
+        $apiVersion = $executionContext.InvokeCommand.ExpandString($ApiVersionStr)
     }
 
     $operationId = $PathObject.operationId
@@ -1824,7 +1916,7 @@ function Get-FunctionBody
                         }
 
     $responseBody, $outputTypeBlock = Get-Response @responseBodyParams
-    
+
     $body = $executionContext.InvokeCommand.ExpandString($functionBodyStr)
 
     $bodyObject = @{ OutputTypeBlock = $outputTypeBlock;
@@ -2005,20 +2097,16 @@ function ConvertTo-SwaggerDictionary
     $swaggerInfo = Get-SwaggerInfo -Info $swaggerObject.info
     $swaggerDict.Add("info", $swaggerInfo)
 
-    <#if(-not (Get-Member -InputObject $swaggerObject -Name 'parameters')) {
-        $message = $LocalizedData.SwaggerParamsMissing
-        Throw $message
+    $swaggerParameters = $null
+    if(Get-Member -InputObject $swaggerObject -Name 'parameters') {
+        $swaggerParameters = Get-SwaggerParameters -Parameters $swaggerObject.parameters
     }
-
-    $swaggerParameters = Get-SwaggerParameters -Parameters $swaggerObject.parameters
     $swaggerDict.Add("parameters", $swaggerParameters)
-    #>
-    if(-not (Get-Member -InputObject $swaggerObject -Name 'definitions')) {
-        $message = $LocalizedData.SwaggerDefinitionsMissing
-        Throw  $message
-    }
 
-    $swaggerDefinitions = Get-SwaggerMultiItemObject -Object $swaggerObject.definitions
+    $swaggerDefinitions = $null
+    if(Get-Member -InputObject $swaggerObject -Name 'definitions') {
+        $swaggerDefinitions = Get-SwaggerMultiItemObject -Object $swaggerObject.definitions
+    }
     $swaggerDict.Add("definitions", $swaggerDefinitions)
 
     if(-not (Get-Member -InputObject $swaggerObject -Name 'paths')) {

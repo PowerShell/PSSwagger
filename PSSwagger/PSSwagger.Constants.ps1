@@ -59,7 +59,7 @@ function $commandName
     {
         `$delegatingHandler = Get-AzDelegatingHandler
 
-        $clientName = New-Object -TypeName $fullModuleName -ArgumentList `$serviceCredentials,`$delegatingHandler$apiVersion 
+        $clientName = New-Object -TypeName $fullModuleName -ArgumentList `$serviceCredentials,`$delegatingHandler$apiVersion
 
         if(Get-Member -InputObject $clientName -Name 'SubscriptionId' -MemberType Property)
         {
