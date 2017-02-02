@@ -233,97 +233,6 @@ function New-SwaggerPathCommand
     return $CommandName
 }
 
-#region Cmdlet Generation Helpers
-
-function New-SwaggerPathCommands
-{
-    param(
-        [Parameter(Mandatory = $true)]
-        [PSObject]
-        $CommandsObject,
-
-        [Parameter(Mandatory=$true)]
-        [hashtable]
-        $SwaggerMetaDict,
-
-        [Parameter(Mandatory = $true)]
-        [hashTable]
-        $DefinitionList,
-
-        [Parameter(Mandatory = $true)]
-        [hashTable]
-        $Info
-    )
-
-    $functionsToExport = @()
-    $CommandsObject.Keys | ForEach-Object {
-        $CommandsObject[$_].value.PSObject.Properties | ForEach-Object {
-            $functionsToExport += New-SwaggerPathCommand -SwaggerMetaDict $SwaggerMetaDict `
-                                                            -PathObject $_.Value `
-                                                            -DefinitionList $DefinitionList `
-                                                            -Info $Info
-        }
-    }
-
-    return $functionsToExport
-}
-
-function New-SwaggerPathCommand
-{
-    param
-    (
-        [Parameter(Mandatory = $true)]
-        [hashtable]
-        $SwaggerMetaDict,
-
-        [Parameter(Mandatory = $true)]
-        [PSObject]
-        $PathObject,
-
-        [Parameter(Mandatory = $true)]
-        [hashtable]
-        $DefinitionList,
-
-        [Parameter(Mandatory = $true)]
-        [hashTable]
-        $Info
-    )
-
-    $commandHelp = Get-CommandHelp -PathObject $PathObject
-    
-    $commandName = Get-SwaggerPathCommandName -JsonPathItemObject $PathObject
-
-    $paramObject = Get-ParamInfo -PathObject $PathObject 
-
-    $paramHelp = $paramObject['ParamHelp']
-    $paramblock = $paramObject['ParamBlock']
-    $requiredParamList = $paramObject['RequiredParamList']
-    $optionalParamList = $paramObject['OptionalParamList']
-
-    $bodyObject = Get-FunctionBody -PathObject $PathObject `
-                                        -SwaggerMetaDict $SwaggerMetaDict `
-                                        -DefinitionList $DefinitionList `
-                                        -RequiredParamList $requiredParamList `
-                                        -OptionalParamList $optionalParamList `
-                                        -Info $Info
-
-    $outputTypeBlock = $bodyObject['outputTypeBlock']
-    $body = $bodyObject['body']
-
-    $CommandString = $executionContext.InvokeCommand.ExpandString($advFnSignature)
-
-    $GeneratedCommandsPath = Join-Path -Path (Join-Path -Path $SwaggerMetaDict['outputDirectory'] -ChildPath $GeneratedCommandsName) -ChildPath 'SwaggerPathCommands'
-
-    if(-not (Test-Path -Path $GeneratedCommandsPath -PathType Container)) {
-        $null = New-Item -Path $GeneratedCommandsPath -ItemType Directory
-    }
-
-    $CommandFilePath = Join-Path -Path $GeneratedCommandsPath -ChildPath "$CommandName.ps1"
-    Out-File -InputObject $CommandString -FilePath $CommandFilePath -Encoding ascii -Force -Confirm:$false -WhatIf:$false
-
-    return $CommandName
-}
-
 <#
 .DESCRIPTION
   Generates a cmdlet given a JSON custom object (from paths)
@@ -1107,6 +1016,7 @@ function New-SwaggerPath
                             operationId = $FunctionDetails.operationId
                             RequiredParamList = $requiredParamList
                             OptionalParamList = $optionalParamList
+                            SwaggerMetaDict = $SwaggerMetaDict
                             }
 
     $bodyObject = Get-PathFunctionBody @functionBodyParams
@@ -1212,9 +1122,14 @@ function Get-PathFunctionBody
         [Parameter(Mandatory=$true)]
         [AllowEmptyString()]
         [String]
-        $OptionalParamList
+        $OptionalParamList,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $SwaggerMetaDict
     )
 
+    $UseAzureCsharpGenerator = $SwaggerMetaDict['UseAzureCsharpGenerator']
     $infoVersion = $Info['infoVersion']
     $modulePostfix = $Info['infoName']
     $methodName = ''
@@ -1243,6 +1158,11 @@ function Get-PathFunctionBody
     $GetServiceCredentialStr = ''
     $AdvancedFunctionEndCodeBlock = ''
     $GetServiceCredentialStr = 'Get-AzServiceCredential'
+
+    if (-not $UseAzureCsharpGenerator)
+    {
+        $apiVersion = $executionContext.InvokeCommand.ExpandString($ApiVersionStr)
+    }
 
     $responseBodyParams = @{
                             responses = $Responses.PSObject.Properties
@@ -1885,7 +1805,7 @@ function Get-FunctionBody
     $apiVersion = $null
     $SubscriptionId = $null
     $BaseUri = $null
-
+    
     if (-not $UseAzureCsharpGenerator)
     {
         $apiVersion = $executionContext.InvokeCommand.ExpandString($ApiVersionStr)
