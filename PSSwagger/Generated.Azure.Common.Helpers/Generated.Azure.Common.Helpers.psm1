@@ -1,8 +1,4 @@
-﻿
-$script:AzSCredential = $null
-$script:AzSEnvironmentName = 'Azure Stack PS'
-
-function Get-AzServiceCredential
+﻿function Get-AzServiceCredential
 {
     [CmdletBinding()]
     param()
@@ -30,77 +26,59 @@ function Get-AzSubscriptionId
     $AzureContext.Subscription.SubscriptionId
 }
 
-<#
-.DESCRIPTION
-    Gets the Azure Profile for the current process. 
-    This command uses Login-AzureRMAccount
-#>
-function Get-AzSCredential
+function Get-AzResourceManagerUrl
 {
-   [CmdletBinding()]
-   param()
+    [CmdletBinding()]
+    param()
 
-   if (-not $script:AzSCredential)
-   {
-       # Prompt for Azure Stack Credentials
-       $script:AzSCredential = Get-Credential
-   }
-   
-   if(-not $script:AzSCredential)
-   {
-       Throw "Invalid AzureStack Credential"
-   }
-
-   $script:AzSCredential
+    $AzureContext = AzureRM.Profile\Get-AzureRmContext -ErrorAction Stop    
+    $AzureContext.Environment.ResourceManagerUrl
 }
 
-function New-AzSEnvironment
+function Add-AzSRmEnvironment
 {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
         [string]
+        $Name,
+
+        [Parameter(Mandatory = $true)]
+        [string]
+        $UserName,
+
+        [Parameter(Mandatory = $true)]
+        [string]
         $AzureStackDomain
     )
     
-    $Credential = Get-AzSCredential
-    $AadTenantId = $Credential.UserName.split('@')[-1]
+    $AadTenantId = $UserName.split('@')[-1]
+    $Graphendpoint = "https://graph.$azureStackDomain"
+    if ($AadTenantId -like '*.onmicrosoft.com')
+    {
+        $Graphendpoint = "https://graph.windows.net/"
+    } 
+
+    $Endpoints = Microsoft.PowerShell.Utility\Invoke-RestMethod -Method Get -Uri "https://api.$azureStackDomain/metadata/endpoints?api-version=1.0"
+    $ActiveDirectoryServiceEndpointResourceId = $Endpoints.authentication.audiences[0]
 
     # Add the Microsoft Azure Stack environment
-    $null = Add-AzureRmEnvironment -Name $script:AzSEnvironmentName `
-                                   -ActiveDirectoryEndpoint "https://login.windows.net/$AadTenantId/" `
-                                   -ActiveDirectoryServiceEndpointResourceId "https://api.$azureStackDomain/3c76139d-1ec0-4ef2-a84d-1528675c6731"`
-                                   -ResourceManagerEndpoint "https://api.$azureStackDomain/" `
-                                   -GalleryEndpoint "https://gallery.$azureStackDomain/" `
-                                   -GraphEndpoint "https://graph.windows.net/"
+    AzureRM.Profile\Add-AzureRmEnvironment -Name $Name `
+                                           -ActiveDirectoryEndpoint "https://login.windows.net/$AadTenantId/" `
+                                           -ActiveDirectoryServiceEndpointResourceId $ActiveDirectoryServiceEndpointResourceId `
+                                           -ResourceManagerEndpoint "https://api.$azureStackDomain/" `
+                                           -GalleryEndpoint "https://gallery.$azureStackDomain/" `
+                                           -GraphEndpoint $Graphendpoint
 }
 
-function Remove-AzSEnvironment
-{
-    [CmdletBinding()]
-    param(
-    )
-
-    Remove-AzureRmEnvironment -Name $script:AzSEnvironmentName
-}
-
-function Get-AzSServiceCredential
+function Remove-AzSRmEnvironment
 {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
         [string]
-        $AzureStackDomain
+        $Name
     )
-    
-    $Credential = Get-AzSCredential
-    
-    # Create new AzureStack environment
-    New-AzSEnvironment -AzureStackDomain $AzureStackDomain
 
-    # Create Service Credentials
-    $AzureProfile = Login-AzureRmAccount -EnvironmentName $script:AzSEnvironmentName -Credential $Credential
-    $authenticationFactory = [Microsoft.Azure.Commands.Common.Authentication.Factories.AuthenticationFactory]::new() 
-    $serviceCredentials = $authenticationFactory.GetServiceClientCredentials($AzureProfile.Context)
-    $serviceCredentials
+    AzureRM.Profile\Remove-AzureRmEnvironment @PSBoundParameters
 }

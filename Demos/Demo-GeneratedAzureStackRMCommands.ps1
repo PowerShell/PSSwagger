@@ -36,7 +36,6 @@ $param = @{
     SwaggerSpecUri  = 'C:\code\swaggerrelated\JsonFiles\SwaggerTransformed.json'
     Path            = $TargetPath
     ModuleName      = $ModuleName
-    Authentication = 'AzureStack'
     UseAzureCsharpGenerator = $false
 }
 Export-CommandFromSwagger @param
@@ -46,16 +45,18 @@ Import-Module $TargetPath\$ModuleName -WarningAction SilentlyContinue
 Get-Command -Module $ModuleName
 Get-Command -Module $ModuleName -Syntax
 
+$EnvironmentName = "Azure Stack PS"
+$UserName = 'serviceadmin@thoroet.onmicrosoft.com'
+$AzureStackDomain = 'azurestack.local'
+$null = Add-AzSRmEnvironment -Name $EnvironmentName -UserName $UserName -AzureStackDomain $AzureStackDomain
+
+$Credential = Get-Credential -UserName $UserName -Message "Enter credential to login to the AzureStack $EnvironmentName environment"
+$null = Login-AzureRmAccount -EnvironmentName $EnvironmentName -Credential $Credential
 
 # Get AzureStack Fabric Location
-$Subscription = 'f2f3698f-b9e7-48d3-8179-e67e9e92f0a7'
-$ResourceGroup = 'system'    
-$Apiversion = "2016-05-01"
-$fabricLocation = 'local'
-$azureStackDomain = 'azurestack.local'
-# Supply values for the following parameters:
-#  AzureStackDomain: azurestack.local
+Get-AzSRegion -Subscription (Get-AzureRmContext).Subscription.SubscriptionId `
+              -ResourceGroup 'system' `
+              -Apiversion '2016-05-01' `
+              -FabricLocation 'local'
 
-# Supply password for AzureStack account
-# Example: serviceadmin@thoroet.onmicrosoft.com
-Get-AzSRegion -Subscription $Subscription -ResourceGroup $ResourceGroup -Apiversion $Apiversion -FabricLocation $fabricLocation -Verbose
+$null = Remove-AzSRmEnvironment -Name $EnvironmentName

@@ -65,7 +65,6 @@ function $commandName
         {
             $clientName.SubscriptionId = `$SubscriptionId
         }
-
         $clientName.BaseUri = `$ResourceManagerUrl
 
         Write-Verbose 'Performing operation $methodName on $clientName.'

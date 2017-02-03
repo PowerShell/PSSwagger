@@ -15,9 +15,9 @@ RequiredAssemblies = @("$PSScriptRoot\Net45\Microsoft.Rest.ClientRuntime.dll",
 FunctionsToExport = @('Get-AzDelegatingHandler',
                       'Get-AzServiceCredential',
                       'Get-AzSubscriptionId',
-                      'Get-AzSServiceCredential',
-                      'New-AzSEnvironment',
-                      'Remove-AzSEnvironment')
+                      'Get-AzResourceManagerUrl',
+                      'Add-AzSRmEnvironment',
+                      'Remove-AzSRmEnvironment')
 CmdletsToExport = ''
 VariablesToExport = ''
 AliasesToExport = ''
@@ -40,4 +40,3 @@ PrivateData = @{
 
 
 }
-
