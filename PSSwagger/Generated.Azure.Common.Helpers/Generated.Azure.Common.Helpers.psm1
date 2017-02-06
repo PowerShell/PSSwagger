@@ -1,12 +1,23 @@
-﻿
+﻿if ('Desktop' -eq $PSEdition) {
+    $moduleName = 'AzureRM.Profile'
+} else {
+    $moduleName = 'AzureRM.Profile.NetCore.Preview'
+}
+
 function Get-AzServiceCredential
 {
     [CmdletBinding()]
     param()
 
-    $AzureContext = AzureRM.Profile\Get-AzureRmContext -ErrorAction Stop
+    $AzureContext = & "$moduleName\Get-AzureRmContext" -ErrorAction Stop
     $authenticationFactory = [Microsoft.Azure.Commands.Common.Authentication.Factories.AuthenticationFactory]::new() 
-    $serviceCredentials = $authenticationFactory.GetServiceClientCredentials($AzureContext)
+    if ('Desktop' -eq $PSEdition) {
+        $serviceCredentials = $authenticationFactory.GetServiceClientCredentials($AzureContext)
+    } else {
+        [Action[string]]$stringAction = {param($s) Write-Host "Prompt Message: $stringAction"}
+        $serviceCredentials = $authenticationFactory.GetServiceClientCredentials($AzureContext, $stringAction)
+    }
+
     $serviceCredentials
 }
 
@@ -23,7 +34,7 @@ function Get-AzSubscriptionId
     [CmdletBinding()]
     param()
 
-    $AzureContext = AzureRM.Profile\Get-AzureRmContext -ErrorAction Stop    
+    $AzureContext = & "$moduleName\Get-AzureRmContext" -ErrorAction Stop    
     $AzureContext.Subscription.SubscriptionId
 }
 
@@ -32,7 +43,7 @@ function Get-AzResourceManagerUrl
     [CmdletBinding()]
     param()
 
-    $AzureContext = AzureRM.Profile\Get-AzureRmContext -ErrorAction Stop    
+    $AzureContext = & "$moduleName\Get-AzureRmContext" -ErrorAction Stop    
     $AzureContext.Environment.ResourceManagerUrl
 }
 
@@ -64,7 +75,7 @@ function Add-AzSRmEnvironment
     $ActiveDirectoryServiceEndpointResourceId = $Endpoints.authentication.audiences[0]
 
     # Add the Microsoft Azure Stack environment
-    AzureRM.Profile\Add-AzureRmEnvironment -Name $Name `
+    & "$moduleName\Add-AzureRmEnvironment" -Name $Name `
                                            -ActiveDirectoryEndpoint "https://login.windows.net/$AadTenantId/" `
                                            -ActiveDirectoryServiceEndpointResourceId $ActiveDirectoryServiceEndpointResourceId `
                                            -ResourceManagerEndpoint "https://api.$azureStackDomain/" `
@@ -81,5 +92,5 @@ function Remove-AzSRmEnvironment
         $Name
     )
 
-    AzureRM.Profile\Remove-AzureRmEnvironment @PSBoundParameters
+    & "$moduleName\Remove-AzureRmEnvironment" @PSBoundParameters
 }

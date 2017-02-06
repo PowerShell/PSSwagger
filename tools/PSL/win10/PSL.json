@@ -1,0 +1,13 @@
+{
+	"PowerShell": {
+		"displayName": "PowerShell_6.0.0.11",
+		"source": "https://github.com/PowerShell/PowerShell/releases/download/v6.0.0-alpha.11/PowerShell_6.0.0.11-alpha.11-win10-x64.msi",			   
+		"hash": {
+			"algorithm": "sha512",
+			"hashCode": "E44A6020080FA56BEAC88763F2924747A089A5A8B4F6747EFDDC14F6E8981778BD647591FA2D4ED8A34B31A61E2467EC733119874B76322DD81A8FD739F0D7E1"
+		},
+		"summary": "Powershell",
+		"type": "msi",
+		"version": "6.0.0.11"
+	}
+}
