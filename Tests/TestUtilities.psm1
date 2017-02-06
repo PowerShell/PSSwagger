@@ -28,3 +28,19 @@ function Test-Package {
 
     $module
 }
+
+function Compile-TestAssembly {
+    param(
+        [string]$TestAssemblyFullPath,
+        [string]$TestCSharpFilePath,
+        [string]$CompilationUtilsPath,
+        [bool]$UseAzureCSharpGenerator
+    )
+
+    Write-Host "Checking for test assembly '$TestAssemblyFullPath'"
+    if (-not (Test-Path $TestAssemblyFullPath)) {
+        Write-Host "Generating test assembly from file '$TestCSharpFilePath' using script '$CompilationUtilsPath'"
+        . "$CompilationUtilsPath"
+        Compile-CSharpCode -CSharpFiles @($TestCSharpFilePath) -OutputAssembly $TestAssemblyFullPath -AzureCSharpGenerator $UseAzureCSharpGenerator -Verbose
+    }
+}

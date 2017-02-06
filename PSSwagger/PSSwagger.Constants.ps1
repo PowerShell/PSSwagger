@@ -21,6 +21,48 @@
 
     $RootModuleContents = @'
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
+Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename $ModuleName.Resources.psd1
+
+if ('Desktop' -eq `$PSEdition) {
+    `$clr = 'fullclr'
+} else {
+    `$clr = 'coreclr'
+}
+
+`$dllFullName = Join-Path `$PSScriptRoot 'ref' | Join-Path -ChildPath `$clr | Join-Path -ChildPath '$Namespace.dll'
+`$isAzureCSharp = `$$UseAzureCSharpGenerator
+if (-not (Test-Path `$dllFullName)) {
+    `$message = `$LocalizedData.CompilingBinaryComponent -f (`$dllFullName)
+    Write-Verbose -Message `$message -Verbose
+    . (Join-Path "`$PSScriptRoot" "CompilationUtils.ps1")
+    `$generatedCSharpFilePath = (Join-Path "`$PSScriptRoot" "Generated.Csharp")
+    `$allCSharpFiles = Get-ChildItem -Path `$generatedCSharpFilePath -Filter *.cs -Recurse -Exclude Program.cs,TemporaryGeneratedFile* | Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*'
+    if (-not (Test-Path (Join-Path "`$PSScriptRoot" "fileHashes.json"))) {
+        `$message = `$LocalizedData.MissingFileHashesFile
+        throw `$message
+    }
+
+    `$fileHashes = ConvertFrom-Json (Get-Content (Join-Path "`$PSScriptRoot" "fileHashes.json") | Out-String)
+    `$algorithm = `$fileHashes.Algorithm
+    `$allCSharpFiles | ForEach-Object {
+        `$fileName = "`$_".Replace("`$generatedCSharpFilePath","").Trim("\").Trim("/")
+        `$hash = `$(`$fileHashes.`$fileName)
+        if ((Get-FileHash `$_ -Algorithm `$algorithm).Hash -ne `$hash) {
+            `$message = `$LocalizedData.HashValidationFailed
+            throw `$message
+        }
+    }
+    
+    `$success = Compile-CSharpCode -CSharpFiles `$allCSharpFiles -OutputAssembly `$dllFullName -AzureCSharpGenerator `$isAzureCSharp -CopyExtraReferences
+    if (-not `$success) {
+        `$message = `$LocalizedData.CompilationFailed -f (`$dllFullName)
+        throw `$message
+    }
+}
+
+# Load extra refs then the actual dll
+Get-ChildItem -Path (Join-Path "`$PSScriptRoot" "ref" | Join-Path -ChildPath "`$clr") -Filter *.dll -File | ForEach-Object { Add-Type -Path `$_.FullName -ErrorAction SilentlyContinue }
+Add-Type -Path `$dllFullName -PassThru
 
 Get-ChildItem -Path "`$PSScriptRoot\$GeneratedCommandsName" -Recurse -Filter *.ps1 -File | ForEach-Object { . `$_.FullName}
 '@

@@ -1,9 +1,12 @@
+Import-Module (Join-Path "$PSScriptRoot" "TestUtilities.psm1")
 Describe "Basic API" -Tag ScenarioTest {
     BeforeAll {
+        Compile-TestAssembly -TestAssemblyFullPath (Join-Path "$PSScriptRoot" "PSSwagger.TestUtilities" | Join-Path -ChildPath "$global:testRunGuid.dll") -TestCSharpFilePath (Join-Path "$PSScriptRoot" "PSSwagger.TestUtilities" | Join-Path -ChildPath "TestCredentials.cs") `
+            -CompilationUtilsPath (Join-Path "$PSScriptRoot" ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "CompilationUtils.ps1") -UseAzureCSharpGenerator $false -Verbose
+        
         # TODO: Pass all these locations dynamically - See issues/17
         # Ensure PSSwagger isn't loaded (including the one installed on the machine, if any)
         Get-Module PSSwagger | Remove-Module
-
         $testSpec = "PsSwaggerTestBasicSpec.json"
         $testData = "PsSwaggerTestBasicData.json"
         $testRoutes = "PsSwaggerTestBasicRoutes.json"
@@ -18,14 +21,26 @@ Describe "Basic API" -Tag ScenarioTest {
         $global:testDataSpec = ConvertFrom-Json ((Get-Content (Join-Path $testCaseDataLocation $testSpec)) -join [Environment]::NewLine) -ErrorAction Stop
         
         # Generate module
+        Write-Host "Removing old module, if any"
+        Remove-Item (Join-Path $generatedModulesPath "Generated.Basic.Module") -Recurse -Force
         Write-Host "Generating module"
-        Export-CommandFromSwagger -SwaggerSpecPath "$testCaseDataLocation\$testSpec" -Path "$generatedModulesPath" -ModuleName "Generated.Basic.Module"
+        Export-CommandFromSwagger -SwaggerSpecPath "$testCaseDataLocation\$testSpec" -Path "$generatedModulesPath" -ModuleName "Generated.Basic.Module" -Verbose
+        if (-not $?) {
+            throw 'Failed to generate module. Expected: Success'
+        }
 
         # Import generated module
         Write-Host "Importing module"
         Import-Module "$PSScriptRoot\..\PSSwagger\Generated.Azure.Common.Helpers\Generated.Azure.Common.Helpers.psd1" -Force
         Import-Module "$PSScriptRoot\Generated\Generated.Basic.Module\2017.1.1\Generated.Basic.Module.psd1"
         
+        # Load the test assembly after the generated module, since the generated module is kind enough to load the required dlls for us
+        try {
+            $null = Add-Type -Path (Join-Path "$PSScriptRoot" "PSSwagger.TestUtilities" | Join-Path -ChildPath "$global:testRunGuid.dll") -PassThru
+        } catch {
+            throw "$($_.Exception.LoaderExceptions)"
+        }
+
         # Copy json-server data since it's updated live
         Copy-Item "$testCaseDataLocation\$testData" "$PSScriptRoot\NodeModules\db.json" -Force
 
@@ -36,9 +51,16 @@ Describe "Basic API" -Tag ScenarioTest {
         $nodeProcesses = Get-Process -Name "node" -ErrorAction SilentlyContinue
         if ($nodeProcesses -eq $null) {
             $nodeProcesses = @()
+        } elseif ($nodeProcesses.Count -eq 1) {
+            $nodeProcesses = @($nodeProcesses)
         }
 
-        $jsonServerProcess = Start-Process -FilePath "$PSScriptRoot\NodeModules\json-server.cmd" -ArgumentList "--watch `"$PSScriptRoot\NodeModules\db.json`" --routes `"$testCaseDataLocation\$testRoutes`"" -PassThru -WindowStyle Hidden
+        if ('Desktop' -eq $PSEdition) {
+            $jsonServerProcess = Start-Process -FilePath "$PSScriptRoot\NodeModules\json-server.cmd" -ArgumentList "--watch `"$PSScriptRoot\NodeModules\db.json`" --routes `"$testCaseDataLocation\$testRoutes`"" -PassThru -WindowStyle Hidden
+        } else {
+            $jsonServerProcess = Start-Process -FilePath "$PSScriptRoot\NodeModules\json-server.cmd" -ArgumentList "--watch `"$PSScriptRoot\NodeModules\db.json`" --routes `"$testCaseDataLocation\$testRoutes`"" -PassThru
+        }
+
         $nodeProcessToStop = Get-Process -Name "node" -ErrorAction SilentlyContinue | Where-Object {-not $nodeProcesses.Contains($_)}
         while ($nodeProcessToStop -eq $null) {
             $nodeProcessToStop = Get-Process -Name "node" -ErrorAction SilentlyContinue | Where-Object {-not $nodeProcesses.Contains($_)}

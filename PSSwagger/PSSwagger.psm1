@@ -8,6 +8,7 @@
 
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 . "$PSScriptRoot\PSSwagger.Constants.ps1"
+. "$PSScriptRoot\CompilationUtils.ps1"
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwagger.Resources.psd1
 
 <#
@@ -19,6 +20,9 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwa
 
 .PARAMETER  Path
   Full Path to a file where the commands are exported to.
+
+.PARAMETER  Precompile
+  Switch to precompile the module's binary component for the version
 #>
 function Export-CommandFromSwagger
 {
@@ -42,7 +46,11 @@ function Export-CommandFromSwagger
 
         [Parameter()]
         [switch]
-        $UseAzureCsharpGenerator
+        $UseAzureCsharpGenerator,
+
+        [Parameter()]
+        [switch]
+        $Precompile
     )
 
     if ($PSCmdlet.ParameterSetName -eq 'SwaggerURI')
@@ -103,8 +111,9 @@ function Export-CommandFromSwagger
     $swaggerMetaDict.Add("SwaggerSpecPath", $SwaggerSpecPath);
 
     $Namespace = $SwaggerSpecDefinitionsAndParameters['Namespace']
-    $null = ConvertTo-CsharpCode -SwaggerDict $swaggerDict `
-                                    -SwaggerMetaDict $swaggerMetaDict
+    $generatedCSharpFilePath = ConvertTo-CsharpCode -SwaggerDict $swaggerDict `
+                                    -SwaggerMetaDict $swaggerMetaDict `
+                                    -Compile $Precompile
 
     $FunctionsToExport = @()    
     $FunctionsToExport+= New-SwaggerPathCommands -CommandsObject $swaggerDict['paths'] `
@@ -226,6 +235,17 @@ function Export-CommandFromSwagger
     New-ModuleManifestUtility -Path $outputDirectory `
                               -FunctionsToExport $FunctionsToExport `
                               -SwaggerSpecDefinitionsAndParameters $SwaggerSpecDefinitionsAndParameters
+
+    # Prepare dynamic compilation
+    Copy-Item (Join-Path "$PSScriptRoot" "CompilationUtils.ps1") (Join-Path $outputDirectory "CompilationUtils.ps1")
+    $allCSharpFiles = Get-ChildItem -Path $generatedCSharpFilePath -Filter *.cs -Recurse -Exclude Program.cs,TemporaryGeneratedFile* | Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*'
+    $filesTable = New-FileHashTable -Files $allCSharpFiles
+
+    ConvertTo-Json $filesTable | Out-File (Join-Path "$outputDirectory" "fileHashes.json")
+
+    Copy-Item (Join-Path "$PSScriptRoot" "ref" ) $outputDirectory -Recurse -Force -Container
+
+    Copy-Item (Join-Path "$PSScriptRoot" "Generated.Resources.psd1") (Join-Path "$outputDirectory" "$ModuleName.Resources.psd1") -Force
 }
 
 #region Cmdlet Generation Helpers
@@ -1313,7 +1333,10 @@ function ConvertTo-CsharpCode
         
         [Parameter(Mandatory = $true)]
         [hashtable]
-        $SwaggerMetaDict
+        $SwaggerMetaDict,
+
+        [bool]
+        $Compile
     )
 
     $message = $LocalizedData.GenerateCodeUsingAutoRest
@@ -1327,8 +1350,13 @@ function ConvertTo-CsharpCode
 
     $outputDirectory = $SwaggerMetaDict['outputDirectory']
     $nameSpace = $SwaggerDict['info'].NameSpace
-    $outAssembly = Join-Path $outputDirectory "$NameSpace.dll"
-    $net45Dir = Join-Path $outputDirectory "Net45"
+    if ('Desktop' -eq $PSEdition) {
+        $clr = 'fullclr'
+    } else {
+        $clr = 'coreclr'
+    }
+
+    $outAssembly = Join-Path $outputDirectory 'ref' | Join-Path -ChildPath $clr | Join-Path -ChildPath "$NameSpace.dll"
     $generatedCSharpPath = Join-Path $outputDirectory "Generated.Csharp"
 
     if (Test-Path $outAssembly)
@@ -1336,26 +1364,11 @@ function ConvertTo-CsharpCode
         $null = Remove-Item -Path $outAssembly -Force
     }
 
-    if (Test-Path $net45Dir)
-    {
-        $null = Remove-Item -Path $net45Dir -Force -Recurse
-    }
-
     $codeGenerator = "CSharp"
-    
-    $refassemlbiles = @("System.dll",
-                        "System.Core.dll",
-                        "System.Net.Http.dll",
-                        "System.Net.Http.WebRequest",
-                        "System.Runtime.Serialization.dll",
-                        "System.Xml.dll",
-                        "$PSScriptRoot\Generated.Azure.Common.Helpers\Net45\Microsoft.Rest.ClientRuntime.dll",
-                        "$PSScriptRoot\Generated.Azure.Common.Helpers\Net45\Newtonsoft.Json.dll")
 
     if ($SwaggerMetaDict['UseAzureCsharpGenerator'])
     { 
         $codeGenerator = "Azure.CSharp"
-        $refassemlbiles += "$PSScriptRoot\Generated.Azure.Common.Helpers\Net45\Microsoft.Rest.ClientRuntime.Azure.dll"
     }
 
     $null = & $autoRestExePath -AddCredentials -input $swaggerMetaDict['SwaggerSpecPath'] -CodeGenerator $codeGenerator -OutputDirectory $generatedCSharpPath -NameSpace $Namespace
@@ -1364,21 +1377,28 @@ function ConvertTo-CsharpCode
         throw $LocalizedData.AutoRestError
     }
 
-    $message = $LocalizedData.GenerateAssemblyFromCode
-    Write-Verbose -Message $message
-
-    $srcContent = Get-ChildItem -Path $generatedCSharpPath -Filter *.cs -Recurse -Exclude Program.cs,TemporaryGeneratedFile* | Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*' | ForEach-Object { "// File $($_.FullName)"; get-content $_.FullName }
-    $oneSrc = $srcContent -join "`n"
-
-    Add-Type -TypeDefinition $oneSrc -ReferencedAssemblies $refassemlbiles -OutputAssembly $outAssembly
-
-    if(Test-Path -Path $outAssembly -PathType Leaf){
-        $message = $LocalizedData.GeneratedAssembly -f ($outAssembly)
+    if ($Compile) {
+        $message = $LocalizedData.GenerateAssemblyFromCode
         Write-Verbose -Message $message
-    } else {
-        $message = $LocalizedData.UnableToGenerateAssembly -f ($outAssembly)
-        Throw $message
+        $parentDir = Split-Path $outAssembly -Parent
+        if (-not (Test-Path $parentDir)) {
+            New-Item $parentDir -ItemType Directory -Force
+        }
+
+        $allCSharpFiles = Get-ChildItem -Path $generatedCSharpPath -Filter *.cs -Recurse -Exclude Program.cs,TemporaryGeneratedFile* | Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*'
+
+        $success = Compile-CSharpCode -OutputAssembly $outAssembly -CSharpFiles $allCSharpFiles -AzureCSharpGenerator ($SwaggerMetaDict['UseAzureCsharpGenerator'] -ne $null) -CopyExtraReferences
+
+        if($success){
+            $message = $LocalizedData.GeneratedAssembly -f ($outAssembly)
+            Write-Verbose -Message $message
+        } else {
+            $message = $LocalizedData.UnableToGenerateAssembly -f ($outAssembly)
+            Throw $message
+        }
     }
+
+    return $generatedCSharpPath
 }
 
 function New-ModuleManifestUtility
@@ -1400,7 +1420,6 @@ function New-ModuleManifestUtility
     New-ModuleManifest -Path "$(Join-Path -Path $Path -ChildPath $SwaggerSpecDefinitionsAndParameters['ModuleName']).psd1" `
                        -ModuleVersion $SwaggerSpecDefinitionsAndParameters['Version'] `
                        -RequiredModules @('Generated.Azure.Common.Helpers') `
-                       -RequiredAssemblies @("$($SwaggerSpecDefinitionsAndParameters['Namespace']).dll") `
                        -RootModule "$($SwaggerSpecDefinitionsAndParameters['ModuleName']).psm1" `
                        -FunctionsToExport $FunctionsToExport
 }
@@ -1569,5 +1588,20 @@ function Get-SwaggerMultiItemObject
 }
 
 #endregion Parse Swagger File
+
+function New-FileHashTable {
+    param(
+        [string[]]$Files
+    )
+
+    $hashAlgorithm = "SHA512"
+    $filesTable = @{"Algorithm" = $hashAlgorithm}
+    $Files | ForEach-Object {
+        $fileName = "$_".Replace("$generatedCSharpFilePath","").Trim("\").Trim("/")
+        $filesTable.Add("$fileName", (Get-FileHash $_ -Algorithm $hashAlgorithm).Hash)
+    }
+
+    return $filesTable
+}
 
 Export-ModuleMember -Function Export-CommandFromSwagger
