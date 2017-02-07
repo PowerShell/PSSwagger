@@ -4,9 +4,9 @@ Tool to generate PowerShell Cmdlets using Swagger based specifications
 
 ## Syntax
 
-Export-CommandFromSwagger -SwaggerSpecPath <string> -Path <string> -ModuleName <string> [-UseAzureCsharpGenerator] [<CommonParameters>]
+Export-CommandFromSwagger -SwaggerSpecPath <string> -Path <string> -ModuleName <string> [-UseAzureCsharpGenerator] [-Precompile] [<CommonParameters>]
 
-Export-CommandFromSwagger -SwaggerSpecUri <uri> -Path <string> -ModuleName <string> [-UseAzureCsharpGenerator] [<CommonParameters>]
+Export-CommandFromSwagger -SwaggerSpecUri <uri> -Path <string> -ModuleName <string> [-UseAzureCsharpGenerator] [-Precompile] [<CommonParameters>]
 
 | Parameter       | Description                           |
 | ----------------| ------------------------------------- |
@@ -14,6 +14,7 @@ Export-CommandFromSwagger -SwaggerSpecUri <uri> -Path <string> -ModuleName <stri
 | Path            | Full Path to a folder where the commands/modules are exported to |
 | ModuleName      | Name of the module to be generated. A folder with this name will be created in the location specified by Path parameter |
 | SwaggerSpecUri  | URI to the swagger spec |
+| Precompile      | Compile the generated module's C# assembly during generation of module |
 
 ## Usage
 
@@ -34,7 +35,9 @@ Export-CommandFromSwagger -SwaggerSpecUri <uri> -Path <string> -ModuleName <stri
   $env:path += ";$env:localappdata\PackageManagement\NuGet\Packages\AutoRest.0.16.0\tools"
   ```
 
-4. Run the following in a PowerShell console from the directory where you cloned PSSwagger in
+4. If you plan on precompiling the generated assembly using the -Precompile switch, ensure you have the module AzureRM.Profile or AzureRM.NetCore.Preview if you are on PowerShell or PowerShell Core, respectively.
+
+5. Run the following in a PowerShell console from the directory where you cloned PSSwagger in
   ```powershell
   Import-Module .\PSSwagger\PSSwagger.psd1
   $param = @{
@@ -46,7 +49,7 @@ Export-CommandFromSwagger -SwaggerSpecUri <uri> -Path <string> -ModuleName <stri
   Export-CommandFromSwagger @param
   ```
 
-After step 4, the module will be in `C:\Temp\GeneratedModule\Generated.AzureRM.BatchManagement ($param.Path)` folder.
+After step 5, the module will be in `C:\Temp\GeneratedModule\Generated.AzureRM.BatchManagement ($param.Path)` folder.
 
 Before importing that module and using it, you need to import `Generated.Azure.Common.Helpers` module which is under PSSwagger folder.
     
@@ -55,6 +58,12 @@ Import-Module .\PSSwagger\Generated.Azure.Common.Helpers
 Import-Module "$($param.Path)\$($param.ModuleName)"
 Get-Command -Module $param.ModuleName
 ```
+
+## Dynamic generation of C# assembly
+When importing the module for the first time, the packaged C# files will be automatically compiled if the expected assembly doesn't exist. 
+If the module's script files are signed, regardless of your script execution policy, the catalog file's signing will be checked for validity. 
+If the generated module is not signed, the catalog file's signing will not be checked. However, the catalog file's hashed contents will always be checked.
+
 ## Upcoming additions
 
 1. Enabe PowerShell Best practices
