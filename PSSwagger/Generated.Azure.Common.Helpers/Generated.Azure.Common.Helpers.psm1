@@ -1,4 +1,5 @@
-﻿function Get-AzServiceCredential
+﻿
+function Get-AzServiceCredential
 {
     [CmdletBinding()]
     param()

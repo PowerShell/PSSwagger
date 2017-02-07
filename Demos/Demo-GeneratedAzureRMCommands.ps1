@@ -1,6 +1,6 @@
 param(
     [string]
-    $PSSwaggerClonePath = 'D:\Work\PSSwagger\PSSwagger',
+    $PSSwaggerClonePath = 'D:\Work\PS\Swagger\PSSwagger',
 
     [string]
     $TargetPath = 'C:\Temp\generatedmodule'
