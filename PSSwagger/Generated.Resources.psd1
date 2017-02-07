@@ -10,7 +10,7 @@ ConvertFrom-StringData @'
 ###PSLOC
 
     CompilingBinaryComponent=Binary component '{0}' not found. Attempting to compile.
-    MissingFileHashesFile=File hashes missing.
+    CatalogSignatureNotValid=Catalog file's signature is not valid.
     HashValidationFailed=File hash validation failed.
     CompilationFailed=Failed to compile binary component '{0}'
 ###PSLOC

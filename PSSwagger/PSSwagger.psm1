@@ -53,6 +53,7 @@ function Export-CommandFromSwagger
         $Precompile
     )
 
+    $fileCatalogName = "GeneratedCodeCatalog.cat"
     if ($PSCmdlet.ParameterSetName -eq 'SwaggerURI')
     {
         # Ensure that if the URI is coming from github, it is getting the raw content
@@ -238,10 +239,8 @@ function Export-CommandFromSwagger
 
     # Prepare dynamic compilation
     Copy-Item (Join-Path "$PSScriptRoot" "CompilationUtils.ps1") (Join-Path $outputDirectory "CompilationUtils.ps1")
-    $allCSharpFiles = Get-ChildItem -Path $generatedCSharpFilePath -Filter *.cs -Recurse -Exclude Program.cs,TemporaryGeneratedFile* | Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*'
-    $filesTable = New-FileHashTable -Files $allCSharpFiles
-
-    ConvertTo-Json $filesTable | Out-File (Join-Path "$outputDirectory" "fileHashes.json")
+    
+    New-CodeFileCatalog -Path $generatedCSharpFilePath -CatalogFilePath (Join-Path "$outputDirectory" "$fileCatalogName")
 
     Copy-Item (Join-Path "$PSScriptRoot" "ref" ) $outputDirectory -Recurse -Force -Container
 
@@ -1589,19 +1588,13 @@ function Get-SwaggerMultiItemObject
 
 #endregion Parse Swagger File
 
-function New-FileHashTable {
+function New-CodeFileCatalog {
     param(
-        [string[]]$Files
+        [string]$Path,
+        [string]$CatalogFilePath
     )
 
-    $hashAlgorithm = "SHA512"
-    $filesTable = @{"Algorithm" = $hashAlgorithm}
-    $Files | ForEach-Object {
-        $fileName = "$_".Replace("$generatedCSharpFilePath","").Trim("\").Trim("/")
-        $filesTable.Add("$fileName", (Get-FileHash $_ -Algorithm $hashAlgorithm).Hash)
-    }
-
-    return $filesTable
+    $null = New-FileCatalog -Path $Path -CatalogFilePath $CatalogFilePath
 }
 
 Export-ModuleMember -Function Export-CommandFromSwagger

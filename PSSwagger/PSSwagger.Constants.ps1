@@ -36,23 +36,20 @@ if (-not (Test-Path `$dllFullName)) {
     Write-Verbose -Message `$message -Verbose
     . (Join-Path "`$PSScriptRoot" "CompilationUtils.ps1")
     `$generatedCSharpFilePath = (Join-Path "`$PSScriptRoot" "Generated.Csharp")
-    `$allCSharpFiles = Get-ChildItem -Path `$generatedCSharpFilePath -Filter *.cs -Recurse -Exclude Program.cs,TemporaryGeneratedFile* | Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*'
-    if (-not (Test-Path (Join-Path "`$PSScriptRoot" "fileHashes.json"))) {
-        `$message = `$LocalizedData.MissingFileHashesFile
-        throw `$message
-    }
-
-    `$fileHashes = ConvertFrom-Json (Get-Content (Join-Path "`$PSScriptRoot" "fileHashes.json") | Out-String)
-    `$algorithm = `$fileHashes.Algorithm
-    `$allCSharpFiles | ForEach-Object {
-        `$fileName = "`$_".Replace("`$generatedCSharpFilePath","").Trim("\").Trim("/")
-        `$hash = `$(`$fileHashes.`$fileName)
-        if ((Get-FileHash `$_ -Algorithm `$algorithm).Hash -ne `$hash) {
-            `$message = `$LocalizedData.HashValidationFailed
-            throw `$message
+    `$catalogDetails = Test-FileCatalog -Path `$generatedCSharpFilePath -CatalogFilePath (Join-Path "`$PSScriptRoot" "$fileCatalogName") -Detailed
+    if ('NotSigned' -ne (Get-AuthenticodeSignature -FilePath (Join-Path "`$PSScriptRoot" "`$(`$MyInvocation.MyCommand)")).Status) {
+        if ('Valid' -ne (Get-AuthenticodeSignature -FilePath (Join-Path "`$PSScriptRoot" "$fileCatalogName")).Status) {
+            `$message = `$LocalizedData.CatalogSignatureNotValid
+            throw `$message 
         }
     }
     
+    if ('Valid' -ne `$catalogDetails.Status) {
+        `$message = `$LocalizedData.HashValidationFailed
+        throw `$message
+    }
+
+    `$allCSharpFiles = Get-ChildItem -Path `$generatedCSharpFilePath -Filter *.cs -Recurse -Exclude Program.cs,TemporaryGeneratedFile* | Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*'
     `$success = Compile-CSharpCode -CSharpFiles `$allCSharpFiles -OutputAssembly `$dllFullName -AzureCSharpGenerator `$isAzureCSharp -CopyExtraReferences
     if (-not `$success) {
         `$message = `$LocalizedData.CompilationFailed -f (`$dllFullName)
