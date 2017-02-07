@@ -61,10 +61,12 @@ Describe "Basic API" -Tag ScenarioTest {
             $jsonServerProcess = Start-Process -FilePath "$PSScriptRoot\NodeModules\json-server.cmd" -ArgumentList "--watch `"$PSScriptRoot\NodeModules\db.json`" --routes `"$testCaseDataLocation\$testRoutes`"" -PassThru
         }
 
-        # Wait for local json-server to start
-        while (-not (Test-NetConnection -ComputerName localhost -Port 3000)) {
-            Write-Verbose -Message "Waiting for server to start..." -Verbose
-            Start-Sleep -s 1
+        # Wait for local json-server to start on full CLR
+        if ('Desktop' -eq $PSEdition) {
+            while (-not (Test-NetConnection -ComputerName localhost -Port 3000)) {
+                Write-Verbose -Message "Waiting for server to start..." -Verbose
+                Start-Sleep -s 1
+            }
         }
         
         $nodeProcessToStop = Get-Process -Name "node" -ErrorAction SilentlyContinue | Where-Object {-not $nodeProcesses.Contains($_)}
