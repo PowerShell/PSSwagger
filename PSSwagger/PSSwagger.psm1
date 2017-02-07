@@ -781,9 +781,9 @@ function Get-SwaggerSpecPathInfo
         
         if((Get-Member -InputObject $_.value -Name 'x-ms-cmdlet-name') -and $_.value.'x-ms-cmdlet-name')
         {
-            $FunctionDetails['commandName'] = $_.value.'x-ms-cmdlet-name'
+            $FunctionDetails['CommandName'] = $_.value.'x-ms-cmdlet-name'
         } else {
-            $FunctionDetails['commandName'] = Get-PathCommandName -OperationId $operationId
+            $FunctionDetails['CommandName'] = Get-PathCommandName -OperationId $operationId
         }
 
         $paramObject = Convert-ParamTable -ParamTable $paramInfo
@@ -1054,7 +1054,7 @@ function New-SwaggerPath
         $SwaggerMetaDict
     )
 
-    $commandName = $FunctionDetails.commandName
+    $commandName = $FunctionDetails.CommandName
     $description = $FunctionDetails.description
     $commandHelp = $executionContext.InvokeCommand.ExpandString($helpDescStr)
 
