@@ -4,8 +4,6 @@ param(
     [string[]]$TestName,
     [ValidateSet("net452", "netstandard1.7")]
     [string]$TestFramework = "net452",
-    [ValidateSet("win10-x64")]
-    [string]$Runtime = "win10-x64",
     [switch]$BootstrapDotNet
 )
 
