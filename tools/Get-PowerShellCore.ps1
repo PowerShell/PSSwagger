@@ -12,7 +12,7 @@ if ([Environment]::OSVersion.Version.Major -eq 6) {
     $pslLocation = Join-Path -Path $PSScriptRoot -ChildPath "PSL" | Join-Path -ChildPath "win10" | Join-Path -ChildPath "PSL.json"
 }
 
-if ('' -eq $RequiredPSVersion) {
+if (-not $RequiredPSVersion) {
     $powershellCore = (Get-Package -provider PSL -name PowerShell -ErrorAction SilentlyContinue)
 } else {
     $powershellCore = (Get-Package -provider PSL -name PowerShell -requiredversion $RequiredPSVersion -ErrorAction SilentlyContinue)
