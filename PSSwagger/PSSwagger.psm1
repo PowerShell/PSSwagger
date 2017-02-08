@@ -787,28 +787,28 @@ function Get-SwaggerSpecPathInfo
         }
 
         $paramObject = Convert-ParamTable -ParamTable $paramInfo
-        $FunctionDetails['paramHelp'] = $paramObject['ParamHelp']
-        $FunctionDetails['paramblock'] = $paramObject['ParamBlock']
-        $FunctionDetails['requiredParamList'] = $paramObject['RequiredParamList']
-        $FunctionDetails['optionalParamList'] = $paramObject['OptionalParamList']
+        $FunctionDetails['ParamHelp'] = $paramObject['ParamHelp']
+        $FunctionDetails['Paramblock'] = $paramObject['ParamBlock']
+        $FunctionDetails['RequiredParamList'] = $paramObject['RequiredParamList']
+        $FunctionDetails['OptionalParamList'] = $paramObject['OptionalParamList']
 
         $functionBodyParams = @{
 						Responses = $responses
 						Info = $Info
 						DefinitionList = $DefinitionList
 						operationId = $operationId
-						RequiredParamList = $FunctionDetails['requiredParamList']
-						OptionalParamList = $FunctionDetails['optionalParamList']
+						RequiredParamList = $FunctionDetails['RequiredParamList']
+						OptionalParamList = $FunctionDetails['OptionalParamList']
 						SwaggerMetaDict = $SwaggerMetaDict
 						}
 
         $bodyObject = Get-PathFunctionBody @functionBodyParams
         
-        $FunctionDetails['body'] = $bodyObject.body
-        $FunctionDetails['outputTypeBlock'] = $bodyObject.OutputTypeBlock
+        $FunctionDetails['Body'] = $bodyObject.body
+        $FunctionDetails['OutputTypeBlock'] = $bodyObject.OutputTypeBlock
         $FunctionDetails['Description'] = $FunctionDescription
-        $FunctionDetails['operationId'] = $operationId
-        $FunctionDetails['responses'] = $responses
+        $FunctionDetails['OperationId'] = $operationId
+        $FunctionDetails['Responses'] = $responses
         $PathFunctionDetails[$operationId] = $FunctionDetails
     }
 }
@@ -1055,16 +1055,16 @@ function New-SwaggerPath
     )
 
     $commandName = $FunctionDetails.CommandName
-    $description = $FunctionDetails.description
+    $description = $FunctionDetails.Description
     $commandHelp = $executionContext.InvokeCommand.ExpandString($helpDescStr)
 
-    $paramHelp = $FunctionDetails.paramHelp
-    $paramblock = $FunctionDetails.paramBlock
-    $requiredParamList = $FunctionDetails.requiredParamList
-    $optionalParamList = $FunctionDetails.optionalParamList
+    $paramHelp = $FunctionDetails.ParamHelp
+    $paramblock = $FunctionDetails.ParamBlock
+    $requiredParamList = $FunctionDetails.RequiredParamList
+    $optionalParamList = $FunctionDetails.OptionalParamList
 
-    $body = $FunctionDetails.body
-    $outputTypeBlock = $FunctionDetails.outputTypeBlock
+    $body = $FunctionDetails.Body
+    $outputTypeBlock = $FunctionDetails.OutputTypeBlock
 
     $CommandString = $executionContext.InvokeCommand.ExpandString($advFnSignature)
     $GeneratedCommandsPath = Join-Path -Path (Join-Path -Path $SwaggerMetaDict['outputDirectory'] -ChildPath $GeneratedCommandsName) -ChildPath 'SwaggerPathCommands'
