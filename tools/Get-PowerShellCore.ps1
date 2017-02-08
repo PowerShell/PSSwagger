@@ -2,7 +2,7 @@ param(
     [string]$RequiredPSVersion
 )
 
-Install-PackageProvider PSL -Force -verbose
+Install-PackageProvider PSL -Force
 
 if ([Environment]::OSVersion.Version.Major -eq 6) {
     Write-Verbose "Assuming OS is Win 8.1 (includes Win Server 2012 R2)"
