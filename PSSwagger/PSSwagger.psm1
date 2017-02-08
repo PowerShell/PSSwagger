@@ -40,11 +40,6 @@ function Export-CommandFromSwagger
         [String]
         $ModuleName,
 
-        [Parameter(Mandatory = $false)]
-        [ValidateSet('Azure', 'AzureStack')]
-        [String]
-        $Authentication = 'Azure',
-
         [Parameter()]
         [switch]
         $UseAzureCsharpGenerator
@@ -105,123 +100,36 @@ function Export-CommandFromSwagger
 
     $swaggerMetaDict.Add("outputDirectory", $outputDirectory);
     $swaggerMetaDict.Add("UseAzureCsharpGenerator", $UseAzureCsharpGenerator)
-    $swaggerMetaDict.Add("Authentication", $Authentication);
     $swaggerMetaDict.Add("SwaggerSpecPath", $SwaggerSpecPath);
 
     $Namespace = $SwaggerSpecDefinitionsAndParameters['Namespace']
     $null = ConvertTo-CsharpCode -SwaggerDict $swaggerDict `
                                     -SwaggerMetaDict $swaggerMetaDict
 
-    $FunctionsToExport = @()    
-    $FunctionsToExport+= New-SwaggerPathCommands -CommandsObject $swaggerDict['paths'] `
-                                                    -SwaggerMetaDict $swaggerMetaDict `
-                                                    -DefinitionList $swaggerDict['definitions'] `
-                                                    -Info $swaggerDict['info']
-
-    $SwaggerDefinitionCommandsPath = Join-Path -Path (Join-Path -Path $outputDirectory -ChildPath $GeneratedCommandsName) -ChildPath 'SwaggerDefinitionCommands'
-
     # Handle the Definitions
     $DefinitionFunctionsDetails = @{}
     $jsonObject.Definitions.PSObject.Properties | ForEach-Object {
-        Get-SwaggerSpecDefinitionInfo -JsonDefinitionItemObject $_ -Namespace $Namespace -DefinitionFunctionsDetails $DefinitionFunctionsDetails
+        Get-SwaggerSpecDefinitionInfo -JsonDefinitionItemObject $_ `
+                                        -Namespace $Namespace `
+                                        -DefinitionFunctionsDetails $DefinitionFunctionsDetails
     }
 
-    # Expand the definition parameters from 'AllOf' definitions and x_ms_client-flatten declarations.
-    $ExpandedAllDefinitions = $false
-
-    while(-not $ExpandedAllDefinitions)
-    {
-        $ExpandedAllDefinitions = $true
-
-        $DefinitionFunctionsDetails.Keys | ForEach-Object {
-            
-            $FunctionDetails = $DefinitionFunctionsDetails[$_]
-
-            if(-not $FunctionDetails.ExpandedParameters)
-            {
-                $message = $LocalizedData.ExpandDefinition -f ($($FunctionDetails.Name))
-                Write-Verbose -Message $message
-
-                $Unexpanded_AllOf_DefinitionNames = $FunctionDetails.Unexpanded_AllOf_DefinitionNames | ForEach-Object {
-                                                        $ReferencedDefinitionName = $_
-                                                        if($DefinitionFunctionsDetails.ContainsKey($ReferencedDefinitionName) -and
-                                                           $DefinitionFunctionsDetails[$ReferencedDefinitionName].ExpandedParameters)
-                                                        {
-                                                            $RefFunctionDetails = $DefinitionFunctionsDetails[$ReferencedDefinitionName]
-                                                
-                                                            $RefFunctionDetails.ParametersTable.Keys | ForEach-Object {
-                                                                $RefParameterName = $_
-                                                                if($FunctionDetails.ParametersTable.ContainsKey($RefParameterName))
-                                                                {
-                                                                    Throw $LocalizedData.SamePropertyName
-                                                                }
-                                                                else
-                                                                {
-                                                                    $FunctionDetails.ParametersTable[$RefParameterName] = $RefFunctionDetails.ParametersTable[$RefParameterName]
-                                                                }
-                                                            }
-                                                        }
-                                                        else
-                                                        {
-                                                            $_
-                                                        }
-                                                    }
-
-                $Unexpanded_x_ms_client_flatten_DefinitionNames = $FunctionDetails.Unexpanded_x_ms_client_flatten_DefinitionNames | ForEach-Object {
-                                                                        $ReferencedDefinitionName = $_
-                                                                        if($DefinitionFunctionsDetails.ContainsKey($ReferencedDefinitionName) -and
-                                                                           $DefinitionFunctionsDetails[$ReferencedDefinitionName].ExpandedParameters)
-                                                                        {
-                                                                            $RefFunctionDetails = $DefinitionFunctionsDetails[$ReferencedDefinitionName]
-                                                
-                                                                            $RefFunctionDetails.ParametersTable.Keys | ForEach-Object {
-                                                                                $RefParameterName = $_
-                                                                                if($FunctionDetails.ParametersTable.ContainsKey($RefParameterName))
-                                                                                {
-                                                                                    $ParameterName = $FunctionDetails.Name + $RefParameterName
-
-                                                                                    $FunctionDetails.ParametersTable[$ParameterName] = $RefFunctionDetails.ParametersTable[$RefParameterName]
-                                                                                    $FunctionDetails.ParametersTable[$ParameterName].Name = $ParameterName
-                                                                                }
-                                                                                else
-                                                                                {
-                                                                                    $FunctionDetails.ParametersTable[$RefParameterName] = $RefFunctionDetails.ParametersTable[$RefParameterName]
-                                                                                }
-                                                                            }
-                                                                        }
-                                                                        else
-                                                                        {
-                                                                            $_
-                                                                        }
-                                                                    }
-
-
-                $FunctionDetails.ExpandedParameters = (-not $Unexpanded_AllOf_DefinitionNames -and -not $Unexpanded_x_ms_client_flatten_DefinitionNames)
-                $FunctionDetails.Unexpanded_AllOf_DefinitionNames = $Unexpanded_AllOf_DefinitionNames
-                $FunctionDetails.Unexpanded_x_ms_client_flatten_DefinitionNames = $Unexpanded_x_ms_client_flatten_DefinitionNames
-
-                if(-not $FunctionDetails.ExpandedParameters)
-                {
-                    $message = $LocalizedData.UnableToExpandDefinition -f ($($FunctionDetails.Name))
-                    Write-Verbose -Message $message
-                    $ExpandedAllDefinitions = $false
-                }
-            } # ExpandedParameters
-        } # Foeach-Object
-    } # while()
-
-    $DefinitionFunctionsDetails.Keys | ForEach-Object {
-        
-        $FunctionDetails = $DefinitionFunctionsDetails[$_]
-
-        # Denifitions defined as x_ms_client_flatten are not used as an object anywhere. 
-        # Also AutoRest doesn't generate a Model class for the definitions declared as x_ms_client_flatten for other definitions.
-        if(-not $FunctionDetails.IsUsedAs_x_ms_client_flatten) {
-            $FunctionsToExport += New-SwaggerSpecDefinitionCommand -FunctionDetails $FunctionDetails `
-                                                                   -GeneratedCommandsPath $SwaggerDefinitionCommandsPath `
-                                                                   -Namespace $Namespace
-        }
+    # Handle the Paths
+    $PathFunctionDetails = @{}
+    $jsonObject.Paths.PSObject.Properties | ForEach-Object {
+        Get-SwaggerSpecPathInfo -JsonPathItemObject $_ `
+                                -PathFunctionDetails $PathFunctionDetails `
+                                -Info $swaggerDict['info'] `
+                                -DefinitionList $swaggerDict['definitions'] `
+                                -SwaggerMetaDict $swaggerMetaDict `
+                                -DefinitionFunctionsDetails $DefinitionFunctionsDetails
     }
+
+    $FunctionsToExport = @()
+    $FunctionsToExport += New-SwaggerSpecPathCommand -PathFunctionDetails $PathFunctionDetails `
+                                                     -SwaggerMetaDict $swaggerMetaDict
+
+    $FunctionsToExport += New-SwaggerDefinitionCommand -DefinitionFunctionsDetails $DefinitionFunctionsDetails -SwaggerMetaDict $swaggerMetaDict
 
     $RootModuleFilePath = Join-Path $outputDirectory "$ModuleName.psm1"
     Out-File -FilePath $RootModuleFilePath `
@@ -341,11 +249,6 @@ function New-SwaggerSpecPathCommand
         [string] 
         $GeneratedCommandsPath,
 
-        [Parameter(Mandatory = $false)]
-        [ValidateSet('Azure', 'AzureStack')]
-        [String]
-        $Authentication = 'Azure',
-
         [Parameter(Mandatory=$false)]
         [switch]
         $UseAzureCsharpGenerator,
@@ -445,17 +348,9 @@ function New-SwaggerSpecPathCommand
     $SubscriptionId = $null
     $BaseUri = $null
 
-    if($Authentication -eq 'AzureStack')
+    if (-not $UseAzureCsharpGenerator)
     {
-        $BaseUri = $AzureStackBaseUriStr -f ($clientName)
-    }
-    else
-    {
-        $SubscriptionId = $SubscriptionIdStr -f ($clientName)
-        if (-not $UseAzureCsharpGenerator)
-        {
-            $apiVersion = $ApiVersionStr -f ($clientName, $infoVersion)
-        }
+        $apiVersion = $executionContext.InvokeCommand.ExpandString($ApiVersionStr)
     }
 
     $operationId = $JsonPathItemObject.operationId
@@ -483,15 +378,6 @@ function New-SwaggerSpecPathCommand
     }
 
     $responseBody, $outputTypeBlock = Get-Response @responseBodyParams
-    if ($Authentication -eq 'AzureStack') {
-        $GetServiceCredentialStr = 'Get-AzSServiceCredential'
-        $AdvancedFunctionEndCodeBlock = $AzSAdvancedFunctionEndCodeBlockStr
-    }
-    else {
-        $GetServiceCredentialStr = 'Get-AzServiceCredential'
-        $AdvancedFunctionEndCodeBlock = ''
-    }    
-    
     $body = $executionContext.InvokeCommand.ExpandString($functionBodyStr)
 
     #endregion Function Body
@@ -507,6 +393,128 @@ function New-SwaggerSpecPathCommand
     Out-File -InputObject $CommandString -FilePath $CommandFilePath -Encoding ascii -Force -Confirm:$false -WhatIf:$false
 
     return $CommandName
+}
+
+function New-SwaggerDefinitionCommand
+{
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [hashtable]
+        $DefinitionFunctionsDetails,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]
+        $SwaggerMetaDict
+    )
+
+    $FunctionsToExport = @()
+    $GeneratedCommandsPath = Join-Path -Path $SwaggerMetaDict['outputDirectory'] -ChildPath $GeneratedCommandsName
+    $SwaggerDefinitionCommandsPath = Join-Path -Path $GeneratedCommandsPath -ChildPath 'SwaggerDefinitionCommands'
+    $FormatFilesPath = Join-Path -Path $GeneratedCommandsPath -ChildPath 'FormatFiles'
+
+    # Expand the definition parameters from 'AllOf' definitions and x_ms_client-flatten declarations.
+    $ExpandedAllDefinitions = $false
+
+    while(-not $ExpandedAllDefinitions)
+    {
+        $ExpandedAllDefinitions = $true
+
+        $DefinitionFunctionsDetails.Keys | ForEach-Object {
+            
+            $FunctionDetails = $DefinitionFunctionsDetails[$_]
+
+            if(-not $FunctionDetails.ExpandedParameters)
+            {
+                $message = $LocalizedData.ExpandDefinition -f ($($FunctionDetails.Name))
+                Write-Verbose -Message $message
+
+                $Unexpanded_AllOf_DefinitionNames = $FunctionDetails.Unexpanded_AllOf_DefinitionNames | ForEach-Object {
+                                                        $ReferencedDefinitionName = $_
+                                                        if($DefinitionFunctionsDetails.ContainsKey($ReferencedDefinitionName) -and
+                                                           $DefinitionFunctionsDetails[$ReferencedDefinitionName].ExpandedParameters)
+                                                        {
+                                                            $RefFunctionDetails = $DefinitionFunctionsDetails[$ReferencedDefinitionName]
+                                                
+                                                            $RefFunctionDetails.ParametersTable.Keys | ForEach-Object {
+                                                                $RefParameterName = $_
+                                                                if($FunctionDetails.ParametersTable.ContainsKey($RefParameterName))
+                                                                {
+                                                                    Throw $LocalizedData.SamePropertyName
+                                                                }
+                                                                else
+                                                                {
+                                                                    $FunctionDetails.ParametersTable[$RefParameterName] = $RefFunctionDetails.ParametersTable[$RefParameterName]
+                                                                }
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            $_
+                                                        }
+                                                    }
+
+                $Unexpanded_x_ms_client_flatten_DefinitionNames = $FunctionDetails.Unexpanded_x_ms_client_flatten_DefinitionNames | ForEach-Object {
+                                                                        $ReferencedDefinitionName = $_
+                                                                        if($DefinitionFunctionsDetails.ContainsKey($ReferencedDefinitionName) -and
+                                                                           $DefinitionFunctionsDetails[$ReferencedDefinitionName].ExpandedParameters)
+                                                                        {
+                                                                            $RefFunctionDetails = $DefinitionFunctionsDetails[$ReferencedDefinitionName]
+                                                
+                                                                            $RefFunctionDetails.ParametersTable.Keys | ForEach-Object {
+                                                                                $RefParameterName = $_
+                                                                                if($FunctionDetails.ParametersTable.ContainsKey($RefParameterName))
+                                                                                {
+                                                                                    $ParameterName = $FunctionDetails.Name + $RefParameterName
+
+                                                                                    $FunctionDetails.ParametersTable[$ParameterName] = $RefFunctionDetails.ParametersTable[$RefParameterName]
+                                                                                    $FunctionDetails.ParametersTable[$ParameterName].Name = $ParameterName
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    $FunctionDetails.ParametersTable[$RefParameterName] = $RefFunctionDetails.ParametersTable[$RefParameterName]
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            $_
+                                                                        }
+                                                                    }
+
+
+                $FunctionDetails.ExpandedParameters = (-not $Unexpanded_AllOf_DefinitionNames -and -not $Unexpanded_x_ms_client_flatten_DefinitionNames)
+                $FunctionDetails.Unexpanded_AllOf_DefinitionNames = $Unexpanded_AllOf_DefinitionNames
+                $FunctionDetails.Unexpanded_x_ms_client_flatten_DefinitionNames = $Unexpanded_x_ms_client_flatten_DefinitionNames
+
+                if(-not $FunctionDetails.ExpandedParameters)
+                {
+                    $message = $LocalizedData.UnableToExpandDefinition -f ($($FunctionDetails.Name))
+                    Write-Verbose -Message $message
+                    $ExpandedAllDefinitions = $false
+                }
+            } # ExpandedParameters
+        } # Foeach-Object
+    } # while()
+
+    $DefinitionFunctionsDetails.Keys | ForEach-Object {
+        
+        $FunctionDetails = $DefinitionFunctionsDetails[$_]
+
+        # Denifitions defined as x_ms_client_flatten are not used as an object anywhere. 
+        # Also AutoRest doesn't generate a Model class for the definitions declared as x_ms_client_flatten for other definitions.
+        if(-not $FunctionDetails.IsUsedAs_x_ms_client_flatten) {
+            $FunctionsToExport += New-SwaggerSpecDefinitionCommand -FunctionDetails $FunctionDetails `
+                                                                   -GeneratedCommandsPath $SwaggerDefinitionCommandsPath `
+                                                                   -Namespace $Namespace
+
+            New-SwaggerDefinitionFormatFile -FunctionDetails $FunctionDetails `
+                                            -FormatFilesPath $FormatFilesPath `
+                                            -Namespace $NameSpace
+        }
+    }
+
+    return $FunctionsToExport
 }
 
 <#
@@ -730,6 +738,560 @@ function Get-SwaggerSpecDefinitionInfo
     $DefinitionFunctionsDetails[$Name] = $FunctionDetails
 }
 
+function Get-SwaggerSpecPathInfo
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [PSObject]
+        $JsonPathItemObject,
+
+        [Parameter(Mandatory=$true)]
+        [PSCustomObject] 
+        $PathFunctionDetails,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $Info,
+        
+        [Parameter(Mandatory = $true)]
+        [hashTable]
+        $DefinitionList,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]
+        $SwaggerMetaDict,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]
+        $DefinitionFunctionsDetails
+    )
+
+    $JsonPathItemObject.value.PSObject.Properties | ForEach-Object {
+        $operationId = $_.Value.operationId
+
+        $FunctionDescription = ""
+        if((Get-Member -InputObject $_.value -Name 'description') -and $_.value.description) {
+            $FunctionDescription = $_.value.description 
+        }
+        
+        $paramInfo = Get-PathParamInfo -JsonPathItemObject $_.value -Info $Info -DefinitionFunctionsDetails $DefinitionFunctionsDetails
+
+        $responses = ""
+        if((Get-Member -InputObject $_.value -Name 'responses') -and $_.value.responses) {
+            $responses = $_.value.responses 
+        }
+
+        $FunctionDetails = @{}
+        
+        if((Get-Member -InputObject $_.value -Name 'x-ms-cmdlet-name') -and $_.value.'x-ms-cmdlet-name')
+        {
+            $FunctionDetails['CommandName'] = $_.value.'x-ms-cmdlet-name'
+        } else {
+            $FunctionDetails['CommandName'] = Get-PathCommandName -OperationId $operationId
+        }
+
+        $paramObject = Convert-ParamTable -ParamTable $paramInfo
+        $FunctionDetails['ParamHelp'] = $paramObject['ParamHelp']
+        $FunctionDetails['Paramblock'] = $paramObject['ParamBlock']
+        $FunctionDetails['RequiredParamList'] = $paramObject['RequiredParamList']
+        $FunctionDetails['OptionalParamList'] = $paramObject['OptionalParamList']
+
+        $functionBodyParams = @{
+						Responses = $responses
+						Info = $Info
+						DefinitionList = $DefinitionList
+						operationId = $operationId
+						RequiredParamList = $FunctionDetails['RequiredParamList']
+						OptionalParamList = $FunctionDetails['OptionalParamList']
+						SwaggerMetaDict = $SwaggerMetaDict
+						}
+
+        $bodyObject = Get-PathFunctionBody @functionBodyParams
+        
+        $FunctionDetails['Body'] = $bodyObject.body
+        $FunctionDetails['OutputTypeBlock'] = $bodyObject.OutputTypeBlock
+        $FunctionDetails['Description'] = $FunctionDescription
+        $FunctionDetails['OperationId'] = $operationId
+        $FunctionDetails['Responses'] = $responses
+        $PathFunctionDetails[$operationId] = $FunctionDetails
+    }
+}
+
+function Get-PathParamInfo
+{
+    param
+    (
+        [Parameter(Mandatory=$true)]
+        [PSObject]
+        $JsonPathItemObject,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $Info,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $DefinitionFunctionsDetails
+    )
+
+    $ParametersTable = @{}
+    $index = 0
+    
+    $JsonPathItemObject.parameters | ForEach-Object {
+
+        $ParameterJsonObject = $_
+        $ParameterDetails = @{}
+        $IsParamMandatory = '$false'
+        $ParameterDescription = ''
+        $parameterName = ''
+        $NameSpace = $Info.namespace
+            
+        if((Get-Member -InputObject $_ -Name 'Name') -and $_.Name)
+        {
+            $parameterName = Get-PascalCasedString -Name $_.Name
+        }
+
+        if ((Get-Member -InputObject $ParameterJsonObject -Name 'Required') -and $ParameterJsonObject.Required)
+        {
+            $IsParamMandatory = '$true'
+        }
+
+        $paramTypeObject = Get-ParamType -ParameterJsonObject $ParameterJsonObject `
+                                        -NameSpace $NameSpace `
+                                        -parameterName $parameterName `
+                                        -DefinitionFunctionsDetails $DefinitionFunctionsDetails
+
+        if ((Get-Member -InputObject $ParameterJsonObject -Name 'Description') -and $ParameterJsonObject.Description)
+        {
+            $ParameterDescription = $ParameterJsonObject.Description
+        }
+
+        $ParameterDetails['Name'] = $parameterName
+        $ParameterDetails['Type'] = $paramTypeObject.ParamType
+        $ParameterDetails['ValidateSet'] = $paramTypeObject.ValidateSetString
+        $ParameterDetails['Mandatory'] = $IsParamMandatory
+        $ParameterDetails['Description'] = $ParameterDescription
+        $ParameterDetails['isParameter'] = $paramTypeObject.isParameter
+
+        if($paramTypeObject.ParamType)
+        {
+            $ParametersTable[$index] = $ParameterDetails
+            $index = $index + 1
+        }
+    }
+
+    return $ParametersTable
+}
+
+function Get-ParamType
+{
+	param
+	(
+		[Parameter(Mandatory=$true)]
+        [PSObject]
+		$ParameterJsonObject,
+		
+		[Parameter(Mandatory=$true)]
+        [String]
+		$NameSpace,
+		
+		[Parameter(Mandatory=$true)]
+        [String]
+        [AllowEmptyString()]
+		$parameterName,
+		
+		[Parameter(Mandatory=$true)]
+        [hashtable]
+		$DefinitionFunctionsDetails
+	)
+
+	$DefinitionTypeNamePrefix = "$Namespace.Models."
+    $paramType = ""
+    $ValidateSetString = $null
+    $isParameter = $true
+
+	if((Get-Member -InputObject $ParameterJsonObject -Name 'Type') -and $ParameterJsonObject.Type)
+	{
+		# Use the format as parameter type if that is available as a type in PowerShell
+		if ((Get-Member -InputObject $ParameterJsonObject -Name 'Format') -and 
+			 $ParameterJsonObject.Format -and 
+			 ($null -ne ($ParameterJsonObject.Format -as [Type]))) 
+		{
+			$paramType = $ParameterJsonObject.Format
+		}
+		elseif (($ParameterJsonObject.Type -eq 'array') -and
+				(Get-Member -InputObject $ParameterJsonObject -Name 'Items') -and 
+				$ParameterJsonObject.Items)
+		{
+			if((Get-Member -InputObject $ParameterJsonObject.Items -Name '$ref') -and 
+			   $ParameterJsonObject.Items.'$ref')
+			{
+				$ReferenceTypeValue = $ParameterJsonObject.Items.'$ref'
+				$ReferenceTypeName = $ReferenceTypeValue.Substring( $( $ReferenceTypeValue.LastIndexOf('/') ) + 1 )
+				$paramType = $DefinitionTypeNamePrefix + "$ReferenceTypeName[]"
+			}
+			elseif((Get-Member -InputObject $ParameterJsonObject.Items -Name 'Type') -and $ParameterJsonObject.Items.Type)
+			{
+				$paramType = "$($ParameterJsonObject.Items.Type)[]"
+			}
+			else
+			{
+				$paramType = $ParameterJsonObject.Type
+			}                             
+		}
+		elseif (($ParameterJsonObject.Type -eq 'object') -and
+				(Get-Member -InputObject $ParameterJsonObject -Name 'AdditionalProperties') -and 
+				$ParameterJsonObject.AdditionalProperties)
+		{
+			$AdditionalPropertiesType = $ParameterJsonObject.AdditionalProperties.Type
+			$paramType = "System.Collections.Generic.Dictionary[[$AdditionalPropertiesType],[$AdditionalPropertiesType]]"
+		}
+		else
+		{
+			$paramType = $ParameterJsonObject.Type
+		}
+	}
+	elseif($parameterName -eq 'Properties' -and
+		  (Get-Member -InputObject $ParameterJsonObject -Name 'x-ms-client-flatten') -and 
+		  ($ParameterJsonObject.'x-ms-client-flatten') )
+		{
+			# 'x-ms-client-flatten' extension allows to flatten deeply nested properties into the current definition.
+			# Users often provide feedback that they don't want to create multiple levels of properties to be able to use an operation. 
+			# By applying the x-ms-client-flatten extension, you move the inner properties to the top level of your definition.
+
+			$ReferenceParameterValue = $ParameterJsonObject.'$ref'
+			$ReferenceDefinitionName = $ReferenceParameterValue.Substring( $( $ReferenceParameterValue.LastIndexOf('/') ) + 1 )
+
+			$x_ms_Client_flatten_DefinitionNames += $ReferenceDefinitionName
+
+			$ReferencedFunctionDetails = @{}
+			if($DefinitionFunctionsDetails.ContainsKey($ReferenceDefinitionName))
+			{
+				$ReferencedFunctionDetails = $DefinitionFunctionsDetails[$ReferenceDefinitionName]
+			}
+
+			$ReferencedFunctionDetails['Name'] = $ReferenceDefinitionName
+			$ReferencedFunctionDetails['IsUsedAs_x_ms_client_flatten'] = $true
+			$paramType = $DefinitionFunctionsDetails[$ReferenceDefinitionName] = $ReferencedFunctionDetails
+		}
+	elseif ( (Get-Member -InputObject $ParameterJsonObject -Name '$ref') -and ($ParameterJsonObject.'$ref') )
+	{
+		$ReferenceParameterValue = $ParameterJsonObject.'$ref'
+		$isParameter = $false
+		$paramType = $DefinitionTypeNamePrefix + $ReferenceParameterValue.Substring( $( $ReferenceParameterValue.LastIndexOf('/') ) + 1 )
+	}
+	elseif ((Get-Member -InputObject $ParameterJsonObject -Name 'Schema') -and ($ParameterJsonObject.Schema) -and
+			(Get-Member -InputObject $ParameterJsonObject.Schema -Name '$ref') -and ($ParameterJsonObject.Schema.'$ref') )
+	{
+		$ReferenceParameterValue = $ParameterJsonObject.Schema.'$ref'
+		$paramType = $DefinitionTypeNamePrefix + $ReferenceParameterValue.Substring( $( $ReferenceParameterValue.LastIndexOf('/') ) + 1 )
+	}
+	else 
+	{
+		$paramType = 'object'
+	}
+
+	if($paramType -eq 'Boolean')
+	{
+		$paramType = 'switch'
+	}
+
+	if ((Get-Member -InputObject $ParameterJsonObject -Name 'Enum') -and $ParameterJsonObject.Enum)
+	{
+		if((Get-Member -InputObject $ParameterJsonObject -Name 'x-ms-enum') -and 
+		   $ParameterJsonObject.'x-ms-enum' -and 
+		   ($ParameterJsonObject.'x-ms-enum'.modelAsString -eq $false))
+		{
+
+			$paramType = $DefinitionTypeNamePrefix + $ParameterJsonObject.'x-ms-enum'.Name
+		}
+		else
+		{
+			$ValidateSet = $ParameterJsonObject.Enum
+			$ValidateSetString = "'$($ValidateSet -join "', '")'"
+		}
+	}
+
+	$paramTypeObject = @{ ParamType = $paramType;
+						 ValidateSetString = $ValidateSetString;
+                         isParameter = $isParameter
+					}
+
+	return $paramTypeObject
+
+}
+
+function New-SwaggerSpecPathCommand
+{
+    param
+    (
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $PathFunctionDetails,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]
+        $SwaggerMetaDict
+    )
+
+    $FunctionsToExport = @()
+
+    $PathFunctionDetails.Keys | ForEach-Object {
+        $FunctionDetails = $PathFunctionDetails[$_]
+        $FunctionsToExport += New-SwaggerPath -FunctionDetails $FunctionDetails `
+                                                -SwaggerMetaDict $SwaggerMetaDict
+    }
+
+    return $FunctionsToExport
+}
+
+function New-SwaggerPath
+{
+    param
+    (
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $FunctionDetails,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]
+        $SwaggerMetaDict
+    )
+
+    $commandName = $FunctionDetails.CommandName
+    $description = $FunctionDetails.Description
+    $commandHelp = $executionContext.InvokeCommand.ExpandString($helpDescStr)
+
+    $paramHelp = $FunctionDetails.ParamHelp
+    $paramblock = $FunctionDetails.ParamBlock
+    $requiredParamList = $FunctionDetails.RequiredParamList
+    $optionalParamList = $FunctionDetails.OptionalParamList
+
+    $body = $FunctionDetails.Body
+    $outputTypeBlock = $FunctionDetails.OutputTypeBlock
+
+    $CommandString = $executionContext.InvokeCommand.ExpandString($advFnSignature)
+    $GeneratedCommandsPath = Join-Path -Path (Join-Path -Path $SwaggerMetaDict['outputDirectory'] -ChildPath $GeneratedCommandsName) -ChildPath 'SwaggerPathCommands'
+
+    if(-not (Test-Path -Path $GeneratedCommandsPath -PathType Container)) {
+        $null = New-Item -Path $GeneratedCommandsPath -ItemType Directory
+    }
+
+    $CommandFilePath = Join-Path -Path $GeneratedCommandsPath -ChildPath "$commandName.ps1"
+    Out-File -InputObject $CommandString -FilePath $CommandFilePath -Encoding ascii -Force -Confirm:$false -WhatIf:$false
+    return $commandName
+}
+
+function Convert-ParamTable
+{
+    param
+    (
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $ParamTable
+    )
+
+    $paramblock = ""
+    $paramHelp = ""
+    $requiredParamList = @()
+    $optionalParamList = @()
+
+    $keyCount = $ParamTable.Keys.Count
+    foreach($key in 0..($keyCount - 1)){
+        $ParameterDetails = $ParamTable[$key]
+
+        if($ParameterDetails.isParameter) {
+            $isParamMandatory = $ParameterDetails.Mandatory
+            $parameterName = $ParameterDetails.Name
+            $paramName = "`$$parameterName" 
+            $paramType = $ParameterDetails.Type
+
+            $ValidateSetDefinition = $null
+            if ($ParameterDetails.ValidateSet)
+            {
+                $ValidateSetString = $ParameterDetails.ValidateSet
+                $ValidateSetDefinition = $executionContext.InvokeCommand.ExpandString($ValidateSetDefinitionString)
+            }
+
+            if ($isParamMandatory -eq '$true')
+            {
+                $requiredParamList += $paramName
+            }
+            else
+            {
+                $optionalParamList += $paramName
+            }
+
+            $paramblock += $executionContext.InvokeCommand.ExpandString($parameterDefString)
+            $pDescription = $ParameterDetails.Description
+            $paramHelp += $executionContext.InvokeCommand.ExpandString($helpParamStr)
+        }
+    }
+
+    $paramblock = $paramBlock.TrimEnd().TrimEnd(",")
+    $requiredParamList = $requiredParamList -join ', '
+    $optionalParamList = $optionalParamList -join ', '
+
+    $paramObject = @{ ParamHelp = $paramhelp;
+                      ParamBlock = $paramBlock;
+                      RequiredParamList = $requiredParamList;
+                      OptionalParamList = $optionalParamList;
+                    }
+
+    return $paramObject
+}
+
+function Get-PathFunctionBody
+{
+    param
+    (
+        [Parameter(Mandatory=$true)]
+        [PSCustomObject]
+        $Responses,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $Info,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $DefinitionList,
+
+        [Parameter(Mandatory=$true)]
+        [String]
+        $operationId,
+
+        [Parameter(Mandatory=$true)]
+        [AllowEmptyString()]
+        [String]
+        $RequiredParamList,
+
+        [Parameter(Mandatory=$true)]
+        [AllowEmptyString()]
+        [String]
+        $OptionalParamList,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $SwaggerMetaDict
+    )
+
+    $UseAzureCsharpGenerator = $SwaggerMetaDict['UseAzureCsharpGenerator']
+    $infoVersion = $Info['infoVersion']
+    $modulePostfix = $Info['infoName']
+    $methodName = ''
+    $operations = ''
+    $opIdValues = $operationId -split '_',2 
+    if(-not $opIdValues -or ($opIdValues.count -ne 2)) {
+        $methodName = $operationId + 'WithHttpMessagesAsync'
+    } else {            
+        $operationName = $operationId.Split('_')[0]
+        $operationType = $operationId.Split('_')[1]
+        $operations = ".$operationName"
+        if ((-not $UseAzureCsharpGenerator) -and 
+            (Test-OperationNameInDefinitionList -Name $operationName -SwaggerSpecDefinitionsAndParameters $SwaggerSpecDefinitionsAndParameters))
+        { 
+            $operations = $operations + 'Operations'
+        }
+        $methodName = $operationType + 'WithHttpMessagesAsync'
+    }
+
+    $NameSpace = $info.namespace
+    $fullModuleName = $Namespace + '.' + $modulePostfix
+    $clientName = '$' + $modulePostfix
+    $apiVersion = $null
+    $SubscriptionId = $null
+    $BaseUri = $null
+    $GetServiceCredentialStr = ''
+    $AdvancedFunctionEndCodeBlock = ''
+    $GetServiceCredentialStr = 'Get-AzServiceCredential'
+
+    if (-not $UseAzureCsharpGenerator)
+    {
+        $apiVersion = $executionContext.InvokeCommand.ExpandString($ApiVersionStr)
+    }
+
+    $responseBodyParams = @{
+                            responses = $Responses.PSObject.Properties
+                            namespace = $Namespace
+                            definitionList = $DefinitionList
+                        }
+
+    $responseBody, $outputTypeBlock = Get-Response @responseBodyParams
+
+    $body = $executionContext.InvokeCommand.ExpandString($functionBodyStr)
+
+    $bodyObject = @{ OutputTypeBlock = $outputTypeBlock;
+                     Body = $body;
+                    }
+
+    return $bodyObject
+}
+
+function Get-PathCommandName
+{
+    param
+    (
+        [Parameter(Mandatory=$true)]
+        [String]
+        $OperationId
+    )
+
+    $opId = $OperationId
+    $cmdNounMap = @{
+                    Create = 'New'
+                    Activate = 'Enable'
+                    Delete = 'Remove'
+                    List   = 'GetAll'
+                }
+    $opIdValues = $opId  -split "_",2
+    
+    # OperationId can be specified without '_' (Underscore), return the OperationId as command name
+    if(-not $opIdValues -or ($opIdValues.Count -ne 2)) {
+        return $opId
+    }
+
+    $cmdNoun = $opIdValues[0]
+    $cmdVerb = $opIdValues[1]
+    if (-not (get-verb $cmdVerb))
+    {
+        $message = $LocalizedData.UnapprovedVerb -f ($cmdVerb)
+        Write-Verbose "Verb $cmdVerb not an approved verb."
+        if ($cmdNounMap.ContainsKey($cmdVerb))
+        {
+            $message = $LocalizedData.ReplacedVerb -f ($($cmdNounMap[$cmdVerb]), $cmdVerb)
+            Write-Verbose -Message $message
+            $cmdVerb = $cmdNounMap[$cmdVerb]
+        }
+        else
+        {
+            $idx=1
+            for(; $idx -lt $opIdValues[1].Length; $idx++)
+            { 
+                if (([int]$opIdValues[1][$idx] -ge 65) -and ([int]$opIdValues[1][$idx] -le 90)) {
+                    break
+                }
+            }
+            
+            $cmdNounSuffix = $opIdValues[1].Substring($idx)
+            # Add command noun suffix only when the current noun is not ending with the same suffix. 
+            if(-not $cmdNoun.EndsWith($cmdNounSuffix, [System.StringComparison]::OrdinalIgnoreCase)) {
+                $cmdNoun = $cmdNoun + $opIdValues[1].Substring($idx)
+            }
+            
+            $cmdVerb = $opIdValues[1].Substring(0,$idx)            
+            if ($cmdNounMap.ContainsKey($cmdVerb)) { 
+                $cmdVerb = $cmdNounMap[$cmdVerb]
+            }          
+
+            $message = $LocalizedData.UsingNounVerb -f ($cmdNoun, $cmdVerb)
+            Write-Verbose -Message $message
+        }
+    }
+
+    return "$cmdVerb-$cmdNoun"
+}
+
 <#
 .DESCRIPTION
   Generates a cmdlet for the definition
@@ -811,6 +1373,62 @@ function $commandName
     Out-File -InputObject $CommandString -FilePath $CommandFilePath -Encoding ascii -Force -Confirm:$false -WhatIf:$false
 
     return $CommandName
+}
+
+<#
+.DESCRIPTION
+  Creates a format file for the given definition details
+#>
+function New-SwaggerDefinitionFormatFile
+{
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true)]
+        [PSCustomObject]
+        $FunctionDetails,
+
+        [Parameter(Mandatory=$true)]
+        [string] 
+        $FormatFilesPath,
+
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Namespace
+    )
+    
+    $ViewName = "$Namespace.Models.$($FunctionDetails.Name)"
+    $ViewTypeName = $ViewName
+    $TableColumnItemsList = @()
+    $TableColumnItemCount = 0
+    $ParametersCount = $FunctionDetails.ParametersTable.Keys.Count
+    $SkipParameterList = @('id', 'tags')
+
+    $FunctionDetails.ParametersTable.Keys | ForEach-Object {
+        $ParameterDetails = $FunctionDetails.ParametersTable[$_]
+
+        # Add all properties when definition has 4 or less properties.
+        # Otherwise add the first 4 properties with basic types by skipping the complex types, id and tags.
+        if(($ParametersCount -le 4) -or
+           (($TableColumnItemCount -le 4) -and
+            ($SkipParameterList -notcontains $ParameterDetails.Name) -and
+            (-not $ParameterDetails.Type.StartsWith($Namespace, [System.StringComparison]::OrdinalIgnoreCase))))
+        {
+            $TableColumnItemsList += $TableColumnItemStr -f ($ParameterDetails.Name)
+            $TableColumnItemCount += 1
+        }
+    }
+
+    $TableColumnHeaders = $null
+    $TableColumnItems = $TableColumnItemsList -join "`r`n"
+    $FormatViewDefinition = $FormatViewDefinitionStr -f ($ViewName, $ViewTypeName, $TableColumnHeaders, $TableColumnItems)
+    Write-Verbose -Message $FormatViewDefinition
+
+    if(-not (Test-Path -Path $FormatFilesPath -PathType Container))
+    {
+        $null = New-Item -Path $FormatFilesPath -ItemType Directory
+    }
+    $FormatFilePath = Join-Path -Path $FormatFilesPath -ChildPath "$($FunctionDetails.Name).ps1xml"
+    Out-File -InputObject $FormatViewDefinition -FilePath $FormatFilePath -Encoding ascii -Force -Confirm:$false -WhatIf:$false
 }
 
 <#
@@ -1007,13 +1625,16 @@ function Get-Response
     param
     (
         [Parameter(Mandatory=$true)]
-        [PSCustomObject] $responses,
+        [PSCustomObject]
+        $Responses,
         
         [Parameter(Mandatory=$true)]
-        [String] $NameSpace, 
+        [String]
+        $NameSpace, 
 
         [Parameter(Mandatory=$true)]        
-        [hashtable] $definitionList
+        [hashtable]
+        $DefinitionList
     )
 
     $outputTypeFlag = $false
@@ -1158,6 +1779,7 @@ function Get-CommandHelp
         $PathObject
     )
 
+    $description = $null
     if((Get-Member -InputObject $PathObject -Name 'Description') -and $PathObject.Description) {
         $description = $PathObject.Description
     }
@@ -1286,18 +1908,10 @@ function Get-FunctionBody
     $apiVersion = $null
     $SubscriptionId = $null
     $BaseUri = $null
-
-    if($Authentication -eq 'AzureStack')
+    
+    if (-not $UseAzureCsharpGenerator)
     {
-        $BaseUri = $AzureStackBaseUriStr -f ($clientName)
-    }
-    else
-    {
-        $SubscriptionId = $SubscriptionIdStr -f ($clientName)
-        if (-not $UseAzureCsharpGenerator)
-        {
-            $apiVersion = $ApiVersionStr -f ($clientName, $infoVersion)
-        }
+        $apiVersion = $executionContext.InvokeCommand.ExpandString($ApiVersionStr)
     }
 
     $operationId = $PathObject.operationId
@@ -1325,15 +1939,6 @@ function Get-FunctionBody
                         }
 
     $responseBody, $outputTypeBlock = Get-Response @responseBodyParams
-    
-    if ($SwaggerMetaDict['Authentication'] -eq 'AzureStack') {
-        $GetServiceCredentialStr = 'Get-AzSServiceCredential'
-        $AdvancedFunctionEndCodeBlock = $AzSAdvancedFunctionEndCodeBlockStr
-    }
-    else {
-        $GetServiceCredentialStr = 'Get-AzServiceCredential'
-        $AdvancedFunctionEndCodeBlock = ''
-    }
 
     $body = $executionContext.InvokeCommand.ExpandString($functionBodyStr)
 
@@ -1442,11 +2047,14 @@ function New-ModuleManifestUtility
         $SwaggerSpecDefinitionsAndParameters
     )
 
+    $FormatsToProcess = Get-ChildItem -Path "$Path\$GeneratedCommandsName\FormatFiles\*.ps1xml" -File | Foreach-Object { $_.FullName.Replace($Path, '.') }
+
     New-ModuleManifest -Path "$(Join-Path -Path $Path -ChildPath $SwaggerSpecDefinitionsAndParameters['ModuleName']).psd1" `
                        -ModuleVersion $SwaggerSpecDefinitionsAndParameters['Version'] `
                        -RequiredModules @('Generated.Azure.Common.Helpers') `
                        -RequiredAssemblies @("$($SwaggerSpecDefinitionsAndParameters['Namespace']).dll") `
                        -RootModule "$($SwaggerSpecDefinitionsAndParameters['ModuleName']).psm1" `
+                       -FormatsToProcess $FormatsToProcess `
                        -FunctionsToExport $FunctionsToExport
 }
 
@@ -1515,20 +2123,16 @@ function ConvertTo-SwaggerDictionary
     $swaggerInfo = Get-SwaggerInfo -Info $swaggerObject.info
     $swaggerDict.Add("info", $swaggerInfo)
 
-    if(-not (Get-Member -InputObject $swaggerObject -Name 'parameters')) {
-        $message = $LocalizedData.SwaggerParamsMissing
-        Throw $message
+    $swaggerParameters = $null
+    if(Get-Member -InputObject $swaggerObject -Name 'parameters') {
+        $swaggerParameters = Get-SwaggerParameters -Parameters $swaggerObject.parameters
     }
-
-    $swaggerParameters = Get-SwaggerParameters -Parameters $swaggerObject.parameters
     $swaggerDict.Add("parameters", $swaggerParameters)
 
-    if(-not (Get-Member -InputObject $swaggerObject -Name 'definitions')) {
-        $message = $LocalizedData.SwaggerDefinitionsMissing
-        Throw  $message
+    $swaggerDefinitions = $null
+    if(Get-Member -InputObject $swaggerObject -Name 'definitions') {
+        $swaggerDefinitions = Get-SwaggerMultiItemObject -Object $swaggerObject.definitions
     }
-
-    $swaggerDefinitions = Get-SwaggerMultiItemObject -Object $swaggerObject.definitions
     $swaggerDict.Add("definitions", $swaggerDefinitions)
 
     if(-not (Get-Member -InputObject $swaggerObject -Name 'paths')) {

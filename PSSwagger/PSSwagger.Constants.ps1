@@ -22,7 +22,7 @@
     $RootModuleContents = @'
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 
-Get-ChildItem -Path "`$PSScriptRoot\$GeneratedCommandsName" -Recurse -Filter *.ps1 -File | ForEach-Object { . `$_.FullName}
+Get-ChildItem -Path "`$PSScriptRoot\$GeneratedCommandsName\*.ps1" -Recurse -File | ForEach-Object { . `$_.FullName}
 '@
 
     $advFnSignature = @'
@@ -50,15 +50,22 @@ function $commandName
     $functionBodyStr = @'
  `Begin
     {
-        `$serviceCredentials = $GetServiceCredentialStr
+        `$serviceCredentials = Get-AzServiceCredential
         `$subscriptionId = Get-AzSubscriptionId
+        `$ResourceManagerUrl = Get-AzResourceManagerUrl
     }
 
     Process
     {
         `$delegatingHandler = Get-AzDelegatingHandler
 
-        $clientName = New-Object -TypeName $fullModuleName -ArgumentList `$serviceCredentials,`$delegatingHandler$apiVersion$BaseUri$SubscriptionId
+        $clientName = New-Object -TypeName $fullModuleName -ArgumentList `$serviceCredentials,`$delegatingHandler$apiVersion
+
+        if(Get-Member -InputObject $clientName -Name 'SubscriptionId' -MemberType Property)
+        {
+            $clientName.SubscriptionId = `$SubscriptionId
+        }
+        $clientName.BaseUri = `$ResourceManagerUrl
 
         Write-Verbose 'Performing operation $methodName on $clientName.'
         `$taskResult = $clientName$operations.$methodName($requiredParamList)
@@ -92,7 +99,6 @@ function $commandName
 
     End
     {
-        $AdvancedFunctionEndCodeBlock
     }
 '@
 
@@ -147,23 +153,49 @@ $failCase = @'
    return `$Object
 '@
 
-$AzSAdvancedFunctionEndCodeBlockStr = @'
-$null = Remove-AzSEnvironment
-'@
-
 $ApiVersionStr = @'
 
-        {0}.ApiVersion = "{1}"
-'@
-
-$AzureStackBaseUriStr = @'
-
-        {0}.BaseUri = "https://api.$azureStackDomain"
-'@
-
-$SubscriptionIdStr = @'
-
-        {0}.SubscriptionId = $subscriptionId
+        if(Get-Member -InputObject $clientName -Name 'ApiVersion' -MemberType Property)
+        {
+            $clientName.ApiVersion = "$infoVersion"
+        }
 '@
 
 $GeneratedCommandsName = 'Generated.PowerShell.Commands'
+
+$FormatViewDefinitionStr = @'
+<?xml version="1.0" encoding="utf-8" ?>
+<Configuration>
+    <ViewDefinitions>
+        <View>
+            <Name>{0}</Name>
+            <ViewSelectedBy>
+                <TypeName>{1}</TypeName>
+            </ViewSelectedBy>
+            <TableControl>
+                <TableHeaders>{2}
+                </TableHeaders>
+                <TableRowEntries>
+                    <TableRowEntry>
+                        <TableColumnItems>
+{3}
+                        </TableColumnItems>
+                    </TableRowEntry>
+                </TableRowEntries>
+            </TableControl>
+        </View>
+    </ViewDefinitions>
+</Configuration>
+'@
+
+$TableColumnItemStr = @'
+                            <TableColumnItem>
+                                <PropertyName>{0}</PropertyName>
+                            </TableColumnItem>
+'@
+
+$TableColumnHeaderStr = @'
+                    <TableColumnHeader>
+                        <Width>{0}</Width>
+                    </TableColumnHeader>
+'@
