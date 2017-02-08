@@ -13,6 +13,13 @@
 # VS auto-generated files for csproj files
 *.csproj.user
 
+# Tests related files and folders
+/Tests/Generated/
+/Tests/NodeModules/
+/Tests/ScenarioTestResults.xml
+/Tests/pesterCommand.ps1
+/Tests/dotnet-install.*
+
 # Project Rider IDE files
 .idea.powershell/
 
