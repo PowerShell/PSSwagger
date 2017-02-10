@@ -12,10 +12,10 @@ VariablesToExport = ''
 AliasesToExport = ''
 
 NestedModules = @('Generated.Azure.Common.Helpers',
-                    'SwaggerUtils.psm1',
-                    'Utilities.psm1',
-                    'Paths.psm1',
-                    'Definitions.psm1')
+                  'SwaggerUtils.psm1',
+                  'Utilities.psm1',
+                  'Paths.psm1',
+                  'Definitions.psm1')
 
 FileList = @('PSSwagger.Constants.ps1',
              'PSSwagger.psm1',

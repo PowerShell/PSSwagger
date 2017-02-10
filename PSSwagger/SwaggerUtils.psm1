@@ -6,7 +6,10 @@
 #
 #########################################################################################
 
+Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 Import-Module (Join-Path -Path $PSScriptRoot -ChildPath Utilities.psm1)
+. "$PSScriptRoot\PSSwagger.Constants.ps1"
+Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwagger.Resources.psd1
 
 function ConvertTo-SwaggerDictionary {
     param(
