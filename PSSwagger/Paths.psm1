@@ -37,7 +37,11 @@ function Get-SwaggerSpecPathInfo
 
         [Parameter(Mandatory = $true)]
         [hashtable]
-        $DefinitionFunctionsDetails
+        $DefinitionFunctionsDetails,
+
+        [Parameter(Mandatory=$true)]
+        [PSCustomObject]
+        $SwaggerSpecDefinitionsAndParameters
     )
 
     $JsonPathItemObject.value.PSObject.Properties | ForEach-Object {
@@ -78,6 +82,7 @@ function Get-SwaggerSpecPathInfo
 						RequiredParamList = $FunctionDetails['RequiredParamList']
 						OptionalParamList = $FunctionDetails['OptionalParamList']
 						SwaggerMetaDict = $SwaggerMetaDict
+                        SwaggerSpecDefinitionsAndParameters = $SwaggerSpecDefinitionsAndParameters
 						}
 
         $bodyObject = Get-PathFunctionBody @functionBodyParams
