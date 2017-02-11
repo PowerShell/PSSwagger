@@ -2,7 +2,7 @@ Import-Module (Join-Path "$PSScriptRoot" "TestUtilities.psm1")
 Describe "Basic API" -Tag ScenarioTest {
     BeforeAll {
         Compile-TestAssembly -TestAssemblyFullPath (Join-Path "$PSScriptRoot" "PSSwagger.TestUtilities" | Join-Path -ChildPath "$global:testRunGuid.dll") -TestCSharpFilePath (Join-Path "$PSScriptRoot" "PSSwagger.TestUtilities" | Join-Path -ChildPath "TestCredentials.cs") `
-            -CompilationUtilsPath (Join-Path "$PSScriptRoot" ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "CompilationUtils.ps1") -UseAzureCSharpGenerator $false -Verbose
+            -CompilationUtilsPath (Join-Path "$PSScriptRoot" ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "Utils.ps1") -UseAzureCSharpGenerator $false -Verbose
         
         # TODO: Pass all these locations dynamically - See issues/17
         # Ensure PSSwagger isn't loaded (including the one installed on the machine, if any)
@@ -22,9 +22,12 @@ Describe "Basic API" -Tag ScenarioTest {
         
         # Generate module
         Write-Host "Removing old module, if any"
-        Remove-Item (Join-Path $generatedModulesPath "Generated.Basic.Module") -Recurse -Force
+        if (Test-Path (Join-Path $generatedModulesPath "Generated.Basic.Module")) {
+            Remove-Item (Join-Path $generatedModulesPath "Generated.Basic.Module") -Recurse -Force
+        }
+
         Write-Host "Generating module"
-        Export-CommandFromSwagger -SwaggerSpecPath "$testCaseDataLocation\$testSpec" -Path "$generatedModulesPath" -ModuleName "Generated.Basic.Module" -Verbose
+        Export-CommandFromSwagger -SwaggerSpecPath "$testCaseDataLocation\$testSpec" -Path "$generatedModulesPath" -ModuleName "Generated.Basic.Module" -Verbose -SkipAssemblyGeneration
         if (-not $?) {
             throw 'Failed to generate module. Expected: Success'
         }
@@ -55,20 +58,20 @@ Describe "Basic API" -Tag ScenarioTest {
             $nodeProcesses = @($nodeProcesses)
         }
 
-        if ('Desktop' -eq $PSEdition) {
-            $jsonServerProcess = Start-Process -FilePath "$PSScriptRoot\NodeModules\json-server.cmd" -ArgumentList "--watch `"$PSScriptRoot\NodeModules\db.json`" --routes `"$testCaseDataLocation\$testRoutes`"" -PassThru -WindowStyle Hidden
-        } else {
+        if ('Core' -eq $PSEdition) {
             $jsonServerProcess = Start-Process -FilePath "$PSScriptRoot\NodeModules\json-server.cmd" -ArgumentList "--watch `"$PSScriptRoot\NodeModules\db.json`" --routes `"$testCaseDataLocation\$testRoutes`"" -PassThru
+        } else {
+            $jsonServerProcess = Start-Process -FilePath "$PSScriptRoot\NodeModules\json-server.cmd" -ArgumentList "--watch `"$PSScriptRoot\NodeModules\db.json`" --routes `"$testCaseDataLocation\$testRoutes`"" -PassThru -WindowStyle Hidden
         }
 
         # Wait for local json-server to start on full CLR
-        if ('Desktop' -eq $PSEdition) {
+        if ('Core' -ne $PSEdition) {
             while (-not (Test-NetConnection -ComputerName localhost -Port 3000)) {
                 Write-Verbose -Message "Waiting for server to start..." -Verbose
                 Start-Sleep -s 1
             }
         }
-        
+
         $nodeProcessToStop = Get-Process -Name "node" -ErrorAction SilentlyContinue | Where-Object {-not $nodeProcesses.Contains($_)}
         while ($nodeProcessToStop -eq $null) {
             $nodeProcessToStop = Get-Process -Name "node" -ErrorAction SilentlyContinue | Where-Object {-not $nodeProcesses.Contains($_)}

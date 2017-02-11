@@ -41,6 +41,6 @@ function Compile-TestAssembly {
     if (-not (Test-Path $TestAssemblyFullPath)) {
         Write-Host "Generating test assembly from file '$TestCSharpFilePath' using script '$CompilationUtilsPath'"
         . "$CompilationUtilsPath"
-        Compile-CSharpCode -CSharpFiles @($TestCSharpFilePath) -OutputAssembly $TestAssemblyFullPath -AzureCSharpGenerator $UseAzureCSharpGenerator -Verbose
+        Invoke-AssemblyCompilation -CSharpFiles @($TestCSharpFilePath) -OutputAssembly $TestAssemblyFullPath -CodeCreatedByAzureGenerator:$UseAzureCSharpGenerator -Verbose
     }
 }

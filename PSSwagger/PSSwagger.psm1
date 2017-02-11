@@ -8,7 +8,7 @@
 
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 . "$PSScriptRoot\PSSwagger.Constants.ps1"
-. "$PSScriptRoot\CompilationUtils.ps1"
+. "$PSScriptRoot\Utils.ps1"
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwagger.Resources.psd1
 
 <#
@@ -21,8 +21,11 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwa
 .PARAMETER  Path
   Full Path to a file where the commands are exported to.
 
-.PARAMETER  Precompile
-  Switch to precompile the module's binary component for the version
+.PARAMETER  SkipAssemblyGeneration
+  Switch to skip precompiling the module's binary component for the current CLR.
+
+.PARAMETER  PowerShellCorePath
+  Path to PowerShell.exe for PowerShell Core.
 #>
 function Export-CommandFromSwagger
 {
@@ -50,10 +53,13 @@ function Export-CommandFromSwagger
 
         [Parameter()]
         [switch]
-        $Precompile
+        $SkipAssemblyGeneration,
+
+        [Parameter()]
+        [String]
+        $PowerShellCorePath
     )
 
-    $fileCatalogName = "GeneratedCodeCatalog.cat"
     if ($PSCmdlet.ParameterSetName -eq 'SwaggerURI')
     {
         # Ensure that if the URI is coming from github, it is getting the raw content
@@ -79,7 +85,39 @@ function Export-CommandFromSwagger
         throw $LocalizedData.SwaggerSpecPathNotExist
     }
 
-    $jsonObject = ConvertFrom-Json ((Get-Content $SwaggerSpecPath) -join [Environment]::NewLine) -ErrorAction Stop
+    if (-not $SkipAssemblyGeneration) {
+        if (('Desktop' -eq $PSEdition) -and (-not $PowerShellCorePath)) {
+            $psCore = Get-Package PowerShell* -MaximumVersion 6.0.0.11 -ProviderName msi | Sort-Object -Property Version -Descending
+            if ($null -ne $psCore) {
+                # PSCore exists via MSI, but the MSI provider doesn't seem to provide an install path
+                # First check the default path (for now, just Windows)
+                $psCore | ForEach-Object {
+                    if (-not $PowerShellCorePath) {
+                        Write-Verbose "Found MSI installation of PowerShell Core: $($_.Version)"
+                        $possiblePsPath = (Join-Path -Path "$env:ProgramFiles" -ChildPath "PowerShell" | Join-Path -ChildPath "$($_.Version)" | Join-Path -ChildPath "PowerShell.exe")
+                        if (Test-Path -Path $possiblePsPath) {
+                            Write-Verbose "Found MSI installation at path: $possiblePsPath"
+                            $PowerShellCorePath = $possiblePsPath
+                        }
+                    }
+                }
+            }
+        }
+
+        if (-not $PowerShellCorePath) {
+            throw "No installations of PowerShell Core could be found. Please provide -PowerShellCorePath to specify the location of PowerShell Core."
+        }
+
+        if ((Get-Item $PowerShellCorePath).PSIsContainer) {
+            $PowerShellCorePath = Join-Path -Path $PowerShellCorePath -ChildPath "PowerShell.exe"
+        }
+
+        if (-not (Test-Path -Path $PowerShellCorePath)) {
+            throw "Couldn't find path '$PowerShellCorePath'"
+        }
+    }
+
+    $jsonObject = ConvertFrom-Json -InputObject ((Get-Content -Path $SwaggerSpecPath) -join [Environment]::NewLine) -ErrorAction Stop
 
     # Parse the JSON and populate the dictionary
     $swaggerDict = ConvertTo-SwaggerDictionary -SwaggerSpecPath $SwaggerSpecPath -ModuleName $ModuleName
@@ -114,8 +152,21 @@ function Export-CommandFromSwagger
     $Namespace = $SwaggerSpecDefinitionsAndParameters['Namespace']
     $generatedCSharpFilePath = ConvertTo-CsharpCode -SwaggerDict $swaggerDict `
                                     -SwaggerMetaDict $swaggerMetaDict `
-                                    -Compile $Precompile
+                                    -SkipAssemblyGeneration:$SkipAssemblyGeneration `
+                                    -PowerShellCorePath $PowerShellCorePath
 
+    # Prepare dynamic compilation
+    Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Utils.ps1") (Join-Path -Path $outputDirectory -ChildPath "Utils.ps1")
+
+    $allCSharpFiles = Get-ChildItem -Path $generatedCSharpFilePath -Filter *.cs -Recurse -Exclude Program.cs,TemporaryGeneratedFile* | Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*'
+    $filesHash = New-CodeFileCatalog -Files $allCSharpFiles
+    $fileHashesFileName = "FileCatalog.json"
+    ConvertTo-Json -InputObject $filesHash | Out-File -FilePath (Join-Path -Path "$outputDirectory" -ChildPath "$fileHashesFileName")
+    $jsonFileHashAlgorithm = "SHA512"
+    $jsonFileHash = (Get-FileHash -Path (Join-Path -Path "$outputDirectory" -ChildPath "$fileHashesFileName") -Algorithm $jsonFileHashAlgorithm).Hash
+    Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "ref" ) $outputDirectory -Recurse -Force -Container
+
+    # Generate cmdlets
     $FunctionsToExport = @()    
     $FunctionsToExport+= New-SwaggerPathCommands -CommandsObject $swaggerDict['paths'] `
                                                     -SwaggerMetaDict $swaggerMetaDict `
@@ -227,7 +278,7 @@ function Export-CommandFromSwagger
         }
     }
 
-    $RootModuleFilePath = Join-Path $outputDirectory "$ModuleName.psm1"
+    $RootModuleFilePath = Join-Path -Path $outputDirectory -ChildPath "$ModuleName.psm1"
     Out-File -FilePath $RootModuleFilePath `
              -InputObject $ExecutionContext.InvokeCommand.ExpandString($RootModuleContents)`
              -Encoding ascii `
@@ -237,14 +288,7 @@ function Export-CommandFromSwagger
                               -FunctionsToExport $FunctionsToExport `
                               -SwaggerSpecDefinitionsAndParameters $SwaggerSpecDefinitionsAndParameters
 
-    # Prepare dynamic compilation
-    Copy-Item (Join-Path "$PSScriptRoot" "CompilationUtils.ps1") (Join-Path $outputDirectory "CompilationUtils.ps1")
-    
-    New-CodeFileCatalog -Path $generatedCSharpFilePath -CatalogFilePath (Join-Path "$outputDirectory" "$fileCatalogName")
-
-    Copy-Item (Join-Path "$PSScriptRoot" "ref" ) $outputDirectory -Recurse -Force -Container
-
-    Copy-Item (Join-Path "$PSScriptRoot" "Generated.Resources.psd1") (Join-Path "$outputDirectory" "$ModuleName.Resources.psd1") -Force
+    Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Generated.Resources.psd1") (Join-Path -Path "$outputDirectory" -ChildPath "$ModuleName.Resources.psd1") -Force
 }
 
 #region Cmdlet Generation Helpers
@@ -1334,14 +1378,19 @@ function ConvertTo-CsharpCode
         [hashtable]
         $SwaggerMetaDict,
 
+        [Parameter()]
         [bool]
-        $Compile
+        $SkipAssemblyGeneration,
+
+        [Parameter()]
+        [String]
+        $PowerShellCorePath
     )
 
     $message = $LocalizedData.GenerateCodeUsingAutoRest
     Write-Verbose -Message $message
 
-    $autoRestExePath = get-command autorest.exe | ForEach-Object source
+    $autoRestExePath = get-command -name autorest.exe | ForEach-Object source
     if (-not $autoRestExePath)
     {
         throw $LocalizedData.AutoRestNotInPath
@@ -1349,20 +1398,7 @@ function ConvertTo-CsharpCode
 
     $outputDirectory = $SwaggerMetaDict['outputDirectory']
     $nameSpace = $SwaggerDict['info'].NameSpace
-    if ('Desktop' -eq $PSEdition) {
-        $clr = 'fullclr'
-    } else {
-        $clr = 'coreclr'
-    }
-
-    $outAssembly = Join-Path $outputDirectory 'ref' | Join-Path -ChildPath $clr | Join-Path -ChildPath "$NameSpace.dll"
-    $generatedCSharpPath = Join-Path $outputDirectory "Generated.Csharp"
-
-    if (Test-Path $outAssembly)
-    {
-        $null = Remove-Item -Path $outAssembly -Force
-    }
-
+    $generatedCSharpPath = Join-Path -Path $outputDirectory -ChildPath "Generated.Csharp"
     $codeGenerator = "CSharp"
 
     if ($SwaggerMetaDict['UseAzureCsharpGenerator'])
@@ -1376,19 +1412,52 @@ function ConvertTo-CsharpCode
         throw $LocalizedData.AutoRestError
     }
 
-    if ($Compile) {
+    if (-not $SkipAssemblyGeneration) {
         $message = $LocalizedData.GenerateAssemblyFromCode
         Write-Verbose -Message $message
-        $parentDir = Split-Path $outAssembly -Parent
-        if (-not (Test-Path $parentDir)) {
-            New-Item $parentDir -ItemType Directory -Force
+
+        $allCSharpFilesArrayString = '@('
+        Get-ChildItem -Path $generatedCSharpPath -Filter *.cs -Recurse -Exclude Program.cs,TemporaryGeneratedFile* | Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*' | ForEach-Object {
+            $allCSharpFilesArrayString += "'$_',"
+        }
+        $allCSharpFilesArrayString = $allCSharpFilesArrayString.Substring(0, $allCSharpFilesArrayString.Length-1)
+        $allCSharpFilesArrayString += ')'
+
+        # Compile full CLR (PSSwagger requires to be invoked from full PowerShell)
+        $outAssembly = Join-Path -Path $outputDirectory -ChildPath 'ref' | Join-Path -ChildPath 'fullclr' | Join-Path -ChildPath "$NameSpace.dll"
+        if (Test-Path -Path $outAssembly)
+        {
+            $null = Remove-Item -Path $outAssembly -Force
         }
 
-        $allCSharpFiles = Get-ChildItem -Path $generatedCSharpPath -Filter *.cs -Recurse -Exclude Program.cs,TemporaryGeneratedFile* | Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*'
-
-        $success = Compile-CSharpCode -OutputAssembly $outAssembly -CSharpFiles $allCSharpFiles -AzureCSharpGenerator ($SwaggerMetaDict['UseAzureCsharpGenerator'] -ne $null) -CopyExtraReferences
-
+        if (-not (Test-Path -Path (Split-Path -Path $outAssembly -Parent))) {
+            $null = New-Item -Path (Split-Path -Path $outAssembly -Parent) -ItemType Directory
+        }
+       
+        $command = "Import-Module '$PSScriptRoot\Utils.ps1';Invoke-AssemblyCompilation -OutputAssembly $outAssembly -CSharpFiles $allCSharpFilesArrayString -CopyExtraReferences"
+        $success = powershell -command "& {$command}"
         if($success){
+            $message = $LocalizedData.GeneratedAssembly -f ($outAssembly)
+            Write-Verbose -Message $message
+        } else {
+            $message = $LocalizedData.UnableToGenerateAssembly -f ($outAssembly)
+            Throw $message
+        }
+
+        # Compile core CLR
+        $outAssembly = Join-Path -Path $outputDirectory -ChildPath 'ref' | Join-Path -ChildPath 'coreclr' | Join-Path -ChildPath "$NameSpace.dll"
+        if (Test-Path $outAssembly)
+        {
+            $null = Remove-Item -Path $outAssembly -Force
+        }
+
+        if (-not (Test-Path (Split-Path $outAssembly -Parent))) {
+            $null = New-Item (Split-Path $outAssembly -Parent) -ItemType Directory
+        }
+
+        $command = "Import-Module '$PSScriptRoot\Utils.ps1';Invoke-AssemblyCompilation -OutputAssembly $outAssembly -CSharpFiles $allCSharpFilesArrayString -CopyExtraReferences"
+        $success = & "$PowerShellCorePath" -command "& {$command}"
+        if($success -eq $true){
             $message = $LocalizedData.GeneratedAssembly -f ($outAssembly)
             Write-Verbose -Message $message
         } else {
@@ -1590,11 +1659,19 @@ function Get-SwaggerMultiItemObject
 
 function New-CodeFileCatalog {
     param(
-        [string]$Path,
-        [string]$CatalogFilePath
+        [string[]]$Files
     )
 
-    $null = New-FileCatalog -Path $Path -CatalogFilePath $CatalogFilePath
+    $hashAlgorithm = "SHA512"
+    $filesTable = @{"Algorithm" = $hashAlgorithm}
+    $Files | ForEach-Object {
+        $fileName = "$_".Replace("$generatedCSharpFilePath","").Trim("\").Trim("/") 
+        $hash = (Get-FileHash $_ -Algorithm $hashAlgorithm).Hash
+        $message = $LocalizedData.FoundFileWithHash -f ($fileName, $hash)
+        $filesTable.Add("$fileName", $hash) 
+    }
+
+    return $filesTable
 }
 
 Export-ModuleMember -Function Export-CommandFromSwagger

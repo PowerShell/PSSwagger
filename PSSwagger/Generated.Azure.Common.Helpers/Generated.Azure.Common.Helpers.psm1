@@ -1,7 +1,7 @@
-﻿if ('Desktop' -eq $PSEdition) {
-    $moduleName = 'AzureRM.Profile'
-} else {
+﻿if ('Core' -eq $PSEdition) {
     $moduleName = 'AzureRM.Profile.NetCore.Preview'
+} else {
+    $moduleName = 'AzureRM.Profile'
 }
 
 function Get-AzServiceCredential
@@ -11,11 +11,11 @@ function Get-AzServiceCredential
 
     $AzureContext = & "$moduleName\Get-AzureRmContext" -ErrorAction Stop
     $authenticationFactory = [Microsoft.Azure.Commands.Common.Authentication.Factories.AuthenticationFactory]::new() 
-    if ('Desktop' -eq $PSEdition) {
-        $serviceCredentials = $authenticationFactory.GetServiceClientCredentials($AzureContext)
-    } else {
-        [Action[string]]$stringAction = {param($s) Write-Host "Prompt Message: $stringAction"}
+    if ('Core' -eq $PSEdition) {
+        [Action[string]]$stringAction = {param($s)}
         $serviceCredentials = $authenticationFactory.GetServiceClientCredentials($AzureContext, $stringAction)
+    } else {
+        $serviceCredentials = $authenticationFactory.GetServiceClientCredentials($AzureContext)
     }
 
     $serviceCredentials
