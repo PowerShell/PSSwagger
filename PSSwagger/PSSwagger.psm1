@@ -87,9 +87,9 @@ function Export-CommandFromSwagger
         }
     }
 
-    if (-not (Test-path $SwaggerSpecPath))
+    if (-not (Test-path -Path $SwaggerSpecPath))
     {
-        throw $LocalizedData.SwaggerSpecPathNotExist
+        throw $LocalizedData.SwaggerSpecPathNotExist -f ($SwaggerSpecPath)
     }
 
     if ((-not $SkipAssemblyGeneration) -and ($CompileForCoreFx)) {
@@ -887,8 +887,9 @@ function ConvertTo-CsharpCode
         if (-not (Test-Path -Path (Split-Path -Path $outAssembly -Parent))) {
             $null = New-Item -Path (Split-Path -Path $outAssembly -Parent) -ItemType Directory
         }
-       
-        $command = "Import-Module '$PSScriptRoot\Utils.ps1';Invoke-AssemblyCompilation -OutputAssembly $outAssembly -CSharpFiles $allCSharpFilesArrayString -CopyExtraReferences"
+        
+        $codeCreatedByAzureGenerator = [bool]$SwaggerMetaDict['UseAzureCsharpGenerator']
+        $command = "Import-Module '$PSScriptRoot\Utils.ps1';Invoke-AssemblyCompilation -OutputAssembly $outAssembly -CSharpFiles $allCSharpFilesArrayString -CopyExtraReferences -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator"
         $success = powershell -command "& {$command}"
         if($success){
             $message = $LocalizedData.GeneratedAssembly -f ($outAssembly)
@@ -910,7 +911,7 @@ function ConvertTo-CsharpCode
                 $null = New-Item (Split-Path $outAssembly -Parent) -ItemType Directory
             }
 
-            $command = "Import-Module '$PSScriptRoot\Utils.ps1';Invoke-AssemblyCompilation -OutputAssembly $outAssembly -CSharpFiles $allCSharpFilesArrayString -CopyExtraReferences"
+            $command = "Import-Module '$PSScriptRoot\Utils.ps1';Invoke-AssemblyCompilation -OutputAssembly $outAssembly -CSharpFiles $allCSharpFilesArrayString -CopyExtraReferences -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator"
             $success = & "$PowerShellCorePath" -command "& {$command}"
             if($success -eq $true){
                 $message = $LocalizedData.GeneratedAssembly -f ($outAssembly)
