@@ -22,10 +22,13 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwa
   Full Path to a file where the commands are exported to.
 
 .PARAMETER  SkipAssemblyGeneration
-  Switch to skip precompiling the module's binary component for the current CLR.
+  Switch to skip precompiling the module's binary component for full CLR.
 
 .PARAMETER  PowerShellCorePath
   Path to PowerShell.exe for PowerShell Core.
+
+.PARAMETER  CompileForCoreFx
+  Switch to additionally compile the module's binary component for core CLR.
 #>
 function Export-CommandFromSwagger
 {
@@ -57,7 +60,11 @@ function Export-CommandFromSwagger
 
         [Parameter()]
         [String]
-        $PowerShellCorePath
+        $PowerShellCorePath,
+
+        [Parameter()]
+        [switch]
+        $CompileForCoreFx
     )
 
     if ($PSCmdlet.ParameterSetName -eq 'SwaggerURI')
@@ -85,7 +92,7 @@ function Export-CommandFromSwagger
         throw $LocalizedData.SwaggerSpecPathNotExist
     }
 
-    if (-not $SkipAssemblyGeneration) {
+    if ((-not $SkipAssemblyGeneration) -and ($CompileForCoreFx)) {
         if (('Desktop' -eq $PSEdition) -and (-not $PowerShellCorePath)) {
             $psCore = Get-Package PowerShell* -MaximumVersion 6.0.0.11 -ProviderName msi | Sort-Object -Property Version -Descending
             if ($null -ne $psCore) {
@@ -156,7 +163,8 @@ function Export-CommandFromSwagger
     $generatedCSharpFilePath = ConvertTo-CsharpCode -SwaggerDict $swaggerDict `
                                     -SwaggerMetaDict $swaggerMetaDict `
                                     -SkipAssemblyGeneration:$SkipAssemblyGeneration `
-                                    -PowerShellCorePath $PowerShellCorePath
+                                    -PowerShellCorePath $PowerShellCorePath `
+                                    -CompileForCoreFx $CompileForCoreFx
 
     # Prepare dynamic compilation
     Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Utils.ps1") (Join-Path -Path $outputDirectory -ChildPath "Utils.ps1")
@@ -826,7 +834,11 @@ function ConvertTo-CsharpCode
 
         [Parameter()]
         [String]
-        $PowerShellCorePath
+        $PowerShellCorePath,
+
+        [Parameter()]
+        [bool]
+        $CompileForCoreFx
     )
 
     $message = $LocalizedData.GenerateCodeUsingAutoRest
@@ -886,25 +898,27 @@ function ConvertTo-CsharpCode
             Throw $message
         }
 
-        # Compile core CLR
-        $outAssembly = Join-Path -Path $outputDirectory -ChildPath 'ref' | Join-Path -ChildPath 'coreclr' | Join-Path -ChildPath "$NameSpace.dll"
-        if (Test-Path $outAssembly)
-        {
-            $null = Remove-Item -Path $outAssembly -Force
-        }
+        if ($CompileForCoreFx) {
+            # Compile core CLR
+            $outAssembly = Join-Path -Path $outputDirectory -ChildPath 'ref' | Join-Path -ChildPath 'coreclr' | Join-Path -ChildPath "$NameSpace.dll"
+            if (Test-Path $outAssembly)
+            {
+                $null = Remove-Item -Path $outAssembly -Force
+            }
 
-        if (-not (Test-Path (Split-Path $outAssembly -Parent))) {
-            $null = New-Item (Split-Path $outAssembly -Parent) -ItemType Directory
-        }
+            if (-not (Test-Path (Split-Path $outAssembly -Parent))) {
+                $null = New-Item (Split-Path $outAssembly -Parent) -ItemType Directory
+            }
 
-        $command = "Import-Module '$PSScriptRoot\Utils.ps1';Invoke-AssemblyCompilation -OutputAssembly $outAssembly -CSharpFiles $allCSharpFilesArrayString -CopyExtraReferences"
-        $success = & "$PowerShellCorePath" -command "& {$command}"
-        if($success -eq $true){
-            $message = $LocalizedData.GeneratedAssembly -f ($outAssembly)
-            Write-Verbose -Message $message
-        } else {
-            $message = $LocalizedData.UnableToGenerateAssembly -f ($outAssembly)
-            Throw $message
+            $command = "Import-Module '$PSScriptRoot\Utils.ps1';Invoke-AssemblyCompilation -OutputAssembly $outAssembly -CSharpFiles $allCSharpFilesArrayString -CopyExtraReferences"
+            $success = & "$PowerShellCorePath" -command "& {$command}"
+            if($success -eq $true){
+                $message = $LocalizedData.GeneratedAssembly -f ($outAssembly)
+                Write-Verbose -Message $message
+            } else {
+                $message = $LocalizedData.UnableToGenerateAssembly -f ($outAssembly)
+                Throw $message
+            }
         }
     }
 
@@ -938,7 +952,6 @@ function New-ModuleManifestUtility
     New-ModuleManifest -Path "$(Join-Path -Path $Path -ChildPath $Info.ModuleName).psd1" `
                        -ModuleVersion $Info.Version `
                        -RequiredModules @('Generated.Azure.Common.Helpers') `
-                       -RequiredAssemblies @("$($Info.Namespace).dll") `
                        -RootModule "$($Info.ModuleName).psm1" `
                        -FormatsToProcess $FormatsToProcess `
                        -FunctionsToExport $FunctionsToExport

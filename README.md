@@ -4,9 +4,9 @@ Tool to generate PowerShell Cmdlets using Swagger based specifications
 
 ## Syntax
 
-Export-CommandFromSwagger -SwaggerSpecPath <string> -Path <string> -ModuleName <string> [-UseAzureCsharpGenerator] [-Precompile] [<CommonParameters>]
+Export-CommandFromSwagger -SwaggerSpecPath <string> -Path <string> -ModuleName <string> [-UseAzureCsharpGenerator] [-SkipAssemblyGeneration] [-PowerShellCorePath <string>] [-CompileForCoreFx] [<CommonParameters>]
 
-Export-CommandFromSwagger -SwaggerSpecUri <uri> -Path <string> -ModuleName <string> [-UseAzureCsharpGenerator] [-Precompile] [<CommonParameters>]
+Export-CommandFromSwagger -SwaggerSpecUri <uri> -Path <string> -ModuleName <string> [-UseAzureCsharpGenerator] [-SkipAssemblyGeneration] [-PowerShellCorePath <string>] [-CompileForCoreFx] [<CommonParameters>]
 
 | Parameter       | Description                           |
 | ----------------| ------------------------------------- |
@@ -15,6 +15,17 @@ Export-CommandFromSwagger -SwaggerSpecUri <uri> -Path <string> -ModuleName <stri
 | ModuleName      | Name of the module to be generated. A folder with this name will be created in the location specified by Path parameter |
 | SwaggerSpecUri  | URI to the swagger spec |
 | SkipAssemblyGeneration      | Skip compiling the generated module's C# assembly during generation of module |
+| PowerShellCorePath      | Path to PowerShell.exe for PowerShell Core. Only required if not installed via MSI in the default path |
+| CompileForCoreFx      | Switch to additionally compile the module's binary component for core CLR |
+
+## Supported Platforms
+| Usage | Platforms |
+| ----------------| ------------------------------------- |
+| Developer       | PowerShell 5.1+, PowerShell Core Alpha11 or older for Core CLR compilation |
+| Module Publisher| PowerShell 5.1+ |
+| Module Consumer | PowerShell 5.1+, PowerShell Core Alpha11 or older  |
+
+Note: Downlevel PowerShell support hasn't yet been verified, but generated modules will likely work.
 
 ## Usage
 
