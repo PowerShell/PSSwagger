@@ -125,7 +125,8 @@ function Export-CommandFromSwagger
                                 -Info $swaggerDict['info'] `
                                 -DefinitionList $swaggerDict['definitions'] `
                                 -SwaggerMetaDict $swaggerMetaDict `
-                                -DefinitionFunctionsDetails $DefinitionFunctionsDetails
+                                -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
+                                -SwaggerSpecDefinitionsAndParameters $swaggerDict
     }
 
     $FunctionsToExport = @()
