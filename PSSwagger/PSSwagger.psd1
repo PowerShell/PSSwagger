@@ -6,11 +6,16 @@ Author = 'Microsoft Corporation'
 CompanyName = 'Microsoft Corporation'
 Copyright = '(c) Microsoft Corporation. All rights reserved.'
 Description = 'PowerShell module with commands for generating the PowerShell Cmdlets using Swagger based specifications.'
-NestedModules = @('Generated.Azure.Common.Helpers')
 FunctionsToExport = @('Export-CommandFromSwagger')
 CmdletsToExport = ''
 VariablesToExport = ''
 AliasesToExport = ''
+
+NestedModules = @('Generated.Azure.Common.Helpers',
+                  'SwaggerUtils.psm1',
+                  'Utilities.psm1',
+                  'Paths.psm1',
+                  'Definitions.psm1')
 
 FileList = @('PSSwagger.Constants.ps1',
              'PSSwagger.psm1',
