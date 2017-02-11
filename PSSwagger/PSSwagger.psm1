@@ -197,7 +197,7 @@ function Export-CommandFromSwagger
                                                         -SwaggerMetaDict $swaggerMetaDict `
                                                         -NameSpace $nameSpace
 
-    $RootModuleFilePath = Join-Path -Path $outputDirectory -ChildPath "$ModuleName.psm1"
+    $RootModuleFilePath = Join-Path $outputDirectory "$ModuleName.psm1"
     Out-File -FilePath $RootModuleFilePath `
              -InputObject $ExecutionContext.InvokeCommand.ExpandString($RootModuleContents)`
              -Encoding ascii `
