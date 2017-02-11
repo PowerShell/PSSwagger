@@ -359,7 +359,8 @@ function Get-PathCommandName
     if (-not (get-verb $cmdVerb))
     {
         $message = $LocalizedData.UnapprovedVerb -f ($cmdVerb)
-        Write-Verbose "Verb $cmdVerb not an approved verb."
+        Write-Verbose $message
+        
         if ($cmdNounMap.ContainsKey($cmdVerb))
         {
             $message = $LocalizedData.ReplacedVerb -f ($($cmdNounMap[$cmdVerb]), $cmdVerb)
