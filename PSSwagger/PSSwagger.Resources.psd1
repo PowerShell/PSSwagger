@@ -29,5 +29,6 @@ ConvertFrom-StringData @'
     SwaggerParamsMissing=No parameters in the Swagger
     SwaggerDefinitionsMissing=No definitions in the Swagger
     SwaggerPathsMissing=No paths in the Swagger
+    FoundFileWithHash=Found file '{0}' with hash '{1}'
 ###PSLOC
 '@

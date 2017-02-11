@@ -14,7 +14,7 @@ Export-CommandFromSwagger -SwaggerSpecUri <uri> -Path <string> -ModuleName <stri
 | Path            | Full Path to a folder where the commands/modules are exported to |
 | ModuleName      | Name of the module to be generated. A folder with this name will be created in the location specified by Path parameter |
 | SwaggerSpecUri  | URI to the swagger spec |
-| Precompile      | Compile the generated module's C# assembly during generation of module |
+| SkipAssemblyGeneration      | Skip compiling the generated module's C# assembly during generation of module |
 
 ## Usage
 
@@ -35,7 +35,7 @@ Export-CommandFromSwagger -SwaggerSpecUri <uri> -Path <string> -ModuleName <stri
   $env:path += ";$env:localappdata\PackageManagement\NuGet\Packages\AutoRest.0.16.0\tools"
   ```
 
-4. If you plan on precompiling the generated assembly using the -Precompile switch, ensure you have the module AzureRM.Profile or AzureRM.NetCore.Preview if you are on PowerShell or PowerShell Core, respectively.
+4. If you plan on precompiling the generated assembly, ensure you have the module AzureRM.Profile or AzureRM.NetCore.Preview available to PackageManagement if you are on PowerShell or PowerShell Core, respectively.
 
 5. Run the following in a PowerShell console from the directory where you cloned PSSwagger in
   ```powershell
