@@ -92,10 +92,6 @@ function Export-CommandFromSwagger
         throw $LocalizedData.SwaggerSpecPathNotExist -f ($SwaggerSpecPath)
     }
 
-    if ('Core' -eq $PSEdition) {
-        throw $LocalizedData.PlatformNotSupported
-    }
-
     if ((-not $SkipAssemblyGeneration) -and ($CompileForCoreFx)) {
         if (('Desktop' -eq $PSEdition) -and (-not $PowerShellCorePath)) {
             $psCore = Get-Package -Name PowerShell* -MaximumVersion 6.0.0.11 -ProviderName msi | Sort-Object -Property Version -Descending

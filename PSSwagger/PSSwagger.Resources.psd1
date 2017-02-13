@@ -33,6 +33,5 @@ ConvertFrom-StringData @'
     FoundPowerShellCoreMsi=Found MSI installation of PowerShell Core of version '{0}'
     MustSpecifyPsCorePath=No installations of PowerShell Core could be found. Please provide -PowerShellCorePath to specify the location of PowerShell Core.
     PsCorePathNotFound=Couldn't find PowerShell at path '{0}'
-    PlatformNotSupported=Module generation is only supported on full PowerShell
 ###PSLOC
 '@

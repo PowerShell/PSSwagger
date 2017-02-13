@@ -75,8 +75,7 @@ function Invoke-AssemblyCompilation {
         }
 
     } else {
-        $typeReturned = Add-Type -TypeDefinition $oneSrc -ReferencedAssemblies ($systemRefs + $extraRefs) -IgnoreWarnings -PassThru
-        # TODO validate
+        Add-Type -TypeDefinition $oneSrc -ReferencedAssemblies ($systemRefs + $extraRefs) -IgnoreWarnings
     }
     
     if ($CopyExtraReferences) {
