@@ -36,18 +36,23 @@ if (-not (Test-Path -Path `$dllFullName)) {
     Write-Verbose -Message `$message -Verbose
     . (Join-Path -Path "`$PSScriptRoot" -ChildPath "Utils.ps1")
     `$generatedCSharpFilePath = (Join-Path -Path "`$PSScriptRoot" -ChildPath "Generated.Csharp")
+    if (-not (Test-Path -Path `$generatedCSharpFilePath)) {
+        throw `$LocalizedData.CSharpFilesNotFound -f (`$generatedCSharpFilePath)
+    }
+
     `$allCSharpFiles = Get-ChildItem -Path `$generatedCSharpFilePath -Filter *.cs -Recurse -Exclude Program.cs,TemporaryGeneratedFile* | Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*'
-    if (-not (Test-Path -Path (Join-Path -Path "`$PSScriptRoot" -ChildPath "$fileHashesFileName"))) {
+    `$fileHashFullPath = Join-Path -Path "`$PSScriptRoot" -ChildPath "$fileHashesFileName"
+    if (-not (Test-Path -Path `$fileHashFullPath)) {
         `$message = `$LocalizedData.MissingFileHashesFile
         throw `$message
     }
 
-    if ("$jsonFileHash" -ne (Get-FileHash -Path (Join-Path -Path "`$PSScriptRoot" -ChildPath "$fileHashesFileName") -Algorithm $jsonFileHashAlgorithm).Hash) {
+    if ("$jsonFileHash" -ne (Get-FileHash -Path `$fileHashFullPath -Algorithm $jsonFileHashAlgorithm).Hash) {
         `$message = `$LocalizedData.CatalogHashNotValid
         throw `$message
     }
 
-    `$fileHashes = ConvertFrom-Json -InputObject (Get-Content -Path (Join-Path -Path "`$PSScriptRoot" -ChildPath "$fileHashesFileName") | Out-String)
+    `$fileHashes = ConvertFrom-Json -InputObject (Get-Content -Path `$fileHashFullPath | Out-String)
     `$algorithm = `$fileHashes.Algorithm
     `$allCSharpFiles | ForEach-Object {
         `$fileName = "`$_".Replace("`$generatedCSharpFilePath","").Trim("\").Trim("/")
@@ -58,12 +63,17 @@ if (-not (Test-Path -Path `$dllFullName)) {
         }
     }
 
-    `$allCSharpFiles = Get-ChildItem -Path `$generatedCSharpFilePath -Filter *.cs -Recurse -Exclude Program.cs,TemporaryGeneratedFile* | Where-Object -Property DirectoryName -notlike '*Azure.Csharp.Generated*'
+    `$message = `$LocalizedData.HashValidationSuccessful
+    Write-Verbose -Message `$message -Verbose
+
     `$success = Invoke-AssemblyCompilation -CSharpFiles `$allCSharpFiles -CodeCreatedByAzureGenerator:`$isAzureCSharp -CopyExtraReferences
     if (-not `$success) {
         `$message = `$LocalizedData.CompilationFailed -f (`$dllFullName)
         throw `$message
     }
+
+    `$message = `$LocalizedData.CompilationFailed -f (`$dllFullName)
+    Write-Verbose -Message `$message
 }
 
 # Load extra refs

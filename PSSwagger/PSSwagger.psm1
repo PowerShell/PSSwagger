@@ -27,7 +27,7 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwa
 .PARAMETER  PowerShellCorePath
   Path to PowerShell.exe for PowerShell Core.
 
-.PARAMETER  CompileForCoreFx
+.PARAMETER  IncludeCoreFxAssembly
   Switch to additionally compile the module's binary component for core CLR.
 #>
 function Export-CommandFromSwagger
@@ -64,7 +64,7 @@ function Export-CommandFromSwagger
 
         [Parameter()]
         [switch]
-        $CompileForCoreFx
+        $IncludeCoreFxAssembly
     )
 
     if ($PSCmdlet.ParameterSetName -eq 'SwaggerURI')
@@ -92,7 +92,7 @@ function Export-CommandFromSwagger
         throw $LocalizedData.SwaggerSpecPathNotExist -f ($SwaggerSpecPath)
     }
 
-    if ((-not $SkipAssemblyGeneration) -and ($CompileForCoreFx)) {
+    if ((-not $SkipAssemblyGeneration) -and ($IncludeCoreFxAssembly)) {
         if (('Desktop' -eq $PSEdition) -and (-not $PowerShellCorePath)) {
             $psCore = Get-Package -Name PowerShell* -MaximumVersion 6.0.0.11 -ProviderName msi | Sort-Object -Property Version -Descending
             if ($null -ne $psCore) {
@@ -123,6 +123,12 @@ function Export-CommandFromSwagger
             $message = $LocalizedData.FoundPowerShellCoreMsi -f ($PowerShellCorePath)
             throw $message
         }
+    }
+
+    if ($PowerShellCorePath -and (-not $IncludeCoreFxAssembly)) {
+        # Ideally such a transformation should be avoided
+        # Set PSCorePath to empty string if it's passed in without IncludeCoreFxAssembly to signify to ConvertTo-CSharpCode that core CLR compilation shouldn't take place
+        $PowerShellCorePath = ''
     }
 
     $jsonObject = ConvertFrom-Json -InputObject ((Get-Content -Path $SwaggerSpecPath) -join [Environment]::NewLine) -ErrorAction Stop
@@ -165,14 +171,13 @@ function Export-CommandFromSwagger
                                     -SwaggerMetaDict $swaggerMetaDict `
                                     -SkipAssemblyGeneration:$SkipAssemblyGeneration `
                                     -PowerShellCorePath $PowerShellCorePath `
-                                    -CompileForCoreFx $CompileForCoreFx
 
     # Prepare dynamic compilation
     Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Utils.ps1") (Join-Path -Path $outputDirectory -ChildPath "Utils.ps1")
 
     $allCSharpFiles = Get-ChildItem -Path $generatedCSharpFilePath -Filter *.cs -Recurse -Exclude Program.cs,TemporaryGeneratedFile* | Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*'
     $filesHash = New-CodeFileCatalog -Files $allCSharpFiles
-    $fileHashesFileName = "FileCatalog.json"
+    $fileHashesFileName = "GeneratedCsharpCatalog.json"
     ConvertTo-Json -InputObject $filesHash | Out-File -FilePath (Join-Path -Path "$outputDirectory" -ChildPath "$fileHashesFileName")
     $jsonFileHashAlgorithm = "SHA512"
     $jsonFileHash = (Get-FileHash -Path (Join-Path -Path "$outputDirectory" -ChildPath "$fileHashesFileName") -Algorithm $jsonFileHashAlgorithm).Hash
@@ -835,11 +840,7 @@ function ConvertTo-CsharpCode
 
         [Parameter()]
         [String]
-        $PowerShellCorePath,
-
-        [Parameter()]
-        [bool]
-        $CompileForCoreFx
+        $PowerShellCorePath
     )
 
     $message = $LocalizedData.GenerateCodeUsingAutoRest
@@ -900,7 +901,7 @@ function ConvertTo-CsharpCode
             Throw $message
         }
 
-        if ($CompileForCoreFx) {
+        if ($PowerShellCorePath) {
             # Compile core CLR
             $outAssembly = Join-Path -Path $outputDirectory -ChildPath 'ref' | Join-Path -ChildPath 'coreclr' | Join-Path -ChildPath "$NameSpace.dll"
             if (Test-Path $outAssembly)
