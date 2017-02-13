@@ -92,18 +92,22 @@ function Export-CommandFromSwagger
         throw $LocalizedData.SwaggerSpecPathNotExist -f ($SwaggerSpecPath)
     }
 
+    if ('Core' -eq $PSEdition) {
+        throw $LocalizedData.PlatformNotSupported
+    }
+
     if ((-not $SkipAssemblyGeneration) -and ($CompileForCoreFx)) {
         if (('Desktop' -eq $PSEdition) -and (-not $PowerShellCorePath)) {
-            $psCore = Get-Package PowerShell* -MaximumVersion 6.0.0.11 -ProviderName msi | Sort-Object -Property Version -Descending
+            $psCore = Get-Package -Name PowerShell* -MaximumVersion 6.0.0.11 -ProviderName msi | Sort-Object -Property Version -Descending
             if ($null -ne $psCore) {
                 # PSCore exists via MSI, but the MSI provider doesn't seem to provide an install path
                 # First check the default path (for now, just Windows)
                 $psCore | ForEach-Object {
                     if (-not $PowerShellCorePath) {
-                        Write-Verbose "Found MSI installation of PowerShell Core: $($_.Version)"
+                        $message = $LocalizedData.FoundPowerShellCoreMsi -f ($($_.Version))
+                        Write-Verbose -Message $message
                         $possiblePsPath = (Join-Path -Path "$env:ProgramFiles" -ChildPath "PowerShell" | Join-Path -ChildPath "$($_.Version)" | Join-Path -ChildPath "PowerShell.exe")
                         if (Test-Path -Path $possiblePsPath) {
-                            Write-Verbose "Found MSI installation at path: $possiblePsPath"
                             $PowerShellCorePath = $possiblePsPath
                         }
                     }
@@ -112,7 +116,7 @@ function Export-CommandFromSwagger
         }
 
         if (-not $PowerShellCorePath) {
-            throw "No installations of PowerShell Core could be found. Please provide -PowerShellCorePath to specify the location of PowerShell Core."
+            throw $LocalizedData.SwaggerSpecPathNotExist -f ($SwaggerSpecPath)
         }
 
         if ((Get-Item $PowerShellCorePath).PSIsContainer) {
@@ -120,7 +124,8 @@ function Export-CommandFromSwagger
         }
 
         if (-not (Test-Path -Path $PowerShellCorePath)) {
-            throw "Couldn't find path '$PowerShellCorePath'"
+            $message = $LocalizedData.FoundPowerShellCoreMsi -f ($PowerShellCorePath)
+            throw $message
         }
     }
 
