@@ -67,6 +67,14 @@ function Export-CommandFromSwagger
         $IncludeCoreFxAssembly
     )
 
+    if ($SkipAssemblyGeneration -and $PowerShellCorePath) {
+        throw $LocalizedData.MustNotSpecifyPsCorePath
+    }
+
+    if ($SkipAssemblyGeneration -and $IncludeCoreFxAssembly) {
+        throw $LocalizedData.MustNotSpecifyIncludeCoreFx
+    }
+
     if ($PSCmdlet.ParameterSetName -eq 'SwaggerURI')
     {
         # Ensure that if the URI is coming from github, it is getting the raw content
@@ -123,12 +131,6 @@ function Export-CommandFromSwagger
             $message = $LocalizedData.FoundPowerShellCoreMsi -f ($PowerShellCorePath)
             throw $message
         }
-    }
-
-    if ($PowerShellCorePath -and (-not $IncludeCoreFxAssembly)) {
-        # Ideally such a transformation should be avoided
-        # Set PSCorePath to empty string if it's passed in without IncludeCoreFxAssembly to signify to ConvertTo-CSharpCode that core CLR compilation shouldn't take place
-        $PowerShellCorePath = ''
     }
 
     $jsonObject = ConvertFrom-Json -InputObject ((Get-Content -Path $SwaggerSpecPath) -join [Environment]::NewLine) -ErrorAction Stop
@@ -891,7 +893,7 @@ function ConvertTo-CsharpCode
         }
         
         $codeCreatedByAzureGenerator = [bool]$SwaggerMetaDict['UseAzureCsharpGenerator']
-        $command = "Import-Module '$PSScriptRoot\Utils.ps1';Invoke-AssemblyCompilation -OutputAssembly $outAssembly -CSharpFiles $allCSharpFilesArrayString -CopyExtraReferences -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator"
+        $command = "Import-Module '$PSScriptRoot\Utils.ps1';Invoke-AssemblyCompilation -OutputAssembly '$outAssembly' -CSharpFiles $allCSharpFilesArrayString -CopyExtraReferences -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator"
         $success = powershell -command "& {$command}"
         if($success){
             $message = $LocalizedData.GeneratedAssembly -f ($outAssembly)
@@ -913,7 +915,7 @@ function ConvertTo-CsharpCode
                 $null = New-Item (Split-Path $outAssembly -Parent) -ItemType Directory
             }
 
-            $command = "Import-Module '$PSScriptRoot\Utils.ps1';Invoke-AssemblyCompilation -OutputAssembly $outAssembly -CSharpFiles $allCSharpFilesArrayString -CopyExtraReferences -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator"
+            $command = "Import-Module '$PSScriptRoot\Utils.ps1';Invoke-AssemblyCompilation -OutputAssembly '$outAssembly' -CSharpFiles $allCSharpFilesArrayString -CopyExtraReferences -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator"
             $success = & "$PowerShellCorePath" -command "& {$command}"
             if($success -eq $true){
                 $message = $LocalizedData.GeneratedAssembly -f ($outAssembly)

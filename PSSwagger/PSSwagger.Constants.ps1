@@ -33,7 +33,7 @@ if ('Core' -eq `$PSEdition) {
 `$isAzureCSharp = `$$UseAzureCSharpGenerator
 if (-not (Test-Path -Path `$dllFullName)) {
     `$message = `$LocalizedData.CompilingBinaryComponent -f (`$dllFullName)
-    Write-Verbose -Message `$message -Verbose
+    Write-Verbose -Message `$message
     . (Join-Path -Path "`$PSScriptRoot" -ChildPath "Utils.ps1")
     `$generatedCSharpFilePath = (Join-Path -Path "`$PSScriptRoot" -ChildPath "Generated.Csharp")
     if (-not (Test-Path -Path `$generatedCSharpFilePath)) {

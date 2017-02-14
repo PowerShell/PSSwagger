@@ -45,7 +45,7 @@ function Invoke-AssemblyCompilation {
 
         # For Core CLR edition, use AzureRM.Profile.NetCore.Preview module
         $module = Get-Module -Name AzureRM.Profile.NetCore.Preview -ListAvailable | select-object -first 1
-        $extraRefs += Get-ChildItem -Path (Join-Path -Path $module.ModuleBase -ChildPath "*.dll") | ForEach-Object { $_.FullName }
+        $extraRefs += Get-ChildItem -Path (Join-Path -Path $module.ModuleBase -ChildPath "*.dll") -File | ForEach-Object { $_.FullName }
 
         $clrPath = Join-Path -Path "$PSScriptRoot" -ChildPath "ref" | Join-Path -ChildPath "coreclr"
     } else {
@@ -54,7 +54,7 @@ function Invoke-AssemblyCompilation {
 
         # For Desktop edition, use AzureRM.Profile module
         $module = Get-Module -Name AzureRM.Profile -ListAvailable | select-object -first 1
-        $extraRefs += Get-ChildItem -Path (Join-Path -Path $module.ModuleBase -ChildPath "*.dll") | ForEach-Object { $_.FullName }
+        $extraRefs += Get-ChildItem -Path (Join-Path -Path $module.ModuleBase -ChildPath "*.dll") -File | ForEach-Object { $_.FullName }
 
         $clrPath = Join-Path -Path "$PSScriptRoot" -ChildPath "ref" | Join-Path -ChildPath "fullclr"
 
@@ -69,24 +69,24 @@ function Invoke-AssemblyCompilation {
     # Compile
     $oneSrc = $srcContent -join "`n"
     if ($OutputAssembly) {
-        Add-Type -TypeDefinition $oneSrc -ReferencedAssemblies ($systemRefs + $extraRefs) -OutputAssembly $OutputAssembly -IgnoreWarnings
+        Add-Type -TypeDefinition $oneSrc -ReferencedAssemblies ($systemRefs + $extraRefs) -OutputAssembly $OutputAssembly -IgnoreWarnings -Language CSharp
         if ((Get-Item -Path $OutputAssembly).Length -eq 0kb) {
             return $false
         }
 
     } else {
-        Add-Type -TypeDefinition $oneSrc -ReferencedAssemblies ($systemRefs + $extraRefs) -IgnoreWarnings
+        Add-Type -TypeDefinition $oneSrc -ReferencedAssemblies ($systemRefs + $extraRefs) -IgnoreWarnings -Language CSharp
     }
     
     if ($CopyExtraReferences) {
-            # Copy extra refs
-            $extraRefs | ForEach-Object {
-                $newFile = (Join-Path -Path "$clrPath" -ChildPath (Split-Path -Path $_ -Leaf))
-                if ($_ -ne $newFile) {
-                    $null = Copy-Item -Path $_ -Destination $newFile -Force
-                }
+        # Copy extra refs
+        $extraRefs | ForEach-Object {
+            $newFile = (Join-Path -Path "$clrPath" -ChildPath (Split-Path -Path $_ -Leaf))
+            if ($_ -ne $newFile) {
+                $null = Copy-Item -Path $_ -Destination $newFile -Force
             }
         }
+    }
         
     return $true
 }
