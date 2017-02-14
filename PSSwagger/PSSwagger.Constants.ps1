@@ -66,7 +66,7 @@ if (-not (Test-Path -Path `$dllFullName)) {
     `$message = `$LocalizedData.HashValidationSuccessful
     Write-Verbose -Message `$message -Verbose
 
-    `$success = Invoke-AssemblyCompilation -CSharpFiles `$allCSharpFiles -CodeCreatedByAzureGenerator:`$isAzureCSharp -CopyExtraReferences
+    `$success = Invoke-AssemblyCompilation -CSharpFiles `$allCSharpFiles -CodeCreatedByAzureGenerator:`$isAzureCSharp
     if (-not `$success) {
         `$message = `$LocalizedData.CompilationFailed -f (`$dllFullName)
         throw `$message

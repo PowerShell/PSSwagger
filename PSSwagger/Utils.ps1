@@ -12,9 +12,6 @@
 
 .PARAMETER  CodeCreatedByAzureGenerator
   Flag to specify if the generated C# code was created using the Azure C# generator or the regular C# generator in AutoRest.
-
-.PARAMETER  CopyExtraReferences
-  Switch to specify if the non-framework assemblies that were used to compile the output assembly should be copied to the ref directory.
 #>
 function Invoke-AssemblyCompilation {
     [CmdletBinding()]
@@ -25,9 +22,7 @@ function Invoke-AssemblyCompilation {
         [AllowEmptyString()]
         [string]$OutputAssembly,
         [Parameter(Mandatory=$false)]
-        [switch]$CodeCreatedByAzureGenerator,
-        [Parameter(Mandatory=$false)]
-        [switch]$CopyExtraReferences
+        [switch]$CodeCreatedByAzureGenerator
     )
 
     # Append the content of each file into a single string

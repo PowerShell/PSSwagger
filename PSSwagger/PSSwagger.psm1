@@ -895,7 +895,7 @@ function ConvertTo-CsharpCode
         }
         
         $codeCreatedByAzureGenerator = [bool]$SwaggerMetaDict['UseAzureCsharpGenerator']
-        $command = "Import-Module '$PSScriptRoot\Utils.ps1';Invoke-AssemblyCompilation -OutputAssembly '$outAssembly' -CSharpFiles $allCSharpFilesArrayString -CopyExtraReferences -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator"
+        $command = "Import-Module '$PSScriptRoot\Utils.ps1';Invoke-AssemblyCompilation -OutputAssembly '$outAssembly' -CSharpFiles $allCSharpFilesArrayString -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator"
         $success = powershell -command "& {$command}"
         if($success){
             $message = $LocalizedData.GeneratedAssembly -f ($outAssembly)
@@ -917,7 +917,7 @@ function ConvertTo-CsharpCode
                 $null = New-Item (Split-Path $outAssembly -Parent) -ItemType Directory
             }
 
-            $command = "Import-Module '$PSScriptRoot\Utils.ps1';Invoke-AssemblyCompilation -OutputAssembly '$outAssembly' -CSharpFiles $allCSharpFilesArrayString -CopyExtraReferences -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator"
+            $command = "Import-Module '$PSScriptRoot\Utils.ps1';Invoke-AssemblyCompilation -OutputAssembly '$outAssembly' -CSharpFiles $allCSharpFilesArrayString -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator"
             $success = & "$PowerShellCorePath" -command "& {$command}"
             if($success -eq $true){
                 $message = $LocalizedData.GeneratedAssembly -f ($outAssembly)
