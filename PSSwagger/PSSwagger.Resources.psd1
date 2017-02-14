@@ -33,7 +33,6 @@ ConvertFrom-StringData @'
     FoundPowerShellCoreMsi=Found MSI installation of PowerShell Core of version '{0}'
     MustSpecifyPsCorePath=No installations of PowerShell Core could be found. Please provide -PowerShellCorePath to specify the location of PowerShell Core.
     PsCorePathNotFound=Couldn't find PowerShell at path '{0}'
-    MustNotSpecifyPsCorePath=The 'PowerShellCorePath' parameter is not allowed when 'SkipAssemblyGeneration' is specified.
-    MustNotSpecifyIncludeCoreFx=The 'IncludeCoreFxAssembly' parameter is not allowed when 'SkipAssemblyGeneration' is specified.
+    ParameterSetNotAllowed=The '{0}' parameter is not allowed when '{1}' is specified.
 ###PSLOC
 '@

@@ -68,11 +68,13 @@ function Export-CommandFromSwagger
     )
 
     if ($SkipAssemblyGeneration -and $PowerShellCorePath) {
-        throw $LocalizedData.MustNotSpecifyPsCorePath
+        $message = $LocalizedData.ParameterSetNotAllowed -f ('PowerShellCorePath', 'SkipAssemblyGeneration')
+        throw $LocalizedData.ParameterSetNotAllowed
     }
 
     if ($SkipAssemblyGeneration -and $IncludeCoreFxAssembly) {
-        throw $LocalizedData.MustNotSpecifyIncludeCoreFx
+        $message = $LocalizedData.ParameterSetNotAllowed -f ('IncludeCoreFxAssembly', 'SkipAssemblyGeneration')
+        throw $LocalizedData.ParameterSetNotAllowed
     }
 
     if ($PSCmdlet.ParameterSetName -eq 'SwaggerURI')
