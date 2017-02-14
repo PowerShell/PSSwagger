@@ -1,4 +1,6 @@
-﻿<#
+﻿$CorePsEditionConstant = 'Core'
+
+<#
 .DESCRIPTION
   Compiles AutoRest generated C# code using the framework of the current PowerShell process.
 
@@ -32,9 +34,12 @@ function Invoke-AssemblyCompilation {
     $srcContent += $CSharpFiles | ForEach-Object { "// File $($_.FullName)"; get-content -path $_.FullName }
     
     # Find the reference assemblies to use
-    # Note that PSCore has to be built off netstandard1.7 or above (i.e. the built-in PSCore on Nano Server won't work)
+    # System refs are expected to exist on the system
+    # Extra refs are shipped by PSSwagger
+    # Module refs are shipped by AzureRM
     $systemRefs = @()
     $extraRefs = @()
+    $moduleRefs = Get-AzureRMDllReferences
     if ('Core' -eq $PSEdition) {
         # Base framework references
         $srcContent = ,'#define DNXCORE50' + $srcContent
@@ -43,23 +48,15 @@ function Invoke-AssemblyCompilation {
             $systemRefs += 'System.Runtime.Serialization.Primitives.dll'
         }
 
-        # For Core CLR edition, use AzureRM.Profile.NetCore.Preview module
-        $module = Get-Module -Name AzureRM.Profile.NetCore.Preview -ListAvailable | select-object -first 1
-        $extraRefs += Get-ChildItem -Path (Join-Path -Path $module.ModuleBase -ChildPath "*.dll") -File | ForEach-Object { $_.FullName }
-
-        $clrPath = Join-Path -Path "$PSScriptRoot" -ChildPath "ref" | Join-Path -ChildPath "coreclr"
+        $clrPath = Join-Path -Path "$PSScriptRoot" -ChildPath 'ref' | Join-Path -ChildPath 'coreclr'
     } else {
         # Base framework references
         $systemRefs = @('System.dll','System.Core.dll','System.Net.Http.dll','System.Net.Http.WebRequest','System.Runtime.Serialization.dll','System.Xml.dll')
 
-        # For Desktop edition, use AzureRM.Profile module
-        $module = Get-Module -Name AzureRM.Profile -ListAvailable | select-object -first 1
-        $extraRefs += Get-ChildItem -Path (Join-Path -Path $module.ModuleBase -ChildPath "*.dll") -File | ForEach-Object { $_.FullName }
-
-        $clrPath = Join-Path -Path "$PSScriptRoot" -ChildPath "ref" | Join-Path -ChildPath "fullclr"
+        $clrPath = Join-Path -Path "$PSScriptRoot" -ChildPath 'ref' | Join-Path -ChildPath 'fullclr'
 
          # These are extra required assemblies that AzureRM.Profile doesn't package for some reason
-        $extraRefs += Join-Path -Path "$clrPath" -ChildPath "Microsoft.Rest.ClientRuntime.Azure.dll"
+        $extraRefs += Join-Path -Path "$clrPath" -ChildPath 'Microsoft.Rest.ClientRuntime.Azure.dll'
     }
 
     if (-not (Test-Path -Path $clrPath -PathType Container)) {
@@ -69,24 +66,55 @@ function Invoke-AssemblyCompilation {
     # Compile
     $oneSrc = $srcContent -join "`n"
     if ($OutputAssembly) {
-        Add-Type -TypeDefinition $oneSrc -ReferencedAssemblies ($systemRefs + $extraRefs) -OutputAssembly $OutputAssembly -IgnoreWarnings -Language CSharp
+        Add-Type -TypeDefinition $oneSrc -ReferencedAssemblies ($systemRefs + $extraRefs + $moduleRefs) -OutputAssembly $OutputAssembly -IgnoreWarnings -Language CSharp
         if ((Get-Item -Path $OutputAssembly).Length -eq 0kb) {
             return $false
         }
 
     } else {
-        Add-Type -TypeDefinition $oneSrc -ReferencedAssemblies ($systemRefs + $extraRefs) -IgnoreWarnings -Language CSharp
+        Add-Type -TypeDefinition $oneSrc -ReferencedAssemblies ($systemRefs + $extraRefs + $moduleRefs) -IgnoreWarnings -Language CSharp
     }
-    
-    if ($CopyExtraReferences) {
-        # Copy extra refs
-        $extraRefs | ForEach-Object {
-            $newFile = (Join-Path -Path "$clrPath" -ChildPath (Split-Path -Path $_ -Leaf))
-            if ($_ -ne $newFile) {
-                $null = Copy-Item -Path $_ -Destination $newFile -Force
-            }
+
+    # Copy extra refs
+    $extraRefs | ForEach-Object {
+        $newFile = (Join-Path -Path "$clrPath" -ChildPath (Split-Path -Path $_ -Leaf))
+        if ($_ -ne $newFile) {
+            $null = Copy-Item -Path $_ -Destination $newFile -Force
         }
     }
         
     return $true
+}
+
+<#
+.DESCRIPTION
+  Retrieves all assembly references located in the PSEdition-appropriate AzureRM module.
+#>
+function Get-AzureRMDllReferences {
+    [CmdletBinding()]
+    param()
+
+    if ($CorePsEditionConstant -eq (Get-PSEdition)) {
+        $module = Get-Module -Name AzureRM.Profile.NetCore.Preview -ListAvailable | select-object -first 1
+    } else {
+        $module = Get-Module -Name AzureRM.Profile -ListAvailable | select-object -first 1
+    }
+
+     Get-ChildItem -Path (Join-Path -Path $module.ModuleBase -ChildPath '*.dll') -File | ForEach-Object { $_.FullName }
+}
+
+<#
+.DESCRIPTION
+  Retrieves the PSEdition string. One of 'Core' or 'Desktop'.
+#>
+function Get-PSEdition {
+    [CmdletBinding()]
+    param()
+
+    if((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ($CorePsEditionConstant -eq $PSEdition)) {
+        return $CorePsEditionConstant
+    }
+
+    # This sentinel isn't too important, since we only do checks for the Core string
+    return 'Desktop'
 }

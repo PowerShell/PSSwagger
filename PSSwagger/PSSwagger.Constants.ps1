@@ -77,6 +77,7 @@ if (-not (Test-Path -Path `$dllFullName)) {
 }
 
 # Load extra refs
+Get-AzureRMDllReferences | ForEach-Object { Add-Type -Path `$_ -ErrorAction SilentlyContinue }
 Get-ChildItem -Path (Join-Path -Path "`$PSScriptRoot" -ChildPath "ref" | Join-Path -ChildPath "`$clr" | Join-Path -ChildPath "*.dll") -File | ForEach-Object { Add-Type -Path `$_.FullName -ErrorAction SilentlyContinue }
 
 Get-ChildItem -Path "`$PSScriptRoot\$GeneratedCommandsName\*.ps1" -Recurse -File | ForEach-Object { . `$_.FullName}
