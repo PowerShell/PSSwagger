@@ -45,7 +45,7 @@ function Invoke-AssemblyCompilation {
     $extraRefs = @()
     $moduleRefs = Get-AzureRMDllReferences
     $clrPath = ''
-    if ('' -ne $OutputAssembly) {
+    if ($OutputAssembly) {
         $clrPath = Split-Path -Path $OutputAssembly -Parent
     }
 
@@ -140,6 +140,9 @@ function Get-PSEdition {
 .PARAMETER  Framework
   Framework of the assembly to return.
 
+.PARAMETER  ClrPath
+  Path to CLR-specific reference directory in generated module.
+
 .PARAMETER  RequiredVersion
   Optional string specifying required version of Microsoft.Rest.ClientRuntime.Azure package.
 #>
@@ -162,8 +165,8 @@ function Get-MicrosoftRestAzureReference {
         # Get the assembly from the NuGet package dynamically, then save it locally
         $package = Install-MicrosoftRestAzurePackage -RequiredVersion $RequiredVersion
         $azureRestAssemblyPathNuget = Join-Path -Path (Split-Path -Path $package.Source -Parent) -ChildPath 'lib' | Join-Path -ChildPath $Framework | Join-Path -ChildPath 'Microsoft.Rest.ClientRuntime.Azure.dll'
-        if (-not (Test-Path -Path (Split-Path -Path $azureRestAssemblyPath -Parent))) {
-            $null = New-Item -Path (Split-Path -Path $azureRestAssemblyPath -Parent) -ItemType Directory
+        if (-not (Test-Path -Path $ClrPath)) {
+            $null = New-Item -Path $ClrPath -ItemType Directory
         }
 
         $null = Copy-Item -Path $azureRestAssemblyPathNuget -Destination $azureRestAssemblyPath -Force
@@ -187,21 +190,59 @@ function Install-MicrosoftRestAzurePackage {
         [string]$RequiredVersion
     )
 
-    if (-not $RequiredVersion) {
-        $package = Get-Package -Name Microsoft.Rest.ClientRuntime.Azure -ErrorAction SilentlyContinue | Select-Object -First 1
-    } else {
-        $package = Get-Package -Name Microsoft.Rest.ClientRuntime.Azure -RequiredVersion $RequiredVersion -ErrorAction SilentlyContinue | Select-Object -First 1
+    $params = @{
+        Name='Microsoft.Rest.ClientRuntime.Azure';
+        ProviderName='NuGet';
+        ErrorAction='SilentlyContinue'
     }
 
+    if ($RequiredVersion) {
+        $params['RequiredVersion'] = $RequiredVersion
+    }
+
+    $package = Get-Package @params | Select-Object -First 1
+
     if (-not $package) {
-        if (-not $RequiredVersion) {
-            $null = Find-Package -Name Microsoft.Rest.ClientRuntime.Azure | Select-Object -First 1 | Install-Package
-            $package = Get-Package -Name Microsoft.Rest.ClientRuntime.Azure | Select-Object -First 1
-        } else {
-            $null = Find-Package -Name Microsoft.Rest.ClientRuntime.Azure -RequiredVersion $RequiredVersion | Select-Object -First 1 | Install-Package
-            $package = Get-Package -Name Microsoft.Rest.ClientRuntime.Azure -RequiredVersion $RequiredVersion | Select-Object -First 1
+        $newPsName = ''
+        if (-not (Test-NugetPackageSource)) {
+            $newPsName = New-NugetPackageSource
+        }
+
+        $null = Find-Package @params | Select-Object -First 1 | Install-Package
+        $package = Get-Package @params | Select-Object -First 1
+        if ($newPsName) {
+            $null = Unregister-PackageSource -Name $newPsName
         }
     }
 
     return $package
+}
+
+<#
+.DESCRIPTION
+  Tests if the NuGet package source with location nuget.org/api/v2 exists.
+#>
+function Test-NugetPackageSource {
+    $packageSource = Get-PackageSource | Where-Object { $_.Location -contains 'nuget.org/api/v2' } | Select-Object -First 1
+    return $packageSource -ne $null
+}
+
+<#
+.DESCRIPTION
+  Creates a temporary NuGet package source with given location.
+
+.PARAMETER  Location
+  Location of NuGet package source. Defaults to 'https://nuget.org/api/v2'.
+#>
+function New-NugetPackageSource {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$false)]
+        [string]$Location = 'https://nuget.org/api/v2'
+    )
+
+    $psName = [guid]::newguid().Guid
+    $psName = "PSSwagger NuGet ($psName)"
+    $null = Register-PackageSource -Name $psName -Location $Location -ProviderName NuGet
+    return $psName
 }
