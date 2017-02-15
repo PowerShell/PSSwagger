@@ -21,6 +21,68 @@
 
     $RootModuleContents = @'
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
+Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename $ModuleName.Resources.psd1
+. (Join-Path -Path "`$PSScriptRoot" -ChildPath "Utils.ps1")
+
+if ('Core' -eq `$PSEdition) {
+    `$clr = 'coreclr'
+} else {
+    `$clr = 'fullclr'
+}
+
+`$dllFullName = Join-Path -Path `$PSScriptRoot -ChildPath 'ref' | Join-Path -ChildPath `$clr | Join-Path -ChildPath '$Namespace.dll'
+`$isAzureCSharp = `$$UseAzureCSharpGenerator
+if (-not (Test-Path -Path `$dllFullName)) {
+    `$message = `$LocalizedData.CompilingBinaryComponent -f (`$dllFullName)
+    Write-Verbose -Message `$message
+    `$generatedCSharpFilePath = (Join-Path -Path "`$PSScriptRoot" -ChildPath "Generated.Csharp")
+    if (-not (Test-Path -Path `$generatedCSharpFilePath)) {
+        throw `$LocalizedData.CSharpFilesNotFound -f (`$generatedCSharpFilePath)
+    }
+
+    `$allCSharpFiles = Get-ChildItem -Path `$generatedCSharpFilePath -Filter *.cs -Recurse -Exclude Program.cs,TemporaryGeneratedFile* | Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*'
+    `$fileHashFullPath = Join-Path -Path "`$PSScriptRoot" -ChildPath "$fileHashesFileName"
+    if (-not (Test-Path -Path `$fileHashFullPath)) {
+        `$message = `$LocalizedData.MissingFileHashesFile
+        throw `$message
+    }
+
+    if ("$jsonFileHash" -ne (Get-FileHash -Path `$fileHashFullPath -Algorithm $jsonFileHashAlgorithm).Hash) {
+        `$message = `$LocalizedData.CatalogHashNotValid
+        throw `$message
+    }
+
+    `$fileHashes = ConvertFrom-Json -InputObject (Get-Content -Path `$fileHashFullPath | Out-String)
+    `$algorithm = `$fileHashes.Algorithm
+    `$allCSharpFiles | ForEach-Object {
+        `$fileName = "`$_".Replace("`$generatedCSharpFilePath","").Trim("\").Trim("/")
+        `$hash = `$(`$fileHashes.`$fileName)
+        if ((Get-FileHash -Path `$_ -Algorithm `$algorithm).Hash -ne `$hash) {
+            `$message = `$LocalizedData.HashValidationFailed
+            throw `$message
+        }
+    }
+
+    `$message = `$LocalizedData.HashValidationSuccessful
+    Write-Verbose -Message `$message -Verbose
+
+    `$success = Invoke-AssemblyCompilation -CSharpFiles `$allCSharpFiles -CodeCreatedByAzureGenerator:`$isAzureCSharp $requiredVersionParameter
+    if (-not `$success) {
+        `$message = `$LocalizedData.CompilationFailed -f (`$dllFullName)
+        throw `$message
+    }
+
+    `$message = `$LocalizedData.CompilationFailed -f (`$dllFullName)
+    Write-Verbose -Message `$message
+}
+
+# Load extra refs
+Get-AzureRMDllReferences | ForEach-Object { Add-Type -Path `$_ -ErrorAction SilentlyContinue }
+if ('Core' -ne (Get-PSEdition)) {
+    Add-Type -Path (Get-MicrosoftRestAzureReference -Framework 'net45' -ClrPath (Join-Path -Path "`$PSScriptRoot" -ChildPath "ref" | Join-Path -ChildPath "`$clr"))
+}
+
+Get-ChildItem -Path (Join-Path -Path "`$PSScriptRoot" -ChildPath "ref" | Join-Path -ChildPath "`$clr" | Join-Path -ChildPath "*.dll") -File | ForEach-Object { Add-Type -Path `$_.FullName -ErrorAction SilentlyContinue }
 
 Get-ChildItem -Path "`$PSScriptRoot\$GeneratedCommandsName\*.ps1" -Recurse -File | ForEach-Object { . `$_.FullName}
 '@
@@ -67,25 +129,25 @@ function $commandName
         }
         $clientName.BaseUri = `$ResourceManagerUrl
 
-        Write-Verbose 'Performing operation $methodName on $clientName.'
+        Write-Verbose -Message 'Performing operation $methodName on $clientName.'
         `$taskResult = $clientName$operations.$methodName($requiredParamList)
-        Write-Verbose "Waiting for the operation to complete."
+        Write-Verbose -Message "Waiting for the operation to complete."
         `$null = `$taskResult.AsyncWaitHandle.WaitOne()
-        Write-Debug "`$(`$taskResult | Out-String)"
+        Write-Debug -Message "`$(`$taskResult | Out-String)"
 
         if(`$taskResult.IsFaulted)
         {
-            Write-Verbose 'Operation failed.'
+            Write-Verbose -Message 'Operation failed.'
             Throw "`$(`$taskResult.Exception.InnerExceptions | Out-String)"
         } 
         elseif (`$taskResult.IsCanceled)
         {
-            Write-Verbose 'Operation got cancelled.'
+            Write-Verbose -Message 'Operation got cancelled.'
             Throw 'Operation got cancelled.'
         }
         else
         {
-            Write-Verbose 'Operation completed successfully.'
+            Write-Verbose -Message 'Operation completed successfully.'
 
             if(`$taskResult.Result -and 
                (Get-Member -InputObject `$taskResult.Result -Name 'Body') -and
@@ -121,7 +183,7 @@ switch (`$responseStatusCode)
                         $successReturn
                     }$failWithDesc
                     
-                    Default {Write-Error "Status: `$responseStatusCode received."}
+                    Default {Write-Error -Message "Status: `$responseStatusCode received."}
                 }
 '@
 

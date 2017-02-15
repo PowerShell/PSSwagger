@@ -487,7 +487,11 @@ function Get-PathFunctionBody
 
         [Parameter(Mandatory=$true)]
         [hashtable]
-        $SwaggerMetaDict
+        $SwaggerMetaDict,
+
+        [Parameter(Mandatory=$true)]
+        [PSCustomObject]
+        $SwaggerSpecDefinitionsAndParameters
     )
 
     $UseAzureCsharpGenerator = $SwaggerMetaDict['UseAzureCsharpGenerator']
@@ -540,6 +544,25 @@ function Get-PathFunctionBody
                     }
 
     return $bodyObject
+}
+
+function Test-OperationNameInDefinitionList
+{
+    param(
+        [string]
+        $Name,
+
+        [Parameter(Mandatory=$true)]
+        [PSCustomObject]
+        $SwaggerSpecDefinitionsAndParameters
+    )
+
+    $definitionList = $SwaggerSpecDefinitionsAndParameters['definitions']
+    if ($definitionList.ContainsKey($Name))
+    {
+        return $true
+    }
+    return $false
 }
 
 function Get-OutputType

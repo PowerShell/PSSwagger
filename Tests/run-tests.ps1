@@ -2,10 +2,8 @@ param(
     [ValidateSet("All","UnitTest","ScenarioTest")]
     [string[]]$TestSuite = "All",
     [string[]]$TestName,
-    [ValidateSet("net452", "netstandard1.6")]
+    [ValidateSet("net452", "netstandard1.7")]
     [string]$TestFramework = "net452",
-    [ValidateSet("win10-x64")]
-    [string]$Runtime = "win10-x64",
     [switch]$BootstrapDotNet
 )
 
@@ -22,6 +20,8 @@ if ($BootstrapDotNet -eq $false) {
     }
 }
 
+$testRunGuid = [guid]::NewGuid().GUID
+Write-Verbose -message "Test run GUID: $testRunGuid"
 # Set up scenario test requirements
 if ($TestSuite.Contains("All") -or $TestSuite.Contains("ScenarioTest")) {
     # Ensure node.js is installed
@@ -61,20 +61,7 @@ if ($TestSuite.Contains("All") -or $TestSuite.Contains("ScenarioTest")) {
     }
 
     $executeTestsCommand += ";`$env:Path+=`";$nodeModulePath`""
-
-    # Build PSSwagger.Test.dll using dotnet CLI
-    if ($BootstrapDotNet -eq $true) {
-        & "$PSScriptRoot\..\tools\bootstrap.ps1"
-    }
-
-    Push-Location "PSSwagger.TestUtilities"
-    dotnet restore
-    dotnet -v build
-    dotnet publish
-    Pop-Location
-
-    $testCredsAsmLocation = "$PSScriptRoot\PSSwagger.TestUtilities\bin\Debug\$TestFramework\$Runtime\publish"
-    $executeTestsCommand += ";Add-Type -Path $testCredsAsmLocation\PSSwagger.TestUtilities.dll"
+    $executeTestsCommand += ";`$global:testRunGuid=`"$testRunGuid`""
 }
 
 # Set up AutoRest
@@ -82,11 +69,18 @@ $autoRestModule = Test-Package -packageName "AutoRest" -packageSourceName $nuget
 $autoRestInstallPath = Split-Path -Path $autoRestModule.Source
 $executeTestsCommand += ";`$env:Path+=`";$autoRestInstallPath\tools`""
 
-if ($TestFramework -eq "netstandard1.6") {
-    # TODO: Find PowerShell Core folder and Pester folder, add to executeTestsCommand - See issues/15
+$powershellFolder = $null
+if ("netstandard1.7" -eq $TestFramework) {
+    # Note: Core build doesn't work on powershell alpha12+, so to work around this we'll require 6.0.0.11 exactly for now
+    $powershellCore = Get-Package PowerShell -RequiredVersion 6.0.0.11
+    if ($null -eq $powershellCore) {
+        throw "PowerShellCore 6.0.0.11 not found on this machine. Run: tools\Get-PowerShellCore -RequiredPSVersion 6.0.0.11"
+    }
+
+    $powershellFolder = "$Env:ProgramFiles\PowerShell\$($powershellCore.Version)"
 }
 
-$executeTestsCommand += ";Invoke-Pester -ExcludeTag KnownIssue -OutputFormat NUnitXml -OutputFile ScenarioTestResults.xml -Verbose"
+$executeTestsCommand += ";`$verbosepreference=`"continue`";Invoke-Pester -ExcludeTag KnownIssue -OutputFormat NUnitXml -OutputFile ScenarioTestResults.xml -Verbose"
 
 # Set up Pester params
 $pesterParams = @{'ExcludeTag' = 'KnownIssue'; 'OutputFormat' = 'NUnitXml'; 'OutputFile' = 'TestResults.xml'}
@@ -104,15 +98,29 @@ if ($TestSuite.Contains("All")) {
 # Set up the common generated modules location
 $generatedModulesPath = Join-Path -Path "$PSScriptRoot" -ChildPath "Generated"
 if (-not (Test-Path $nodeExePath)) {
-        Write-Verbose "Copying node.exe from NuGet package to $nodeExePath"
-        Copy-Item -Path (Join-Path -Path $nodejsInstallPath -ChildPath "node.exe") -Destination $nodeExePath
-    }
+    Write-Verbose "Copying node.exe from NuGet package to $nodeExePath"
+    Copy-Item -Path (Join-Path -Path $nodejsInstallPath -ChildPath "node.exe") -Destination $nodeExePath
+}
+
+# Clean up generated test assemblies
+Write-Verbose "Cleaning old test assemblies, if any."
+Get-ChildItem -Path (Join-Path "$PSScriptRoot" "PSSwagger.TestUtilities") -Filter *.dll | Remove-Item -Force
 
 Write-Verbose "Executing: $executeTestsCommand"
 $executeTestsCommand | Out-File pesterCommand.ps1
 
-# TODO: Run PowerShell Core if testframework is core CLR - See issues/15
-powershell -command .\pesterCommand.ps1
+if ($TestFramework -eq "netstandard1.7") {
+    try {
+        $null = Get-WmiObject Win32_OperatingSystem
+        Write-Verbose -Message "Invoking PowerShell Core at: $powershellFolder"
+        & "$powershellFolder\powershell" -command .\pesterCommand.ps1
+    } catch {
+        # For non-Windows, keep using the basic command
+        powershell -command .\pesterCommand.ps1
+    }
+} else {
+    powershell -command .\pesterCommand.ps1
+}
 
 # Verify output
 $x = [xml](Get-Content -raw "ScenarioTestResults.xml")
