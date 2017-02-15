@@ -22,6 +22,7 @@
     $RootModuleContents = @'
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename $ModuleName.Resources.psd1
+. (Join-Path -Path "`$PSScriptRoot" -ChildPath "Utils.ps1")
 
 if ('Core' -eq `$PSEdition) {
     `$clr = 'coreclr'
@@ -34,7 +35,6 @@ if ('Core' -eq `$PSEdition) {
 if (-not (Test-Path -Path `$dllFullName)) {
     `$message = `$LocalizedData.CompilingBinaryComponent -f (`$dllFullName)
     Write-Verbose -Message `$message
-    . (Join-Path -Path "`$PSScriptRoot" -ChildPath "Utils.ps1")
     `$generatedCSharpFilePath = (Join-Path -Path "`$PSScriptRoot" -ChildPath "Generated.Csharp")
     if (-not (Test-Path -Path `$generatedCSharpFilePath)) {
         throw `$LocalizedData.CSharpFilesNotFound -f (`$generatedCSharpFilePath)
@@ -66,7 +66,7 @@ if (-not (Test-Path -Path `$dllFullName)) {
     `$message = `$LocalizedData.HashValidationSuccessful
     Write-Verbose -Message `$message -Verbose
 
-    `$success = Invoke-AssemblyCompilation -CSharpFiles `$allCSharpFiles -CodeCreatedByAzureGenerator:`$isAzureCSharp
+    `$success = Invoke-AssemblyCompilation -CSharpFiles `$allCSharpFiles -CodeCreatedByAzureGenerator:`$isAzureCSharp $requiredVersionParameter
     if (-not `$success) {
         `$message = `$LocalizedData.CompilationFailed -f (`$dllFullName)
         throw `$message
@@ -78,6 +78,10 @@ if (-not (Test-Path -Path `$dllFullName)) {
 
 # Load extra refs
 Get-AzureRMDllReferences | ForEach-Object { Add-Type -Path `$_ -ErrorAction SilentlyContinue }
+if ('Core' -ne (Get-PSEdition)) {
+    Add-Type -Path (Get-MicrosoftRestAzureReference -Framework 'net45' -ClrPath (Join-Path -Path "`$PSScriptRoot" -ChildPath "ref" | Join-Path -ChildPath "`$clr"))
+}
+
 Get-ChildItem -Path (Join-Path -Path "`$PSScriptRoot" -ChildPath "ref" | Join-Path -ChildPath "`$clr" | Join-Path -ChildPath "*.dll") -File | ForEach-Object { Add-Type -Path `$_.FullName -ErrorAction SilentlyContinue }
 
 Get-ChildItem -Path "`$PSScriptRoot\$GeneratedCommandsName\*.ps1" -Recurse -File | ForEach-Object { . `$_.FullName}

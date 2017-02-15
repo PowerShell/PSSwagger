@@ -69,12 +69,12 @@ function Export-CommandFromSwagger
 
     if ($SkipAssemblyGeneration -and $PowerShellCorePath) {
         $message = $LocalizedData.ParameterSetNotAllowed -f ('PowerShellCorePath', 'SkipAssemblyGeneration')
-        throw $LocalizedData.ParameterSetNotAllowed
+        throw $message
     }
 
     if ($SkipAssemblyGeneration -and $IncludeCoreFxAssembly) {
         $message = $LocalizedData.ParameterSetNotAllowed -f ('IncludeCoreFxAssembly', 'SkipAssemblyGeneration')
-        throw $LocalizedData.ParameterSetNotAllowed
+        throw $message
     }
 
     if ($PSCmdlet.ParameterSetName -eq 'SwaggerURI')
@@ -185,8 +185,15 @@ function Export-CommandFromSwagger
     ConvertTo-Json -InputObject $filesHash | Out-File -FilePath (Join-Path -Path "$outputDirectory" -ChildPath "$fileHashesFileName")
     $jsonFileHashAlgorithm = "SHA512"
     $jsonFileHash = (Get-FileHash -Path (Join-Path -Path "$outputDirectory" -ChildPath "$fileHashesFileName") -Algorithm $jsonFileHashAlgorithm).Hash
-    Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "ref" ) $outputDirectory -Recurse -Force -Container
 
+    # If we precompiled the assemblies, we need to require a specific version of the dependent NuGet packages
+    # For now, there's only one required package (Microsoft.Rest.ClientRuntime.Azure)
+    $requiredVersionParameter = ''
+    if (-not $SkipAssemblyGeneration) {
+        # Compilation would have already installed this package, so this will just retrieve the package info
+        $package = Install-MicrosoftRestAzurePackage
+        $requiredVersionParameter = "-RequiredVersion $($package.Version)"
+    }
 
     # Handle the Definitions
     $DefinitionFunctionsDetails = @{}
