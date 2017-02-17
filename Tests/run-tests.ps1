@@ -3,8 +3,7 @@ param(
     [string[]]$TestSuite = "All",
     [string[]]$TestName,
     [ValidateSet("net452", "netstandard1.7")]
-    [string]$TestFramework = "net452",
-    [switch]$BootstrapDotNet
+    [string]$TestFramework = "net452"
 )
 
 $executeTestsCommand = ""
@@ -12,13 +11,6 @@ $executeTestsCommand = ""
 # Import test utilities
 Import-Module "$PSScriptRoot\TestUtilities.psm1" -Force
 $nugetPackageSource = Test-NugetPackageSource
-
-if ($BootstrapDotNet -eq $false) {
-    if ((Get-Command "dotnet.exe" -ErrorAction SilentlyContinue) -eq $null) {
-        Write-Warning "WARNING: dotnet CLI was not found in your Path and -BootstrapDotNet not set. Setting -BootstrapDotNet automatically."
-        $BootstrapDotNet = $true
-    }
-}
 
 $testRunGuid = [guid]::NewGuid().GUID
 Write-Verbose -message "Test run GUID: $testRunGuid"

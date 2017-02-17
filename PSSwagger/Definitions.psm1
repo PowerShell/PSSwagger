@@ -9,7 +9,7 @@
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 Import-Module (Join-Path -Path $PSScriptRoot -ChildPath Utilities.psm1)
 Import-Module (Join-Path -Path $PSScriptRoot -ChildPath SwaggerUtils.psm1)
-. "$PSScriptRoot\PSSwagger.Constants.ps1"
+. "$PSScriptRoot\PSSwagger.Constants.ps1" -Force
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwagger.Resources.psd1
 
 <#
@@ -380,20 +380,6 @@ function New-SwaggerSpecDefinitionCommand
         $Namespace 
     )
     
-    # TODO: remove as part of issue 21: Unify Functions
-    $advFnSignature = @'
-<#
-$commandHelp
-$paramHelp
-#>
-function $commandName
-{
-   param($paramblock
-   )
-   $body
-}
-'@
-
     $commandName = "New-$($FunctionDetails.Name)Object"
 
     $description = $FunctionDetails.description
@@ -429,7 +415,7 @@ function $commandName
     $DefinitionTypeName = $DefinitionTypeNamePrefix + $FunctionDetails.Name
     $body = $executionContext.InvokeCommand.ExpandString($createObjectStr)
 
-    $CommandString = $executionContext.InvokeCommand.ExpandString($advFnSignature)
+    $CommandString = $executionContext.InvokeCommand.ExpandString($advFnSignatureForDefintion)
     Write-Verbose -Message $CommandString
 
     if(-not (Test-Path -Path $GeneratedCommandsPath -PathType Container)) {

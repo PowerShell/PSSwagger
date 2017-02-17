@@ -6,20 +6,20 @@
 #
 #########################################################################################
 
-    $helpDescStr = @'
+$helpDescStr = @'
 .DESCRIPTION
     $description
 '@
 
-    $parameterDefString = @'
+$parameterDefString = @'
     
-    [Parameter(Mandatory = $isParamMandatory)]$ValidateSetDefinition
-    [$paramType]
-    $paramName,
+        [Parameter(Mandatory = $isParamMandatory)]$ValidateSetDefinition
+        [$paramType]
+        $paramName,
 
 '@
 
-    $RootModuleContents = @'
+$RootModuleContents = @'
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename $ModuleName.Resources.psd1
 . (Join-Path -Path "`$PSScriptRoot" -ChildPath "Utils.ps1")
@@ -87,38 +87,66 @@ Get-ChildItem -Path (Join-Path -Path "`$PSScriptRoot" -ChildPath "ref" | Join-Pa
 Get-ChildItem -Path "`$PSScriptRoot\$GeneratedCommandsName\*.ps1" -Recurse -File | ForEach-Object { . `$_.FullName}
 '@
 
-    $advFnSignature = @'
+$advFnSignatureForDefintion = @'
 <#
 $commandHelp
 $paramHelp
 #>
 function $commandName
 {
-   $outputTypeBlock[CmdletBinding()]
-   param($paramblock
-   )
-
-   $body
+    param($paramblock
+    )
+    $body
 }
 '@
 
-    $helpParamStr = @'
+$AsJobParameterString = @'
+
+        [Parameter(Mandatory = $false)]
+        [switch]
+        $AsJob
+'@
+
+
+$advFnSignatureForPath = @'
+<#
+$commandHelp
+$paramHelp
+#>
+function $commandName
+{
+    $outputTypeBlock[CmdletBinding()]
+    param($paramblockWithAsJob
+    )
+
+    `$PSSwaggerJobScriptBlock = {
+        [CmdletBinding()]
+        param($paramblock
+        )
+        $body
+    }
+   
+    Invoke-SwaggerCommandUtility -ScriptBlock `$PSSwaggerJobScriptBlock ``
+                                 -CallerPSBoundParameters `$PSBoundParameters ``
+                                 -CallerPSCmdlet `$PSCmdlet ``
+                                 -CallerModule `$MyInvocation.MyCommand.Module
+}
+'@
+
+$helpParamStr = @'
 
 .PARAMETER $parameterName
     $pDescription
 
 '@
 
-    $functionBodyStr = @'
- `Begin
-    {
+
+$functionBodyStr = @'
+
+        `$ErrorActionPreference = 'Stop'
         `$serviceCredentials = Get-AzServiceCredential
         `$subscriptionId = Get-AzSubscriptionId
         `$ResourceManagerUrl = Get-AzResourceManagerUrl
-    }
-
-    Process
-    {
         `$delegatingHandler = Get-AzDelegatingHandler
 
         $clientName = New-Object -TypeName $fullModuleName -ArgumentList `$serviceCredentials,`$delegatingHandler$apiVersion
@@ -131,8 +159,10 @@ function $commandName
 
         Write-Verbose -Message 'Performing operation $methodName on $clientName.'
         `$taskResult = $clientName$operations.$methodName($requiredParamList)
+
         Write-Verbose -Message "Waiting for the operation to complete."
         `$null = `$taskResult.AsyncWaitHandle.WaitOne()
+        
         Write-Debug -Message "`$(`$taskResult | Out-String)"
 
         if(`$taskResult.IsFaulted)
@@ -149,24 +179,20 @@ function $commandName
         {
             Write-Verbose -Message 'Operation completed successfully.'
 
-            if(`$taskResult.Result -and 
+            if(`$taskResult.Result -and
                (Get-Member -InputObject `$taskResult.Result -Name 'Body') -and
-               `$taskResult.Result.Body) 
+               `$taskResult.Result.Body)
             {
-                `$responseStatusCode = `$taskResult.Result.Response.StatusCode.value__
-                $responseBody
+                `$result = `$taskResult.Result.Body
+                Write-Verbose -Message "`$(`$result | Out-String)"
+                `$result
             }
         }
-    }
-
-    End
-    {
-    }
 '@
 
-    $ValidateSetDefinitionString = @'
+$ValidateSetDefinitionString = @'
 
-     [ValidateSet($ValidateSetString)]
+        [ValidateSet($ValidateSetString)]
 '@
 
 $successReturn = @'
@@ -194,25 +220,25 @@ $failCase = @'
                     }
 '@
 
-    $outputTypeStr = @'
+$outputTypeStr = @'
 [OutputType([$fullPathDataType])]
-   
+    
 '@
 
-    $createObjectStr = @'
+$createObjectStr = @'
 
-   `$Object = New-Object -TypeName $DefinitionTypeName
+    `$Object = New-Object -TypeName $DefinitionTypeName
 
-   `$PSBoundParameters.Keys | ForEach-Object { 
-       `$Object.`$_ = `$PSBoundParameters[`$_]
-   }
+    `$PSBoundParameters.Keys | ForEach-Object { 
+        `$Object.`$_ = `$PSBoundParameters[`$_]
+    }
 
-   if(Get-Member -InputObject `$Object -Name Validate -MemberType Method)
-   {
-       `$Object.Validate()
-   }
+    if(Get-Member -InputObject `$Object -Name Validate -MemberType Method)
+    {
+        `$Object.Validate()
+    }
 
-   return `$Object
+    return `$Object
 '@
 
 $ApiVersionStr = @'

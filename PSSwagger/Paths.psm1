@@ -9,7 +9,7 @@
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 Import-Module (Join-Path -Path $PSScriptRoot -ChildPath Utilities.psm1)
 Import-Module (Join-Path -Path $PSScriptRoot -ChildPath SwaggerUtils.psm1)
-. "$PSScriptRoot\PSSwagger.Constants.ps1"
+. "$PSScriptRoot\PSSwagger.Constants.ps1" -Force
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwagger.Resources.psd1
 
 function Get-SwaggerSpecPathInfo
@@ -71,6 +71,7 @@ function Get-SwaggerSpecPathInfo
         $paramObject = Convert-ParamTable -ParamTable $paramInfo
         $FunctionDetails['ParamHelp'] = $paramObject['ParamHelp']
         $FunctionDetails['Paramblock'] = $paramObject['ParamBlock']
+        $FunctionDetails['ParamblockWithAsJob'] = $paramObject['ParamBlockWithAsJob']
         $FunctionDetails['RequiredParamList'] = $paramObject['RequiredParamList']
         $FunctionDetails['OptionalParamList'] = $paramObject['OptionalParamList']
 
@@ -139,13 +140,14 @@ function New-SwaggerPath
 
     $paramHelp = $FunctionDetails.ParamHelp
     $paramblock = $FunctionDetails.ParamBlock
+    $paramblockWithAsJob = $FunctionDetails.ParamBlockWithAsJob
     $requiredParamList = $FunctionDetails.RequiredParamList
     $optionalParamList = $FunctionDetails.OptionalParamList
 
     $body = $FunctionDetails.Body
     $outputTypeBlock = $FunctionDetails.OutputTypeBlock
 
-    $CommandString = $executionContext.InvokeCommand.ExpandString($advFnSignature)
+    $CommandString = $executionContext.InvokeCommand.ExpandString($advFnSignatureForPath)
     $GeneratedCommandsPath = Join-Path -Path (Join-Path -Path $SwaggerMetaDict['outputDirectory'] -ChildPath $GeneratedCommandsName) -ChildPath 'SwaggerPathCommands'
 
     if(-not (Test-Path -Path $GeneratedCommandsPath -PathType Container)) {

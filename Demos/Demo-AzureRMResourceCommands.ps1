@@ -23,6 +23,7 @@ Import-Module .\PSSwagger\PSSwagger.psd1 -Force
 $param = @{
     Path = $TargetPath
     UseAzureCsharpGenerator = $true
+    IncludeCoreFxAssembly = $false
 }
 
 # AzureRM.Resources
@@ -30,6 +31,7 @@ $param['SwaggerSpecUri'] = 'https://raw.githubusercontent.com/Azure/azure-rest-a
 $param['ModuleName']     = 'Generated.AzureRM.Resources'
 Export-CommandFromSwagger @param
 #endregion Generate AzureRM commands
+
 
 Import-Module "$PSSwaggerClonePath\PSSwagger\Generated.Azure.Common.Helpers"
 Import-Module $TargetPath\Generated.AzureRM.Resources -WarningAction SilentlyContinue
@@ -50,6 +52,16 @@ $RGParameters = New-ResourceGroupObject -Location $Location
 
 New-ResourceGroupsOrUpdate -ResourceGroupName $ResourceGroupName -Parameters $RGParameters
 Get-ResourceGroups -ResourceGroupName $ResourceGroupName
+
+# With AsJob parameter
+GetAll-ResourceGroups -AsJob | Wait-Job
+Get-Job | Receive-Job
+
+Get-ResourceGroups -ResourceGroupName $ResourceGroupName -AsJob | Wait-Job
+Get-Job | Receive-Job
+
+# Remove jobs
+Get-Job | Remove-Job
 
 # ResourceGroup Cleanup
 if(Get-ResourceGroups -ResourceGroupName $ResourceGroupName -ErrorAction silentlycontinue) {
