@@ -1,0 +1,1 @@
+#Requires -Modules AzureRM.Profile.NetCore.Preview

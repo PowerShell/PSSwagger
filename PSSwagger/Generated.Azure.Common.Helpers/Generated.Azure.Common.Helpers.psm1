@@ -1,8 +1,10 @@
 ﻿Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 
-if ('Core' -eq $PSEdition) {
+if ((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
+    . (Join-Path -Path "$PSScriptRoot" -ChildPath "Test-CoreRequirements.ps1")
     $moduleName = 'AzureRM.Profile.NetCore.Preview'
 } else {
+    . (Join-Path -Path "$PSScriptRoot" -ChildPath "Test-FullRequirements.ps1")
     $moduleName = 'AzureRM.Profile'
 }
 
@@ -12,8 +14,8 @@ function Get-AzServiceCredential
     param()
 
     $AzureContext = & "$moduleName\Get-AzureRmContext" -ErrorAction Stop
-    $authenticationFactory = [Microsoft.Azure.Commands.Common.Authentication.Factories.AuthenticationFactory]::new() 
-    if ('Core' -eq $PSEdition) {
+    $authenticationFactory = New-Object -TypeName Microsoft.Azure.Commands.Common.Authentication.Factories.AuthenticationFactory
+    if ((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
         [Action[string]]$stringAction = {param($s)}
         $serviceCredentials = $authenticationFactory.GetServiceClientCredentials($AzureContext, $stringAction)
     } else {
@@ -28,7 +30,7 @@ function Get-AzDelegatingHandler
     [CmdletBinding()]
     param()
 
-    ,[System.Net.Http.DelegatingHandler[]]::new(0) 
+    New-Object -TypeName System.Net.Http.DelegatingHandler[] 0
 }
 
 function Get-AzSubscriptionId

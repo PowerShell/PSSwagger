@@ -43,6 +43,9 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwa
 
 .PARAMETER  IncludeCoreFxAssembly
   Switch to additionally compile the module's binary component for core CLR.
+
+.PARAMETER  InstallToolsForAllUsers
+  User wants to install local tools for all users.
 #>
 function Export-CommandFromSwagger
 {
@@ -78,7 +81,11 @@ function Export-CommandFromSwagger
 
         [Parameter()]
         [switch]
-        $IncludeCoreFxAssembly
+        $IncludeCoreFxAssembly,
+
+        [Parameter()]
+        [switch]
+        $InstallToolsForAllUsers
     )
 
     if ($SkipAssemblyGeneration -and $PowerShellCorePath) {
@@ -116,13 +123,11 @@ function Export-CommandFromSwagger
         throw $LocalizedData.SwaggerSpecPathNotExist -f ($SwaggerSpecPath)
     }
 
+    $userConsent = Initialize-LocalTools -Precompiling:(-not $SkipAssemblyGeneration) -AllUsers:$InstallToolsForAllUsers
+
     if ((-not $SkipAssemblyGeneration) -and ($IncludeCoreFxAssembly)) {
-        if (('Desktop' -eq $PSEdition) -and (-not $PowerShellCorePath)) {
-            $psCore = Get-Package -Name PowerShell* `
-                                  -MaximumVersion 6.0.0.11 `
-                                  -ProviderName msi `
-                                  -Verbose:$false `
-                                  -Debug:$false | Sort-Object -Property Version -Descending
+        if ((-not ('Core' -eq (Get-PSEdition))) -and (-not $PowerShellCorePath)) {
+            $psCore = Get-Msi -MsiName "PowerShell*" -MaximumVersion "6.0.0.11" | Sort-Object -Property Version -Descending
             if ($null -ne $psCore) {
                 # PSCore exists via MSI, but the MSI provider doesn't seem to provide an install path
                 # First check the default path (for now, just Windows)
@@ -140,7 +145,7 @@ function Export-CommandFromSwagger
         }
 
         if (-not $PowerShellCorePath) {
-            throw $LocalizedData.SwaggerSpecPathNotExist -f ($SwaggerSpecPath)
+            throw $LocalizedData.MustSpecifyPsCorePath
         }
 
         if ((Get-Item $PowerShellCorePath).PSIsContainer) {
@@ -148,7 +153,7 @@ function Export-CommandFromSwagger
         }
 
         if (-not (Test-Path -Path $PowerShellCorePath)) {
-            $message = $LocalizedData.FoundPowerShellCoreMsi -f ($PowerShellCorePath)
+            $message = $LocalizedData.PsCorePathNotFound -f ($PowerShellCorePath)
             throw $message
         }
     }
@@ -192,10 +197,13 @@ function Export-CommandFromSwagger
     $generatedCSharpFilePath = ConvertTo-CsharpCode -SwaggerDict $swaggerDict `
                                                     -SwaggerMetaDict $swaggerMetaDict `
                                                     -SkipAssemblyGeneration:$SkipAssemblyGeneration `
-                                                    -PowerShellCorePath $PowerShellCorePath
+                                                    -PowerShellCorePath $PowerShellCorePath `
+                                                    -InstallToolsForAllUsers:$InstallToolsForAllUsers `
+                                                    -UserConsent:$userConsent
 
     # Prepare dynamic compilation
     Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Utils.ps1") (Join-Path -Path $outputDirectory -ChildPath "Utils.ps1")
+    Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Utils.Resources.psd1") (Join-Path -Path $outputDirectory -ChildPath "Utils.Resources.psd1")
 
     $allCSharpFiles = Get-ChildItem -Path "$generatedCSharpFilePath\*.cs" `
                                     -Recurse `
@@ -213,14 +221,16 @@ function Export-CommandFromSwagger
                  -WhatIf:$false
 
     $jsonFileHashAlgorithm = "SHA512"
-    $jsonFileHash = (Get-FileHash -Path (Join-Path -Path "$outputDirectory" -ChildPath "$fileHashesFileName") -Algorithm $jsonFileHashAlgorithm).Hash
+    $jsonFileHash = (Get-CustomFileHash -Path (Join-Path -Path "$outputDirectory" -ChildPath "$fileHashesFileName") -Algorithm $jsonFileHashAlgorithm).Hash
 
     # If we precompiled the assemblies, we need to require a specific version of the dependent NuGet packages
     # For now, there's only one required package (Microsoft.Rest.ClientRuntime.Azure)
     $requiredVersionParameter = ''
     if (-not $SkipAssemblyGeneration) {
         # Compilation would have already installed this package, so this will just retrieve the package info
-        $package = Install-MicrosoftRestAzurePackage
+        # As of 3/2/2017, there's a version mismatch between the latest Microsoft.Rest.ClientRuntime.Azure package and the latest AzureRM.Profile package
+        # So we have to hardcode Microsoft.Rest.ClientRuntime.Azure to at most version 3.3.4
+        $package = Install-MicrosoftRestAzurePackage -RequiredVersion 3.3.4 -AllUsers:$InstallToolsForAllUsers -BootstrapConsent:$userConsent
         if($package)
         {
             $requiredVersionParameter = "-RequiredAzureRestVersion $($package.Version)"
@@ -433,14 +443,23 @@ function ConvertTo-CsharpCode
 
         [Parameter()]
         [String]
-        $PowerShellCorePath
+        $PowerShellCorePath,
+
+        [Parameter()]
+        [switch]
+        $InstallToolsForAllUsers,
+
+        [Parameter()]
+        [switch]
+        $UserConsent
     )
 
     $message = $LocalizedData.GenerateCodeUsingAutoRest
     Write-Verbose -Message $message
 
-    $autoRestExePath = get-command -name autorest.exe | ForEach-Object source
-    if (-not $autoRestExePath)
+    #$autoRestExePath = get-command -name autorest.exe | ForEach-Object source
+    $autoRestExePath = "autorest.exe"
+    if (-not (get-command -name autorest.exe))
     {
         throw $LocalizedData.AutoRestNotInPath
     }
@@ -484,12 +503,19 @@ function ConvertTo-CsharpCode
         }
         
         $codeCreatedByAzureGenerator = [bool]$SwaggerMetaDict['UseAzureCsharpGenerator']
+        # As of 3/2/2017, there's a version mismatch between the latest Microsoft.Rest.ClientRuntime.Azure package and the latest AzureRM.Profile package
+        # So we have to hardcode Microsoft.Rest.ClientRuntime.Azure to at most version 3.3.4
         $command = ". '$PSScriptRoot\Utils.ps1';
+                    Initialize-LocalToolsVariables;
                     Invoke-AssemblyCompilation -OutputAssembly '$outAssembly' ``
                                                -CSharpFiles $allCSharpFilesArrayString ``
-                                               -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator"
+                                               -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator ``
+                                               -RequiredAzureRestVersion 3.3.4 ``
+                                               -AllUsers:`$$InstallToolsForAllUsers ``
+                                               -BootstrapConsent:`$$UserConsent"
+
         $success = powershell -command "& {$command}"
-        if($success){
+        if ((Test-AssemblyCompilationSuccess -Output ($success | Out-String))) {
             $message = $LocalizedData.GeneratedAssembly -f ($outAssembly)
             Write-Verbose -Message $message
         } else {
@@ -510,12 +536,13 @@ function ConvertTo-CsharpCode
             }
             
             $command = ". '$PSScriptRoot\Utils.ps1'; 
+                        Initialize-LocalToolsVariables;
                         Invoke-AssemblyCompilation -OutputAssembly '$outAssembly' ``
                                                    -CSharpFiles $allCSharpFilesArrayString ``
                                                    -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator"
 
             $success = & "$PowerShellCorePath" -command "& {$command}"
-            if($success -eq $true){
+            if ((Test-AssemblyCompilationSuccess -Output ($success | Out-String))) {
                 $message = $LocalizedData.GeneratedAssembly -f ($outAssembly)
                 Write-Verbose -Message $message
             } else {
@@ -526,6 +553,18 @@ function ConvertTo-CsharpCode
     }
 
     return $generatedCSharpPath
+}
+
+function Test-AssemblyCompilationSuccess {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]
+        $Output
+    )
+
+    Write-Verbose -Message ($LocalizedData.AssemblyCompilationResult -f ($Output))
+    $tokens = $Output.Split(' ')
+    return ($tokens[$tokens.Count-1].Trim() -eq 'True')
 }
 
 function New-ModuleManifestUtility
@@ -574,8 +613,9 @@ function New-CodeFileCatalog
     $filesTable = @{"Algorithm" = $hashAlgorithm}
     $Files | ForEach-Object {
         $fileName = "$_".Replace("$generatedCSharpFilePath","").Trim("\").Trim("/") 
-        $hash = (Get-FileHash $_ -Algorithm $hashAlgorithm).Hash
+        $hash = (Get-CustomFileHash $_ -Algorithm $hashAlgorithm).Hash
         $message = $LocalizedData.FoundFileWithHash -f ($fileName, $hash)
+        Write-Verbose $message
         $filesTable.Add("$fileName", $hash) 
     }
 
