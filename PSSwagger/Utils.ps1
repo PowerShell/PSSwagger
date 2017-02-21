@@ -1,4 +1,5 @@
 ﻿$CorePsEditionConstant = 'Core'
+Microsoft.PowerShell.Utility\Import-LocalizedData  UtilsLocalizedData -filename Utils.Resources.psd1
 
 <#
 .DESCRIPTION
@@ -49,7 +50,7 @@ function Invoke-AssemblyCompilation {
         $clrPath = Split-Path -Path $OutputAssembly -Parent
     }
 
-    if ('Core' -eq $PSEdition) {
+    if ('Core' -eq (Get-PSEdition)) {
         # Base framework references
         $srcContent = ,'#define DNXCORE50' + $srcContent
         $systemRefs = @('System.dll','System.Core.dll','System.Net.Http.dll','Microsoft.CSharp.dll','System.Private.Uri.dll','System.Runtime.dll','System.Threading.Tasks.dll','System.Text.RegularExpressions.dll','System.Collections.dll','System.Net.Primitives.dll','System.Text.Encoding.dll','System.Linq.dll')
@@ -113,7 +114,7 @@ function Get-AzureRMDllReferences {
     }
 
     $refs += @((Join-Path -Path "$($module.ModuleBase)" -ChildPath 'Microsoft.Rest.ClientRuntime.dll'),
-               (Join-Path -Path "$($module.ModuleBase)" -ChildPath 'Newtonsoft.Json.dll'))
+        (Join-Path -Path "$($module.ModuleBase)" -ChildPath 'Newtonsoft.Json.dll'))
     return $refs
 }
 
@@ -125,7 +126,7 @@ function Get-PSEdition {
     [CmdletBinding()]
     param()
 
-    if((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ($CorePsEditionConstant -eq $PSEdition)) {
+    if ((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ($CorePsEditionConstant -eq $PSEdition)) {
         return $CorePsEditionConstant
     }
 
@@ -204,11 +205,15 @@ function Install-MicrosoftRestAzurePackage {
 
     if (-not $package) {
         $newPsName = ''
-        if (-not (Test-NugetPackageSource)) {
+        $existingPackageSource = Get-NugetPackageSource
+        if (-not $existingPackageSource) {
             $newPsName = New-NugetPackageSource
+            $packageSourceName = $newPsName
+        } else {
+            $packageSourceName = $existingPackageSource.Name
         }
 
-        $null = Find-Package @params | Select-Object -First 1 | Install-Package
+        $null = Find-Package @params -Source $packageSourceName | Select-Object -First 1 | Install-Package
         $package = Get-Package @params | Select-Object -First 1
         if ($newPsName) {
             $null = Unregister-PackageSource -Name $newPsName
@@ -220,11 +225,11 @@ function Install-MicrosoftRestAzurePackage {
 
 <#
 .DESCRIPTION
-  Tests if the NuGet package source with location nuget.org/api/v2 exists.
+  Gets the NuGet package source with location nuget.org/api/v2 exists.
 #>
-function Test-NugetPackageSource {
+function Get-NugetPackageSource {
     $packageSource = Get-PackageSource | Where-Object { $_.Location -contains 'nuget.org/api/v2' } | Select-Object -First 1
-    return $packageSource -ne $null
+    return $packageSource
 }
 
 <#
@@ -245,4 +250,121 @@ function New-NugetPackageSource {
     $psName = "PSSwagger NuGet ($psName)"
     $null = Register-PackageSource -Name $psName -Location $Location -ProviderName NuGet
     return $psName
+}
+
+<#
+.DESCRIPTION
+  Runs the built-in Get-FileHash cmdlet if PowerShell is 5.1+ or PowerShell Core. Otherwise, runs a similar custom implementation of Get-FileHash (Get-InternalFileHash).
+  Unlike the built-in Get-FileHash, this function does not support MACTripleDES.
+
+.PARAMETER  Path
+  Path to file to hash.
+
+.PARAMETER  Algorithm
+  Hash algorithm to use.
+#>
+function Get-CustomFileHash {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$True)]
+        [System.String]
+        $Path,
+
+        [ValidateSet("SHA1", "SHA256", "SHA384", "SHA512", "MD5", "RIPEMD160")]
+        [System.String]
+        $Algorithm="SHA256"
+    )
+
+    if ((-not ($CorePsEditionConstant -eq (Get-PSEdition))) -and ($PSVersionTable.PSVersion -lt '5.1')) {
+        return Get-InternalFileHash -Path $Path -Algorithm $Algorithm
+    } else {
+        return Get-FileHash -Path $Path -Algorithm $Algorithm
+    }
+}
+
+<#
+.DESCRIPTION
+  Implementation of Get-FileHash from PowerShell 5.1+ and PowerShell Core. For use with PowerShell 5.0 or older. Has pipeline and multiple file support removed for simplicity.
+
+.PARAMETER  Path
+  Path to file to hash.
+
+.PARAMETER  Algorithm
+  Hash algorithm to use.
+#>
+function Get-InternalFileHash {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$True)]
+        [System.String]
+        $Path,
+
+        [ValidateSet("SHA1", "SHA256", "SHA384", "SHA512", "MD5", "RIPEMD160")]
+        [System.String]
+        $Algorithm="SHA256"
+    )
+    
+    begin {
+        # Construct the strongly-typed crypto object
+        
+        # First see if it has a FIPS algorithm  
+        $hasherType = "System.Security.Cryptography.${Algorithm}CryptoServiceProvider" -as [Type]
+        if ($hasherType) {
+            $hasher = $hasherType::New()
+        } else {
+            # Check if the type is supported in the current system
+            $algorithmType = "System.Security.Cryptography.${Algorithm}" -as [Type]
+            if ($algorithmType) {
+                if ($Algorithm -eq "MACTripleDES") {
+                    $hasher = $algorithmType::New()
+                } else {
+                    $hasher = $algorithmType::Create()
+                }
+            }
+            else {
+                throw $UtilsLocalizedData.AlgorithmNotSupported -f ($Algorithm)
+            }
+        }
+
+        function GetStreamHash {
+            param(
+                [System.IO.Stream]
+                $InputStream,
+
+                [System.Security.Cryptography.HashAlgorithm]
+                $Hasher)
+
+            # Compute file-hash using the crypto object
+            [Byte[]] $computedHash = $Hasher.ComputeHash($InputStream)
+            [string] $hash = [BitConverter]::ToString($computedHash) -replace '-',''
+
+            $retVal = [PSCustomObject] @{
+                Algorithm = $Algorithm.ToUpperInvariant()
+                Hash = $hash
+            }
+
+            $retVal
+        }
+    }
+    
+    process {
+        $filePath = Resolve-Path -Path $Path
+        if(Test-Path -Path $filePath -PathType Container) {
+            continue
+        }
+
+        try {
+            # Read the file specified in $FilePath as a Byte array
+            [system.io.stream]$stream = [system.io.file]::OpenRead($filePath)
+            GetStreamHash -InputStream $stream -Hasher $hasher
+        }
+        catch [Exception] {
+            throw $UtilsLocalizedData.FailedToReadFile -f ($filePath)
+        }
+        finally {
+            if($stream) {
+                $stream.Dispose()
+            }
+        }
+    }
 }
