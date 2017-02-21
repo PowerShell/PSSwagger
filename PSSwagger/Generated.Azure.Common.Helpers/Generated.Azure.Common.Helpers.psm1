@@ -1,6 +1,8 @@
-﻿if ('Core' -eq $PSEdition) {
+﻿if ((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
+    . (Join-Path -Path "$PSScriptRoot" -ChildPath "Test-CoreRequirements.ps1")
     $moduleName = 'AzureRM.Profile.NetCore.Preview'
 } else {
+    . (Join-Path -Path "$PSScriptRoot" -ChildPath "Test-FullRequirements.ps1")
     $moduleName = 'AzureRM.Profile'
 }
 
@@ -11,7 +13,7 @@ function Get-AzServiceCredential
 
     $AzureContext = & "$moduleName\Get-AzureRmContext" -ErrorAction Stop
     $authenticationFactory = [Microsoft.Azure.Commands.Common.Authentication.Factories.AuthenticationFactory]::new() 
-    if ('Core' -eq $PSEdition) {
+    if ((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
         [Action[string]]$stringAction = {param($s)}
         $serviceCredentials = $authenticationFactory.GetServiceClientCredentials($AzureContext, $stringAction)
     } else {

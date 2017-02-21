@@ -24,7 +24,7 @@ Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename $ModuleName.Resources.psd1
 . (Join-Path -Path "`$PSScriptRoot" -ChildPath "Utils.ps1")
 
-if ('Core' -eq `$PSEdition) {
+if ('Core' -eq (Get-PSEdition)) {
     `$clr = 'coreclr'
 } else {
     `$clr = 'fullclr'
@@ -47,7 +47,7 @@ if (-not (Test-Path -Path `$dllFullName)) {
         throw `$message
     }
 
-    if ("$jsonFileHash" -ne (Get-FileHash -Path `$fileHashFullPath -Algorithm $jsonFileHashAlgorithm).Hash) {
+    if ("$jsonFileHash" -ne (Get-CustomFileHash -Path `$fileHashFullPath -Algorithm $jsonFileHashAlgorithm).Hash) {
         `$message = `$LocalizedData.CatalogHashNotValid
         throw `$message
     }
@@ -57,7 +57,7 @@ if (-not (Test-Path -Path `$dllFullName)) {
     `$allCSharpFiles | ForEach-Object {
         `$fileName = "`$_".Replace("`$generatedCSharpFilePath","").Trim("\").Trim("/")
         `$hash = `$(`$fileHashes.`$fileName)
-        if ((Get-FileHash -Path `$_ -Algorithm `$algorithm).Hash -ne `$hash) {
+        if ((Get-CustomFileHash -Path `$_ -Algorithm `$algorithm).Hash -ne `$hash) {
             `$message = `$LocalizedData.HashValidationFailed
             throw `$message
         }

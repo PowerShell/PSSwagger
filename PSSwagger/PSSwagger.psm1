@@ -117,7 +117,7 @@ function Export-CommandFromSwagger
     }
 
     if ((-not $SkipAssemblyGeneration) -and ($IncludeCoreFxAssembly)) {
-        if (('Desktop' -eq $PSEdition) -and (-not $PowerShellCorePath)) {
+        if ((-not ('Core' -eq (Get-PSEdition))) -and (-not $PowerShellCorePath)) {
             $psCore = Get-Package -Name PowerShell* `
                                   -MaximumVersion 6.0.0.11 `
                                   -ProviderName msi `
@@ -140,7 +140,7 @@ function Export-CommandFromSwagger
         }
 
         if (-not $PowerShellCorePath) {
-            throw $LocalizedData.SwaggerSpecPathNotExist -f ($SwaggerSpecPath)
+            throw $LocalizedData.MustSpecifyPsCorePath
         }
 
         if ((Get-Item $PowerShellCorePath).PSIsContainer) {
@@ -148,7 +148,7 @@ function Export-CommandFromSwagger
         }
 
         if (-not (Test-Path -Path $PowerShellCorePath)) {
-            $message = $LocalizedData.FoundPowerShellCoreMsi -f ($PowerShellCorePath)
+            $message = $LocalizedData.PsCorePathNotFound -f ($PowerShellCorePath)
             throw $message
         }
     }
@@ -196,13 +196,14 @@ function Export-CommandFromSwagger
 
     # Prepare dynamic compilation
     Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Utils.ps1") (Join-Path -Path $outputDirectory -ChildPath "Utils.ps1")
+    Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Utils.Resources.psd1") (Join-Path -Path $outputDirectory -ChildPath "Utils.Resources.psd1")
 
     $allCSharpFiles = Get-ChildItem -Path $generatedCSharpFilePath -Filter *.cs -Recurse -Exclude Program.cs,TemporaryGeneratedFile* | Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*'
     $filesHash = New-CodeFileCatalog -Files $allCSharpFiles
     $fileHashesFileName = "GeneratedCsharpCatalog.json"
     ConvertTo-Json -InputObject $filesHash | Out-File -FilePath (Join-Path -Path "$outputDirectory" -ChildPath "$fileHashesFileName")
     $jsonFileHashAlgorithm = "SHA512"
-    $jsonFileHash = (Get-FileHash -Path (Join-Path -Path "$outputDirectory" -ChildPath "$fileHashesFileName") -Algorithm $jsonFileHashAlgorithm).Hash
+    $jsonFileHash = (Get-CustomFileHash -Path (Join-Path -Path "$outputDirectory" -ChildPath "$fileHashesFileName") -Algorithm $jsonFileHashAlgorithm).Hash
 
     # If we precompiled the assemblies, we need to require a specific version of the dependent NuGet packages
     # For now, there's only one required package (Microsoft.Rest.ClientRuntime.Azure)
@@ -551,8 +552,9 @@ function New-CodeFileCatalog {
     $filesTable = @{"Algorithm" = $hashAlgorithm}
     $Files | ForEach-Object {
         $fileName = "$_".Replace("$generatedCSharpFilePath","").Trim("\").Trim("/") 
-        $hash = (Get-FileHash $_ -Algorithm $hashAlgorithm).Hash
+        $hash = (Get-CustomFileHash $_ -Algorithm $hashAlgorithm).Hash
         $message = $LocalizedData.FoundFileWithHash -f ($fileName, $hash)
+        Write-Verbose $message
         $filesTable.Add("$fileName", $hash) 
     }
 
