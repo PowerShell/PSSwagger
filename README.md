@@ -21,15 +21,13 @@ Export-CommandFromSwagger -SwaggerSpecUri <uri> -Path <string> -ModuleName <stri
 ## Supported Platforms
 | Usage | Platforms |
 | ----------------| ------------------------------------- |
-| Developer       | PowerShell 5.1+, PowerShell Core Alpha11 or older for Core CLR compilation |
-| Module Publisher| PowerShell 5.1+ |
-| Module Consumer | PowerShell 5.1+, PowerShell Core Alpha11 or older  |
+| Developer       | Windows, Any full PowerShell version, PowerShell Core Alpha11 or older for Core CLR compilation |
+| Module Publisher| Any full PowerShell version |
+| Module Consumer | Any full PowerShell version, PowerShell Core Alpha11 or older  |
 
-Note: Downlevel PowerShell support hasn't yet been verified, but generated modules will likely work.
+**Testing note**: While any full PowerShell version is fine for development, we recommend using PowerShell 5.1+ to enable testing our implementation of Get-FileHash.
 
 ## Usage
-
-**Note**: Please run this steps on a Windows 10 Anniversary Update or Windows Server 2016 RTM and above.
 
 1. Git clone this repository.
   ```code
@@ -75,6 +73,9 @@ When importing the module for the first time, the packaged C# files will be auto
 If the module's script files are signed, regardless of your script execution policy, the catalog file's signing will be checked for validity. 
 If the generated module is not signed, the catalog file's signing will not be checked. However, the catalog file's hashed contents will always be checked.
 
+## Distribution of module
+Because of the dynamic compilation feature, it is highly recommended that publishers of a generated module Authenticode sign the module and strong name sign both precompiled assemblies (full CLR and core CLR).
+
 ## Upcoming additions
 
 1. Enabe PowerShell Best practices
@@ -102,9 +103,7 @@ You can run tests right after cloning the repository. The test scripts should in
 .\run-tests.ps1 -TestFramework <framework> -Runtime <runtime> -Verbose -TestSuite <TestSuite> -TestName <TestName>
 ```
 
-TestFramework should be one of "net452" | "netstandard1.6". If you are on Windows, you can use either net452, which uses the full CLR, or netstandard1.6, which uses the Core CLR. For Linux, Darwin, or Nano Server users, you will have to use netstandard1.6.
-
-    Only net452 is supported at the moment.
+TestFramework should be one of "net452" | "netstandard1.6". If you are on Windows, you can use either net452, which uses the full CLR, or netstandard1.7, which uses the Core CLR. For Linux, Darwin, or Nano Server users, you will have to use netstandard1.7.
 
 Runtime should be the runtime of your OS. Currently only win10-x64 is supported (but it should be easy to add others).
 
@@ -118,7 +117,9 @@ The script will ensure dependencies exist on your machine, like AutoRest, node.j
     If dotnet CLI is already in your PS session's path, and you don't need to upgrade, you can use the parameter -SkipBootstrap to skip dotnet CLI bootstrapping and save lots of time.
 
 #### Unit tests
-TODO: fill out
+| Scenario        | Description                           |
+| ----------------| ------------------------------------- |
+| Get-InternalFileHash | Tests that Get-InternalFileHash is equivalent to Get-FileHash in PS 5.1+ |
 
 #### Scenario tests
 The scenario test suite contains tests that hit actual (local) web API endpoints. The following scenarios are covered:
