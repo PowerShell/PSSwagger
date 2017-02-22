@@ -8,7 +8,7 @@
 
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 Import-Module (Join-Path -Path $PSScriptRoot -ChildPath Utilities.psm1)
-. "$PSScriptRoot\PSSwagger.Constants.ps1"
+. "$PSScriptRoot\PSSwagger.Constants.ps1" -Force
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwagger.Resources.psd1
 
 function ConvertTo-SwaggerDictionary {
@@ -446,10 +446,21 @@ function Convert-ParamTable
     $requiredParamList = $requiredParamList -join ', '
     $optionalParamList = $optionalParamList -join ', '
 
-    $paramObject = @{ ParamHelp = $paramhelp;
-                      ParamBlock = $paramBlock;
-                      RequiredParamList = $requiredParamList;
-                      OptionalParamList = $optionalParamList;
+    $paramblockWithAsJob = $AsJobParameterString
+    if($paramblock)
+    {
+        # Append AsJob parameter string
+        $paramblockWithAsJob = $paramblock + ",`r`n" + $AsJobParameterString
+    }
+
+    # Correct the alignment of parameters string to be added in the script block
+    $paramblock = $($paramblock -replace "        ","            ")
+
+    $paramObject = @{ ParamHelp = $paramhelp
+                      ParamBlock = $paramBlock
+                      ParamblockWithAsJob = $paramblockWithAsJob
+                      RequiredParamList = $requiredParamList
+                      OptionalParamList = $optionalParamList
                     }
 
     return $paramObject
@@ -638,7 +649,7 @@ function Get-OutputType
                         $fullPathDataType = $NameSpace + ".Models.$key"
                     }
 
-                    $fullPathDataType = $fullPathDataType.Replace('[','').Replace(']','')
+                    $fullPathDataType = $fullPathDataType.Replace('[','').Replace(']','').Trim()
                     $outputType += $executionContext.InvokeCommand.ExpandString($outputTypeStr)
                 }
             }

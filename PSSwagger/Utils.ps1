@@ -1,4 +1,4 @@
-﻿$CorePsEditionConstant = 'Core'
+﻿$script:CorePsEditionConstant = 'Core'
 
 <#
 .DESCRIPTION
@@ -20,18 +20,22 @@ function Invoke-AssemblyCompilation {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory=$true)]
-        [System.IO.FileInfo[]]$CSharpFiles,
+        [System.IO.FileInfo[]]
+        $CSharpFiles,
 
         [Parameter(Mandatory=$false)]
         [AllowEmptyString()]
-        [string]$OutputAssembly,
+        [string]
+        $OutputAssembly,
 
         [Parameter(Mandatory=$false)]
-        [switch]$CodeCreatedByAzureGenerator,
+        [switch]
+        $CodeCreatedByAzureGenerator,
 
         [Parameter(Mandatory=$false)]
         [AllowEmptyString()]
-        [string]$RequiredAzureRestVersion
+        [string]
+        $RequiredAzureRestVersion
     )
 
     # Append the content of each file into a single string
@@ -52,7 +56,19 @@ function Invoke-AssemblyCompilation {
     if ('Core' -eq $PSEdition) {
         # Base framework references
         $srcContent = ,'#define DNXCORE50' + $srcContent
-        $systemRefs = @('System.dll','System.Core.dll','System.Net.Http.dll','Microsoft.CSharp.dll','System.Private.Uri.dll','System.Runtime.dll','System.Threading.Tasks.dll','System.Text.RegularExpressions.dll','System.Collections.dll','System.Net.Primitives.dll','System.Text.Encoding.dll','System.Linq.dll')
+        $systemRefs = @('System.dll',
+                        'System.Core.dll',
+                        'System.Net.Http.dll',
+                        'Microsoft.CSharp.dll',
+                        'System.Private.Uri.dll',
+                        'System.Runtime.dll',
+                        'System.Threading.Tasks.dll',
+                        'System.Text.RegularExpressions.dll',
+                        'System.Collections.dll',
+                        'System.Net.Primitives.dll',
+                        'System.Text.Encoding.dll',
+                        'System.Linq.dll')
+
         if ($CodeCreatedByAzureGenerator) {
             $systemRefs += 'System.Runtime.Serialization.Primitives.dll'
         }
@@ -62,7 +78,12 @@ function Invoke-AssemblyCompilation {
         }
     } else {
         # Base framework references
-        $systemRefs = @('System.dll','System.Core.dll','System.Net.Http.dll','System.Net.Http.WebRequest','System.Runtime.Serialization.dll','System.Xml.dll')
+        $systemRefs = @('System.dll',
+                        'System.Core.dll',
+                        'System.Net.Http.dll',
+                        'System.Net.Http.WebRequest',
+                        'System.Runtime.Serialization.dll',
+                        'System.Xml.dll')
 
         if (-not $clrPath) {
             $clrPath = Join-Path -Path "$PSScriptRoot" -ChildPath 'ref' | Join-Path -ChildPath 'fullclr'
@@ -70,9 +91,20 @@ function Invoke-AssemblyCompilation {
 
         # Microsoft.Rest.ClientRuntime.Azure.dll isn't packaged with AzureRM.Profile, but is required by AutoRest generated code
         # If the extra assembly already exists, use it
-        $azureRestAssemblyPath = Get-MicrosoftRestAzureReference -Framework 'net45' -ClrPath $clrPath
+        $Params = @{
+            Framework = 'net45'
+            ClrPath = $clrPath
+        }
+        if($RequiredAzureRestVersion)
+        {
+            $Params['RequiredVersion'] = $RequiredAzureRestVersion
+        }
+        $azureRestAssemblyPath = Get-MicrosoftRestAzureReference @Params
 
-        $extraRefs += $azureRestAssemblyPath
+        if($azureRestAssemblyPath)
+        {
+            $extraRefs += $azureRestAssemblyPath
+        }
     }
 
     if (-not (Test-Path -Path $clrPath -PathType Container)) {
@@ -83,14 +115,26 @@ function Invoke-AssemblyCompilation {
     $oneSrc = $srcContent -join "`n"
     
     if ($OutputAssembly) {
-        Add-Type -TypeDefinition $oneSrc -ReferencedAssemblies ($systemRefs + $extraRefs + $moduleRefs) -OutputAssembly $OutputAssembly -IgnoreWarnings -Language CSharp
+        Add-Type -TypeDefinition $oneSrc `
+                 -ReferencedAssemblies ($systemRefs + $extraRefs + $moduleRefs) `
+                 -OutputAssembly $OutputAssembly `
+                 -Language CSharp `
+                 -IgnoreWarnings `
+                 -WarningAction Ignore
+
         if ((Get-Item -Path $OutputAssembly).Length -eq 0kb) {
             return $false
         }
     } else {
         $moduleRefs | ForEach-Object { Add-Type -Path $_ -ErrorAction Ignore }
         $extraRefs | ForEach-Object { Add-Type -Path $_ -ErrorAction Ignore }
-        Add-Type -TypeDefinition $oneSrc -ReferencedAssemblies ($systemRefs + $extraRefs + $moduleRefs) -IgnoreWarnings -Language CSharp
+        
+        Add-Type -TypeDefinition $oneSrc `
+                 -ReferencedAssemblies ($systemRefs + $extraRefs + $moduleRefs) `
+                 -Language CSharp `
+                 -IgnoreWarnings `
+                 -WarningAction Ignore
+
     }
         
     return $true
@@ -105,7 +149,7 @@ function Get-AzureRMDllReferences {
     param()
 
     $refs = @()
-    if ($CorePsEditionConstant -eq (Get-PSEdition)) {
+    if ($script:CorePsEditionConstant -eq (Get-PSEdition)) {
         $module = Get-Module -Name AzureRM.Profile.NetCore.Preview -ListAvailable | select-object -first 1
         $refs += (Join-Path -Path "$($module.ModuleBase)" -ChildPath 'Microsoft.Rest.ClientRuntime.Azure.dll')
     } else {
@@ -125,8 +169,8 @@ function Get-PSEdition {
     [CmdletBinding()]
     param()
 
-    if((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ($CorePsEditionConstant -eq $PSEdition)) {
-        return $CorePsEditionConstant
+    if((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ($script:CorePsEditionConstant -eq $PSEdition)) {
+        return $script:CorePsEditionConstant
     }
 
     # This sentinel isn't too important, since we only do checks for the Core string
@@ -151,13 +195,16 @@ function Get-MicrosoftRestAzureReference {
     param(
         [Parameter(Mandatory=$true)]
         [ValidateSet('net45')]
-        [string]$Framework,
+        [string]
+        $Framework,
 
         [Parameter(Mandatory=$true)]
-        [string]$ClrPath,
+        [string]
+        $ClrPath,
 
         [Parameter(Mandatory=$false)]
-        [string]$RequiredVersion
+        [string]
+        $RequiredVersion
     )
 
     $azureRestAssemblyPath = Join-Path -Path $ClrPath -ChildPath 'Microsoft.Rest.ClientRuntime.Azure.dll'
@@ -187,13 +234,17 @@ function Install-MicrosoftRestAzurePackage {
     param(
         [Parameter(Mandatory=$false)]
         [AllowEmptyString()]
-        [string]$RequiredVersion
+        [string]
+        $RequiredVersion
     )
 
     $params = @{
-        Name='Microsoft.Rest.ClientRuntime.Azure';
-        ProviderName='NuGet';
-        ErrorAction='SilentlyContinue'
+        Name='Microsoft.Rest.ClientRuntime.Azure'
+        ProviderName='NuGet'
+        ErrorAction='Ignore'
+        ForceBootstrap = $true
+        Verbose = $false
+        Debug = $false
     }
 
     if ($RequiredVersion) {
@@ -208,10 +259,10 @@ function Install-MicrosoftRestAzurePackage {
             $newPsName = New-NugetPackageSource
         }
 
-        $null = Find-Package @params | Select-Object -First 1 | Install-Package
+        $null = Find-Package @params | Select-Object -First 1 | Install-Package -Force -Scope CurrentUser -Verbose:$false -Debug:$false -Confirm:$false -WhatIf:$false
         $package = Get-Package @params | Select-Object -First 1
         if ($newPsName) {
-            $null = Unregister-PackageSource -Name $newPsName
+            $null = Unregister-PackageSource -Name $newPsName -Verbose:$false -Debug:$false -WhatIf:$false -Confirm:$false
         }
     }
 
@@ -223,7 +274,7 @@ function Install-MicrosoftRestAzurePackage {
   Tests if the NuGet package source with location nuget.org/api/v2 exists.
 #>
 function Test-NugetPackageSource {
-    $packageSource = Get-PackageSource | Where-Object { $_.Location -contains 'nuget.org/api/v2' } | Select-Object -First 1
+    $packageSource = Get-PackageSource -Provider NuGet -ForceBootstrap -Verbose:$false -Debug:$false  | Where-Object { $_.Location -contains 'nuget.org/api/v2' } | Select-Object -First 1
     return $packageSource -ne $null
 }
 
@@ -243,6 +294,6 @@ function New-NugetPackageSource {
 
     $psName = [guid]::newguid().Guid
     $psName = "PSSwagger NuGet ($psName)"
-    $null = Register-PackageSource -Name $psName -Location $Location -ProviderName NuGet
+    $null = Register-PackageSource -Name $psName -Location $Location -ProviderName NuGet -ForceBootstrap -Verbose:$false -Debug:$false -Confirm:$false -WhatIf:$false
     return $psName
 }

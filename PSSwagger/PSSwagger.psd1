@@ -11,15 +11,22 @@ CmdletsToExport = ''
 VariablesToExport = ''
 AliasesToExport = ''
 
-NestedModules = @('Generated.Azure.Common.Helpers',
-                  'SwaggerUtils.psm1',
-                  'Utilities.psm1',
-                  'Paths.psm1',
-                  'Definitions.psm1')
+NestedModules = @()
 
-FileList = @('PSSwagger.Constants.ps1',
+FileList = @(
+             'Definitions.psm1',
+             'Generated.Resources.psd',
+             'Paths.psm1',
+             'PSSwagger.Constants.ps1',
+             'PSSwagger.psd1',
              'PSSwagger.psm1',
-             'PSSwagger.Resources.psd1')
+             'PSSwagger.Resources.psd1',
+             'SwaggerUtils.psm1',
+             'Utilities.psm1',
+             'Utils.ps1',
+             'Generated.Azure.Common.Helpers\Generated.Azure.Common.Helpers.psd1',
+             'Generated.Azure.Common.Helpers\Generated.Azure.Common.Helpers.psm1'
+            )
 
 PrivateData = @{
     PSData = @{
