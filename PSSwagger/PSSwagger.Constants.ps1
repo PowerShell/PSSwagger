@@ -119,17 +119,9 @@ function $commandName
     param($paramblockWithAsJob
     )
 
-    `$PSSwaggerJobScriptBlock = {
-        [CmdletBinding()]
-        param($paramblock
-        )
-        $body
-    }
-   
-    Invoke-SwaggerCommandUtility -ScriptBlock `$PSSwaggerJobScriptBlock ``
-                                 -CallerPSBoundParameters `$PSBoundParameters ``
-                                 -CallerPSCmdlet `$PSCmdlet ``
-                                 -CallerModule `$MyInvocation.MyCommand.Module
+    $body
+
+    $PathFunctionCommonBody
 }
 '@
 
@@ -143,34 +135,47 @@ $helpParamStr = @'
 
 $functionBodyStr = @'
 
-        `$ErrorActionPreference = 'Stop'
-        `$serviceCredentials = Get-AzServiceCredential
-        `$subscriptionId = Get-AzSubscriptionId
-        `$ResourceManagerUrl = Get-AzResourceManagerUrl
-        `$delegatingHandler = Get-AzDelegatingHandler
+    `$ErrorActionPreference = 'Stop'
+    `$serviceCredentials = Get-AzServiceCredential
+    `$subscriptionId = Get-AzSubscriptionId
+    `$ResourceManagerUrl = Get-AzResourceManagerUrl
+    `$delegatingHandler = Get-AzDelegatingHandler
 
-        $clientName = New-Object -TypeName $fullModuleName -ArgumentList `$serviceCredentials,`$delegatingHandler$apiVersion
+    $clientName = New-Object -TypeName $fullModuleName -ArgumentList `$serviceCredentials,`$delegatingHandler$apiVersion
 
-        if(Get-Member -InputObject $clientName -Name 'SubscriptionId' -MemberType Property)
-        {
-            $clientName.SubscriptionId = `$SubscriptionId
-        }
-        $clientName.BaseUri = `$ResourceManagerUrl
+    if(Get-Member -InputObject $clientName -Name 'SubscriptionId' -MemberType Property)
+    {
+        $clientName.SubscriptionId = `$SubscriptionId
+    }
+    $clientName.BaseUri = `$ResourceManagerUrl
 
-        Write-Verbose -Message 'Performing operation $methodName on $clientName.'
-        `$taskResult = $clientName$operations.$methodName($requiredParamList)
+    Write-Verbose -Message 'Performing operation $methodName on $clientName.'
+    `$taskResult = $clientName$operations.$methodName($requiredParamList)
+'@
 
-        Write-Verbose -Message "Waiting for the operation to complete."
-        `$null = `$taskResult.AsyncWaitHandle.WaitOne()
+$PathFunctionCommonBody = @'
+    Write-Verbose -Message "Waiting for the operation to complete."
+
+    $PSSwaggerJobScriptBlock = {
+        [CmdletBinding()]
+        param(    
+            [Parameter(Mandatory = $true)]
+            [System.Threading.Tasks.Task]
+            $TaskResult
+        )
+
+        $ErrorActionPreference = 'Stop'
         
-        Write-Debug -Message "`$(`$taskResult | Out-String)"
+        $null = $TaskResult.AsyncWaitHandle.WaitOne()
+        
+        Write-Debug -Message "$($taskResult | Out-String)"
 
-        if(`$taskResult.IsFaulted)
+        if($taskResult.IsFaulted)
         {
             Write-Verbose -Message 'Operation failed.'
-            Throw "`$(`$taskResult.Exception.InnerExceptions | Out-String)"
+            Throw "$($taskResult.Exception.InnerExceptions | Out-String)"
         } 
-        elseif (`$taskResult.IsCanceled)
+        elseif ($taskResult.IsCanceled)
         {
             Write-Verbose -Message 'Operation got cancelled.'
             Throw 'Operation got cancelled.'
@@ -179,15 +184,37 @@ $functionBodyStr = @'
         {
             Write-Verbose -Message 'Operation completed successfully.'
 
-            if(`$taskResult.Result -and
-               (Get-Member -InputObject `$taskResult.Result -Name 'Body') -and
-               `$taskResult.Result.Body)
+            if($taskResult.Result -and
+               (Get-Member -InputObject $taskResult.Result -Name 'Body') -and
+               $taskResult.Result.Body)
             {
-                `$result = `$taskResult.Result.Body
-                Write-Verbose -Message "`$(`$result | Out-String)"
-                `$result
+                $result = $taskResult.Result.Body
+                Write-Verbose -Message "$($result | Out-String)"
+                $result
             }
         }
+    }
+
+    $PSCommonParameters = Get-PSCommonParameters -CallerPSBoundParameters $PSBoundParameters
+
+    if($AsJob)
+    {
+        $ScriptBlockParameters = New-Object -TypeName 'System.Collections.Generic.Dictionary[string,object]'
+        $ScriptBlockParameters['TaskResult'] = $TaskResult
+        $ScriptBlockParameters['AsJob'] = $AsJob
+        $PSCommonParameters.Keys | ForEach-Object { $ScriptBlockParameters[$_] = $PSCommonParameters[$_] }
+
+        Invoke-SwaggerCommandUtility -ScriptBlock $PSSwaggerJobScriptBlock `
+                                     -CallerPSBoundParameters $ScriptBlockParameters `
+                                     -CallerPSCmdlet $PSCmdlet `
+                                     @PSCommonParameters
+    }
+    else
+    {
+        Invoke-Command -ScriptBlock $PSSwaggerJobScriptBlock `
+                       -ArgumentList $taskResult `
+                       @PSCommonParameters
+    }
 '@
 
 $ValidateSetDefinitionString = @'
