@@ -148,7 +148,8 @@ function New-SwaggerPath
     $outputTypeBlock = $FunctionDetails.OutputTypeBlock
 
     $CommandString = $executionContext.InvokeCommand.ExpandString($advFnSignatureForPath)
-    $GeneratedCommandsPath = Join-Path -Path (Join-Path -Path $SwaggerMetaDict['outputDirectory'] -ChildPath $GeneratedCommandsName) -ChildPath 'SwaggerPathCommands'
+    $GeneratedCommandsPath = Join-Path -Path (Join-Path -Path $SwaggerMetaDict['outputDirectory'] -ChildPath $GeneratedCommandsName) `
+                                       -ChildPath 'SwaggerPathCommands'
 
     if(-not (Test-Path -Path $GeneratedCommandsPath -PathType Container)) {
         $null = New-Item -Path $GeneratedCommandsPath -ItemType Directory

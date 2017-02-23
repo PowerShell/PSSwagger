@@ -297,3 +297,94 @@ function New-NugetPackageSource {
     $null = Register-PackageSource -Name $psName -Location $Location -ProviderName NuGet -ForceBootstrap -Verbose:$false -Debug:$false -Confirm:$false -WhatIf:$false
     return $psName
 }
+
+<#
+.DESCRIPTION
+  Get PowerShell Common parameter/preference values.
+
+.PARAMETER  CallerPSBoundParameters
+  PSBoundParameters of the caller.
+#>
+function Get-PSCommonParameters
+{
+    param(
+        [Parameter(Mandatory=$true)]
+        $CallerPSBoundParameters
+    )
+
+    $VerbosePresent = $false
+    if (-not $CallerPSBoundParameters.ContainsKey('Verbose'))
+    {
+        if($VerbosePreference -in 'Continue','Inquire')
+        {
+            $VerbosePresent = $true
+        }
+    }
+    else
+    {
+        $VerbosePresent = $true
+    }
+
+    $DebugPresent = $false
+    if (-not $CallerPSBoundParameters.ContainsKey('Debug'))
+    {
+        if($debugPreference -in 'Continue','Inquire')
+        {
+            $DebugPresent = $true
+        }
+    }
+    else
+    {
+        $DebugPresent = $true
+    }
+
+    if(Test-Path variable:\errorActionPreference)
+    {
+        $errorAction = $errorActionPreference
+    }
+    else
+    {
+        $errorAction = 'Continue'
+    }
+
+    if ($CallerPSBoundParameters['ErrorAction'] -eq 'SilentlyContinue')
+    {
+        $errorAction = 'SilentlyContinue'
+    }
+
+    if($CallerPSBoundParameters['ErrorAction'] -eq 'Ignore')
+    {
+        $errorAction = 'SilentlyContinue'
+    }
+
+    if ($CallerPSBoundParameters['ErrorAction'] -eq 'Inquire')
+    {
+        $errorAction = 'Continue'
+    }
+
+    if(Test-Path variable:\warningPreference)
+    {
+        $warningAction = $warningPreference
+    }
+    else
+    {
+        $warningAction = 'Continue'
+    }
+
+    if ($CallerPSBoundParameters['WarningAction'] -in 'SilentlyContinue','Ignore')
+    {
+        $warningAction = 'SilentlyContinue'
+    }
+
+    if ($CallerPSBoundParameters['WarningAction'] -eq 'Inquire')
+    {
+        $warningAction = 'Continue'
+    }
+
+    return @{
+        Verbose = $VerbosePresent
+        Debug = $DebugPresent
+        WarningAction = $warningAction
+        ErrorAction = $errorAction
+    }    
+}
