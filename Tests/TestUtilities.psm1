@@ -19,14 +19,14 @@ function Test-Package {
         [string]$providerName = "NuGet"
     )
 
-    $module = Get-Package $packageName -ErrorAction SilentlyContinue
-    if ($module -eq $null) {
+    $package = Get-Package $packageName -ProviderName $providerName -ErrorAction Ignore
+    if ($package -eq $null) {
         Write-Verbose "Trying to install missing package $packageName from source $packageSourceName"
         $null = Install-Package $packageName -ProviderName $providerName -Source $packageSourceName -Force
-        $module = Get-Package $packageName -ErrorAction SilentlyContinue
+        $package = Get-Package $packageName -ProviderName $providerName
     }
 
-    $module
+    $package
 }
 
 function Compile-TestAssembly {

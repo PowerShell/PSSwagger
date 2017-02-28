@@ -118,7 +118,6 @@ function $commandName
     $outputTypeBlock[CmdletBinding()]
     param($paramblockWithAsJob
     )
-
     $body
 
     $PathFunctionCommonBody
@@ -154,7 +153,7 @@ $functionBodyStr = @'
 '@
 
 $PathFunctionCommonBody = @'
-    Write-Verbose -Message "Waiting for the operation to complete."
+Write-Verbose -Message "Waiting for the operation to complete."
 
     $PSSwaggerJobScriptBlock = {
         [CmdletBinding()]
