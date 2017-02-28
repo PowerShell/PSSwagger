@@ -1,4 +1,6 @@
-﻿$script:CorePsEditionConstant = 'Core'
+﻿Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
+
+$script:CorePsEditionConstant = 'Core'
 
 <#
 .DESCRIPTION
@@ -39,6 +41,7 @@ function Invoke-AssemblyCompilation {
     )
 
     # Append the content of each file into a single string
+    $srcContent = @()
     $srcContent += $CSharpFiles | ForEach-Object { "// File $($_.FullName)"; get-content -path $_.FullName }
     
     # Find the reference assemblies to use
@@ -150,10 +153,13 @@ function Get-AzureRMDllReferences {
 
     $refs = @()
     if ($script:CorePsEditionConstant -eq (Get-PSEdition)) {
-        $module = Get-Module -Name AzureRM.Profile.NetCore.Preview -ListAvailable | select-object -first 1
+        $module = Get-Module -Name AzureRM.Profile.NetCore.Preview -ListAvailable | 
+                      Select-Object -First 1 -ErrorAction Ignore
+                      
         $refs += (Join-Path -Path "$($module.ModuleBase)" -ChildPath 'Microsoft.Rest.ClientRuntime.Azure.dll')
     } else {
-        $module = Get-Module -Name AzureRM.Profile -ListAvailable | select-object -first 1
+        $module = Get-Module -Name AzureRM.Profile -ListAvailable | 
+                      Select-Object -First 1 -ErrorAction Ignore
     }
 
     $refs += @((Join-Path -Path "$($module.ModuleBase)" -ChildPath 'Microsoft.Rest.ClientRuntime.dll'),
@@ -211,12 +217,18 @@ function Get-MicrosoftRestAzureReference {
     if (-not (Test-Path -Path $azureRestAssemblyPath)) {
         # Get the assembly from the NuGet package dynamically, then save it locally
         $package = Install-MicrosoftRestAzurePackage -RequiredVersion $RequiredVersion
-        $azureRestAssemblyPathNuget = Join-Path -Path (Split-Path -Path $package.Source -Parent) -ChildPath 'lib' | Join-Path -ChildPath $Framework | Join-Path -ChildPath 'Microsoft.Rest.ClientRuntime.Azure.dll'
-        if (-not (Test-Path -Path $ClrPath)) {
-            $null = New-Item -Path $ClrPath -ItemType Directory
-        }
+        if($package)
+        {
+            $azureRestAssemblyPathNuget = Join-Path -Path (Split-Path -Path $package.Source -Parent) -ChildPath 'lib' | 
+                                              Join-Path -ChildPath $Framework | 
+                                                  Join-Path -ChildPath 'Microsoft.Rest.ClientRuntime.Azure.dll'
 
-        $null = Copy-Item -Path $azureRestAssemblyPathNuget -Destination $azureRestAssemblyPath -Force
+            if (-not (Test-Path -Path $ClrPath)){
+                $null = New-Item -Path $ClrPath -ItemType Directory
+            }
+
+            $null = Copy-Item -Path $azureRestAssemblyPathNuget -Destination $azureRestAssemblyPath -Force
+        }
     }
 
     return $azureRestAssemblyPath
@@ -229,7 +241,8 @@ function Get-MicrosoftRestAzureReference {
 .PARAMETER  RequiredVersion
   Optional string specifying required version of Microsoft.Rest.ClientRuntime.Azure package.
 #>
-function Install-MicrosoftRestAzurePackage {
+function Install-MicrosoftRestAzurePackage
+{
     [CmdletBinding()]
     param(
         [Parameter(Mandatory=$false)]
@@ -241,7 +254,6 @@ function Install-MicrosoftRestAzurePackage {
     $params = @{
         Name='Microsoft.Rest.ClientRuntime.Azure'
         ProviderName='NuGet'
-        ErrorAction='Ignore'
         ForceBootstrap = $true
         Verbose = $false
         Debug = $false
@@ -251,18 +263,46 @@ function Install-MicrosoftRestAzurePackage {
         $params['RequiredVersion'] = $RequiredVersion
     }
 
-    $package = Get-Package @params | Select-Object -First 1
+    $package = Get-Package @params -ErrorAction Ignore | Select-Object -First 1 -ErrorAction Ignore
 
     if (-not $package) {
-        $newPsName = ''
-        if (-not (Test-NugetPackageSource)) {
-            $newPsName = New-NugetPackageSource
+        $NuGetSourceName = Get-NugetPackageSource
+        $IsNuGetSourceRegistered = $false
+        if (-not $NuGetSourceName) {
+            $NuGetSourceName = Register-NugetPackageSource
+
+            if($NuGetSourceName)
+            {
+                $IsNuGetSourceRegistered = $true
+            }
+            else
+            {
+                # Register-PackageSource should fail with an error
+                return
+            }
         }
 
-        $null = Find-Package @params | Select-Object -First 1 | Install-Package -Force -Scope CurrentUser -Verbose:$false -Debug:$false -Confirm:$false -WhatIf:$false
-        $package = Get-Package @params | Select-Object -First 1
-        if ($newPsName) {
-            $null = Unregister-PackageSource -Name $newPsName -Verbose:$false -Debug:$false -WhatIf:$false -Confirm:$false
+        try
+        {
+            $null = Find-Package @params -Source $NuGetSourceName | 
+                        Install-Package -Force `
+                                        -Scope CurrentUser `
+                                        -Verbose:$false `
+                                        -Debug:$false `
+                                        -Confirm:$false `
+                                        -WhatIf:$false
+
+            $package = Get-Package @params | Select-Object -First 1 -ErrorAction Ignore
+        }
+        finally
+        {
+            if ($IsNuGetSourceRegistered) {
+                $null = Unregister-PackageSource -Name $NuGetSourceName `
+                                                 -Verbose:$false `
+                                                 -Debug:$false `
+                                                 -WhatIf:$false `
+                                                 -Confirm:$false
+            }
         }
     }
 
@@ -271,11 +311,17 @@ function Install-MicrosoftRestAzurePackage {
 
 <#
 .DESCRIPTION
-  Tests if the NuGet package source with location nuget.org/api/v2 exists.
+  Get a NuGet package source with location nuget.org/api/v2.
 #>
-function Test-NugetPackageSource {
-    $packageSource = Get-PackageSource -Provider NuGet -ForceBootstrap -Verbose:$false -Debug:$false  | Where-Object { $_.Location -contains 'nuget.org/api/v2' } | Select-Object -First 1
-    return $packageSource -ne $null
+function Get-NugetPackageSource
+{
+    Get-PackageSource -Provider NuGet `
+                      -ForceBootstrap `
+                      -Verbose:$false `
+                      -Debug:$false |
+        Where-Object { $_.Location -match 'nuget.org/api/v2' } |
+            Select-Object -First 1 -ErrorAction Ignore |
+                Foreach-Object {$_.Name}
 }
 
 <#
@@ -285,17 +331,32 @@ function Test-NugetPackageSource {
 .PARAMETER  Location
   Location of NuGet package source. Defaults to 'https://nuget.org/api/v2'.
 #>
-function New-NugetPackageSource {
+function Register-NugetPackageSource
+{
     [CmdletBinding()]
     param(
         [Parameter(Mandatory=$false)]
-        [string]$Location = 'https://nuget.org/api/v2'
+        [string]
+        $Location = 'https://nuget.org/api/v2'
     )
 
-    $psName = [guid]::newguid().Guid
-    $psName = "PSSwagger NuGet ($psName)"
-    $null = Register-PackageSource -Name $psName -Location $Location -ProviderName NuGet -ForceBootstrap -Verbose:$false -Debug:$false -Confirm:$false -WhatIf:$false
-    return $psName
+    $SourceName = "PSSwaggerNuGetSource_$([System.Guid]::NewGuid())"
+
+    $params = @{
+        Name = $SourceName
+        Location = $Location
+        ProviderName = 'NuGet'
+        ForceBootstrap = $true
+        Verbose = $false
+        Debug = $false
+        Confirm = $false
+        WhatIf = $false
+    }
+
+    if(Register-PackageSource @params)
+    {
+        return $SourceName
+    }
 }
 
 <#

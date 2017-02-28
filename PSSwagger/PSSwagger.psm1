@@ -190,17 +190,28 @@ function Export-CommandFromSwagger
 
     #$Namespace = $SwaggerSpecDefinitionsAndParameters['Namespace']
     $generatedCSharpFilePath = ConvertTo-CsharpCode -SwaggerDict $swaggerDict `
-                                    -SwaggerMetaDict $swaggerMetaDict `
-                                    -SkipAssemblyGeneration:$SkipAssemblyGeneration `
-                                    -PowerShellCorePath $PowerShellCorePath
+                                                    -SwaggerMetaDict $swaggerMetaDict `
+                                                    -SkipAssemblyGeneration:$SkipAssemblyGeneration `
+                                                    -PowerShellCorePath $PowerShellCorePath
 
     # Prepare dynamic compilation
     Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Utils.ps1") (Join-Path -Path $outputDirectory -ChildPath "Utils.ps1")
 
-    $allCSharpFiles = Get-ChildItem -Path $generatedCSharpFilePath -Filter *.cs -Recurse -Exclude Program.cs,TemporaryGeneratedFile* | Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*'
+    $allCSharpFiles = Get-ChildItem -Path "$generatedCSharpFilePath\*.cs" `
+                                    -Recurse `
+                                    -File `
+                                    -Exclude Program.cs,TemporaryGeneratedFile* | 
+                          Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*'
+
     $filesHash = New-CodeFileCatalog -Files $allCSharpFiles
     $fileHashesFileName = "GeneratedCsharpCatalog.json"
-    ConvertTo-Json -InputObject $filesHash | Out-File -FilePath (Join-Path -Path "$outputDirectory" -ChildPath "$fileHashesFileName")
+
+    ConvertTo-Json -InputObject $filesHash | 
+        Out-File -FilePath (Join-Path -Path "$outputDirectory" -ChildPath "$fileHashesFileName") `
+                 -Encoding ascii `
+                 -Confirm:$false `
+                 -WhatIf:$false
+
     $jsonFileHashAlgorithm = "SHA512"
     $jsonFileHash = (Get-FileHash -Path (Join-Path -Path "$outputDirectory" -ChildPath "$fileHashesFileName") -Algorithm $jsonFileHashAlgorithm).Hash
 
@@ -248,7 +259,9 @@ function Export-CommandFromSwagger
     Out-File -FilePath $RootModuleFilePath `
              -InputObject $ExecutionContext.InvokeCommand.ExpandString($RootModuleContents)`
              -Encoding ascii `
-             -Force
+             -Force `
+             -Confirm:$false `
+             -WhatIf:$false
 
     New-ModuleManifestUtility -Path $outputDirectory `
                               -FunctionsToExport $FunctionsToExport `
@@ -451,13 +464,13 @@ function ConvertTo-CsharpCode
     if (-not $SkipAssemblyGeneration) {
         $message = $LocalizedData.GenerateAssemblyFromCode
         Write-Verbose -Message $message
+        $allCSharpFiles= Get-ChildItem -Path "$generatedCSharpPath\*.cs" `
+                                       -Recurse `
+                                       -File `
+                                       -Exclude Program.cs,TemporaryGeneratedFile* |
+                                       Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*'
 
-        $allCSharpFilesArrayString = '@('
-        Get-ChildItem -Path $generatedCSharpPath -Filter *.cs -Recurse -Exclude Program.cs,TemporaryGeneratedFile* | Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*' | ForEach-Object {
-            $allCSharpFilesArrayString += "'$_',"
-        }
-        $allCSharpFilesArrayString = $allCSharpFilesArrayString.Substring(0, $allCSharpFilesArrayString.Length-1)
-        $allCSharpFilesArrayString += ')'
+        $allCSharpFilesArrayString = "@('"+ $($allCSharpFiles.FullName -join "','") + "')"
 
         # Compile full CLR (PSSwagger requires to be invoked from full PowerShell)
         $outAssembly = Join-Path -Path $outputDirectory -ChildPath 'ref' | Join-Path -ChildPath 'fullclr' | Join-Path -ChildPath "$NameSpace.dll"
@@ -471,7 +484,10 @@ function ConvertTo-CsharpCode
         }
         
         $codeCreatedByAzureGenerator = [bool]$SwaggerMetaDict['UseAzureCsharpGenerator']
-        $command = ". '$PSScriptRoot\Utils.ps1'; Invoke-AssemblyCompilation -OutputAssembly '$outAssembly' -CSharpFiles $allCSharpFilesArrayString -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator"
+        $command = ". '$PSScriptRoot\Utils.ps1';
+                    Invoke-AssemblyCompilation -OutputAssembly '$outAssembly' ``
+                                               -CSharpFiles $allCSharpFilesArrayString ``
+                                               -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator"
         $success = powershell -command "& {$command}"
         if($success){
             $message = $LocalizedData.GeneratedAssembly -f ($outAssembly)
@@ -492,8 +508,12 @@ function ConvertTo-CsharpCode
             if (-not (Test-Path (Split-Path $outAssembly -Parent))) {
                 $null = New-Item (Split-Path $outAssembly -Parent) -ItemType Directory
             }
+            
+            $command = ". '$PSScriptRoot\Utils.ps1'; 
+                        Invoke-AssemblyCompilation -OutputAssembly '$outAssembly' ``
+                                                   -CSharpFiles $allCSharpFilesArrayString ``
+                                                   -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator"
 
-            $command = ". '$PSScriptRoot\Utils.ps1'; Invoke-AssemblyCompilation -OutputAssembly '$outAssembly' -CSharpFiles $allCSharpFilesArrayString -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator"
             $success = & "$PowerShellCorePath" -command "& {$command}"
             if($success -eq $true){
                 $message = $LocalizedData.GeneratedAssembly -f ($outAssembly)
@@ -542,9 +562,12 @@ function New-ModuleManifestUtility
 
 #endregion
 
-function New-CodeFileCatalog {
+function New-CodeFileCatalog
+{
     param(
-        [string[]]$Files
+        [Parameter(Mandatory=$true)]
+        [string[]]
+        $Files
     )
 
     $hashAlgorithm = "SHA512"

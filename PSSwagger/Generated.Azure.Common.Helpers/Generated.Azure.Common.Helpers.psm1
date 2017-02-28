@@ -1,4 +1,6 @@
-﻿if ('Core' -eq $PSEdition) {
+﻿Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
+
+if ('Core' -eq $PSEdition) {
     $moduleName = 'AzureRM.Profile.NetCore.Preview'
 } else {
     $moduleName = 'AzureRM.Profile'
