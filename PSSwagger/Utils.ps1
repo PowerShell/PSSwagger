@@ -338,7 +338,6 @@ function Initialize-LocalTools {
 
     Initialize-LocalToolsVariables -AllUsers:$AllUsers
 
-    # TODO: AutoRest and DotNet CLI, PowerShellCore?
     $bootstrapActions = @()
     $bootstrapPrompts = @()
     if ((Test-Downlevel) -and $Precompiling) {
