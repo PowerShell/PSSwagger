@@ -26,6 +26,9 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  UtilsLocalizedData -filename 
 
 .PARAMETER  AllUsers
   User wants to install local tools for all users.
+
+.PARAMETER  BootstrapConsent
+  User has consented to bootstrap dependencies.
 #>
 function Invoke-AssemblyCompilation {
     [CmdletBinding()]
@@ -221,6 +224,9 @@ function Get-PSEdition {
 
 .PARAMETER  AllUsers
   User wants to install local tools for all users.
+
+.PARAMETER  BootstrapConsent
+  User has consented to bootstrap dependencies.
 #>
 function Get-MicrosoftRestAzureReference {
     [CmdletBinding()]
@@ -279,6 +285,9 @@ function Get-MicrosoftRestAzureReference {
 
 .PARAMETER  AllUsers
   User wants to install local tools for all users.
+
+.PARAMETER  BootstrapConsent
+  User has consented to bootstrap dependencies.
 #>
 function Install-MicrosoftRestAzurePackage
 {
