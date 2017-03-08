@@ -537,12 +537,12 @@ function Install-MicrosoftRestAzurePackageWithNuget
         }
 
         if ($BootstrapConsent) {
-            $nugetArgs = "install Microsoft.Rest.ClientRuntime.Azure -noninteractive -outputdirectory $script:LocalToolsPath -source https://nuget.org/api/v2 -verbosity detailed"
+            $nugetArgs = "install Microsoft.Rest.ClientRuntime.Azure -noninteractive -outputdirectory `"$script:LocalToolsPath`" -source https://nuget.org/api/v2 -verbosity detailed"
             if ($RequiredVersion) {
                 $nugetArgs += " -version $RequiredVersion"
             }
 
-            $stdout = Invoke-Expression "& $nugetExePath $nugetArgs"
+            $stdout = Invoke-Expression "& `"$nugetExePath`" $nugetArgs"
             Write-Verbose -Message ($UtilsLocalizedData.NuGetOutput -f ($stdout))
             if ($LastExitCode) {
                 return
@@ -859,7 +859,7 @@ function Get-PSCommonParameters
   Tests if current PowerShell session is considered downlevel.
 #>
 function Test-Downlevel {
-    return ((-not ($CorePsEditionConstant -eq (Get-PSEdition))) -and ($PSVersionTable.PSVersion -lt '5.1'))
+    return ($PSVersionTable.PSVersion -lt '5.0.0')
 }
 
 <#
