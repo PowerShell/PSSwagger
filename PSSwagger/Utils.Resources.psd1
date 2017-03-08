@@ -17,8 +17,7 @@ ConvertFrom-StringData @'
     NugetBootstrapPrompt=PSSwagger requires NuGet.exe, which will be downloaded from '{0}'
     NugetBootstrapDownload=Downloading latest NuGet.exe...
     NugetMissing=Missing NuGet.exe from local tools folder or Path environment variable. Please rerun PSSwagger and give consent to bootstrap dependencies or add NuGet.exe to your Path variable manually.
-    BootstrapConfirmTitle=Missing PSSwagger dependencies
-    BootstrapConfirmPrompt=Do you want PSSwagger to download the dependencies listed above if they are missing?
+    BootstrapConfirmTitle=Do you want PSSwagger to download the dependencies listed above if they are missing?
     BootstrapConfirmYesDescription=Gives consent to download all missing PSSwagger dependencies.
     BootstrapConfirmNoDescription=Does not give consent to download all missing PSSwagger dependencies.
     YesPrompt=&Yes

@@ -343,16 +343,14 @@ function Initialize-LocalTools {
     if ((Test-Downlevel) -and $Precompiling) {
         $expectedPath = Get-MicrosoftRestAzureNugetPackagePath
         if (-not $expectedPath) {
-            if (-not (Get-Command -Name nuget.exe -ErrorAction Ignore)) {
-                $nugetExePath = Join-Path -Path $script:LocalToolsPath -ChildPath 'nuget.exe'
-                if (-not (Test-Path -Path $nugetExePath)) {
-                    $bootstrapPrompts += $UtilsLocalizedData.NugetBootstrapPrompt -f ($script:NuGetClientSourceURL)
-                    $bootstrapActions += { 
-                        param()
-                        Write-Verbose -Message $UtilsLocalizedData.NugetBootstrapDownload
-                        $null = Invoke-WebRequest -Uri $script:NuGetClientSourceURL `
-                                                -OutFile $nugetExePath
-                    }
+            $nugetExePath = Get-NugetExePath
+            if (-not (Get-Command $nugetExePath -ErrorAction Ignore)) {
+                $bootstrapPrompts += $UtilsLocalizedData.NugetBootstrapPrompt -f ($script:NuGetClientSourceURL)
+                $bootstrapActions += { 
+                    param()
+                    Write-Verbose -Message $UtilsLocalizedData.NugetBootstrapDownload
+                    $null = Invoke-WebRequest -Uri $script:NuGetClientSourceURL `
+                                              -OutFile $nugetExePath
                 }
             }
 
@@ -360,22 +358,15 @@ function Initialize-LocalTools {
             $bootstrapActions += { 
                 param()
                 Write-Verbose $UtilsLocalizedData.AzureRestBootstrapDownload
-            }
+            } 
         }
     }
 
     $consent = $false
     if ($bootstrapPrompts.Length -gt 0) {
-        for ($i = 0; $i -lt $bootstrapPrompts.Length; $i++) {
-            Write-Host $bootstrapPrompts[$i]
-        }
+        $prompt = $bootstrapPrompts -join [Environment]::NewLine
 
-        $title = $UtilsLocalizedData.BootstrapConfirmTitle
-        $message = $UtilsLocalizedData.BootstrapConfirmPrompt
-        $yes = New-Object -TypeName System.Management.Automation.Host.ChoiceDescription -ArgumentList $UtilsLocalizedData.YesPrompt,$UtilsLocalizedData.BootstrapConfirmYesDescription
-        $no = New-Object -TypeName System.Management.Automation.Host.ChoiceDescription -ArgumentList $UtilsLocalizedData.NoPrompt,$UtilsLocalizedData.BootstrapConfirmNoDescription
-        $options = [System.Management.Automation.Host.ChoiceDescription[]]($yes, $no)
-        $consent = ($host.ui.PromptForChoice($title, $message, $options, 1) -eq 0)
+        $consent = $PSCmdlet.ShouldContinue($UtilsLocalizedData.BootstrapConfirmTitle, $prompt)
         if ($consent) {
             for ($i = 0; $i -lt $bootstrapActions.Length; $i++) {
                 $null = $bootstrapActions[$i].Invoke()
@@ -536,25 +527,25 @@ function Install-MicrosoftRestAzurePackageWithNuget
         $BootstrapConsent
     )
 
-    $nugetArgs = "install Microsoft.Rest.ClientRuntime.Azure -noninteractive -outputdirectory $script:LocalToolsPath"
-    if ($RequiredVersion) {
-        $nugetArgs += " -version $RequiredVersion"
-    }
-
     $path = Get-MicrosoftRestAzureNugetPackagePath -RequiredVersion $RequiredVersion
     if (-not $path) {
-        if (Get-Command nuget.exe -ErrorAction Ignore) {
+        $nugetExePath = Get-NugetExePath
+        if (-not (Get-Command $nugetExePath -ErrorAction Ignore)) {
             # Should be downloaded by now, let's not copy the code - just throw an error
             # This also happens when the user didn't want to bootstrap nuget.exe
             throw $UtilsLocalizedData.NugetMissing
         }
 
         if ($BootstrapConsent) {
-            $nugetExePath = Join-Path -Path $script:LocalToolsPath -ChildPath "nuget.exe"
+            $nugetArgs = "install Microsoft.Rest.ClientRuntime.Azure -noninteractive -outputdirectory $script:LocalToolsPath -source http://nuget.org/api/v2 -verbosity detailed"
+            if ($RequiredVersion) {
+                $nugetArgs += " -version $RequiredVersion"
+            }
+
             $stdout = Invoke-Expression "& $nugetExePath $nugetArgs"
             Write-Verbose -Message ($UtilsLocalizedData.NuGetOutput -f ($stdout))
             if ($LastExitCode) {
-                return ''
+                return
             }
 
             $path = Get-MicrosoftRestAzureNugetPackagePath -RequiredVersion $RequiredVersion
@@ -595,6 +586,14 @@ function Get-MicrosoftRestAzureNugetPackagePath {
 
     $path = (Get-ChildItem -Path (Join-Path -Path $script:LocalToolsPath -ChildPath "$outputSubPath*") | Select-Object -First 1 | ForEach-Object FullName)
     return $path
+}
+
+function Get-NugetExePath {
+    if ((Get-Command nuget.exe -ErrorAction Ignore)) {
+        return "nuget.exe"
+    }
+
+    return (Join-Path -Path $script:LocalToolsPath -ChildPath "nuget.exe")
 }
 
 <#
@@ -670,7 +669,7 @@ function Get-CustomFileHash {
         $Algorithm="SHA256"
     )
 
-    if ((-not ($CorePsEditionConstant -eq (Get-PSEdition))) -and ($PSVersionTable.PSVersion -lt '5.1')) {
+    if ($PSVersionTable.PSVersion -lt '5.0.0') {
         return Get-InternalFileHash -Path $Path -Algorithm $Algorithm
     } else {
         return Get-FileHash -Path $Path -Algorithm $Algorithm
