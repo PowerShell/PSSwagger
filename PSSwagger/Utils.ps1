@@ -537,7 +537,7 @@ function Install-MicrosoftRestAzurePackageWithNuget
         }
 
         if ($BootstrapConsent) {
-            $nugetArgs = "install Microsoft.Rest.ClientRuntime.Azure -noninteractive -outputdirectory $script:LocalToolsPath -source http://nuget.org/api/v2 -verbosity detailed"
+            $nugetArgs = "install Microsoft.Rest.ClientRuntime.Azure -noninteractive -outputdirectory $script:LocalToolsPath -source https://nuget.org/api/v2 -verbosity detailed"
             if ($RequiredVersion) {
                 $nugetArgs += " -version $RequiredVersion"
             }
