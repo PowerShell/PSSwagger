@@ -1,6 +1,12 @@
 ﻿Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 
 $script:CorePsEditionConstant = 'Core'
+# go fwlink for latest nuget.exe for win10 x86
+$script:NuGetClientSourceURL = 'https://go.microsoft.com/fwlink/?linkid=843467'
+$script:ProgramDataPath = Microsoft.PowerShell.Management\Join-Path -Path $env:ProgramData -ChildPath 'Microsoft\Windows\PowerShell\PSSwagger\'
+$script:AppLocalPath = Microsoft.PowerShell.Management\Join-Path -Path $env:LOCALAPPDATA -ChildPath 'Microsoft\Windows\PowerShell\PSSwagger\'
+$script:LocalToolsPath = $null
+Microsoft.PowerShell.Utility\Import-LocalizedData  UtilsLocalizedData -filename Utils.Resources.psd1
 
 <#
 .DESCRIPTION
@@ -17,6 +23,12 @@ $script:CorePsEditionConstant = 'Core'
 
 .PARAMETER  RequiredAzureRestVersion
   Optional string specifying required version of Microsoft.Rest.ClientRuntime.Azure package, required for full CLR compilation.
+
+.PARAMETER  AllUsers
+  User wants to install local tools for all users.
+
+.PARAMETER  BootstrapConsent
+  User has consented to bootstrap dependencies.
 #>
 function Invoke-AssemblyCompilation {
     [CmdletBinding()]
@@ -37,7 +49,15 @@ function Invoke-AssemblyCompilation {
         [Parameter(Mandatory=$false)]
         [AllowEmptyString()]
         [string]
-        $RequiredAzureRestVersion
+        $RequiredAzureRestVersion,
+
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $AllUsers,
+
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $BootstrapConsent
     )
 
     # Append the content of each file into a single string
@@ -56,7 +76,7 @@ function Invoke-AssemblyCompilation {
         $clrPath = Split-Path -Path $OutputAssembly -Parent
     }
 
-    if ('Core' -eq $PSEdition) {
+    if ($CorePsEditionConstant -eq (Get-PSEdition)) {
         # Base framework references
         $srcContent = ,'#define DNXCORE50' + $srcContent
         $systemRefs = @('System.dll',
@@ -97,16 +117,22 @@ function Invoke-AssemblyCompilation {
         $Params = @{
             Framework = 'net45'
             ClrPath = $clrPath
+            AllUsers = $AllUsers
+            BootstrapConsent = $BootstrapConsent
         }
+
         if($RequiredAzureRestVersion)
         {
             $Params['RequiredVersion'] = $RequiredAzureRestVersion
         }
+
         $azureRestAssemblyPath = Get-MicrosoftRestAzureReference @Params
 
         if($azureRestAssemblyPath)
         {
             $extraRefs += $azureRestAssemblyPath
+        } else {
+            return $false
         }
     }
 
@@ -163,7 +189,7 @@ function Get-AzureRMDllReferences {
     }
 
     $refs += @((Join-Path -Path "$($module.ModuleBase)" -ChildPath 'Microsoft.Rest.ClientRuntime.dll'),
-               (Join-Path -Path "$($module.ModuleBase)" -ChildPath 'Newtonsoft.Json.dll'))
+        (Join-Path -Path "$($module.ModuleBase)" -ChildPath 'Newtonsoft.Json.dll'))
     return $refs
 }
 
@@ -195,6 +221,12 @@ function Get-PSEdition {
 
 .PARAMETER  RequiredVersion
   Optional string specifying required version of Microsoft.Rest.ClientRuntime.Azure package.
+
+.PARAMETER  AllUsers
+  User wants to install local tools for all users.
+
+.PARAMETER  BootstrapConsent
+  User has consented to bootstrap dependencies.
 #>
 function Get-MicrosoftRestAzureReference {
     [CmdletBinding()]
@@ -210,16 +242,24 @@ function Get-MicrosoftRestAzureReference {
 
         [Parameter(Mandatory=$false)]
         [string]
-        $RequiredVersion
+        $RequiredVersion,
+
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $AllUsers,
+
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $BootstrapConsent
     )
 
     $azureRestAssemblyPath = Join-Path -Path $ClrPath -ChildPath 'Microsoft.Rest.ClientRuntime.Azure.dll'
     if (-not (Test-Path -Path $azureRestAssemblyPath)) {
         # Get the assembly from the NuGet package dynamically, then save it locally
-        $package = Install-MicrosoftRestAzurePackage -RequiredVersion $RequiredVersion
+        $package = Install-MicrosoftRestAzurePackage -RequiredVersion $RequiredVersion -AllUsers:$AllUsers -BootstrapConsent:$BootstrapConsent
         if($package)
         {
-            $azureRestAssemblyPathNuget = Join-Path -Path (Split-Path -Path $package.Source -Parent) -ChildPath 'lib' | 
+            $azureRestAssemblyPathNuget = Join-Path -Path $package.Location -ChildPath 'lib' | 
                                               Join-Path -ChildPath $Framework | 
                                                   Join-Path -ChildPath 'Microsoft.Rest.ClientRuntime.Azure.dll'
 
@@ -228,6 +268,8 @@ function Get-MicrosoftRestAzureReference {
             }
 
             $null = Copy-Item -Path $azureRestAssemblyPathNuget -Destination $azureRestAssemblyPath -Force
+        } else {
+            return ''
         }
     }
 
@@ -240,6 +282,12 @@ function Get-MicrosoftRestAzureReference {
 
 .PARAMETER  RequiredVersion
   Optional string specifying required version of Microsoft.Rest.ClientRuntime.Azure package.
+
+.PARAMETER  AllUsers
+  User wants to install local tools for all users.
+
+.PARAMETER  BootstrapConsent
+  User has consented to bootstrap dependencies.
 #>
 function Install-MicrosoftRestAzurePackage
 {
@@ -248,7 +296,140 @@ function Install-MicrosoftRestAzurePackage
         [Parameter(Mandatory=$false)]
         [AllowEmptyString()]
         [string]
-        $RequiredVersion
+        $RequiredVersion,
+
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $AllUsers,
+
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $BootstrapConsent
+    )
+
+    if (Test-Downlevel) {
+        return Install-MicrosoftRestAzurePackageWithNuget -RequiredVersion $RequiredVersion -BootstrapConsent:$BootstrapConsent
+    } else {
+        return Install-MicrosoftRestAzurePackageWithPackageManagement -RequiredVersion $RequiredVersion -AllUsers:$AllUsers
+    }
+}
+
+<#
+.DESCRIPTION
+  Initialize script variables pointing to local tools, prompting for download and downloading if not present.
+
+.PARAMETER  AllUsers
+  User wants to install local tools for all users.
+
+.PARAMETER  Precompiling
+  Initialize local tools required for compilation.
+#>
+function Initialize-LocalTools {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $AllUsers,
+
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $Precompiling
+    )
+
+    Initialize-LocalToolsVariables -AllUsers:$AllUsers
+
+    $bootstrapActions = @()
+    $bootstrapPrompts = @()
+    if ((Test-Downlevel) -and $Precompiling) {
+        $expectedPath = Get-MicrosoftRestAzureNugetPackagePath
+        if (-not $expectedPath) {
+            $nugetExePath = Get-NugetExePath
+            if (-not (Get-Command $nugetExePath -ErrorAction Ignore)) {
+                $bootstrapPrompts += $UtilsLocalizedData.NugetBootstrapPrompt -f ($script:NuGetClientSourceURL)
+                $bootstrapActions += { 
+                    param()
+                    Write-Verbose -Message $UtilsLocalizedData.NugetBootstrapDownload
+                    $null = Invoke-WebRequest -Uri $script:NuGetClientSourceURL `
+                                              -OutFile $nugetExePath
+                }
+            }
+
+            $bootstrapPrompts += $UtilsLocalizedData.AzureRestBootstrapPrompt
+            $bootstrapActions += { 
+                param()
+                Write-Verbose $UtilsLocalizedData.AzureRestBootstrapDownload
+            } 
+        }
+    }
+
+    $consent = $false
+    if ($bootstrapPrompts.Length -gt 0) {
+        $prompt = $bootstrapPrompts -join [Environment]::NewLine
+
+        $consent = $PSCmdlet.ShouldContinue($UtilsLocalizedData.BootstrapConfirmTitle, $prompt)
+        if ($consent) {
+            for ($i = 0; $i -lt $bootstrapActions.Length; $i++) {
+                $null = $bootstrapActions[$i].Invoke()
+            }
+        }
+    }
+
+    return $consent
+}
+
+<#
+.DESCRIPTION
+  Initialize script variables pointing to local tools, prompting for download and downloading if not present.
+
+.PARAMETER  AllUsers
+  User wants to install local tools for all users.
+#>
+function Initialize-LocalToolsVariables {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $AllUsers
+    )
+
+    if ($AllUsers) {
+        $script:LocalToolsPath = $script:ProgramDataPath
+    } else {
+        $script:LocalToolsPath = $script:AppLocalPath
+    }
+
+    if (-not (Test-Path -Path $script:LocalToolsPath)) {
+        $null = New-Item -Path $script:LocalToolsPath `
+                         -ItemType Directory -Force `
+                         -ErrorAction SilentlyContinue `
+                         -WarningAction SilentlyContinue `
+                         -Confirm:$false `
+                         -WhatIf:$false
+    }
+}
+
+<#
+.DESCRIPTION
+  Initialize script variables pointing to local tools, prompting for download and downloading if not present.
+
+.PARAMETER  RequiredVersion
+  Optional string specifying required version of Microsoft.Rest.ClientRuntime.Azure package.
+
+.PARAMETER  AllUsers
+  User wants to install local tools for all users.
+#>
+function Install-MicrosoftRestAzurePackageWithPackageManagement
+{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$false)]
+        [AllowEmptyString()]
+        [string]
+        $RequiredVersion,
+
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $AllUsers
     )
 
     $params = @{
@@ -257,6 +438,18 @@ function Install-MicrosoftRestAzurePackage
         ForceBootstrap = $true
         Verbose = $false
         Debug = $false
+    }
+
+    $installParams = @{
+        Force = $true
+        Verbose = $false
+        Debug = $false
+        Confirm = $false
+        WhatIf = $false
+    }
+
+    if (-not $AllUsers) {
+        $installParams['Scope'] = 'CurrentUser'
     }
 
     if ($RequiredVersion) {
@@ -285,12 +478,7 @@ function Install-MicrosoftRestAzurePackage
         try
         {
             $null = Find-Package @params -Source $NuGetSourceName | 
-                        Install-Package -Force `
-                                        -Scope CurrentUser `
-                                        -Verbose:$false `
-                                        -Debug:$false `
-                                        -Confirm:$false `
-                                        -WhatIf:$false
+                        Install-Package @installParams
 
             $package = Get-Package @params | Select-Object -First 1 -ErrorAction Ignore
         }
@@ -306,7 +494,106 @@ function Install-MicrosoftRestAzurePackage
         }
     }
 
-    return $package
+    $packageProps = @{
+        Name = $package.Name;
+        Version = $package.Version;
+        Location = (Split-Path -Path $package.Source -Parent)
+    }
+
+    return New-Object -TypeName PSObject -Property $packageProps
+}
+
+<#
+.DESCRIPTION
+  Finds the local Microsoft.Rest.ClientRuntime.Azure package and downloads it if missing.
+
+.PARAMETER  RequiredVersion
+  Optional string specifying required version of Microsoft.Rest.ClientRuntime.Azure package.
+
+.PARAMETER  BootstrapConsent
+  User has accepted bootstrapping missing dependencies.
+#>
+function Install-MicrosoftRestAzurePackageWithNuget
+{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$false)]
+        [AllowEmptyString()]
+        [string]
+        $RequiredVersion,
+
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $BootstrapConsent
+    )
+
+    $path = Get-MicrosoftRestAzureNugetPackagePath -RequiredVersion $RequiredVersion
+    if (-not $path) {
+        $nugetExePath = Get-NugetExePath
+        if (-not (Get-Command $nugetExePath -ErrorAction Ignore)) {
+            # Should be downloaded by now, let's not copy the code - just throw an error
+            # This also happens when the user didn't want to bootstrap nuget.exe
+            throw $UtilsLocalizedData.NugetMissing
+        }
+
+        if ($BootstrapConsent) {
+            $nugetArgs = "install Microsoft.Rest.ClientRuntime.Azure -noninteractive -outputdirectory `"$script:LocalToolsPath`" -source https://nuget.org/api/v2 -verbosity detailed"
+            if ($RequiredVersion) {
+                $nugetArgs += " -version $RequiredVersion"
+            }
+
+            $stdout = Invoke-Expression "& `"$nugetExePath`" $nugetArgs"
+            Write-Verbose -Message ($UtilsLocalizedData.NuGetOutput -f ($stdout))
+            if ($LastExitCode) {
+                return
+            }
+
+            $path = Get-MicrosoftRestAzureNugetPackagePath -RequiredVersion $RequiredVersion
+        } else {
+            throw $UtilsLocalizedData.AzureRestMissing
+        }
+    }
+
+    $versionMatch = [Regex]::Match($path, "(.+?)(Microsoft[.]Rest[.]ClientRuntime[.]Azure[.])([0-9.]*).*")
+    $packageProps = @{
+        Name = 'Microsoft.Rest.ClientRuntime.Azure';
+        Version = $versionMatch.Groups[3].Value;
+        Location = $path
+    }
+
+    return New-Object -TypeName PSObject -Property $packageProps
+}
+
+<#
+.DESCRIPTION
+  Gets the expected path of the local Microsoft.Rest.ClientRuntime.Azure nuget package.
+
+.PARAMETER  RequiredVersion
+  Optional string specifying required version of Microsoft.Rest.ClientRuntime.Azure package.
+#>
+function Get-MicrosoftRestAzureNugetPackagePath {
+    param(
+        [Parameter(Mandatory=$false)]
+        [AllowEmptyString()]
+        [string]
+        $RequiredVersion
+    )
+
+    $outputSubPath = "Microsoft.Rest.ClientRuntime.Azure"
+    if ($RequiredVersion) {
+        $outputSubPath += ".$RequiredVersion"
+    }
+
+    $path = (Get-ChildItem -Path (Join-Path -Path $script:LocalToolsPath -ChildPath "$outputSubPath*") | Select-Object -First 1 | ForEach-Object FullName)
+    return $path
+}
+
+function Get-NugetExePath {
+    if ((Get-Command nuget.exe -ErrorAction Ignore)) {
+        return "nuget.exe"
+    }
+
+    return (Join-Path -Path $script:LocalToolsPath -ChildPath "nuget.exe")
 }
 
 <#
@@ -356,6 +643,123 @@ function Register-NugetPackageSource
     if(Register-PackageSource @params)
     {
         return $SourceName
+    }
+}
+
+<#
+.DESCRIPTION
+  Runs the built-in Get-FileHash cmdlet if PowerShell is 5.1+ or PowerShell Core. Otherwise, runs a similar custom implementation of Get-FileHash (Get-InternalFileHash).
+  Unlike the built-in Get-FileHash, this function does not support MACTripleDES.
+
+.PARAMETER  Path
+  Path to file to hash.
+
+.PARAMETER  Algorithm
+  Hash algorithm to use.
+#>
+function Get-CustomFileHash {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$True)]
+        [System.String]
+        $Path,
+
+        [ValidateSet("SHA1", "SHA256", "SHA384", "SHA512", "MD5", "RIPEMD160")]
+        [System.String]
+        $Algorithm="SHA256"
+    )
+
+    if ($PSVersionTable.PSVersion -lt '5.0.0') {
+        return Get-InternalFileHash -Path $Path -Algorithm $Algorithm
+    } else {
+        return Get-FileHash -Path $Path -Algorithm $Algorithm
+    }
+}
+
+<#
+.DESCRIPTION
+  Implementation of Get-FileHash from PowerShell 5.1+ and PowerShell Core. For use with PowerShell 5.0 or older. Has pipeline and multiple file support removed for simplicity.
+
+.PARAMETER  Path
+  Path to file to hash.
+
+.PARAMETER  Algorithm
+  Hash algorithm to use.
+#>
+function Get-InternalFileHash {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$True)]
+        [System.String]
+        $Path,
+
+        [ValidateSet("SHA1", "SHA256", "SHA384", "SHA512", "MD5", "RIPEMD160")]
+        [System.String]
+        $Algorithm="SHA256"
+    )
+    
+    begin {
+        # Construct the strongly-typed crypto object
+        
+        # First see if it has a FIPS algorithm  
+        $hasherType = "System.Security.Cryptography.${Algorithm}CryptoServiceProvider" -as [Type]
+        if ($hasherType) {
+            $hasher = New-Object $hasherType
+        } else {
+            # Check if the type is supported in the current system
+            $algorithmType = "System.Security.Cryptography.${Algorithm}" -as [Type]
+            if ($algorithmType) {
+                if ($Algorithm -eq "MACTripleDES") {
+                    $hasher = New-Object $algorithmType
+                } else {
+                    $hasher = $algorithmType::Create()
+                }
+            }
+            else {
+                throw $UtilsLocalizedData.AlgorithmNotSupported -f ($Algorithm)
+            }
+        }
+
+        function GetStreamHash {
+            param(
+                [System.IO.Stream]
+                $InputStream,
+
+                [System.Security.Cryptography.HashAlgorithm]
+                $Hasher)
+
+            # Compute file-hash using the crypto object
+            [Byte[]] $computedHash = $Hasher.ComputeHash($InputStream)
+            [string] $hash = [BitConverter]::ToString($computedHash) -replace '-',''
+
+            $retVal = [PSCustomObject] @{
+                Algorithm = $Algorithm.ToUpperInvariant()
+                Hash = $hash
+            }
+
+            $retVal
+        }
+    }
+    
+    process {
+        $filePath = Resolve-Path -Path $Path
+        if(Test-Path -Path $filePath -PathType Container) {
+            continue
+        }
+
+        try {
+            # Read the file specified in $FilePath as a Byte array
+            [system.io.stream]$stream = [system.io.file]::OpenRead($filePath)
+            GetStreamHash -InputStream $stream -Hasher $hasher
+        }
+        catch [Exception] {
+            throw $UtilsLocalizedData.FailedToReadFile -f ($filePath)
+        }
+        finally {
+            if($stream) {
+                $stream.Dispose()
+            }
+        }
     }
 }
 
@@ -448,4 +852,123 @@ function Get-PSCommonParameters
         WarningAction = $warningAction
         ErrorAction = $errorAction
     }    
+}
+
+<#
+.DESCRIPTION
+  Tests if current PowerShell session is considered downlevel.
+#>
+function Test-Downlevel {
+    return ($PSVersionTable.PSVersion -lt '5.0.0')
+}
+
+<#
+.DESCRIPTION
+  Finds local MSI installations.
+
+.PARAMETER  Name
+  Name of MSIs to find. Supports * wildcard.
+
+.PARAMETER  MaximumVersion
+  Maximum version of MSIs to find.
+#>
+function Get-Msi {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Name,
+
+        [Parameter(Mandatory=$false)]
+        [string]
+        $MaximumVersion
+    )
+
+    if (Test-Downlevel) {
+        return Get-MsiWithWmi -Name $Name -MaximumVersion $MaximumVersion
+    } else {
+        return Get-MsiWithPackageManagement -Name $Name -MaximumVersion $MaximumVersion
+    }
+}
+
+<#
+.DESCRIPTION
+  Finds local MSI installations using WMI.
+
+.PARAMETER  Name
+  Name of MSIs to find. Supports * wildcard.
+
+.PARAMETER  MaximumVersion
+  Maximum version of MSIs to find.
+#>
+function Get-MsiWithWmi {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Name,
+
+        [Parameter(Mandatory=$false)]
+        [string]
+        $MaximumVersion
+    )
+
+    $wqlNameFilter = $Name.Replace('*', '%')
+    $filter = "Name like '$wqlNameFilter'"
+    if ($MaximumVersion) {
+        $filter += " AND Version <= '$MaximumVersion'"
+    }
+
+    $products = Get-WmiObject -Class Win32_Product -Filter $filter
+    $returnObjects = @()
+    $products | ForEach-Object {
+        $objectProps = @{
+            'Name'=$_.Name;
+            'Version'=$_.Version
+        }
+
+        $returnObjects += (New-Object -TypeName PSObject -Prop $objectProps)
+    }
+
+    return $returnObjects
+}
+
+<#
+.DESCRIPTION
+  Finds local MSI installations using PackageManagement.
+
+.PARAMETER  Name
+  Name of MSIs to find. Supports * wildcard.
+
+.PARAMETER  MaximumVersion
+  Maximum version of MSIs to find.
+#>
+function Get-MsiWithPackageManagement {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Name,
+
+        [Parameter(Mandatory=$false)]
+        [string]
+        $MaximumVersion
+    )
+
+    $products = Get-Package -Name $Name `
+                            -MaximumVersion $MaximumVersion `
+                            -ProviderName msi `
+                            -Verbose:$false `
+                            -Debug:$false
+    $returnObjects = @()
+    $products | ForEach-Object {
+        $objectProps = @{
+            'Name'=$_.Name;
+            'Version'=$_.Version
+        }
+
+        $returnObjects += (New-Object -TypeName PSObject -Prop $objectProps)
+    }
+
+    return $returnObjects
 }

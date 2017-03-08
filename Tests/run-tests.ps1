@@ -54,6 +54,13 @@ if ($TestSuite.Contains("All") -or $TestSuite.Contains("ScenarioTest")) {
 
     $executeTestsCommand += ";`$env:Path+=`";$nodeModulePath`""
     $executeTestsCommand += ";`$global:testRunGuid=`"$testRunGuid`""
+
+    # Set up the common generated modules location
+    $generatedModulesPath = Join-Path -Path "$PSScriptRoot" -ChildPath "Generated"
+    if (-not (Test-Path $nodeExePath)) {
+        Write-Verbose "Copying node.exe from NuGet package to $nodeExePath"
+        Copy-Item -Path (Join-Path -Path $nodejsInstallPath -ChildPath "node.exe") -Destination $nodeExePath
+    }
 }
 
 # Set up AutoRest
@@ -64,7 +71,7 @@ $executeTestsCommand += ";`$env:Path+=`";$autoRestInstallPath\tools`""
 $powershellFolder = $null
 if ("netstandard1.7" -eq $TestFramework) {
     # Note: Core build doesn't work on powershell alpha12+, so to work around this we'll require 6.0.0.11 exactly for now
-    $powershellCore = Get-Package PowerShell -RequiredVersion 6.0.0.11
+    $powershellCore = Get-Package PowerShell* -RequiredVersion 6.0.0.11 -ProviderName msi
     if ($null -eq $powershellCore) {
         throw "PowerShellCore 6.0.0.11 not found on this machine. Run: tools\Get-PowerShellCore -RequiredPSVersion 6.0.0.11"
     }
@@ -87,12 +94,7 @@ if ($TestSuite.Contains("All")) {
     $executeTestsCommand += " -Tag $TestSuite"
 }
 
-# Set up the common generated modules location
-$generatedModulesPath = Join-Path -Path "$PSScriptRoot" -ChildPath "Generated"
-if (-not (Test-Path $nodeExePath)) {
-    Write-Verbose "Copying node.exe from NuGet package to $nodeExePath"
-    Copy-Item -Path (Join-Path -Path $nodejsInstallPath -ChildPath "node.exe") -Destination $nodeExePath
-}
+
 
 # Clean up generated test assemblies
 Write-Verbose "Cleaning old test assemblies, if any."
