@@ -4,9 +4,9 @@ Tool to generate PowerShell Cmdlets using Swagger based specifications
 
 ## Syntax
 
-Export-CommandFromSwagger -SwaggerSpecPath <string> -Path <string> -ModuleName <string> [-UseAzureCsharpGenerator] [-SkipAssemblyGeneration] [-PowerShellCorePath <string>] [-IncludeCoreFxAssembly] [<CommonParameters>]
+New-PSSwaggerModule -SwaggerSpecPath <string> -Path <string> -ModuleName <string> [-UseAzureCsharpGenerator] [-SkipAssemblyGeneration] [-PowerShellCorePath <string>] [-IncludeCoreFxAssembly] [<CommonParameters>]
 
-Export-CommandFromSwagger -SwaggerSpecUri <uri> -Path <string> -ModuleName <string> [-UseAzureCsharpGenerator] [-SkipAssemblyGeneration] [-PowerShellCorePath <string>] [-IncludeCoreFxAssembly] [<CommonParameters>]
+New-PSSwaggerModule -SwaggerSpecUri <uri> -Path <string> -ModuleName <string> [-UseAzureCsharpGenerator] [-SkipAssemblyGeneration] [-PowerShellCorePath <string>] [-IncludeCoreFxAssembly] [<CommonParameters>]
 
 | Parameter       | Description                           |
 | ----------------| ------------------------------------- |
@@ -55,7 +55,7 @@ Export-CommandFromSwagger -SwaggerSpecUri <uri> -Path <string> -ModuleName <stri
     ModuleName     = 'Generated.AzureRM.BatchManagement'
     UseAzureCsharpGenerator = $true
   }
-  Export-CommandFromSwagger @param
+  New-PSSwaggerModule @param
   ```
 
 After step 5, the module will be in `C:\Temp\GeneratedModule\Generated.AzureRM.BatchManagement ($param.Path)` folder.

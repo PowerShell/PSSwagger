@@ -38,7 +38,7 @@ $param = @{
     ModuleName      = $ModuleName
     UseAzureCsharpGenerator = $false
 }
-Export-CommandFromSwagger @param
+New-PSSwaggerModule @param
 
 Import-Module "$PSSwaggerClonePath\PSSwagger\Generated.Azure.Common.Helpers"
 Import-Module $TargetPath\$ModuleName -WarningAction SilentlyContinue
