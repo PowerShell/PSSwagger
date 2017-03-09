@@ -47,7 +47,7 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwa
 .PARAMETER  InstallToolsForAllUsers
   User wants to install local tools for all users.
 #>
-function Export-CommandFromSwagger
+function New-PSSwaggerModule
 {
     [CmdletBinding()]
     param(
@@ -621,4 +621,4 @@ function New-CodeFileCatalog
     return $filesTable
 }
 
-Export-ModuleMember -Function Export-CommandFromSwagger
+Export-ModuleMember -Function New-PSSwaggerModule

@@ -27,7 +27,7 @@ Describe "Basic API" -Tag ScenarioTest {
         }
 
         Write-Host "Generating module"
-        Export-CommandFromSwagger -SwaggerSpecPath "$testCaseDataLocation\$testSpec" -Path "$generatedModulesPath" -ModuleName "Generated.Basic.Module" -Verbose -SkipAssemblyGeneration
+        New-PSSwaggerModule -SwaggerSpecPath "$testCaseDataLocation\$testSpec" -Path "$generatedModulesPath" -ModuleName "Generated.Basic.Module" -Verbose -SkipAssemblyGeneration
         if (-not $?) {
             throw 'Failed to generate module. Expected: Success'
         }
