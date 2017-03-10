@@ -56,21 +56,23 @@ function Get-SwaggerSpecPathInfo
             $responses = $_.value.responses 
         }
 
-        $FunctionDetails = @{}
         
+        $paramObject = Convert-ParamTable -ParamTable $paramInfo
         if((Get-Member -InputObject $_.value -Name 'x-ms-cmdlet-name') -and $_.value.'x-ms-cmdlet-name')
         {
-            $FunctionDetails['CommandName'] = $_.value.'x-ms-cmdlet-name'
+            $commandNames = $_.value.'x-ms-cmdlet-name'
         } else {
-            $FunctionDetails['CommandName'] = Get-PathCommandName -OperationId $operationId
+            $commandNames = Get-PathCommandName -OperationId $operationId
         }
 
-        $paramObject = Convert-ParamTable -ParamTable $paramInfo
-        $FunctionDetails['ParamHelp'] = $paramObject['ParamHelp']
-        $FunctionDetails['Paramblock'] = $paramObject['ParamBlock']
-        $FunctionDetails['ParamblockWithAsJob'] = $paramObject['ParamBlockWithAsJob']
-        $FunctionDetails['RequiredParamList'] = $paramObject['RequiredParamList']
-        $FunctionDetails['OptionalParamList'] = $paramObject['OptionalParamList']
+        $commandNames | ForEach-Object {
+            $FunctionDetails = @{}
+            $FunctionDetails['CommandName'] = $_
+            $FunctionDetails['ParamHelp'] = $paramObject['ParamHelp']
+            $FunctionDetails['Paramblock'] = $paramObject['ParamBlock']
+            $FunctionDetails['ParamblockWithAsJob'] = $paramObject['ParamBlockWithAsJob']
+            $FunctionDetails['RequiredParamList'] = $paramObject['RequiredParamList']
+            $FunctionDetails['OptionalParamList'] = $paramObject['OptionalParamList']
 
         $functionBodyParams = @{
             Responses = $responses
@@ -81,14 +83,15 @@ function Get-SwaggerSpecPathInfo
             SwaggerMetaDict = $SwaggerMetaDict
         }
 
-        $bodyObject = Get-PathFunctionBody @functionBodyParams
-        
-        $FunctionDetails['Body'] = $bodyObject.body
-        $FunctionDetails['OutputTypeBlock'] = $bodyObject.OutputTypeBlock
-        $FunctionDetails['Description'] = $FunctionDescription
-        $FunctionDetails['OperationId'] = $operationId
-        $FunctionDetails['Responses'] = $responses
-        $PathFunctionDetails[$operationId] = $FunctionDetails
+            $bodyObject = Get-PathFunctionBody @functionBodyParams
+            
+            $FunctionDetails['Body'] = $bodyObject.body
+            $FunctionDetails['OutputTypeBlock'] = $bodyObject.OutputTypeBlock
+            $FunctionDetails['Description'] = $FunctionDescription
+            $FunctionDetails['OperationId'] = $operationId
+            $FunctionDetails['Responses'] = $responses
+            $PathFunctionDetails[$_] = $FunctionDetails
+        }
     }
 }
 
