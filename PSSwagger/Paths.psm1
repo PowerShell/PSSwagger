@@ -76,15 +76,15 @@ function Get-SwaggerSpecPathInfo
         $FunctionDetails['OptionalParamList'] = $paramObject['OptionalParamList']
 
         $functionBodyParams = @{
-						Responses = $responses
-						Info = $Info
-						DefinitionList = $DefinitionList
-						operationId = $operationId
-						RequiredParamList = $FunctionDetails['RequiredParamList']
-						OptionalParamList = $FunctionDetails['OptionalParamList']
-						SwaggerMetaDict = $SwaggerMetaDict
-                        SwaggerSpecDefinitionsAndParameters = $SwaggerSpecDefinitionsAndParameters
-						}
+            Responses = $responses
+            Info = $Info
+            DefinitionList = $DefinitionList
+            operationId = $operationId
+            RequiredParamList = $FunctionDetails['RequiredParamList']
+            OptionalParamList = $FunctionDetails['OptionalParamList']
+            SwaggerMetaDict = $SwaggerMetaDict
+            SwaggerSpecDefinitionsAndParameters = $SwaggerSpecDefinitionsAndParameters
+        }
 
         $bodyObject = Get-PathFunctionBody @functionBodyParams
         
