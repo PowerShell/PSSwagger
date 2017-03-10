@@ -34,8 +34,8 @@ Describe "Basic API" -Tag ScenarioTest {
 
         # Import generated module
         Write-Host "Importing module"
-        Import-Module "$PSScriptRoot\..\PSSwagger\Generated.Azure.Common.Helpers\Generated.Azure.Common.Helpers.psd1" -Force
-        Import-Module "$PSScriptRoot\Generated\Generated.Basic.Module\2017.1.1\Generated.Basic.Module.psd1"
+        Import-Module "$PSScriptRoot\..\PSSwagger\Generated.Azure.Common.Helpers" -Force
+        Import-Module "$PSScriptRoot\Generated\Generated.Basic.Module"
         
         # Load the test assembly after the generated module, since the generated module is kind enough to load the required dlls for us
         try {

@@ -35,6 +35,12 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwa
 .PARAMETER  Path
   Full Path to a file where the commands are exported to.
 
+.PARAMETER  ModuleName
+  Name of the generated PowerShell module.
+
+.PARAMETER  Version
+  Version of the generated PowerShell module.
+
 .PARAMETER  SkipAssemblyGeneration
   Switch to skip precompiling the module's binary component for full CLR.
 
@@ -66,6 +72,10 @@ function New-PSSwaggerModule
         [Parameter(Mandatory = $true)]
         [String]
         $ModuleName,
+
+        [Parameter(Mandatory = $false)]
+        [Version]
+        $Version = '0.0.1',
 
         [Parameter()]
         [switch]
@@ -161,15 +171,9 @@ function New-PSSwaggerModule
     $jsonObject = ConvertFrom-Json -InputObject ((Get-Content -Path $SwaggerSpecPath) -join [Environment]::NewLine) -ErrorAction Stop
 
     # Parse the JSON and populate the dictionary
-    $swaggerDict = ConvertTo-SwaggerDictionary -SwaggerSpecPath $SwaggerSpecPath -ModuleName $ModuleName
+    $swaggerDict = ConvertTo-SwaggerDictionary -SwaggerSpecPath $SwaggerSpecPath -ModuleName $ModuleName -ModuleVersion $Version
     $nameSpace = $swaggerDict['info'].NameSpace
-    $version = $swaggerDict['info'].version
-    $moduleName = $swaggerDict['info'].moduleName
 
-    # Populate the metadata, definitions and parameters from the provided Swagger specification
-    #$SwaggerSpecDefinitionsAndParameters = Get-SwaggerSpecDefinitionAndParameter -SwaggerSpecJsonObject $jsonObject -ModuleName $ModuleName
-    $swaggerMetaDict = @{}
-    
     $outputDirectory = $Path.TrimEnd('\').TrimEnd('/')
 
     if($PSVersionTable.PSVersion -lt '5.0.0') {
@@ -177,7 +181,6 @@ function New-PSSwaggerModule
             $outputDirectory = Join-Path -Path $outputDirectory -ChildPath $ModuleName
         }
     } else {
-        #$ModuleVersion = $SwaggerSpecDefinitionsAndParameters['Version']
         $ModuleNameandVersionFolder = Join-Path -Path $ModuleName -ChildPath $Version
 
         if ($outputDirectory.EndsWith($ModuleName, [System.StringComparison]::OrdinalIgnoreCase)) {
@@ -189,11 +192,12 @@ function New-PSSwaggerModule
 
     $null = New-Item -ItemType Directory $outputDirectory -Force -ErrorAction Stop
 
-    $swaggerMetaDict.Add("outputDirectory", $outputDirectory);
-    $swaggerMetaDict.Add("UseAzureCsharpGenerator", $UseAzureCsharpGenerator)
-    $swaggerMetaDict.Add("SwaggerSpecPath", $SwaggerSpecPath);
+    $swaggerMetaDict = @{
+        OutputDirectory = $outputDirectory
+        UseAzureCsharpGenerator = $UseAzureCsharpGenerator
+        SwaggerSpecPath = $SwaggerSpecPath
+    }
 
-    #$Namespace = $SwaggerSpecDefinitionsAndParameters['Namespace']
     $generatedCSharpFilePath = ConvertTo-CsharpCode -SwaggerDict $swaggerDict `
                                                     -SwaggerMetaDict $swaggerMetaDict `
                                                     -SkipAssemblyGeneration:$SkipAssemblyGeneration `
@@ -241,8 +245,8 @@ function New-PSSwaggerModule
     $DefinitionFunctionsDetails = @{}
     $jsonObject.Definitions.PSObject.Properties | ForEach-Object {
         Get-SwaggerSpecDefinitionInfo -JsonDefinitionItemObject $_ `
-                                        -Namespace $Namespace `
-                                        -DefinitionFunctionsDetails $DefinitionFunctionsDetails
+                                      -Namespace $Namespace `
+                                      -DefinitionFunctionsDetails $DefinitionFunctionsDetails
     }
 
     # Handle the Paths
@@ -275,8 +279,7 @@ function New-PSSwaggerModule
 
     New-ModuleManifestUtility -Path $outputDirectory `
                               -FunctionsToExport $FunctionsToExport `
-							  -Info $swaggerDict['info']
-                              #-SwaggerSpecDefinitionsAndParameters $SwaggerSpecDefinitionsAndParameters
+                              -Info $swaggerDict['info']
 
     Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Generated.Resources.psd1") (Join-Path -Path "$outputDirectory" -ChildPath "$ModuleName.Resources.psd1") -Force
 }
@@ -454,8 +457,7 @@ function ConvertTo-CsharpCode
         $UserConsent
     )
 
-    $message = $LocalizedData.GenerateCodeUsingAutoRest
-    Write-Verbose -Message $message
+    Write-Verbose -Message $LocalizedData.GenerateCodeUsingAutoRest
 
     $autoRestExePath = "autorest.exe"
     if (-not (get-command -name autorest.exe))
@@ -480,8 +482,7 @@ function ConvertTo-CsharpCode
     }
 
     if (-not $SkipAssemblyGeneration) {
-        $message = $LocalizedData.GenerateAssemblyFromCode
-        Write-Verbose -Message $message
+        Write-Verbose -Message $LocalizedData.GenerateAssemblyFromCode
         $allCSharpFiles= Get-ChildItem -Path "$generatedCSharpPath\*.cs" `
                                        -Recurse `
                                        -File `
@@ -577,18 +578,14 @@ function New-ModuleManifestUtility
         [string[]]
         $FunctionsToExport,
 
-        <#
-        [Parameter(Mandatory = $true)]        
-        [PSCustomObject]
-        $SwaggerSpecDefinitionsAndParameters
-        #>
-
         [Parameter(Mandatory=$true)]
         [hashtable]
         $Info
     )
 
-    $FormatsToProcess = Get-ChildItem -Path "$Path\$GeneratedCommandsName\FormatFiles\*.ps1xml" -File | Foreach-Object { $_.FullName.Replace($Path, '.') }
+    $FormatsToProcess = Get-ChildItem -Path "$Path\$GeneratedCommandsName\FormatFiles\*.ps1xml" `
+                                      -File `
+                                      -ErrorAction Ignore | Foreach-Object { $_.FullName.Replace($Path, '.') }
 
     New-ModuleManifest -Path "$(Join-Path -Path $Path -ChildPath $Info.ModuleName).psd1" `
                        -ModuleVersion $Info.Version `

@@ -19,7 +19,11 @@ function ConvertTo-SwaggerDictionary {
 
         [Parameter(Mandatory=$true)]
         [string]
-        $ModuleName
+        $ModuleName,
+
+        [Parameter(Mandatory=$true)]
+        [Version]
+        $ModuleVersion
     )
 
     $swaggerObject = ConvertFrom-Json ((Get-Content $SwaggerSpecPath) -join [Environment]::NewLine) -ErrorAction Stop
@@ -28,29 +32,26 @@ function ConvertTo-SwaggerDictionary {
     if(-not (Get-Member -InputObject $swaggerObject -Name 'info')) {
         Throw $LocalizedData.InvalidSwaggerSpecification
     }
-
-    $swaggerInfo = Get-SwaggerInfo -Info $swaggerObject.info
-    $swaggerDict.Add("info", $swaggerInfo)
+    $swaggerDict['Info'] = Get-SwaggerInfo -Info $swaggerObject.info -ModuleName $ModuleName -ModuleVersion $ModuleVersion
 
     $swaggerParameters = $null
     if(Get-Member -InputObject $swaggerObject -Name 'parameters') {
         $swaggerParameters = Get-SwaggerParameters -Parameters $swaggerObject.parameters
     }
-    $swaggerDict.Add("parameters", $swaggerParameters)
+    $swaggerDict['Parameters'] = $swaggerParameters
 
     $swaggerDefinitions = $null
     if(Get-Member -InputObject $swaggerObject -Name 'definitions') {
         $swaggerDefinitions = Get-SwaggerMultiItemObject -Object $swaggerObject.definitions
     }
-    $swaggerDict.Add("definitions", $swaggerDefinitions)
+    $swaggerDict['Definitions'] = $swaggerDefinitions
 
     if(-not (Get-Member -InputObject $swaggerObject -Name 'paths')) {
-        $message = $LocalizedData.SwaggerPathsMissing
-        Throw $message
+        Throw $LocalizedData.SwaggerPathsMissing
     }
 
     $swaggerPaths = Get-SwaggerMultiItemObject -Object $swaggerObject.paths
-    $swaggerDict.Add("paths", $swaggerPaths)
+    $swaggerDict['Paths'] = $swaggerPaths
 
     return $swaggerDict
 }
@@ -59,7 +60,15 @@ function Get-SwaggerInfo {
     param(
         [Parameter(Mandatory=$true)]
         [PSCustomObject]
-        $Info
+        $Info,
+
+        [Parameter(Mandatory=$true)]
+        [string]
+        $ModuleName,
+
+        [Parameter(Mandatory=$true)]
+        [Version]
+        $ModuleVersion
     )
 
     $infoVersion = '1-0-0'
@@ -68,30 +77,23 @@ function Get-SwaggerInfo {
     }
 
     $infoTitle = $Info.title
-    $infoName = ''
-    if((Get-Member -InputObject $Info -Name 'x-ms-code-generation-settings') -and $Info.'x-ms-code-generation-settings'.Name) { 
+    $infoName = $infoTitle
+    if((Get-Member -InputObject $Info -Name 'x-ms-code-generation-settings') -and 
+       $Info.'x-ms-code-generation-settings'.Name)
+    { 
         $infoName = $Info.'x-ms-code-generation-settings'.Name
     }
 
-    if (-not $infoName) {
-        $infoName = $infoTitle
+    $NamespaceVersionSuffix = "v$("$ModuleVersion" -replace '\.','')"
+
+    return @{
+        InfoVersion = $infoVersion
+        InfoTitle = $infoTitle
+        InfoName = $infoName
+        Version = $ModuleVersion
+        NameSpace = "Microsoft.PowerShell.$ModuleName.$NamespaceVersionSuffix"
+        ModuleName = $ModuleName
     }
-
-    $version = [Version](($infoVersion -split "-",4) -join '.')
-
-    $NamespaceVersionSuffix = "v$(($infoVersion -split '-',4) -join '')"
-    $Namespace = "Microsoft.PowerShell.$ModuleName.$NamespaceVersionSuffix"
-    $ModuleName = $ModuleName
-
-    $swaggerInfo = @{}
-    $swaggerInfo.Add('InfoVersion',$infoVersion);
-    $swaggerInfo.Add('InfoTitle',$infoTitle);
-    $swaggerInfo.Add('InfoName',$infoName);
-    $swaggerInfo.Add('Version',$version);
-    $swaggerInfo.Add('NameSpace', $Namespace);
-    $swaggerInfo.Add('ModuleName', $ModuleName);
-
-    return $swaggerInfo
 }
 
 function Get-SwaggerParameters {
@@ -581,13 +583,16 @@ function Get-OutputType
     param
     (
         [Parameter(Mandatory=$true)]
-        [PSCustomObject] $schema,
+        [PSCustomObject]
+        $Schema,
 
         [Parameter(Mandatory=$true)]
-        [String] $NameSpace, 
+        [String]
+        $NameSpace, 
 
         [Parameter(Mandatory=$true)]
-        [hashtable] $definitionList
+        [PSCustomObject]
+        $DefinitionList
     )
 
     $outputType = ""
@@ -631,8 +636,8 @@ function Get-OutputType
                                 {
                                     "array" { $outputValueType = '[]' }
                                     Default {
-                                        $exception = $LocalizedData.DataTypeNotImplemented -f ($defType, $ref)
-                                        throw [System.NotImplementedException] "Please get an implementation of $defType for $ref"
+                                        $exceptionMessage = $LocalizedData.DataTypeNotImplemented -f ($defType, $ref)
+                                        throw ([System.NotImplementedException] $exceptionMessage)
                                     }
                                 }
                             }

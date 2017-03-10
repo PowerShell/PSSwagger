@@ -4,15 +4,16 @@ Tool to generate PowerShell Cmdlets using Swagger based specifications
 
 ## Syntax
 
-New-PSSwaggerModule -SwaggerSpecPath <string> -Path <string> -ModuleName <string> [-UseAzureCsharpGenerator] [-SkipAssemblyGeneration] [-PowerShellCorePath <string>] [-IncludeCoreFxAssembly] [<CommonParameters>]
+New-PSSwaggerModule -SwaggerSpecPath <string> -Path <string> -ModuleName <string> [-Version <version>] [-UseAzureCsharpGenerator] [-SkipAssemblyGeneration] [-PowerShellCorePath <string>] [-IncludeCoreFxAssembly] [<CommonParameters>]
 
-New-PSSwaggerModule -SwaggerSpecUri <uri> -Path <string> -ModuleName <string> [-UseAzureCsharpGenerator] [-SkipAssemblyGeneration] [-PowerShellCorePath <string>] [-IncludeCoreFxAssembly] [<CommonParameters>]
+New-PSSwaggerModule -SwaggerSpecUri <uri> -Path <string> -ModuleName <string> [-Version <version>] [-UseAzureCsharpGenerator] [-SkipAssemblyGeneration] [-PowerShellCorePath <string>] [-IncludeCoreFxAssembly] [<CommonParameters>]
 
 | Parameter       | Description                           |
 | ----------------| ------------------------------------- |
 | SwaggerSpecPath | Full Path to a Swagger based JSON spec|
 | Path            | Full Path to a folder where the commands/modules are exported to |
 | ModuleName      | Name of the module to be generated. A folder with this name will be created in the location specified by Path parameter |
+| Version  | Version of the module to be generated. Default value is '0.0.1' |
 | SwaggerSpecUri  | URI to the swagger spec |
 | SkipAssemblyGeneration      | Skip compiling the generated module's C# assembly during generation of module (including CoreFX, even if specified) |
 | PowerShellCorePath      | Path to PowerShell.exe for PowerShell Core. Only required if not installed via MSI in the default path |
