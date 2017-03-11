@@ -12,6 +12,7 @@ Import-Module (Join-Path -Path $PSScriptRoot -ChildPath Utilities.psm1)
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwagger.Resources.psd1
 
 function ConvertTo-SwaggerDictionary {
+    [CmdletBinding()]
     param(
         [Parameter(Mandatory=$true)]
         [String]
@@ -25,6 +26,8 @@ function ConvertTo-SwaggerDictionary {
         [Version]
         $ModuleVersion
     )
+    
+    Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
 
     $swaggerObject = ConvertFrom-Json ((Get-Content $SwaggerSpecPath) -join [Environment]::NewLine) -ErrorAction Stop
     $swaggerDict = @{}
@@ -57,6 +60,7 @@ function ConvertTo-SwaggerDictionary {
 }
 
 function Get-SwaggerInfo {
+    [CmdletBinding()]
     param(
         [Parameter(Mandatory=$true)]
         [PSCustomObject]
@@ -70,6 +74,8 @@ function Get-SwaggerInfo {
         [Version]
         $ModuleVersion
     )
+
+    Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
 
     $infoVersion = '1-0-0'
     if((Get-Member -InputObject $Info -Name 'Version') -and $Info.Version) { 
@@ -97,11 +103,14 @@ function Get-SwaggerInfo {
 }
 
 function Get-SwaggerParameters {
+    [CmdletBinding()]
     param(
         [Parameter(Mandatory=$true)]
         [PSCustomObject]
         $Parameters
     )
+
+    Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
 
     $swaggerParameters = @{}
 
@@ -131,6 +140,7 @@ function Get-SwaggerMultiItemObject {
 
 function Get-PathParamInfo
 {
+    [CmdletBinding()]
     param
     (
         [Parameter(Mandatory=$true)]
@@ -145,6 +155,8 @@ function Get-PathParamInfo
         [hashtable]
         $DefinitionFunctionsDetails
     )
+
+    Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
 
     $ParametersTable = @{}
     $index = 0
@@ -197,27 +209,30 @@ function Get-PathParamInfo
 
 function Get-ParamType
 {
-	param
-	(
-		[Parameter(Mandatory=$true)]
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory=$true)]
         [PSObject]
-		$ParameterJsonObject,
-		
-		[Parameter(Mandatory=$true)]
+        $ParameterJsonObject,
+
+        [Parameter(Mandatory=$true)]
         [String]
-		$NameSpace,
-		
-		[Parameter(Mandatory=$true)]
+        $NameSpace,
+
+        [Parameter(Mandatory=$true)]
         [String]
         [AllowEmptyString()]
-		$parameterName,
-		
-		[Parameter(Mandatory=$true)]
-        [hashtable]
-		$DefinitionFunctionsDetails
-	)
+        $parameterName,
 
-	$DefinitionTypeNamePrefix = "$Namespace.Models."
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $DefinitionFunctionsDetails
+    )
+
+    Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+
+    $DefinitionTypeNamePrefix = "$Namespace.Models."
     $paramType = ""
     $ValidateSetString = $null
     $isParameter = $true
@@ -335,12 +350,15 @@ function Get-ParamType
 
 function Get-PathCommandName
 {
+    [CmdletBinding()]
     param
     (
         [Parameter(Mandatory=$true)]
         [String]
         $OperationId
     )
+
+    Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
 
     $opId = $OperationId
     $cmdNounMap = @{
@@ -400,6 +418,7 @@ function Get-PathCommandName
 
 function Convert-ParamTable
 {
+    [CmdletBinding()]
     param
     (
         [Parameter(Mandatory=$true)]
@@ -407,40 +426,48 @@ function Convert-ParamTable
         $ParamTable
     )
 
+    Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+
     $paramblock = ""
     $paramHelp = ""
     $requiredParamList = @()
     $optionalParamList = @()
 
     $keyCount = $ParamTable.Keys.Count
-    foreach($key in 0..($keyCount - 1)){
-        $ParameterDetails = $ParamTable[$key]
+    if($keyCount)
+    {
+        # This foreach is required to get the parameters in sequential/expected order 
+        # to call the AutoRest generated client API.
+        foreach($key in 0..($keyCount - 1))
+        {
+            $ParameterDetails = $ParamTable[$key]
 
-        if($ParameterDetails.isParameter) {
-            $isParamMandatory = $ParameterDetails.Mandatory
-            $parameterName = $ParameterDetails.Name
-            $paramName = "`$$parameterName" 
-            $paramType = $ParameterDetails.Type
+            if($ParameterDetails.IsParameter) {
+                $isParamMandatory = $ParameterDetails.Mandatory
+                $parameterName = $ParameterDetails.Name
+                $paramName = "`$$parameterName" 
+                $paramType = $ParameterDetails.Type
 
-            $ValidateSetDefinition = $null
-            if ($ParameterDetails.ValidateSet)
-            {
-                $ValidateSetString = $ParameterDetails.ValidateSet
-                $ValidateSetDefinition = $executionContext.InvokeCommand.ExpandString($ValidateSetDefinitionString)
+                $ValidateSetDefinition = $null
+                if ($ParameterDetails.ValidateSet)
+                {
+                    $ValidateSetString = $ParameterDetails.ValidateSet
+                    $ValidateSetDefinition = $executionContext.InvokeCommand.ExpandString($ValidateSetDefinitionString)
+                }
+
+                if ($isParamMandatory -eq '$true')
+                {
+                    $requiredParamList += $paramName
+                }
+                else
+                {
+                    $optionalParamList += $paramName
+                }
+
+                $paramblock += $executionContext.InvokeCommand.ExpandString($parameterDefString)
+                $pDescription = $ParameterDetails.Description
+                $paramHelp += $executionContext.InvokeCommand.ExpandString($helpParamStr)
             }
-
-            if ($isParamMandatory -eq '$true')
-            {
-                $requiredParamList += $paramName
-            }
-            else
-            {
-                $optionalParamList += $paramName
-            }
-
-            $paramblock += $executionContext.InvokeCommand.ExpandString($parameterDefString)
-            $pDescription = $ParameterDetails.Description
-            $paramHelp += $executionContext.InvokeCommand.ExpandString($helpParamStr)
         }
     }
 
@@ -470,6 +497,7 @@ function Convert-ParamTable
 
 function Get-PathFunctionBody
 {
+    [CmdletBinding()]
     param
     (
         [Parameter(Mandatory=$true)]
@@ -506,6 +534,8 @@ function Get-PathFunctionBody
         [PSCustomObject]
         $SwaggerSpecDefinitionsAndParameters
     )
+
+    Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
 
     $UseAzureCsharpGenerator = $SwaggerMetaDict['UseAzureCsharpGenerator']
     $infoVersion = $Info['infoVersion']
