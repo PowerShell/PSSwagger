@@ -33,6 +33,8 @@ function Get-SwaggerSpecDefinitionInfo
         $Namespace 
     )
 
+    Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+
     $Name = $JsonDefinitionItemObject.Name.Replace('[','').Replace(']','')
     
     $FunctionDescription = ""
@@ -235,6 +237,7 @@ function Get-SwaggerSpecDefinitionInfo
 
 function New-SwaggerDefinitionCommand
 {
+    [CmdletBinding()]
     param
     (
         [Parameter(Mandatory = $true)]
@@ -249,6 +252,8 @@ function New-SwaggerDefinitionCommand
         [String]
         $NameSpace
     )
+
+    Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
 
     $FunctionsToExport = @()
     $GeneratedCommandsPath = Join-Path -Path $SwaggerMetaDict['outputDirectory'] -ChildPath $GeneratedCommandsName
@@ -379,6 +384,8 @@ function New-SwaggerSpecDefinitionCommand
         [string] 
         $Namespace 
     )
+
+    Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
     
     $commandName = "New-$($FunctionDetails.Name)Object"
 
@@ -449,6 +456,8 @@ function New-SwaggerDefinitionFormatFile
         $Namespace
     )
     
+    Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+
     $ViewName = "$Namespace.Models.$($FunctionDetails.Name)"
     $ViewTypeName = $ViewName
     $TableColumnItemsList = @()
