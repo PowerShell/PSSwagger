@@ -14,6 +14,7 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwa
 
 function Get-SwaggerSpecPathInfo
 {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
         [PSObject]
@@ -43,6 +44,8 @@ function Get-SwaggerSpecPathInfo
         [PSCustomObject]
         $SwaggerSpecDefinitionsAndParameters
     )
+
+    Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
 
     $JsonPathItemObject.value.PSObject.Properties | ForEach-Object {
         $operationId = $_.Value.operationId
@@ -99,6 +102,7 @@ function Get-SwaggerSpecPathInfo
 
 function New-SwaggerSpecPathCommand
 {
+    [CmdletBinding()]
     param
     (
         [Parameter(Mandatory=$true)]
@@ -109,7 +113,8 @@ function New-SwaggerSpecPathCommand
         [hashtable]
         $SwaggerMetaDict
     )
-
+    
+    Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
     $FunctionsToExport = @()
 
     $PathFunctionDetails.Keys | ForEach-Object {
@@ -123,6 +128,7 @@ function New-SwaggerSpecPathCommand
 
 function New-SwaggerPath
 {
+    [CmdletBinding()]
     param
     (
         [Parameter(Mandatory=$true)]
@@ -133,6 +139,8 @@ function New-SwaggerPath
         [hashtable]
         $SwaggerMetaDict
     )
+
+    Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
 
     $commandName = $FunctionDetails.CommandName
     $description = $FunctionDetails.Description
@@ -154,6 +162,8 @@ function New-SwaggerPath
     if(-not (Test-Path -Path $GeneratedCommandsPath -PathType Container)) {
         $null = New-Item -Path $GeneratedCommandsPath -ItemType Directory
     }
+
+    Write-Verbose -Message $CommandString
 
     $CommandFilePath = Join-Path -Path $GeneratedCommandsPath -ChildPath "$commandName.ps1"
     Out-File -InputObject $CommandString -FilePath $CommandFilePath -Encoding ascii -Force -Confirm:$false -WhatIf:$false
