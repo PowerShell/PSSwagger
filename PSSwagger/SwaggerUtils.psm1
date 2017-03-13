@@ -39,7 +39,7 @@ function ConvertTo-SwaggerDictionary {
 
     $swaggerParameters = $null
     if(Get-Member -InputObject $swaggerObject -Name 'parameters') {
-        $swaggerParameters = Get-SwaggerParameters -Parameters $swaggerObject.parameters
+        $swaggerParameters = Get-SwaggerParameters -Parameters $swaggerObject.parameters -Info $swaggerDict['Info']
     }
     $swaggerDict['Parameters'] = $swaggerParameters
 
@@ -107,19 +107,62 @@ function Get-SwaggerParameters {
     param(
         [Parameter(Mandatory=$true)]
         [PSCustomObject]
-        $Parameters
+        $Parameters,
+
+        [Parameter(Mandatory=$true)]
+        [PSCustomObject]
+        $Info
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
 
-    $swaggerParameters = @{}
-
+    $SwaggerParameters = @{}
     $Parameters.PSObject.Properties | ForEach-Object {
-        $name = Get-PascalCasedString -Name $_.name
-        $swaggerParameters[$name] = $Parameters.$name
+        $GlobalParameterName = $_.Name
+        $GPJsonValueObject = $_.Value
+
+        $IsParamMandatory = '$false'
+        $ParameterDescription = ''
+        $x_ms_parameter_location = ''
+
+        if((Get-Member -InputObject $GPJsonValueObject -Name 'Name') -and $GPJsonValueObject.Name)
+        {
+            $parameterName = Get-PascalCasedString -Name $GPJsonValueObject.Name
+        }
+
+        if(Get-Member -InputObject $GPJsonValueObject -Name 'x-ms-parameter-location')
+        {
+            $x_ms_parameter_location = $GPJsonValueObject.'x-ms-parameter-location'
+        }
+
+        if((Get-Member -InputObject $GPJsonValueObject -Name 'Required') -and
+            $GPJsonValueObject.Required)
+        {
+            $IsParamMandatory = '$true'
+        }
+
+        if ((Get-Member -InputObject $GPJsonValueObject -Name 'Description') -and
+            $GPJsonValueObject.Description)
+        {
+            $ParameterDescription = $GPJsonValueObject.Description
+        }
+
+        $paramTypeObject = Get-ParamType -ParameterJsonObject $GPJsonValueObject `
+                                         -NameSpace $Info.NameSpace `
+                                         -ParameterName $parameterName
+
+        $SwaggerParameters[$GlobalParameterName] = @{
+            Name = $parameterName
+            Type = $paramTypeObject.ParamType
+            ValidateSet = $paramTypeObject.ValidateSetString
+            Mandatory = $IsParamMandatory
+            Description = $ParameterDescription
+            IsParameter = $paramTypeObject.IsParameter
+            x_ms_parameter_location = $x_ms_parameter_location
+        }
     }
 
-    return $swaggerParameters
+    return $SwaggerParameters
 }
 
 function Get-SwaggerMultiItemObject {
@@ -149,7 +192,7 @@ function Get-PathParamInfo
 
         [Parameter(Mandatory=$true)]
         [hashtable]
-        $Info,
+        $SwaggerDict,
 
         [Parameter(Mandatory=$true)]
         [hashtable]
@@ -162,56 +205,100 @@ function Get-PathParamInfo
     $index = 0
     
     $JsonPathItemObject.parameters | ForEach-Object {
+        $ParameterDetails = Get-ParameterDetails -ParameterJsonObject $_ `
+                                                 -SwaggerDict $SwaggerDict `
+                                                 -DefinitionFunctionsDetails $DefinitionFunctionsDetails
 
-        $ParameterJsonObject = $_
-        $ParameterDetails = @{}
-        $IsParamMandatory = '$false'
-        $ParameterDescription = ''
-        $parameterName = ''
-        $NameSpace = $Info.namespace
-            
-        if((Get-Member -InputObject $_ -Name 'Name') -and $_.Name)
-        {
-            $parameterName = Get-PascalCasedString -Name $_.Name
-        }
-
-        if ((Get-Member -InputObject $ParameterJsonObject -Name 'Required') -and $ParameterJsonObject.Required)
-        {
-            $IsParamMandatory = '$true'
-        }
-
-        $paramTypeObject = Get-ParamType -ParameterJsonObject $ParameterJsonObject `
-                                        -NameSpace $NameSpace `
-                                        -parameterName $parameterName `
-                                        -DefinitionFunctionsDetails $DefinitionFunctionsDetails
-
-        if ((Get-Member -InputObject $ParameterJsonObject -Name 'Description') -and $ParameterJsonObject.Description)
-        {
-            $ParameterDescription = $ParameterJsonObject.Description
-        }
-
-        $ParameterDetails['Name'] = $parameterName
-        $ParameterDetails['Type'] = $paramTypeObject.ParamType
-        $ParameterDetails['ValidateSet'] = $paramTypeObject.ValidateSetString
-        $ParameterDetails['Mandatory'] = $IsParamMandatory
-        $ParameterDetails['Description'] = $ParameterDescription
-        $ParameterDetails['isParameter'] = $paramTypeObject.isParameter
-
-        if($paramTypeObject.ParamType)
+        if($ParameterDetails -and $ParameterDetails.Type)
         {
             $ParametersTable[$index] = $ParameterDetails
-            $index = $index + 1
+            $index = $index + 1            
         }
     }
 
     return $ParametersTable
 }
 
-function Get-ParamType
+function Get-ParameterDetails
 {
     [CmdletBinding()]
     param
     (
+        [Parameter(Mandatory=$true)]
+        [PSObject]
+        $ParameterJsonObject,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $SwaggerDict,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $DefinitionFunctionsDetails
+    )
+
+    Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+
+    $NameSpace = $SwaggerDict['Info'].NameSpace
+
+    $parameterName = ''        
+    if((Get-Member -InputObject $ParameterJsonObject -Name 'Name') -and $ParameterJsonObject.Name)
+    {
+        $parameterName = Get-PascalCasedString -Name $ParameterJsonObject.Name
+    }
+   
+    $GetParamTypeParameters = @{
+        ParameterJsonObject = $ParameterJsonObject
+        NameSpace = $NameSpace
+        ParameterName = $parameterName
+        DefinitionFunctionsDetails = $DefinitionFunctionsDetails
+        SwaggerDict = $SwaggerDict
+    }
+    $paramTypeObject = Get-ParamType @GetParamTypeParameters
+
+    # Swagger Path Operations can be defined with reference to the global method based parameters.
+    # Add the method based global parameters as a function parameter.
+    if($paramTypeObject.GlobalParameterDetails)
+    {
+        $ParameterDetails = $paramTypeObject.GlobalParameterDetails
+    }
+    else
+    {
+        $IsParamMandatory = '$false'
+        $ParameterDescription = ''
+        $x_ms_parameter_location = ''
+        
+        if ((Get-Member -InputObject $ParameterJsonObject -Name 'Required') -and 
+            $ParameterJsonObject.Required)
+        {
+            $IsParamMandatory = '$true'
+        }
+
+        if ((Get-Member -InputObject $ParameterJsonObject -Name 'Description') -and 
+            $ParameterJsonObject.Description)
+        {
+            $ParameterDescription = $ParameterJsonObject.Description
+        }
+
+        $ParameterDetails = @{
+            Name = $parameterName
+            Type = $paramTypeObject.ParamType
+            ValidateSet = $paramTypeObject.ValidateSetString
+            Mandatory = $IsParamMandatory
+            Description = $ParameterDescription
+            IsParameter = $paramTypeObject.IsParameter
+            x_ms_parameter_location = $x_ms_parameter_location
+        }
+    }
+
+    return $ParameterDetails
+}
+
+function Get-ParamType
+{
+    [CmdletBinding()]
+	param
+	(
         [Parameter(Mandatory=$true)]
         [PSObject]
         $ParameterJsonObject,
@@ -223,12 +310,16 @@ function Get-ParamType
         [Parameter(Mandatory=$true)]
         [String]
         [AllowEmptyString()]
-        $parameterName,
+        $ParameterName,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$false)]
+        [hashtable]
+        $SwaggerDict,
+
+        [Parameter(Mandatory=$false)]
         [hashtable]
         $DefinitionFunctionsDetails
-    )
+	)
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
 
@@ -236,116 +327,136 @@ function Get-ParamType
     $paramType = ""
     $ValidateSetString = $null
     $isParameter = $true
+    $GlobalParameterDetails = $null
 
-	if((Get-Member -InputObject $ParameterJsonObject -Name 'Type') -and $ParameterJsonObject.Type)
-	{
-		# Use the format as parameter type if that is available as a type in PowerShell
-		if ((Get-Member -InputObject $ParameterJsonObject -Name 'Format') -and 
-			 $ParameterJsonObject.Format -and 
-			 ($null -ne ($ParameterJsonObject.Format -as [Type]))) 
-		{
-			$paramType = $ParameterJsonObject.Format
-		}
-		elseif (($ParameterJsonObject.Type -eq 'array') -and
-				(Get-Member -InputObject $ParameterJsonObject -Name 'Items') -and 
-				$ParameterJsonObject.Items)
-		{
-			if((Get-Member -InputObject $ParameterJsonObject.Items -Name '$ref') -and 
-			   $ParameterJsonObject.Items.'$ref')
-			{
-				$ReferenceTypeValue = $ParameterJsonObject.Items.'$ref'
-				$ReferenceTypeName = $ReferenceTypeValue.Substring( $( $ReferenceTypeValue.LastIndexOf('/') ) + 1 )
-				$paramType = $DefinitionTypeNamePrefix + "$ReferenceTypeName[]"
-			}
-			elseif((Get-Member -InputObject $ParameterJsonObject.Items -Name 'Type') -and $ParameterJsonObject.Items.Type)
-			{
-				$paramType = "$($ParameterJsonObject.Items.Type)[]"
-			}
-			else
-			{
-				$paramType = $ParameterJsonObject.Type
-			}                             
-		}
-		elseif (($ParameterJsonObject.Type -eq 'object') -and
-				(Get-Member -InputObject $ParameterJsonObject -Name 'AdditionalProperties') -and 
-				$ParameterJsonObject.AdditionalProperties)
-		{
-			$AdditionalPropertiesType = $ParameterJsonObject.AdditionalProperties.Type
-			$paramType = "System.Collections.Generic.Dictionary[[$AdditionalPropertiesType],[$AdditionalPropertiesType]]"
-		}
-		else
-		{
-			$paramType = $ParameterJsonObject.Type
-		}
-	}
-	elseif($parameterName -eq 'Properties' -and
-		  (Get-Member -InputObject $ParameterJsonObject -Name 'x-ms-client-flatten') -and 
-		  ($ParameterJsonObject.'x-ms-client-flatten') )
-		{
-			# 'x-ms-client-flatten' extension allows to flatten deeply nested properties into the current definition.
-			# Users often provide feedback that they don't want to create multiple levels of properties to be able to use an operation. 
-			# By applying the x-ms-client-flatten extension, you move the inner properties to the top level of your definition.
+    if((Get-Member -InputObject $ParameterJsonObject -Name 'Type') -and $ParameterJsonObject.Type)
+    {
+        $paramType = $ParameterJsonObject.Type
 
-			$ReferenceParameterValue = $ParameterJsonObject.'$ref'
-			$ReferenceDefinitionName = $ReferenceParameterValue.Substring( $( $ReferenceParameterValue.LastIndexOf('/') ) + 1 )
+        # Use the format as parameter type if that is available as a type in PowerShell
+        if ((Get-Member -InputObject $ParameterJsonObject -Name 'Format') -and 
+            $ParameterJsonObject.Format -and 
+            ($null -ne ($ParameterJsonObject.Format -as [Type]))) 
+        {
+            $paramType = $ParameterJsonObject.Format
+        }
+        elseif (($ParameterJsonObject.Type -eq 'array') -and
+                (Get-Member -InputObject $ParameterJsonObject -Name 'Items') -and 
+                $ParameterJsonObject.Items)
+        {
+            if((Get-Member -InputObject $ParameterJsonObject.Items -Name '$ref') -and 
+                $ParameterJsonObject.Items.'$ref')
+            {
+                $ReferenceTypeValue = $ParameterJsonObject.Items.'$ref'
+                $ReferenceTypeName = $ReferenceTypeValue.Substring( $( $ReferenceTypeValue.LastIndexOf('/') ) + 1 )
+                $paramType = $DefinitionTypeNamePrefix + "$ReferenceTypeName[]"
+            }
+            elseif((Get-Member -InputObject $ParameterJsonObject.Items -Name 'Type') -and $ParameterJsonObject.Items.Type)
+            {
+                $paramType = "$($ParameterJsonObject.Items.Type)[]"
+            }
+        }
+        elseif (($ParameterJsonObject.Type -eq 'object') -and
+                (Get-Member -InputObject $ParameterJsonObject -Name 'AdditionalProperties') -and 
+                $ParameterJsonObject.AdditionalProperties)
+        {
+            $AdditionalPropertiesType = $ParameterJsonObject.AdditionalProperties.Type
+            $paramType = "System.Collections.Generic.Dictionary[[$AdditionalPropertiesType],[$AdditionalPropertiesType]]"
+        }
+    }
+    elseif($parameterName -eq 'Properties' -and
+           (Get-Member -InputObject $ParameterJsonObject -Name 'x-ms-client-flatten') -and 
+           ($ParameterJsonObject.'x-ms-client-flatten') )
+    {
+        # 'x-ms-client-flatten' extension allows to flatten deeply nested properties into the current definition.
+        # Users often provide feedback that they don't want to create multiple levels of properties to be able to use an operation. 
+        # By applying the x-ms-client-flatten extension, you move the inner properties to the top level of your definition.
 
-			$x_ms_Client_flatten_DefinitionNames += $ReferenceDefinitionName
+        $ReferenceParameterValue = $ParameterJsonObject.'$ref'
+        $ReferenceDefinitionName = $ReferenceParameterValue.Substring( $( $ReferenceParameterValue.LastIndexOf('/') ) + 1 )
 
-			$ReferencedFunctionDetails = @{}
-			if($DefinitionFunctionsDetails.ContainsKey($ReferenceDefinitionName))
-			{
-				$ReferencedFunctionDetails = $DefinitionFunctionsDetails[$ReferenceDefinitionName]
-			}
+        $ReferencedFunctionDetails = @{}
+        if($DefinitionFunctionsDetails.ContainsKey($ReferenceDefinitionName))
+        {
+            $ReferencedFunctionDetails = $DefinitionFunctionsDetails[$ReferenceDefinitionName]
+        }
 
-			$ReferencedFunctionDetails['Name'] = $ReferenceDefinitionName
-			$ReferencedFunctionDetails['IsUsedAs_x_ms_client_flatten'] = $true
-			$paramType = $DefinitionFunctionsDetails[$ReferenceDefinitionName] = $ReferencedFunctionDetails
-		}
-	elseif ( (Get-Member -InputObject $ParameterJsonObject -Name '$ref') -and ($ParameterJsonObject.'$ref') )
-	{
-		$ReferenceParameterValue = $ParameterJsonObject.'$ref'
-		$isParameter = $false
-		$paramType = $DefinitionTypeNamePrefix + $ReferenceParameterValue.Substring( $( $ReferenceParameterValue.LastIndexOf('/') ) + 1 )
-	}
-	elseif ((Get-Member -InputObject $ParameterJsonObject -Name 'Schema') -and ($ParameterJsonObject.Schema) -and
-			(Get-Member -InputObject $ParameterJsonObject.Schema -Name '$ref') -and ($ParameterJsonObject.Schema.'$ref') )
-	{
-		$ReferenceParameterValue = $ParameterJsonObject.Schema.'$ref'
-		$paramType = $DefinitionTypeNamePrefix + $ReferenceParameterValue.Substring( $( $ReferenceParameterValue.LastIndexOf('/') ) + 1 )
-	}
-	else 
-	{
-		$paramType = 'object'
-	}
+        $ReferencedFunctionDetails['Name'] = $ReferenceDefinitionName
+        $ReferencedFunctionDetails['IsUsedAs_x_ms_client_flatten'] = $true
 
-	if($paramType -eq 'Boolean')
-	{
-		$paramType = 'switch'
-	}
+        $DefinitionFunctionsDetails[$ReferenceDefinitionName] = $ReferencedFunctionDetails
+    }
+    elseif ( (Get-Member -InputObject $ParameterJsonObject -Name '$ref') -and ($ParameterJsonObject.'$ref') )
+    {
+        <#
+            Currently supported reference parameter types:
+                #/parameters/<PARAMNAME>
+                #/parameters/<DEFINITIONNAME>
+        #>
+        $ReferenceParameterValue = $ParameterJsonObject.'$ref'
+        $ReferenceParts = $ReferenceParameterValue -split '/' | ForEach-Object { if($_.Trim()){ $_.Trim() } }
+        if($ReferenceParts.Count -eq 3)
+        {                
+            if($ReferenceParts[1] -eq 'Parameters')
+            {
+                #/parameters/
+                $GlobalParameters = $SwaggerDict['Parameters']
+                $GlobalParamDetails = $GlobalParameters[$ReferenceParts[2]]
 
-	if ((Get-Member -InputObject $ParameterJsonObject -Name 'Enum') -and $ParameterJsonObject.Enum)
-	{
-		if((Get-Member -InputObject $ParameterJsonObject -Name 'x-ms-enum') -and 
-		   $ParameterJsonObject.'x-ms-enum' -and 
-		   ($ParameterJsonObject.'x-ms-enum'.modelAsString -eq $false))
-		{
+                # Valid values for this extension are: "client", "method".
+                if($GlobalParamDetails.x_ms_parameter_location -eq 'method')
+                {
+                    $GlobalParameterDetails = $GlobalParamDetails
+                }
+                else
+                {
+                    $isParameter = $false
+                }
+            }
+            elseif($ReferenceParts[1] -eq 'Definitions')
+            {
+                #/definitions/
+                $paramType = $DefinitionTypeNamePrefix + $ReferenceParts[2]
+            }
+        }
+    }
+    elseif ((Get-Member -InputObject $ParameterJsonObject -Name 'Schema') -and ($ParameterJsonObject.Schema) -and
+            (Get-Member -InputObject $ParameterJsonObject.Schema -Name '$ref') -and ($ParameterJsonObject.Schema.'$ref') )
+    {
+        $ReferenceParameterValue = $ParameterJsonObject.Schema.'$ref'
+        $paramType = $DefinitionTypeNamePrefix + $ReferenceParameterValue.Substring( $( $ReferenceParameterValue.LastIndexOf('/') ) + 1 )
+    }
+    else 
+    {
+        $paramType = 'object'
+    }
 
-			$paramType = $DefinitionTypeNamePrefix + $ParameterJsonObject.'x-ms-enum'.Name
-		}
-		else
-		{
-			$ValidateSet = $ParameterJsonObject.Enum
-			$ValidateSetString = "'$($ValidateSet -join "', '")'"
-		}
-	}
+    if($paramType -and ($paramType -eq 'Boolean'))
+    {
+        $paramType = 'switch'
+    }
 
-	$paramTypeObject = @{ ParamType = $paramType;
-						 ValidateSetString = $ValidateSetString;
-                         isParameter = $isParameter
-					}
+    if ((Get-Member -InputObject $ParameterJsonObject -Name 'Enum') -and $ParameterJsonObject.Enum)
+    {
+        if((Get-Member -InputObject $ParameterJsonObject -Name 'x-ms-enum') -and 
+            $ParameterJsonObject.'x-ms-enum' -and 
+            ($ParameterJsonObject.'x-ms-enum'.modelAsString -eq $false))
+        {
+            $paramType = $DefinitionTypeNamePrefix + $ParameterJsonObject.'x-ms-enum'.Name
+        }
+        else
+        {
+            $ValidateSet = $ParameterJsonObject.Enum
+            $ValidateSetString = "'$($ValidateSet -join "', '")'"
+        }
+    }
 
-	return $paramTypeObject
-
+    return @{
+        ParamType = $paramType
+        ValidateSetString = $ValidateSetString
+        IsParameter = $isParameter
+        GlobalParameterDetails = $GlobalParameterDetails
+    }
 }
 
 function Get-PathCommandName
@@ -505,14 +616,6 @@ function Get-PathFunctionBody
         $Responses,
 
         [Parameter(Mandatory=$true)]
-        [hashtable]
-        $Info,
-
-        [Parameter(Mandatory=$true)]
-        [hashtable]
-        $DefinitionList,
-
-        [Parameter(Mandatory=$true)]
         [String]
         $operationId,
 
@@ -527,16 +630,18 @@ function Get-PathFunctionBody
         $OptionalParamList,
 
         [Parameter(Mandatory=$true)]
-        [hashtable]
-        $SwaggerMetaDict,
+        [PSCustomObject]
+        $SwaggerDict,
 
         [Parameter(Mandatory=$true)]
         [PSCustomObject]
-        $SwaggerSpecDefinitionsAndParameters
+        $SwaggerMetaDict
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
 
+    $Info = $swaggerDict['Info']
+    $DefinitionList = $swaggerDict['Definitions']
     $UseAzureCsharpGenerator = $SwaggerMetaDict['UseAzureCsharpGenerator']
     $infoVersion = $Info['infoVersion']
     $modulePostfix = $Info['infoName']
@@ -550,7 +655,7 @@ function Get-PathFunctionBody
         $operationType = $operationId.Split('_')[1]
         $operations = ".$operationName"
         if ((-not $UseAzureCsharpGenerator) -and 
-            (Test-OperationNameInDefinitionList -Name $operationName -SwaggerSpecDefinitionsAndParameters $SwaggerSpecDefinitionsAndParameters))
+            (Test-OperationNameInDefinitionList -Name $operationName -SwaggerDict $SwaggerDict))
         { 
             $operations = $operations + 'Operations'
         }
@@ -592,20 +697,16 @@ function Get-PathFunctionBody
 function Test-OperationNameInDefinitionList
 {
     param(
+        [Parameter(Mandatory=$true)]
         [string]
         $Name,
 
         [Parameter(Mandatory=$true)]
         [PSCustomObject]
-        $SwaggerSpecDefinitionsAndParameters
+        $SwaggerDict
     )
 
-    $definitionList = $SwaggerSpecDefinitionsAndParameters['definitions']
-    if ($definitionList.ContainsKey($Name))
-    {
-        return $true
-    }
-    return $false
+    return $SwaggerDict['Definitions'].ContainsKey($Name)
 }
 
 function Get-OutputType

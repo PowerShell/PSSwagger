@@ -24,13 +24,9 @@ function Get-SwaggerSpecPathInfo
         [PSCustomObject] 
         $PathFunctionDetails,
 
-        [Parameter(Mandatory=$true)]
-        [hashtable]
-        $Info,
-        
         [Parameter(Mandatory = $true)]
         [hashTable]
-        $DefinitionList,
+        $swaggerDict,
 
         [Parameter(Mandatory = $true)]
         [hashtable]
@@ -38,11 +34,7 @@ function Get-SwaggerSpecPathInfo
 
         [Parameter(Mandatory = $true)]
         [hashtable]
-        $DefinitionFunctionsDetails,
-
-        [Parameter(Mandatory=$true)]
-        [PSCustomObject]
-        $SwaggerSpecDefinitionsAndParameters
+        $DefinitionFunctionsDetails
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -55,7 +47,9 @@ function Get-SwaggerSpecPathInfo
             $FunctionDescription = $_.value.description 
         }
         
-        $paramInfo = Get-PathParamInfo -JsonPathItemObject $_.value -Info $Info -DefinitionFunctionsDetails $DefinitionFunctionsDetails
+        $paramInfo = Get-PathParamInfo -JsonPathItemObject $_.value `
+                                       -SwaggerDict $swaggerDict `
+                                       -DefinitionFunctionsDetails $DefinitionFunctionsDetails
 
         $responses = ""
         if((Get-Member -InputObject $_.value -Name 'responses') -and $_.value.responses) {
@@ -80,13 +74,11 @@ function Get-SwaggerSpecPathInfo
 
         $functionBodyParams = @{
             Responses = $responses
-            Info = $Info
-            DefinitionList = $DefinitionList
             operationId = $operationId
             RequiredParamList = $FunctionDetails['RequiredParamList']
             OptionalParamList = $FunctionDetails['OptionalParamList']
+            SwaggerDict = $SwaggerDict
             SwaggerMetaDict = $SwaggerMetaDict
-            SwaggerSpecDefinitionsAndParameters = $SwaggerSpecDefinitionsAndParameters
         }
 
         $bodyObject = Get-PathFunctionBody @functionBodyParams

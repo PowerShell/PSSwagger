@@ -254,11 +254,9 @@ function New-PSSwaggerModule
     $jsonObject.Paths.PSObject.Properties | ForEach-Object {
         Get-SwaggerSpecPathInfo -JsonPathItemObject $_ `
                                 -PathFunctionDetails $PathFunctionDetails `
-                                -Info $swaggerDict['info'] `
-                                -DefinitionList $swaggerDict['definitions'] `
+                                -SwaggerDict $swaggerDict `
                                 -SwaggerMetaDict $swaggerMetaDict `
-                                -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
-                                -SwaggerSpecDefinitionsAndParameters $swaggerDict
+                                -DefinitionFunctionsDetails $DefinitionFunctionsDetails
     }
 
     $FunctionsToExport = @()
@@ -283,75 +281,6 @@ function New-PSSwaggerModule
 
     Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Generated.Resources.psd1") (Join-Path -Path "$outputDirectory" -ChildPath "$ModuleName.Resources.psd1") -Force
 }
-
-#region Cmdlet Generation Helpers
-function Get-SwaggerSpecDefinitionAndParameter
-{
-    param(
-        [Parameter(Mandatory=$true)]
-        [PSCustomObject]
-        $SwaggerSpecJsonObject,
-
-        [Parameter(Mandatory=$true)]
-        [string]
-        $ModuleName
-    )
-
-    if(-not (Get-Member -InputObject $jsonObject -Name 'info')) {
-        Throw $LocalizedData.InvalidSwaggerSpecification
-    }
-
-    $SwaggerSpecificationDetails = @{}    
-
-    # Get info entries
-    $info = $SwaggerSpecJsonObject.info 
-    
-    $infoVersion = '1-0-0'
-    if((Get-Member -InputObject $info -Name 'Version') -and $info.Version) { 
-        $infoVersion = $info.Version
-    }
-
-    $infoTitle = $info.title
-    $infoName = ''
-    if((Get-Member -InputObject $info -Name 'x-ms-code-generation-settings') -and $info.'x-ms-code-generation-settings'.Name) { 
-        $infoName = $info.'x-ms-code-generation-settings'.Name
-    }
-
-    if (-not $infoName) {
-         $infoName = $infoTitle
-    }
-
-    $SwaggerSpecificationDetails['infoVersion'] = $infoVersion
-    $SwaggerSpecificationDetails['infoTitle'] = $infoTitle
-    $SwaggerSpecificationDetails['infoName'] = $infoName
-    $SwaggerSpecificationDetails['Version'] = [Version](($infoVersion -split "-",4) -join '.')
-    $NamespaceVersionSuffix = "v$(($infoVersion -split '-',4) -join '')"
-    $SwaggerSpecificationDetails['Namespace'] = "Microsoft.PowerShell.$ModuleName.$NamespaceVersionSuffix"
-    $SwaggerSpecificationDetails['ModuleName'] = $ModuleName
-
-    if(Get-Member -InputObject $jsonObject -Name 'parameters') {    
-        # Get global parameters
-        $globalParams = $SwaggerSpecJsonObject.parameters
-        $globalParams.PSObject.Properties | ForEach-Object {
-            $name = Get-PascalCasedString -Name $_.name
-            $SwaggerSpecificationDetails[$name] = $globalParams.$name
-        }
-    }
-
-    $definitionList = @{}
-    if(Get-Member -InputObject $jsonObject -Name 'definitions') {
-        # Get definitions list
-        $definitions = $SwaggerSpecJsonObject.definitions
-        $definitions.PSObject.Properties | ForEach-Object {
-            $name = $_.name
-            $definitionList.Add($name, $_)
-        }
-    }
-    $SwaggerSpecificationDetails['definitionList'] = $definitionList
-
-    return $SwaggerSpecificationDetails
-}
-#endregion
 
 #region Module Generation Helpers
 

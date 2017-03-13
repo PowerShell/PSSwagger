@@ -22,7 +22,7 @@ ConvertFrom-StringData @'
     UnableToGenerateAssembly=Unable to generate '{0}' assembly
     InvalidSwaggerSpecification=Invalid Swagger specification file. Info section doesn't exists.
     SwaggerSpecPathNotExist=Swagger file $SwaggerSpecPath does not exist. Check the path
-    SamePropertyName=Same property name should not be defined in a definition with AllOf inheritance.
+    SamePropertyName=Same property name '{0}' is defined in a definition '{1}' with AllOf inheritance.
     DataTypeNotImplemented=Please get an implementation of '{0}' for '{1}'
     AutoRestNotInPath=Unable to find AutoRest.exe in PATH environment. Ensure the PATH is updated.
     AutoRestError=AutoRest resulted in an error
