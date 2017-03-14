@@ -9,7 +9,9 @@
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 Import-Module (Join-Path -Path $PSScriptRoot -ChildPath Utilities.psm1)
 . "$PSScriptRoot\PSSwagger.Constants.ps1" -Force
+. "$PSScriptRoot\Trie.ps1" -Force
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwagger.Resources.psd1
+$script:CmdVerbTrie = $null
 
 function ConvertTo-SwaggerDictionary {
     [CmdletBinding()]
@@ -472,12 +474,24 @@ function Get-PathCommandName
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
 
     $opId = $OperationId
+    
     $cmdNounMap = @{
-                    Create = 'New'
-                    Activate = 'Enable'
-                    Delete = 'Remove'
-                    List   = 'GetAll'
-                }
+                        Create = 'New'
+                        Activate = 'Enable'
+                        Delete = 'Remove'
+                        List   = 'GetAll'
+                        CreateOrUpdate = 'New,Set'
+                   }
+
+    if ($script:CmdVerbTrie -eq $null) {
+        $script:CmdVerbTrie = New-Trie
+        foreach ($verb in $cmdNounMap) {
+            $script:CmdVerbTrie = Add-WordToTrie -Word $verb -Trie $script:CmdVerbTrie
+        }
+    }
+
+    $currentTriePtr = $script:CmdVerbTrie
+    
     $opIdValues = $opId  -split "_",2
     
     # OperationId can be specified without '_' (Underscore), return the OperationId as command name
@@ -494,37 +508,83 @@ function Get-PathCommandName
         
         if ($cmdNounMap.ContainsKey($cmdVerb))
         {
-            $message = $LocalizedData.ReplacedVerb -f ($($cmdNounMap[$cmdVerb]), $cmdVerb)
-            Write-Verbose -Message $message
-            $cmdVerb = $cmdNounMap[$cmdVerb]
+            # This condition happens when there aren't any suffixes
+            $cmdVerb = $cmdNounMap[$cmdVerb] -Split ',' | ForEach-Object { if($_.Trim()){ $_.Trim() } }
+            $cmdVerb | ForEach-Object {
+                $message = $LocalizedData.ReplacedVerb -f ($_, $cmdVerb)
+                Write-Verbose -Message $message
+            }
         }
         else
         {
-            $idx=1
-            for(; $idx -lt $opIdValues[1].Length; $idx++)
-            { 
-                if (([int]$opIdValues[1][$idx] -ge 65) -and ([int]$opIdValues[1][$idx] -le 90)) {
-                    break
+            # This condition happens in cases like: CreateSuffix, CreateOrUpdateSuffix
+            $longestVerbMatch = $null
+            $currentVerbCandidate = ''
+            $firstWord = ''
+            $firstWordStarted = $false
+            $buildFirstWord = $false
+            $firstWordEnd = -1
+            $verbMatchEnd = -1
+            for($i = 0; $i -lt $opIdValues[1].Length; $i++) {
+                # Add the start condition of the first word so that the end condition is easier
+                if ((-not $firstWordStarted) -and ([int]$opIdValues[1][$i] -ge 65) -and ([int]$opIdValues[1][$i] -le 90)) {
+                    $firstWordStarted = $true
+                    $buildFirstWord = $true
+                } elseif ($buildFirstWord -and ([int]$opIdValues[1][$i] -ge 65) -and ([int]$opIdValues[1][$i] -le 90)) {
+                    # Stop building the first word when we encounter another capital letter
+                    $buildFirstWord = $false
+                    $firstWordEnd = $i
+                }
+
+                if ($buildFirstWord) {
+                    $firstWord += $opIdValues[1][$i]
+                }
+
+                if ($currentTriePtr) {
+                    # If we're still running along the trie just fine, keep checking the next letter
+                    $currentVerbCandidate += $opIdValues[1][$i]
+                    $currentTriePtr = Test-Trie -Trie $currentTriePtr -Letter $opIdValues[1][$i]
+                    if (Test-TrieLeaf -Trie $currentTriePtr) {
+                        # The latest verb match is also the longest verb match
+                        $longestVerbMatch = $currentVerbCandidate
+                        $verbMatchEnd = $i+1
+                    }
                 }
             }
-            
-            $cmdNounSuffix = $opIdValues[1].Substring($idx)
-            # Add command noun suffix only when the current noun is not ending with the same suffix. 
-            if(-not $cmdNoun.EndsWith($cmdNounSuffix, [System.StringComparison]::OrdinalIgnoreCase)) {
-                $cmdNoun = $cmdNoun + $opIdValues[1].Substring($idx)
-            }
-            
-            $cmdVerb = $opIdValues[1].Substring(0,$idx)            
-            if ($cmdNounMap.ContainsKey($cmdVerb)) { 
-                $cmdVerb = $cmdNounMap[$cmdVerb]
-            }          
 
-            $message = $LocalizedData.UsingNounVerb -f ($cmdNoun, $cmdVerb)
-            Write-Verbose -Message $message
+            if ($longestVerbMatch) {
+                $beginningOfSuffix = $verbMatchEnd
+                $cmdVerb = $longestVerbMatch
+            } else {
+                $beginningOfSuffix = $firstWordEnd
+                $cmdVerb = $firstWord
+            }
+
+            if ($cmdNounMap.ContainsKey($cmdVerb)) { 
+                $cmdVerb = $cmdNounMap[$cmdVerb] -Split ',' | ForEach-Object { if($_.Trim()){ $_.Trim() } }
+            }
+
+            if (-1 -ne $beginningOfSuffix) {
+                # This is still empty when a verb match is found that is the entire string, but it might not be worth checking for that case and skipping the below operation
+                $cmdNounSuffix = $opIdValues[1].Substring($beginningOfSuffix)
+                # Add command noun suffix only when the current noun is not ending with the same suffix. 
+                if(-not $cmdNoun.EndsWith($cmdNounSuffix, [System.StringComparison]::OrdinalIgnoreCase)) {
+                    $cmdNoun = $cmdNoun + $opIdValues[1].Substring($firstWordEnd)
+                }
+            }
+
+            $cmdVerb | ForEach-Object {
+                $message = $LocalizedData.UsingNounVerb -f ($cmdNoun, $_)
+                Write-Verbose -Message $message
+            }
         }
     }
 
-    return "$cmdVerb-$cmdNoun"
+    $cmdletNames = $cmdVerb | ForEach-Object {
+        "$_-$cmdNoun"
+    }
+
+    return $cmdletNames
 }
 
 function Convert-ParamTable

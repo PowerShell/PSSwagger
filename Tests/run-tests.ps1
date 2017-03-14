@@ -52,6 +52,19 @@ if ($TestSuite.Contains("All") -or $TestSuite.Contains("ScenarioTest")) {
         & $nodeExePath (Join-Path -Path $npmInstallPath -ChildPath "node_modules\npm\bin\npm-cli.js") "install" "-g" "json-server"
     }
 
+    # For these node modules, it's easier on the middleware script devs to just install the modules locally instead of globally
+    # Ensure we have request (for easy HTTP request creation for some test middlewares)
+    if (-not (Test-Path (Join-Path $PSScriptRoot "node_modules" | Join-Path -ChildPath "request"))) {
+        Write-Verbose "Couldn't find request module. Running npm install request."
+        & $nodeExePath (Join-Path -Path $npmInstallPath -ChildPath "node_modules\npm\bin\npm-cli.js") "install" "request"
+    }
+
+    # Ensure we have async (for HTTP request resolution synchronously in some test middlewares)
+    if (-not (Test-Path (Join-Path $PSScriptRoot "node_modules" | Join-Path -ChildPath "async"))) {
+        Write-Verbose "Couldn't find async module. Running npm install async."
+        & $nodeExePath (Join-Path -Path $npmInstallPath -ChildPath "node_modules\npm\bin\npm-cli.js") "install" "async"
+    }
+
     $executeTestsCommand += ";`$env:Path+=`";$nodeModulePath`""
     $executeTestsCommand += ";`$global:testRunGuid=`"$testRunGuid`""
 
@@ -84,7 +97,7 @@ $executeTestsCommand += ";`$verbosepreference=`"continue`";Invoke-Pester -Exclud
 # Set up Pester params
 $pesterParams = @{'ExcludeTag' = 'KnownIssue'; 'OutputFormat' = 'NUnitXml'; 'OutputFile' = 'TestResults.xml'}
 if ($PSBoundParameters.ContainsKey('TestName')) {
-    $executeTestsCommand += " -TestName $TestName"
+    $executeTestsCommand += " -TestName `"$TestName`""
 }
 
 if ($TestSuite.Contains("All")) {
