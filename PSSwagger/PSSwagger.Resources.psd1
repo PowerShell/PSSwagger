@@ -35,5 +35,6 @@ ConvertFrom-StringData @'
     PsCorePathNotFound=Couldn't find PowerShell at path '{0}'
     ParameterSetNotAllowed=The '{0}' parameter is not allowed when '{1}' is specified.
     AssemblyCompilationResult=Result of assembly compilation: {0}
+    CmdletHasAmbiguousParameterSets=The generated cmdlet '{0}' contains ambiguous parameter sets. This is due to automatic merging of two or more similar paths.
 ###PSLOC
 '@

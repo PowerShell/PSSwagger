@@ -1,0 +1,368 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "title": "GetListsTests",
+        "description": "API that contains tests for get/list behavior",
+        "version": "2017-03-15"
+    },
+    "host": "localhost:3000",
+    "schemes": [
+        "http"
+    ],
+    "basePath": "/",
+    "produces": [
+        "application/json"
+    ],
+    "paths": {
+        "/cupcakes/{flavor}": {
+            "get": {
+                "summary": "List all cupcakes",
+                "operationId": "Cupcake_List",
+                "description": "Make a cupcake or update an existing one.",
+                "parameters": [
+                    {
+                        "name": "flavor",
+                        "in": "path",
+                        "description": "Flavor of cupcake",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "tags": [
+                    "Cupcakes"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "All cupcake entities with given flavor.",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Cupcake"
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/cupcakes/{flavor}/{id}": {
+            "get": {
+                "summary": "Simple get",
+                "operationId": "Cupcake_Get",
+                "description": "Get a cupcake by ID.",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID of cupcake",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "flavor",
+                        "in": "path",
+                        "description": "Flavor of cupcake",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "tags": [
+                    "Cupcakes"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cupcake entity with matching ID.",
+                        "schema": {
+                            "$ref": "#/definitions/Cupcake"
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/dogs/{name}": {
+            "get": {
+                "summary": "Get a dog by name",
+                "operationId": "Dog_Get",
+                "description": "Get a dog",
+                "parameters": [
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "description": "Name of dog",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Dogs"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Dog entity with matching ID.",
+                        "schema": {
+                            "$ref": "#/definitions/Dog"
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/dogs/allDogs": {
+            "get": {
+                "summary": "Gets all dogs by size",
+                "operationId": "Dog_List",
+                "description": "Get a dog",
+                "parameters": [
+                ],
+                "tags": [
+                    "Dogs"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Matching dog entities",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Dog"
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/cats/{owner}/{size}/{name}": {
+            "get": {
+                "summary": "Get a cat by name and size with owner",
+                "operationId": "Cat_List",
+                "description": "Get a cat",
+                "parameters": [
+                    {
+                        "name": "owner",
+                        "in": "path",
+                        "description": "Name of owner",
+                        "required": true
+                    },
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "description": "Name of cat",
+                        "required": true
+                    }
+                    ,
+                    {
+                        "name": "size",
+                        "in": "path",
+                        "description": "Size class of cat",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Cats"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Matching Cat.",
+                        "schema": {
+                            "$ref": "#/definitions/Cat"
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/cats/{owner}/{size}": {
+            "get": {
+                "summary": "List all cats under owner with size",
+                "operationId": "Cat_Get",
+                "description": "Get a cat",
+                "parameters": [
+                    {
+                        "name": "owner",
+                        "in": "path",
+                        "description": "Name of owner",
+                        "required": true
+                    },
+                    {
+                        "name": "size",
+                        "in": "path",
+                        "description": "Size class of cat",
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Cats"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Matching cat entities",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Cat"
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/tags/allTags": {
+            "get": {
+                "summary": "Get all tags",
+                "operationId": "Tags_List",
+                "description": "Test only List with no parameters",
+                "parameters": [],
+                "tags": [
+                    "Tags"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Matching tag entities",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Tag"
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "Cupcake": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "Unique identifier"
+                },
+                "flavor": {
+                    "type": "string",
+                    "description": "Flavor"
+                }
+            }
+        },
+        "Dog": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "Unique identifier"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Name"
+                },
+                "size": {
+                    "type": "string",
+                    "description": "Size"
+                },
+                "owner": {
+                    "type": "string",
+                    "description": "Owner"
+                }
+            }
+        },
+        "Cat": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "Unique identifier"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Name"
+                },
+                "size": {
+                    "type": "string",
+                    "description": "Size"
+                },
+                "owner": {
+                    "type": "string",
+                    "description": "Owner"
+                }
+            }
+        },
+        "Tag": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "Unique identifier"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Name"
+                }
+            }
+        },
+        "Error": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "description": "Error code"
+                },
+                "message": {
+                    "type": "string",
+                    "description": "Message"
+                }
+            }
+        }
+    },
+    "parameters": {
+        "SubscriptionIdParameter": {
+            "name": "subscriptionId",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "A unique identifier of a Microsoft Azure subscription. The subscription ID forms part of the URI for every service call."
+        },
+        "ApiVersionParameter": {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to be used with the HTTP request."
+        }
+    }
+}

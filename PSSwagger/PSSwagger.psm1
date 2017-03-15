@@ -261,7 +261,8 @@ function New-PSSwaggerModule
 
     $FunctionsToExport = @()
     $FunctionsToExport += New-SwaggerSpecPathCommand -PathFunctionDetails $PathFunctionDetails `
-                                                     -SwaggerMetaDict $swaggerMetaDict
+                                                     -SwaggerMetaDict $swaggerMetaDict `
+                                                     -SwaggerDict $swaggerDict
 
     $FunctionsToExport += New-SwaggerDefinitionCommand -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
                                                         -SwaggerMetaDict $swaggerMetaDict `

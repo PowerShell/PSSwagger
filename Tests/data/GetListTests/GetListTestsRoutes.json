@@ -1,0 +1,11 @@
+{
+    "/cupcakes/:flavor": "/cupcakes?flavor=:flavor",
+    "/cupcakes/:flavor/:id": "/cupcakes/:id?flavor=:flavor",
+    "/dogs/:name": "/dogs?name=:name",
+    "/dogs/allDogs/:size": "/dogs?size=:size",
+    "/dogs/allDogs": "/dogs",
+    "/cats/:owner/:size/:name": "/cats?name=:name&owner=:owner&size=:size",
+    "/cats/:owner/:size": "/cats?size=:size&owner=:owner",
+    "/cats/:owner": "/cats?owner=:owner",
+    "/tags/allTags": "/tags"
+}
