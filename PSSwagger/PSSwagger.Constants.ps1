@@ -11,9 +11,11 @@ $helpDescStr = @'
     $description
 '@
 
+$parameterAttributeString = '[Parameter(Mandatory = $isParamMandatory$ParameterSetPropertyString)]'
+
 $parameterDefString = @'
     
-        [Parameter(Mandatory = $isParamMandatory)]$ValidateSetDefinition
+        $AllParameterSetsString$ValidateSetDefinition
         [$paramType]
         $paramName,
 
@@ -116,7 +118,7 @@ $paramHelp
 #>
 function $commandName
 {
-    $outputTypeBlock[CmdletBinding()]
+    $outputTypeBlock[CmdletBinding(DefaultParameterSetName='$DefaultParameterSetName')]
     param($paramblockWithAsJob
     )
     $body
@@ -149,8 +151,24 @@ $functionBodyStr = @'
     }
     $clientName.BaseUri = `$ResourceManagerUrl
 
-    Write-Verbose -Message 'Performing operation $methodName on $clientName.'
-    `$taskResult = $clientName$operations.$methodName($requiredParamList)
+    $parameterSetBasedMethodStr else {
+        Write-Verbose -Message 'Failed to map parameter set to operation method.'
+        throw 'Module failed to find operation to execute.'
+    }
+'@
+
+$parameterSetBasedMethodStrIfCase = @'
+if ('$operationId' -eq `$PsCmdlet.ParameterSetName) {
+        Write-Verbose -Message 'Performing operation $methodName on $clientName.'
+        `$taskResult = $clientName$operations.$methodName($requiredParamList)
+    }
+'@
+
+$parameterSetBasedMethodStrElseIfCase = @'
+ elseif ('$operationId' -eq `$PsCmdlet.ParameterSetName ) {
+        Write-Verbose -Message 'Performing operation $methodName on $clientName.'
+        `$taskResult = $clientName$operations.$methodName($requiredParamList)
+    }
 '@
 
 $PathFunctionCommonBody = @'

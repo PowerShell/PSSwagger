@@ -518,7 +518,8 @@ function New-SwaggerSpecDefinitionCommand
     $paramblock = ""
     $body = ""
     $DefinitionTypeNamePrefix = "$Namespace.Models."
-
+    $ParameterSetPropertyString = ""
+    
     $FunctionDetails.ParametersTable.Keys | ForEach-Object {
         $ParameterDetails = $FunctionDetails.ParametersTable[$_]
 
@@ -526,7 +527,7 @@ function New-SwaggerSpecDefinitionCommand
         $parameterName = $ParameterDetails.Name
         $paramName = "`$$parameterName" 
         $paramType = $ParameterDetails.Type
-
+        $AllParameterSetsString = $executionContext.InvokeCommand.ExpandString($parameterAttributeString)
         $ValidateSetDefinition = $null
         if ($ParameterDetails.ValidateSet)
         {

@@ -14,6 +14,35 @@
         "application/json"
     ],
     "paths": {
+        "/cupcakes/allCupcakes": {
+            "get": {
+                "summary": "List all cupcakes",
+                "operationId": "Cupcake_List",
+                "description": "List all cupcakes.",
+                "parameters": [
+                ],
+                "tags": [
+                    "Cupcakes"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "All cupcake entities.",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Cupcake"
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
         "/cupcakes/{id}": {
             "put": {
                 "summary": "Simple create or update",

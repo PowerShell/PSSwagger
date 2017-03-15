@@ -118,6 +118,67 @@ Describe "All Operations: Basic" -Tag ScenarioTest {
             Remove-Cupcake -Id $id
             { Get-Cupcake -Id $id } | should throw 'NotFound'
         }
+
+        It "Verify list operation" {
+            $results = Get-Cupcake
+            $results.Count -gt 1 | should be $true
+        }
+    }
+
+    AfterAll {
+        Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
+    }
+}
+
+Describe "Get/List tests" -Tag ScenarioTest {
+    BeforeAll {
+        Initialize-Test -GeneratedModuleName "Generated.GetList.Module" -GeneratedModuleVersion "0.0.1" -TestApiName "GetListTests" `
+                        -TestSpecFileName "GetListTestsSpec.json" -TestDataFileName "GetListTestsData.json" `
+                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+
+        # Import generated module
+        Write-Verbose "Importing modules"
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "Generated.Azure.Common.Helpers" | `
+                       Join-Path -ChildPath "Generated.Azure.Common.Helpers.psd1") -Force
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
+                       Join-Path -ChildPath "Generated.GetList.Module")
+        
+        # Load the test assembly after the generated module, since the generated module is kind enough to load the required dlls for us
+        try {
+            $null = Add-Type -Path (Join-Path "$PSScriptRoot" "PSSwagger.TestUtilities" | Join-Path -ChildPath "$global:testRunGuid.dll") -PassThru
+        } catch {
+            throw "$($_.Exception.LoaderExceptions)"
+        }
+
+        $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "GetListTests" -TestRoutesFileName "GetListTestsRoutes.json"
+    }
+
+    Context "Get/List tests" {
+        # Mocks
+        Mock Get-AzServiceCredential -ModuleName Generated.GetList.Module {
+            return New-Object -TypeName PSSwagger.TestUtilities.TestCredentials
+        }
+
+        Mock Get-AzSubscriptionId -ModuleName Generated.GetList.Module {
+            return "Test"
+        }
+
+        Mock Get-AzResourceManagerUrl -ModuleName Generated.GetList.Module {
+            return "$($global:testDataSpec.schemes[0])://$($global:testDataSpec.host)"
+        }
+
+        It "Get has subset of List parameters, Get should be default" {
+            (Get-Command Get-Cat).DefaultParameterSet | should be 'Cat_Get'
+        }
+
+        It "List and Get are unique parameter sets, but List is chosen as the default" {
+            (Get-Command Get-Dog).DefaultParameterSet | should be 'Dog_List'
+        }
+
+        It "List has no parameters and no corresponding Get" {
+            $results = Get-Tags
+            $results.Length | should be 2
+        }
     }
 
     AfterAll {

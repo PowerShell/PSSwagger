@@ -479,7 +479,7 @@ function Get-PathCommandName
                         Create = 'New'
                         Activate = 'Enable'
                         Delete = 'Remove'
-                        List   = 'GetAll'
+                        List   = 'Get'
                         CreateOrUpdate = 'New,Set'
                    }
 
@@ -544,7 +544,7 @@ function Get-PathCommandName
                     # If we're still running along the trie just fine, keep checking the next letter
                     $currentVerbCandidate += $opIdValues[1][$i]
                     $currentTriePtr = Test-Trie -Trie $currentTriePtr -Letter $opIdValues[1][$i]
-                    if (Test-TrieLeaf -Trie $currentTriePtr) {
+                    if ($currentTriePtr -and (Test-TrieLeaf -Trie $currentTriePtr)) {
                         # The latest verb match is also the longest verb match
                         $longestVerbMatch = $currentVerbCandidate
                         $verbMatchEnd = $i+1
@@ -594,16 +594,17 @@ function Convert-ParamTable
     (
         [Parameter(Mandatory=$true)]
         [hashtable]
-        $ParamTable
+        $ParamTable,
+
+        [Parameter(Mandatory=$true)]
+        [String]
+        $ParameterSetName
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
 
-    $paramblock = ""
-    $paramHelp = ""
     $requiredParamList = @()
     $optionalParamList = @()
-
     $keyCount = $ParamTable.Keys.Count
     if($keyCount)
     {
@@ -617,14 +618,6 @@ function Convert-ParamTable
                 $isParamMandatory = $ParameterDetails.Mandatory
                 $parameterName = $ParameterDetails.Name
                 $paramName = "`$$parameterName" 
-                $paramType = $ParameterDetails.Type
-
-                $ValidateSetDefinition = $null
-                if ($ParameterDetails.ValidateSet)
-                {
-                    $ValidateSetString = $ParameterDetails.ValidateSet
-                    $ValidateSetDefinition = $executionContext.InvokeCommand.ExpandString($ValidateSetDefinitionString)
-                }
 
                 if ($isParamMandatory -eq '$true')
                 {
@@ -634,31 +627,14 @@ function Convert-ParamTable
                 {
                     $optionalParamList += $paramName
                 }
-
-                $paramblock += $executionContext.InvokeCommand.ExpandString($parameterDefString)
-                $pDescription = $ParameterDetails.Description
-                $paramHelp += $executionContext.InvokeCommand.ExpandString($helpParamStr)
             }
         }
     }
 
-    $paramblock = $paramBlock.TrimEnd().TrimEnd(",")
     $requiredParamList = $requiredParamList -join ', '
     $optionalParamList = $optionalParamList -join ', '
 
-    $paramblockWithAsJob = $AsJobParameterString
-    if($paramblock)
-    {
-        # Append AsJob parameter string
-        $paramblockWithAsJob = $paramblock + ",`r`n" + $AsJobParameterString
-    }
-
-    # Correct the alignment of parameters string to be added in the script block
-    $paramblock = $($paramblock -replace "        ","            ")
-
-    $paramObject = @{ ParamHelp = $paramhelp
-                      ParamBlock = $paramBlock
-                      ParamblockWithAsJob = $paramblockWithAsJob
+    $paramObject = @{ 
                       RequiredParamList = $requiredParamList
                       OptionalParamList = $optionalParamList
                     }
@@ -672,22 +648,8 @@ function Get-PathFunctionBody
     param
     (
         [Parameter(Mandatory=$true)]
-        [PSCustomObject]
-        $Responses,
-
-        [Parameter(Mandatory=$true)]
-        [String]
-        $operationId,
-
-        [Parameter(Mandatory=$true)]
-        [AllowEmptyString()]
-        [String]
-        $RequiredParamList,
-
-        [Parameter(Mandatory=$true)]
-        [AllowEmptyString()]
-        [String]
-        $OptionalParamList,
+        [PSCustomObject[]]
+        $ParameterSetDetails,
 
         [Parameter(Mandatory=$true)]
         [PSCustomObject]
@@ -700,31 +662,15 @@ function Get-PathFunctionBody
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
 
+    $outputTypeBlock = $null
     $Info = $swaggerDict['Info']
     $DefinitionList = $swaggerDict['Definitions']
     $UseAzureCsharpGenerator = $SwaggerMetaDict['UseAzureCsharpGenerator']
     $infoVersion = $Info['infoVersion']
     $modulePostfix = $Info['infoName']
-    $methodName = ''
-    $operations = ''
-    $opIdValues = $operationId -split '_',2 
-    if(-not $opIdValues -or ($opIdValues.count -ne 2)) {
-        $methodName = $operationId + 'WithHttpMessagesAsync'
-    } else {            
-        $operationName = $operationId.Split('_')[0]
-        $operationType = $operationId.Split('_')[1]
-        $operations = ".$operationName"
-        if ((-not $UseAzureCsharpGenerator) -and 
-            (Test-OperationNameInDefinitionList -Name $operationName -SwaggerDict $SwaggerDict))
-        { 
-            $operations = $operations + 'Operations'
-        }
-        $methodName = $operationType + 'WithHttpMessagesAsync'
-    }
-
+    $clientName = '$' + $modulePostfix
     $NameSpace = $info.namespace
     $fullModuleName = $Namespace + '.' + $modulePostfix
-    $clientName = '$' + $modulePostfix
     $apiVersion = $null
     $SubscriptionId = $null
     $BaseUri = $null
@@ -737,13 +683,50 @@ function Get-PathFunctionBody
         $apiVersion = $executionContext.InvokeCommand.ExpandString($ApiVersionStr)
     }
 
-    $responseBodyParams = @{
-                            responses = $Responses.PSObject.Properties
-                            namespace = $Namespace
-                            definitionList = $DefinitionList
-                        }
+    $parameterSetBasedMethodStr = ''
+    foreach ($parameterSetDetail in $ParameterSetDetails) {
+        $RequiredParamList = $parameterSetDetail.RequiredParamList
+        # Responses isn't actually used right now, but keeping this when we need to handle responses per parameter set
+        $Responses = $parameterSetDetail.Responses
+        $operationId = $parameterSetDetail.OperationId
+        $methodName = ''
+        $operations = ''
+        $opIdValues = $operationId -split '_',2 
+        if(-not $opIdValues -or ($opIdValues.count -ne 2)) {
+            $methodName = $operationId + 'WithHttpMessagesAsync'
+        } else {            
+            $operationName = $operationId.Split('_')[0]
+            $operationType = $operationId.Split('_')[1]
+            $operations = ".$operationName"
+            if ((-not $UseAzureCsharpGenerator) -and 
+                (Test-OperationNameInDefinitionList -Name $operationName -SwaggerDict $SwaggerDict))
+            { 
+                $operations = $operations + 'Operations'
+            }
+            $methodName = $operationType + 'WithHttpMessagesAsync'
+        }
 
-    $responseBody, $outputTypeBlock = Get-Response @responseBodyParams
+        $responseBodyParams = @{
+                                responses = $Responses.PSObject.Properties
+                                namespace = $Namespace
+                                definitionList = $DefinitionList
+                            }
+
+        $responseBody, $currentOutputTypeBlock = Get-Response @responseBodyParams
+
+        # For now, use the first non-empty output type
+        if ((-not $outputTypeBlock) -and $currentOutputTypeBlock) {
+            $outputTypeBlock = $currentOutputTypeBlock
+        }
+
+        if ($parameterSetBasedMethodStr) {
+            # Add the elseif condition
+            $parameterSetBasedMethodStr += $executionContext.InvokeCommand.ExpandString($parameterSetBasedMethodStrElseIfCase)
+        } else {
+            # Add the beginning if condition
+             $parameterSetBasedMethodStr += $executionContext.InvokeCommand.ExpandString($parameterSetBasedMethodStrIfCase)
+        }
+    }
 
     $body = $executionContext.InvokeCommand.ExpandString($functionBodyStr)
 
