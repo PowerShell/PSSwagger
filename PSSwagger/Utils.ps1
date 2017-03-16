@@ -57,7 +57,11 @@ function Invoke-AssemblyCompilation {
 
         [Parameter(Mandatory=$false)]
         [switch]
-        $BootstrapConsent
+        $BootstrapConsent,
+
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $TestBuild
     )
 
     # Append the content of each file into a single string
@@ -78,7 +82,7 @@ function Invoke-AssemblyCompilation {
 
     if ($CorePsEditionConstant -eq (Get-PSEdition)) {
         # Base framework references
-        $srcContent = ,'#define DNXCORE50' + $srcContent
+        $srcContent = ,'#define DNXCORE50' + ,'#define PORTABLE' + $srcContent
         $systemRefs = @('System.dll',
                         'System.Core.dll',
                         'System.Net.Http.dll',
@@ -104,7 +108,7 @@ function Invoke-AssemblyCompilation {
         $systemRefs = @('System.dll',
                         'System.Core.dll',
                         'System.Net.Http.dll',
-                        'System.Net.Http.WebRequest',
+                        'System.Net.Http.WebRequest.dll',
                         'System.Runtime.Serialization.dll',
                         'System.Xml.dll')
 
@@ -142,28 +146,54 @@ function Invoke-AssemblyCompilation {
 
     # Compile
     $oneSrc = $srcContent -join "`n"
-    
-    if ($OutputAssembly) {
-        Add-Type -TypeDefinition $oneSrc `
-                 -ReferencedAssemblies ($systemRefs + $extraRefs + $moduleRefs) `
-                 -OutputAssembly $OutputAssembly `
-                 -Language CSharp `
-                 -IgnoreWarnings `
-                 -WarningAction Ignore
+    $addTypeParams = @{
+        TypeDefinition = $oneSrc
+        Language = 'CSharp'
+        WarningAction = 'Ignore'
+    }
 
-        if ((Get-Item -Path $OutputAssembly).Length -eq 0kb) {
+    if ($CorePsEditionConstant -ne (Get-PSEdition)) {
+        $compilerParameters = New-Object -TypeName System.CodeDom.Compiler.CompilerParameters
+        $compilerParameters.CompilerOptions = '/debug:full'
+        if ($TestBuild) {
+            $compilerParameters.IncludeDebugInformation = $true
+        } else {
+            $compilerParameters.CompilerOptions += ' /optimize+'
+        }
+    
+        $compilerParameters.WarningLevel = 3
+        foreach ($ref in ($systemRefs + $extraRefs + $moduleRefs)) {
+            $null = $compilerParameters.ReferencedAssemblies.Add($ref)
+        }
+        $addTypeParams['CompilerParameters'] = $compilerParameters
+    } else {
+        $addTypeParams['ReferencedAssemblies'] = ($systemRefs + $extraRefs + $moduleRefs)
+    }
+
+    if ($OutputAssembly) {
+        if ($addTypeParams.ContainsKey('CompilerParameters')) {
+            $addTypeParams['CompilerParameters'].OutputAssembly = $OutputAssembly
+        } else {
+            $addTypeParams['OutputAssembly'] = $OutputAssembly
+            
+        }
+
+        $moduleRefs | ForEach-Object { Add-Type -Path $_ -ErrorAction Ignore }
+        $extraRefs | ForEach-Object { Add-Type -Path $_ -ErrorAction Ignore }
+        Add-Type @addTypeParams 
+
+        if ((-not (Test-Path -Path $OutputAssembly)) -or ((Get-Item -Path $OutputAssembly).Length -eq 0kb)) {
             return $false
         }
     } else {
+        if ($addTypeParams.ContainsKey('CompilerParameters')) {
+            $addTypeParams['CompilerParameters'].GenerateInMemory = $true
+        }
+
         $moduleRefs | ForEach-Object { Add-Type -Path $_ -ErrorAction Ignore }
         $extraRefs | ForEach-Object { Add-Type -Path $_ -ErrorAction Ignore }
         
-        Add-Type -TypeDefinition $oneSrc `
-                 -ReferencedAssemblies ($systemRefs + $extraRefs + $moduleRefs) `
-                 -Language CSharp `
-                 -IgnoreWarnings `
-                 -WarningAction Ignore
-
+        Add-Type @addTypeParams 
     }
         
     return $true

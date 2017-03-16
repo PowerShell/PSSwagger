@@ -52,6 +52,9 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwa
 
 .PARAMETER  InstallToolsForAllUsers
   User wants to install local tools for all users.
+  
+.PARAMETER  TestBuild
+  Switch to disable optimizations during build of full CLR binary component.
 #>
 function New-PSSwaggerModule
 {
@@ -95,7 +98,11 @@ function New-PSSwaggerModule
 
         [Parameter()]
         [switch]
-        $InstallToolsForAllUsers
+        $InstallToolsForAllUsers,
+
+        [Parameter()]
+        [switch]
+        $TestBuild
     )
 
     if ($SkipAssemblyGeneration -and $PowerShellCorePath) {
@@ -105,6 +112,11 @@ function New-PSSwaggerModule
 
     if ($SkipAssemblyGeneration -and $IncludeCoreFxAssembly) {
         $message = $LocalizedData.ParameterSetNotAllowed -f ('IncludeCoreFxAssembly', 'SkipAssemblyGeneration')
+        throw $message
+    }
+
+    if ($SkipAssemblyGeneration -and $TestBuild) {
+        $message = $LocalizedData.ParameterSetNotAllowed -f ('TestBuild', 'SkipAssemblyGeneration')
         throw $message
     }
 
@@ -203,7 +215,8 @@ function New-PSSwaggerModule
                                                     -SkipAssemblyGeneration:$SkipAssemblyGeneration `
                                                     -PowerShellCorePath $PowerShellCorePath `
                                                     -InstallToolsForAllUsers:$InstallToolsForAllUsers `
-                                                    -UserConsent:$userConsent
+                                                    -UserConsent:$userConsent `
+                                                    -TestBuild:$TestBuild
 
     # Prepare dynamic compilation
     Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Utils.ps1") (Join-Path -Path $outputDirectory -ChildPath "Utils.ps1")
@@ -311,7 +324,11 @@ function ConvertTo-CsharpCode
 
         [Parameter()]
         [switch]
-        $UserConsent
+        $UserConsent,
+
+        [Parameter()]
+        [switch]
+        $TestBuild
     )
 
     Write-Verbose -Message $LocalizedData.GenerateCodeUsingAutoRest
@@ -369,7 +386,8 @@ function ConvertTo-CsharpCode
                                                -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator ``
                                                -RequiredAzureRestVersion 3.3.4 ``
                                                -AllUsers:`$$InstallToolsForAllUsers ``
-                                               -BootstrapConsent:`$$UserConsent"
+                                               -BootstrapConsent:`$$UserConsent ``
+                                               -TestBuild:`$$TestBuild"
 
         $success = powershell -command "& {$command}"
         if ((Test-AssemblyCompilationSuccess -Output ($success | Out-String))) {
@@ -421,7 +439,7 @@ function Test-AssemblyCompilationSuccess {
 
     Write-Verbose -Message ($LocalizedData.AssemblyCompilationResult -f ($Output))
     $tokens = $Output.Split(' ')
-    return ($tokens[$tokens.Count-1].Trim() -eq 'True')
+    return ($tokens[$tokens.Count-1].Trim().EndsWith('True'))
 }
 
 function New-ModuleManifestUtility
