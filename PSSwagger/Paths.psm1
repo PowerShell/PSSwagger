@@ -65,31 +65,43 @@ function Get-SwaggerSpecPathInfo
             $commandNames = Get-PathCommandName -OperationId $operationId
         }
 
-        $commandNames | ForEach-Object {
-            $FunctionDetails = @{}
-            $FunctionDetails['CommandName'] = $_
-            $FunctionDetails['ParamHelp'] = $paramObject['ParamHelp']
-            $FunctionDetails['Paramblock'] = $paramObject['ParamBlock']
-            $FunctionDetails['ParamblockWithAsJob'] = $paramObject['ParamBlockWithAsJob']
-            $FunctionDetails['RequiredParamList'] = $paramObject['RequiredParamList']
-            $FunctionDetails['OptionalParamList'] = $paramObject['OptionalParamList']
-
-        $functionBodyParams = @{
+        $ParameterSetDetail = @{
+            Description = $FunctionDescription
+            ParameterDetails = $paramInfo
+            RequiredParamList = $paramObject['RequiredParamList']
+            OptionalParamList = $paramObject['OptionalParamList']
             Responses = $responses
-            operationId = $operationId
-            RequiredParamList = $FunctionDetails['RequiredParamList']
-            OptionalParamList = $FunctionDetails['OptionalParamList']
-            SwaggerDict = $SwaggerDict
-            SwaggerMetaDict = $SwaggerMetaDict
+            OperationId = $operationId
+            Priority = 100 # Default
         }
 
-            $bodyObject = Get-PathFunctionBody @functionBodyParams
-            
-            $FunctionDetails['Body'] = $bodyObject.body
-            $FunctionDetails['OutputTypeBlock'] = $bodyObject.OutputTypeBlock
-            $FunctionDetails['Description'] = $FunctionDescription
-            $FunctionDetails['OperationId'] = $operationId
-            $FunctionDetails['Responses'] = $responses
+        # There's probably a better way to do this...
+        $opIdValues = $operationId -split "_",2
+        if(-not $opIdValues -or ($opIdValues.Count -ne 2)) {
+            $approximateVerb = $operationId
+        } else {
+            $approximateVerb = $opIdValues[1]
+        }
+
+        if ($approximateVerb.StartsWith("List")) {
+            $ParameterSetDetail.Priority = 0
+        }
+
+        $commandNames | ForEach-Object {
+            $FunctionDetails = @{}
+            if ($PathFunctionDetails.ContainsKey($_)) {
+                $FunctionDetails = $PathFunctionDetails[$_]
+            } else {
+                $FunctionDetails['CommandName'] = $_
+            }
+
+            $ParameterSetDetails = @()
+            if ($FunctionDetails.ContainsKey('ParameterSetDetails')) {
+                $ParameterSetDetails = $FunctionDetails['ParameterSetDetails']
+            } 
+
+            $ParameterSetDetails += $ParameterSetDetail
+            $FunctionDetails['ParameterSetDetails'] = $ParameterSetDetails
             $PathFunctionDetails[$_] = $FunctionDetails
         }
     }
@@ -106,16 +118,20 @@ function New-SwaggerSpecPathCommand
 
         [Parameter(Mandatory = $true)]
         [hashtable]
-        $SwaggerMetaDict
+        $SwaggerMetaDict,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]
+        $SwaggerDict
     )
     
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
     $FunctionsToExport = @()
-
     $PathFunctionDetails.Keys | ForEach-Object {
         $FunctionDetails = $PathFunctionDetails[$_]
         $FunctionsToExport += New-SwaggerPath -FunctionDetails $FunctionDetails `
-                                                -SwaggerMetaDict $SwaggerMetaDict
+                                              -SwaggerMetaDict $SwaggerMetaDict `
+                                              -SwaggerDict $SwaggerDict
     }
 
     return $FunctionsToExport
@@ -132,23 +148,132 @@ function New-SwaggerPath
 
         [Parameter(Mandatory = $true)]
         [hashtable]
-        $SwaggerMetaDict
+        $SwaggerMetaDict,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]
+        $SwaggerDict
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
 
     $commandName = $FunctionDetails.CommandName
-    $description = $FunctionDetails.Description
+    $parameterSetDetails = $FunctionDetails['ParameterSetDetails']
+
+    $description = ''
+    $paramBlock = ''
+    $paramHelp = ''
+    $parametersToAdd = @{}
+    $parameterHitCount = @{}
+    foreach ($parameterSetDetail in $parameterSetDetails) {
+        foreach ($parameterDetails in $parameterSetDetail.ParameterDetails.Values) {
+            $parameterName = $parameterDetails.Name
+            if($parameterDetails.IsParameter) {
+                if (-not $parameterHitCount.ContainsKey($parameterName)) {
+                    $parameterHitCount[$parameterName] = 0
+                }
+
+                $parameterHitCount[$parameterName]++
+                if (-not ($parametersToAdd.ContainsKey($parameterName))) {
+                    $parametersToAdd[$parameterName] = @{
+                        # We can grab details like Type, Name, ValidateSet from any of the parameter definitions
+                        Details = $parameterDetails
+                        ParameterSetInfo = @(@{
+                            Name = $parameterSetDetail.OperationId
+                            Mandatory = $parameterDetails.Mandatory
+                        })
+                    }
+                } else {
+                    $parametersToAdd[$parameterName].ParameterSetInfo += @{
+                                                                                Name = $parameterSetDetail.OperationId
+                                                                                Mandatory = $parameterDetails.Mandatory
+                                                                          }
+                }
+            }
+        }
+    }
+
+    $nonUniqueParameterSets = @()
+    foreach ($parameterSetDetail in $parameterSetDetails) {
+        $isUnique = $false
+        foreach ($parameterDetails in $parameterSetDetail.ParameterDetails.Values) {
+            if ($parameterHitCount[$parameterDetails.Name] -eq 1) {
+                $isUnique = $true
+                break
+            }
+        }
+        if (-not $isUnique) {
+            # At this point none of the parameters in this set are unique
+            $nonUniqueParameterSets += $parameterSetDetail
+        }
+    }
+
+    # For description, we're currently using the default parameter set's description, since concatenating multiple descriptions doesn't ever really work out well.
+    if ($nonUniqueParameterSets.Length -gt 1) {
+        # Pick the highest priority set among $nonUniqueParameterSets, but really it doesn't matter, cause...
+        # Print warning that this generated cmdlet has ambiguous parameter sets
+        $defaultParameterSet = $nonUniqueParameterSets | Sort-Object -Property Priority | Select-Object -First 1
+        $DefaultParameterSetName = $defaultParameterSet.OperationId
+        $description = $defaultParameterSet.Description
+        Write-Warning -Message ($LocalizedDataCmdletHasAmbiguousParameterSets -f ($commandName))
+    } elseif ($nonUniqueParameterSets.Length -eq 1) {
+        # If there's only one non-unique, we can prevent errors by making this the default
+        $DefaultParameterSetName = $nonUniqueParameterSets[0].OperationId
+        $description = $nonUniqueParameterSets[0].Description
+    } else {
+        # Pick the highest priority set among all sets
+        $defaultParameterSet = $parameterSetDetails | Sort-Object -Property Priority | Select-Object -First 1
+        $DefaultParameterSetName = $defaultParameterSet.OperationId
+        $description = $defaultParameterSet.Description
+    }
+    
+    foreach ($parameterToAdd in $parametersToAdd.Values) {
+        $parameterName = $parameterToAdd.Details.Name
+        $AllParameterSetsString = ''
+        foreach ($parameterSetInfo in $parameterToAdd.ParameterSetInfo) {
+            $isParamMandatory = $parameterSetInfo.Mandatory
+            $ParameterSetPropertyString = ", ParameterSetName = '$($parameterSetInfo.Name)'"
+            if ($AllParameterSetsString) {
+                # Two tabs
+                $AllParameterSetsString += [Environment]::NewLine + "        " + $executionContext.InvokeCommand.ExpandString($parameterAttributeString)
+            } else {
+                $AllParameterSetsString = $executionContext.InvokeCommand.ExpandString($parameterAttributeString)
+            }
+        }
+
+        $paramName = "`$$parameterName" 
+        $paramType = $parameterToAdd.Details.Type
+
+        $ValidateSetDefinition = $null
+        if ($parameterToAdd.Details.ValidateSet)
+        {
+            $ValidateSetString = $parameterToAdd.Details.ValidateSet
+            $ValidateSetDefinition = $executionContext.InvokeCommand.ExpandString($ValidateSetDefinitionString)
+        }
+
+        $paramBlock += $executionContext.InvokeCommand.ExpandString($parameterDefString)
+        $pDescription = $parameterToAdd.Details.Description
+        $paramHelp += $executionContext.InvokeCommand.ExpandString($helpParamStr)
+    }
+
+    $paramBlock = $paramBlock.TrimEnd().TrimEnd(",")
     $commandHelp = $executionContext.InvokeCommand.ExpandString($helpDescStr)
+    if ($paramBlock) {
+        $paramblockWithAsJob = $paramBlock + ",`r`n" + $AsJobParameterString
+    } else {
+        $paramblockWithAsJob = $AsJobParameterString
+    }
+    
+    $functionBodyParams = @{
+                ParameterSetDetails = $FunctionDetails['ParameterSetDetails']
+                SwaggerDict = $SwaggerDict
+                SwaggerMetaDict = $SwaggerMetaDict
+            }
 
-    $paramHelp = $FunctionDetails.ParamHelp
-    $paramblock = $FunctionDetails.ParamBlock
-    $paramblockWithAsJob = $FunctionDetails.ParamBlockWithAsJob
-    $requiredParamList = $FunctionDetails.RequiredParamList
-    $optionalParamList = $FunctionDetails.OptionalParamList
+    $bodyObject = Get-PathFunctionBody @functionBodyParams
 
-    $body = $FunctionDetails.Body
-    $outputTypeBlock = $FunctionDetails.OutputTypeBlock
+    $body = $bodyObject.Body
+    $outputTypeBlock = $bodyObject.OutputTypeBlock
 
     $CommandString = $executionContext.InvokeCommand.ExpandString($advFnSignatureForPath)
     $GeneratedCommandsPath = Join-Path -Path (Join-Path -Path $SwaggerMetaDict['outputDirectory'] -ChildPath $GeneratedCommandsName) `
