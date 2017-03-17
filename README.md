@@ -18,6 +18,7 @@ New-PSSwaggerModule -SwaggerSpecUri <uri> -Path <string> -ModuleName <string> [-
 | SkipAssemblyGeneration      | Skip compiling the generated module's C# assembly during generation of module (including CoreFX, even if specified) |
 | PowerShellCorePath      | Path to PowerShell.exe for PowerShell Core. Only required if not installed via MSI in the default path |
 | IncludeCoreFxAssembly      | Switch to additionally compile the module's binary component for core CLR |
+| TestBuild      | Switch to enable debug compilation of full CLR binary component. Effects: disables compiler optimization |
 
 ## Supported Platforms
 | Usage | Platforms |
