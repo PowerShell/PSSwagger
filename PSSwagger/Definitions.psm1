@@ -473,9 +473,11 @@ function New-SwaggerDefinitionCommand
         # Also AutoRest doesn't generate a Model class for the definitions declared as x_ms_client_flatten for other definitions.
         if(-not $FunctionDetails.IsUsedAs_x_ms_client_flatten -and $FunctionDetails.ParametersTable.Count)
         {
-            $FunctionsToExport += New-SwaggerSpecDefinitionCommand -FunctionDetails $FunctionDetails `
-                                                                   -GeneratedCommandsPath $SwaggerDefinitionCommandsPath `
-                                                                   -Namespace $Namespace
+            if ($FunctionDetails.ContainsKey('GenerateDefinitionCmdlet') -and ($FunctionDetails['GenerateDefinitionCmdlet'] -eq $true)) {
+                $FunctionsToExport += New-SwaggerSpecDefinitionCommand -FunctionDetails $FunctionDetails `
+                                                                    -GeneratedCommandsPath $SwaggerDefinitionCommandsPath `
+                                                                    -Namespace $Namespace
+            }
 
             New-SwaggerDefinitionFormatFile -FunctionDetails $FunctionDetails `
                                             -FormatFilesPath $FormatFilesPath `
