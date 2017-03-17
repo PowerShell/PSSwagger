@@ -330,7 +330,7 @@ function Get-ParamType
     $ValidateSetString = $null
     $isParameter = $true
     $GlobalParameterDetails = $null
-
+    $ReferenceTypeName = $null
     if((Get-Member -InputObject $ParameterJsonObject -Name 'Type') -and $ParameterJsonObject.Type)
     {
         $paramType = $ParameterJsonObject.Type
@@ -375,18 +375,17 @@ function Get-ParamType
         # By applying the x-ms-client-flatten extension, you move the inner properties to the top level of your definition.
 
         $ReferenceParameterValue = $ParameterJsonObject.'$ref'
-        $ReferenceDefinitionName = $ReferenceParameterValue.Substring( $( $ReferenceParameterValue.LastIndexOf('/') ) + 1 )
-
+        $ReferenceTypeName = $ReferenceParameterValue.Substring( $( $ReferenceParameterValue.LastIndexOf('/') ) + 1 )
         $ReferencedFunctionDetails = @{}
-        if($DefinitionFunctionsDetails.ContainsKey($ReferenceDefinitionName))
+        if($DefinitionFunctionsDetails.ContainsKey($ReferenceTypeName))
         {
-            $ReferencedFunctionDetails = $DefinitionFunctionsDetails[$ReferenceDefinitionName]
+            $ReferencedFunctionDetails = $DefinitionFunctionsDetails[$ReferenceTypeName]
         }
 
-        $ReferencedFunctionDetails['Name'] = $ReferenceDefinitionName
+        $ReferencedFunctionDetails['Name'] = $ReferenceTypeName
         $ReferencedFunctionDetails['IsUsedAs_x_ms_client_flatten'] = $true
 
-        $DefinitionFunctionsDetails[$ReferenceDefinitionName] = $ReferencedFunctionDetails
+        $DefinitionFunctionsDetails[$ReferenceTypeName] = $ReferencedFunctionDetails
     }
     elseif ( (Get-Member -InputObject $ParameterJsonObject -Name '$ref') -and ($ParameterJsonObject.'$ref') )
     {
@@ -418,7 +417,8 @@ function Get-ParamType
             elseif($ReferenceParts[1] -eq 'Definitions')
             {
                 #/definitions/
-                $paramType = $DefinitionTypeNamePrefix + $ReferenceParts[2]
+                $ReferenceTypeName = $ReferenceParts[2]
+                $paramType = $DefinitionTypeNamePrefix + $ReferenceTypeName
             }
         }
     }
@@ -426,7 +426,8 @@ function Get-ParamType
             (Get-Member -InputObject $ParameterJsonObject.Schema -Name '$ref') -and ($ParameterJsonObject.Schema.'$ref') )
     {
         $ReferenceParameterValue = $ParameterJsonObject.Schema.'$ref'
-        $paramType = $DefinitionTypeNamePrefix + $ReferenceParameterValue.Substring( $( $ReferenceParameterValue.LastIndexOf('/') ) + 1 )
+        $ReferenceTypeName = $ReferenceParameterValue.Substring( $( $ReferenceParameterValue.LastIndexOf('/') ) + 1 )
+        $paramType = $DefinitionTypeNamePrefix + $ReferenceTypeName
     }
     else 
     {
@@ -451,6 +452,10 @@ function Get-ParamType
             $ValidateSet = $ParameterJsonObject.Enum
             $ValidateSetString = "'$($ValidateSet -join "', '")'"
         }
+    }
+    
+    if ($ReferenceTypeName) {
+        $DefinitionFunctionsDetails[$ReferenceTypeName]['GenerateDefinitionCmdlet'] = $true
     }
 
     return @{
