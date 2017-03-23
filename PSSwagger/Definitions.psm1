@@ -361,7 +361,7 @@ function New-SwaggerDefinitionCommand
         $SwaggerMetaDict,
 
         [Parameter(Mandatory = $true)]
-        [String]
+        [string]
         $NameSpace
     )
 
@@ -548,7 +548,6 @@ function New-SwaggerSpecDefinitionCommand
     $body = $executionContext.InvokeCommand.ExpandString($createObjectStr)
 
     $CommandString = $executionContext.InvokeCommand.ExpandString($advFnSignatureForDefintion)
-    Write-Verbose -Message $CommandString
 
     if(-not (Test-Path -Path $GeneratedCommandsPath -PathType Container)) {
         $null = New-Item -Path $GeneratedCommandsPath -ItemType Directory
@@ -556,6 +555,8 @@ function New-SwaggerSpecDefinitionCommand
 
     $CommandFilePath = Join-Path -Path $GeneratedCommandsPath -ChildPath "$CommandName.ps1"
     Out-File -InputObject $CommandString -FilePath $CommandFilePath -Encoding ascii -Force -Confirm:$false -WhatIf:$false
+
+    Write-Verbose -Message ($LocalizedData.GeneratedDefinitionCommand -f ($commandName, $FunctionDetails.Name))
 
     return $CommandName
 }
@@ -615,4 +616,5 @@ function New-SwaggerDefinitionFormatFile
     }
     $FormatFilePath = Join-Path -Path $FormatFilesPath -ChildPath "$($FunctionDetails.Name).ps1xml"
     Out-File -InputObject $FormatViewDefinition -FilePath $FormatFilePath -Encoding ascii -Force -Confirm:$false -WhatIf:$false
+    Write-Verbose -Message ($LocalizedData.GeneratedFormatFile -f $FunctionDetails.Name)
 }

@@ -4,17 +4,17 @@ Tool to generate PowerShell Cmdlets using Swagger based specifications
 
 ## Syntax
 
-New-PSSwaggerModule -SwaggerSpecPath <string> -Path <string> -ModuleName <string> [-Version <version>] [-UseAzureCsharpGenerator] [-SkipAssemblyGeneration] [-PowerShellCorePath <string>] [-IncludeCoreFxAssembly] [<CommonParameters>]
+New-PSSwaggerModule -SwaggerSpecPath <string> -Path <string> -Name <string> [-Version <version>] [-UseAzureCsharpGenerator] [-SkipAssemblyGeneration] [-PowerShellCorePath <string>] [-IncludeCoreFxAssembly] [-DefaultCommandPrefix <string>] [<CommonParameters>]
 
-New-PSSwaggerModule -SwaggerSpecUri <uri> -Path <string> -ModuleName <string> [-Version <version>] [-UseAzureCsharpGenerator] [-SkipAssemblyGeneration] [-PowerShellCorePath <string>] [-IncludeCoreFxAssembly] [<CommonParameters>]
-
+New-PSSwaggerModule -SwaggerSpecUri <uri> -Path <string> -Name <string> [-Version <version>] [-UseAzureCsharpGenerator] [-SkipAssemblyGeneration] [-PowerShellCorePath <string>] [-IncludeCoreFxAssembly] [-DefaultCommandPrefix <string>] [<CommonParameters>]
 | Parameter       | Description                           |
 | ----------------| ------------------------------------- |
 | SwaggerSpecPath | Full Path to a Swagger based JSON spec|
 | Path            | Full Path to a folder where the commands/modules are exported to |
-| ModuleName      | Name of the module to be generated. A folder with this name will be created in the location specified by Path parameter |
+| Name            | Name of the module to be generated. A folder with this name will be created in the location specified by Path parameter |
 | Version  | Version of the module to be generated. Default value is '0.0.1' |
 | SwaggerSpecUri  | URI to the swagger spec |
+| DefaultCommandPrefix  | Prefix value to be prepended to cmdlet noun or to cmdlet name without verb. |
 | SkipAssemblyGeneration      | Skip compiling the generated module's C# assembly during generation of module (including CoreFX, even if specified) |
 | PowerShellCorePath      | Path to PowerShell.exe for PowerShell Core. Only required if not installed via MSI in the default path |
 | IncludeCoreFxAssembly      | Switch to additionally compile the module's binary component for core CLR |
@@ -53,8 +53,8 @@ New-PSSwaggerModule -SwaggerSpecUri <uri> -Path <string> -ModuleName <string> [-
   Import-Module .\PSSwagger\PSSwagger.psd1
   $param = @{
     SwaggerSpecUri = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-batch/2015-12-01/swagger/BatchManagement.json'
-    Path           = 'C:\Temp\generatedmodule\'
-    ModuleName     = 'Generated.AzureRM.BatchManagement'
+    Path           = 'C:\GeneratedModules\'
+    Name           = 'AzBatchManagement'
     UseAzureCsharpGenerator = $true
   }
   New-PSSwaggerModule @param
@@ -66,8 +66,8 @@ Before importing that module and using it, you need to import `Generated.Azure.C
     
 ```powershell
 Import-Module .\PSSwagger\Generated.Azure.Common.Helpers
-Import-Module "$($param.Path)\$($param.ModuleName)"
-Get-Command -Module $param.ModuleName
+Import-Module "$($param.Path)\$($param.Name)"
+Get-Command -Module $param.Name
 ```
 
 ## Dynamic generation of C# assembly

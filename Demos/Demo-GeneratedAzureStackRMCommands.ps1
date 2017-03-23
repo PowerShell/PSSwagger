@@ -35,7 +35,7 @@ $ModuleName = 'Generated.AzureStackRM.FabricResourceProvider'
 $param = @{
     SwaggerSpecUri  = 'C:\code\swaggerrelated\JsonFiles\SwaggerTransformed.json'
     Path            = $TargetPath
-    ModuleName      = $ModuleName
+    Name            = $ModuleName
     UseAzureCsharpGenerator = $false
 }
 New-PSSwaggerModule @param

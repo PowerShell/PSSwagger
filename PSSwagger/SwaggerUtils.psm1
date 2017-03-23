@@ -29,7 +29,7 @@ function ConvertTo-SwaggerDictionary {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory=$true)]
-        [String]
+        [string]
         $SwaggerSpecPath,
 
         [Parameter(Mandatory=$true)]
@@ -38,7 +38,11 @@ function ConvertTo-SwaggerDictionary {
 
         [Parameter(Mandatory=$true)]
         [Version]
-        $ModuleVersion
+        $ModuleVersion,
+
+        [Parameter(Mandatory = $false)]
+        [string]
+        $DefaultCommandPrefix
     )
     
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -50,6 +54,7 @@ function ConvertTo-SwaggerDictionary {
         Throw $LocalizedData.InvalidSwaggerSpecification
     }
     $swaggerDict['Info'] = Get-SwaggerInfo -Info $swaggerObject.info -ModuleName $ModuleName -ModuleVersion $ModuleVersion
+    $swaggerDict['Info']['DefaultCommandPrefix'] = $DefaultCommandPrefix
 
     $swaggerParameters = $null
     if(Get-Member -InputObject $swaggerObject -Name 'parameters') {
@@ -323,11 +328,11 @@ function Get-ParamType
         $ParameterJsonObject,
 
         [Parameter(Mandatory=$true)]
-        [String]
+        [string]
         $NameSpace,
 
         [Parameter(Mandatory=$true)]
-        [String]
+        [string]
         [AllowEmptyString()]
         $ParameterName,
 
@@ -508,7 +513,7 @@ function Get-PathCommandName
     param
     (
         [Parameter(Mandatory=$true)]
-        [String]
+        [string]
         $OperationId
     )
 
@@ -552,7 +557,7 @@ function Get-PathCommandName
             # This condition happens when there aren't any suffixes
             $cmdVerb = $cmdVerbMap[$cmdVerb] -Split ',' | ForEach-Object { if($_.Trim()){ $_.Trim() } }
             $cmdVerb | ForEach-Object {
-                $message = $LocalizedData.ReplacedVerb -f ($_, $cmdVerb)
+                $message = $LocalizedData.ReplacedVerb -f ($_, ($cmdVerb -join ','))
                 Write-Verbose -Message $message
             }
         }
@@ -801,7 +806,7 @@ function Get-OutputType
         $Schema,
 
         [Parameter(Mandatory=$true)]
-        [String]
+        [string]
         $NameSpace, 
 
         [Parameter(Mandatory=$true)]
@@ -887,7 +892,7 @@ function Get-Response
         $Responses,
         
         [Parameter(Mandatory=$true)]
-        [String]
+        [string]
         $NameSpace, 
 
         [Parameter(Mandatory=$true)]        

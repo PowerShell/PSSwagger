@@ -35,11 +35,14 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwa
 .PARAMETER  Path
   Full Path to a file where the commands are exported to.
 
-.PARAMETER  ModuleName
+.PARAMETER  Name
   Name of the generated PowerShell module.
 
 .PARAMETER  Version
   Version of the generated PowerShell module.
+
+.PARAMETER  DefaultCommandPrefix
+  Prefix value to be prepended to cmdlet noun or to cmdlet name without verb.
 
 .PARAMETER  SkipAssemblyGeneration
   Switch to skip precompiling the module's binary component for full CLR.
@@ -61,7 +64,7 @@ function New-PSSwaggerModule
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true, ParameterSetName = 'SwaggerPath')]
-        [String] 
+        [string] 
         $SwaggerSpecPath,
 
         [Parameter(Mandatory = $true, ParameterSetName = 'SwaggerURI')]
@@ -69,16 +72,20 @@ function New-PSSwaggerModule
         $SwaggerSpecUri,
 
         [Parameter(Mandatory = $true)]
-        [String]
+        [string]
         $Path,
 
         [Parameter(Mandatory = $true)]
-        [String]
-        $ModuleName,
+        [string]
+        $Name,
 
         [Parameter(Mandatory = $false)]
         [Version]
         $Version = '0.0.1',
+
+        [Parameter(Mandatory = $false)]
+        [string]
+        $DefaultCommandPrefix,
 
         [Parameter()]
         [switch]
@@ -89,7 +96,7 @@ function New-PSSwaggerModule
         $SkipAssemblyGeneration,
 
         [Parameter()]
-        [String]
+        [string]
         $PowerShellCorePath,
 
         [Parameter()]
@@ -195,17 +202,23 @@ function New-PSSwaggerModule
     $jsonObject = ConvertFrom-Json -InputObject ((Get-Content -Path $SwaggerSpecPath) -join [Environment]::NewLine) -ErrorAction Stop
 
     # Parse the JSON and populate the dictionary
-    $swaggerDict = ConvertTo-SwaggerDictionary -SwaggerSpecPath $SwaggerSpecPath -ModuleName $ModuleName -ModuleVersion $Version
+    $ConvertToSwaggerDictionary_params = @{
+        SwaggerSpecPath = $SwaggerSpecPath
+        ModuleName = $Name
+        ModuleVersion = $Version
+        DefaultCommandPrefix = $DefaultCommandPrefix
+    }
+    $swaggerDict = ConvertTo-SwaggerDictionary @ConvertToSwaggerDictionary_params
     $nameSpace = $swaggerDict['info'].NameSpace
 
     if($PSVersionTable.PSVersion -lt '5.0.0') {
-        if (-not $outputDirectory.EndsWith($ModuleName, [System.StringComparison]::OrdinalIgnoreCase)) {
-            $outputDirectory = Join-Path -Path $outputDirectory -ChildPath $ModuleName
+        if (-not $outputDirectory.EndsWith($Name, [System.StringComparison]::OrdinalIgnoreCase)) {
+            $outputDirectory = Join-Path -Path $outputDirectory -ChildPath $Name
         }
     } else {
-        $ModuleNameandVersionFolder = Join-Path -Path $ModuleName -ChildPath $Version
+        $ModuleNameandVersionFolder = Join-Path -Path $Name -ChildPath $Version
 
-        if ($outputDirectory.EndsWith($ModuleName, [System.StringComparison]::OrdinalIgnoreCase)) {
+        if ($outputDirectory.EndsWith($Name, [System.StringComparison]::OrdinalIgnoreCase)) {
             $outputDirectory = Join-Path -Path $outputDirectory -ChildPath $ModuleVersion
         } elseif (-not $outputDirectory.EndsWith($ModuleNameandVersionFolder, [System.StringComparison]::OrdinalIgnoreCase)) {
             $outputDirectory = Join-Path -Path $outputDirectory -ChildPath $ModuleNameandVersionFolder
@@ -291,7 +304,7 @@ function New-PSSwaggerModule
                                                         -SwaggerMetaDict $swaggerMetaDict `
                                                         -NameSpace $nameSpace
 
-    $RootModuleFilePath = Join-Path $outputDirectory "$ModuleName.psm1"
+    $RootModuleFilePath = Join-Path $outputDirectory "$Name.psm1"
     Out-File -FilePath $RootModuleFilePath `
              -InputObject $ExecutionContext.InvokeCommand.ExpandString($RootModuleContents)`
              -Encoding ascii `
@@ -303,7 +316,7 @@ function New-PSSwaggerModule
                               -FunctionsToExport $FunctionsToExport `
                               -Info $swaggerDict['info']
 
-    Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Generated.Resources.psd1") (Join-Path -Path "$outputDirectory" -ChildPath "$ModuleName.Resources.psd1") -Force
+    Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Generated.Resources.psd1") (Join-Path -Path "$outputDirectory" -ChildPath "$Name.Resources.psd1") -Force
 }
 
 #region Module Generation Helpers
@@ -325,7 +338,7 @@ function ConvertTo-CsharpCode
         $SkipAssemblyGeneration,
 
         [Parameter()]
-        [String]
+        [string]
         $PowerShellCorePath,
 
         [Parameter()]
@@ -472,12 +485,20 @@ function New-ModuleManifestUtility
                                       -File `
                                       -ErrorAction Ignore | Foreach-Object { $_.FullName.Replace($Path, '.') }
 
-    New-ModuleManifest -Path "$(Join-Path -Path $Path -ChildPath $Info.ModuleName).psd1" `
-                       -ModuleVersion $Info.Version `
-                       -RequiredModules @('Generated.Azure.Common.Helpers') `
-                       -RootModule "$($Info.ModuleName).psm1" `
-                       -FormatsToProcess $FormatsToProcess `
-                       -FunctionsToExport $FunctionsToExport
+    $NewModuleManifest_params = @{
+        Path = "$(Join-Path -Path $Path -ChildPath $Info.ModuleName).psd1"
+        ModuleVersion = $Info.Version
+        RequiredModules = @('Generated.Azure.Common.Helpers')
+        RootModule = "$($Info.ModuleName).psm1"
+        FormatsToProcess = $FormatsToProcess
+        FunctionsToExport = $FunctionsToExport
+    }
+    if($Info.DefaultCommandPrefix)
+    {
+        $NewModuleManifest_params['DefaultCommandPrefix'] = $Info.DefaultCommandPrefix
+    }
+
+    New-ModuleManifest @NewModuleManifest_params
 }
 
 #endregion

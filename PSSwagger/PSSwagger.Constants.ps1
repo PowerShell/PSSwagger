@@ -28,7 +28,7 @@ $parameterDefString = @'
 
 $RootModuleContents = @'
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
-Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename $ModuleName.Resources.psd1
+Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename $Name.Resources.psd1
 . (Join-Path -Path "`$PSScriptRoot" -ChildPath "Utils.ps1")
 
 if ('Core' -eq (Get-PSEdition)) {

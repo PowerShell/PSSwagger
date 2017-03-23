@@ -37,5 +37,8 @@ ConvertFrom-StringData @'
     AssemblyCompilationResult=Result of assembly compilation: {0}
     CmdletHasAmbiguousParameterSets=The generated cmdlet '{0}' contains ambiguous parameter sets. This is due to automatic merging of two or more similar paths.
     PathNotFound=Cannot find the path '{0}' because it does not exist.
+    GeneratedPathCommand=Generated path command '{0}'.
+    GeneratedDefinitionCommand=Generated command '{0}' for the definition name '{1}'.
+    GeneratedFormatFile=Generated output format file for the definition name '{0}'.
 ###PSLOC
 '@
