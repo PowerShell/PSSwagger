@@ -608,7 +608,6 @@ function New-SwaggerDefinitionFormatFile
     $TableColumnHeaders = $null
     $TableColumnItems = $TableColumnItemsList -join "`r`n"
     $FormatViewDefinition = $FormatViewDefinitionStr -f ($ViewName, $ViewTypeName, $TableColumnHeaders, $TableColumnItems)
-    Write-Verbose -Message $FormatViewDefinition
 
     if(-not (Test-Path -Path $FormatFilesPath -PathType Container))
     {

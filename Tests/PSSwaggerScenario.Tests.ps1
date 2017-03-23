@@ -176,7 +176,7 @@ Describe "Get/List tests" -Tag ScenarioTest {
         }
 
         It "List has no parameters and no corresponding Get" {
-            $results = Get-Tags
+            $results = Get-Tag
             $results.Length | should be 2
         }
     }
