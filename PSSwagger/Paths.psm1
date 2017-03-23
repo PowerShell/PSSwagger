@@ -283,9 +283,10 @@ function New-SwaggerPath
         $null = New-Item -Path $GeneratedCommandsPath -ItemType Directory
     }
 
-    Write-Verbose -Message $CommandString
-
     $CommandFilePath = Join-Path -Path $GeneratedCommandsPath -ChildPath "$commandName.ps1"
     Out-File -InputObject $CommandString -FilePath $CommandFilePath -Encoding ascii -Force -Confirm:$false -WhatIf:$false
+
+    Write-Verbose -Message ($LocalizedData.GeneratedPathCommand -f $commandName)
+
     return $commandName
 }

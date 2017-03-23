@@ -28,7 +28,7 @@ $param = @{
 
 # AzureRM.Resources
 $param['SwaggerSpecUri'] = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-resources/resources/2015-11-01/swagger/resources.json'
-$param['ModuleName']     = 'Generated.AzureRM.Resources'
+$param['Name']           = 'Generated.AzureRM.Resources'
 New-PSSwaggerModule @param
 #endregion Generate AzureRM commands
 

@@ -40,22 +40,22 @@ $param = @{
 
 # AzureRM.Resources
 $param['SwaggerSpecUri'] = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-resources/resources/2015-11-01/swagger/resources.json'
-$param['ModuleName']     = 'Generated.AzureRM.Resources'
+$param['Name']           = 'Generated.AzureRM.Resources'
 New-PSSwaggerModule @param
 
 # AzureRM.Storage
 $param['SwaggerSpecUri'] = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-storage/2015-06-15/swagger/storage.json'
-$param['ModuleName']     = 'Generated.AzureRM.Storage'
+$param['Name']           = 'Generated.AzureRM.Storage'
 New-PSSwaggerModule @param
 
 # AzureRM.Network
 $param['SwaggerSpecUri'] = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-network/2015-06-15/swagger/network.json'
-$param['ModuleName']     = 'Generated.AzureRM.Network'
+$param['Name']           = 'Generated.AzureRM.Network'
 New-PSSwaggerModule @param
 
 # AzureRM.Compute
 $param['SwaggerSpecUri'] = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-compute/2015-06-15/swagger/compute.json'
-$param['ModuleName']     = 'Generated.AzureRM.Compute'
+$param['Name']           = 'Generated.AzureRM.Compute'
 New-PSSwaggerModule @param
 
 #endregion Generate AzureRM commands

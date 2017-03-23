@@ -82,7 +82,7 @@ function Initialize-Test {
     }
 
     Write-Verbose "Generating module"
-    New-PSSwaggerModule -SwaggerSpecPath (Join-Path -Path $testCaseDataLocation -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -ModuleName $GeneratedModuleName -Verbose -SkipAssemblyGeneration
+    New-PSSwaggerModule -SwaggerSpecPath (Join-Path -Path $testCaseDataLocation -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Verbose -SkipAssemblyGeneration
     if (-not $?) {
         throw 'Failed to generate module. Expected: Success'
     }
