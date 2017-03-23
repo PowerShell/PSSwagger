@@ -215,7 +215,7 @@ function New-SwaggerPath
         $defaultParameterSet = $nonUniqueParameterSets | Sort-Object -Property Priority | Select-Object -First 1
         $DefaultParameterSetName = $defaultParameterSet.OperationId
         $description = $defaultParameterSet.Description
-        Write-Warning -Message ($LocalizedDataCmdletHasAmbiguousParameterSets -f ($commandName))
+        Write-Warning -Message ($LocalizedData.CmdletHasAmbiguousParameterSets -f ($commandName))
     } elseif ($nonUniqueParameterSets.Length -eq 1) {
         # If there's only one non-unique, we can prevent errors by making this the default
         $DefaultParameterSetName = $nonUniqueParameterSets[0].OperationId

@@ -13,6 +13,18 @@ Import-Module (Join-Path -Path $PSScriptRoot -ChildPath Utilities.psm1)
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwagger.Resources.psd1
 $script:CmdVerbTrie = $null
 
+$script:PluralizationService = $null
+# System.Data.Entity.Design.PluralizationServices.PluralizationService is not yet supported on coreclr.
+if(-not $script:IsCoreCLR)
+{
+    if(-not ('System.Data.Entity.Design.PluralizationServices.PluralizationService' -as [Type]))
+    {
+        Add-Type -AssemblyName System.Data.Entity.Design
+    }
+
+    $script:PluralizationService = [System.Data.Entity.Design.PluralizationServices.PluralizationService]::CreateService([System.Globalization.CultureInfo]::CurrentCulture)
+}
+
 function ConvertTo-SwaggerDictionary {
     [CmdletBinding()]
     param(
@@ -85,11 +97,16 @@ function Get-SwaggerInfo {
     }
 
     $infoTitle = $Info.title
-    $infoName = $infoTitle
+    
     if((Get-Member -InputObject $Info -Name 'x-ms-code-generation-settings') -and 
        $Info.'x-ms-code-generation-settings'.Name)
     { 
         $infoName = $Info.'x-ms-code-generation-settings'.Name
+    }
+    else
+    {
+        # Remove special characters as info name is used as client variable name in the generated commands.
+        $infoName = ($infoTitle -replace '[^a-zA-Z0-9_]','')
     }
 
     $NamespaceVersionSuffix = "v$("$ModuleVersion" -replace '\.','')"
@@ -466,6 +483,25 @@ function Get-ParamType
     }
 }
 
+function Get-SingularizedValue
+{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Name
+    )
+    
+    if($script:PluralizationService)
+    {
+        return $script:PluralizationService.Singularize($Name)
+    }
+    else
+    {
+        return $Name    
+    }
+}
+
 function Get-PathCommandName
 {
     [CmdletBinding()]
@@ -480,7 +516,7 @@ function Get-PathCommandName
 
     $opId = $OperationId
     
-    $cmdNounMap = @{
+    $cmdVerbMap = @{
                         Create = 'New'
                         Activate = 'Enable'
                         Delete = 'Remove'
@@ -490,7 +526,7 @@ function Get-PathCommandName
 
     if ($script:CmdVerbTrie -eq $null) {
         $script:CmdVerbTrie = New-Trie
-        foreach ($verb in $cmdNounMap) {
+        foreach ($verb in $cmdVerbMap) {
             $script:CmdVerbTrie = Add-WordToTrie -Word $verb -Trie $script:CmdVerbTrie
         }
     }
@@ -501,7 +537,7 @@ function Get-PathCommandName
     
     # OperationId can be specified without '_' (Underscore), return the OperationId as command name
     if(-not $opIdValues -or ($opIdValues.Count -ne 2)) {
-        return $opId
+        return (Get-SingularizedValue -Name $opId)
     }
 
     $cmdNoun = $opIdValues[0]
@@ -511,10 +547,10 @@ function Get-PathCommandName
         $message = $LocalizedData.UnapprovedVerb -f ($cmdVerb)
         Write-Verbose $message
         
-        if ($cmdNounMap.ContainsKey($cmdVerb))
+        if ($cmdVerbMap.ContainsKey($cmdVerb))
         {
             # This condition happens when there aren't any suffixes
-            $cmdVerb = $cmdNounMap[$cmdVerb] -Split ',' | ForEach-Object { if($_.Trim()){ $_.Trim() } }
+            $cmdVerb = $cmdVerbMap[$cmdVerb] -Split ',' | ForEach-Object { if($_.Trim()){ $_.Trim() } }
             $cmdVerb | ForEach-Object {
                 $message = $LocalizedData.ReplacedVerb -f ($_, $cmdVerb)
                 Write-Verbose -Message $message
@@ -565,8 +601,8 @@ function Get-PathCommandName
                 $cmdVerb = $firstWord
             }
 
-            if ($cmdNounMap.ContainsKey($cmdVerb)) { 
-                $cmdVerb = $cmdNounMap[$cmdVerb] -Split ',' | ForEach-Object { if($_.Trim()){ $_.Trim() } }
+            if ($cmdVerbMap.ContainsKey($cmdVerb)) { 
+                $cmdVerb = $cmdVerbMap[$cmdVerb] -Split ',' | ForEach-Object { if($_.Trim()){ $_.Trim() } }
             }
 
             if (-1 -ne $beginningOfSuffix) {
@@ -584,6 +620,9 @@ function Get-PathCommandName
             }
         }
     }
+
+    # Singularize command noun
+    $cmdNoun = Get-SingularizedValue -Name $cmdNoun
 
     $cmdletNames = $cmdVerb | ForEach-Object {
         "$_-$cmdNoun"

@@ -108,16 +108,19 @@ function New-PSSwaggerModule
     if ($SkipAssemblyGeneration -and $PowerShellCorePath) {
         $message = $LocalizedData.ParameterSetNotAllowed -f ('PowerShellCorePath', 'SkipAssemblyGeneration')
         throw $message
+        return
     }
 
     if ($SkipAssemblyGeneration -and $IncludeCoreFxAssembly) {
         $message = $LocalizedData.ParameterSetNotAllowed -f ('IncludeCoreFxAssembly', 'SkipAssemblyGeneration')
         throw $message
+        return
     }
 
     if ($SkipAssemblyGeneration -and $TestBuild) {
         $message = $LocalizedData.ParameterSetNotAllowed -f ('TestBuild', 'SkipAssemblyGeneration')
         throw $message
+        return
     }
 
     if ($PSCmdlet.ParameterSetName -eq 'SwaggerURI')
@@ -140,9 +143,18 @@ function New-PSSwaggerModule
         }
     }
 
+    $outputDirectory = Microsoft.PowerShell.Management\Resolve-Path -Path $Path | Select-Object -First 1 -ErrorAction Ignore
+    $outputDirectory = "$outputDirectory".TrimEnd('\').TrimEnd('/')
+    if (-not $outputDirectory -or (-not (Test-path -Path $outputDirectory -PathType Container)))
+    {
+        throw $LocalizedData.PathNotFound -f ($Path)
+        return
+    }
+
     if (-not (Test-path -Path $SwaggerSpecPath))
     {
         throw $LocalizedData.SwaggerSpecPathNotExist -f ($SwaggerSpecPath)
+        return
     }
 
     $userConsent = Initialize-LocalTools -Precompiling:(-not $SkipAssemblyGeneration) -AllUsers:$InstallToolsForAllUsers
@@ -185,8 +197,6 @@ function New-PSSwaggerModule
     # Parse the JSON and populate the dictionary
     $swaggerDict = ConvertTo-SwaggerDictionary -SwaggerSpecPath $SwaggerSpecPath -ModuleName $ModuleName -ModuleVersion $Version
     $nameSpace = $swaggerDict['info'].NameSpace
-
-    $outputDirectory = $Path.TrimEnd('\').TrimEnd('/')
 
     if($PSVersionTable.PSVersion -lt '5.0.0') {
         if (-not $outputDirectory.EndsWith($ModuleName, [System.StringComparison]::OrdinalIgnoreCase)) {
