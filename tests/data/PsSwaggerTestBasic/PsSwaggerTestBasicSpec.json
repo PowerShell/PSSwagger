@@ -3,7 +3,16 @@
     "info": {
         "title": "PsSwaggerTestBasic",
         "description": "Very basic API for PSSwagger testing.",
-        "version": "2017-01-01"
+        "version": "2017-01-01",
+        "contact":{
+            "name": "API Support",
+            "url": "http://www.swagger.io/support",
+            "email": "support@swagger.io"
+        },
+        "license":{
+            "name": "Apache 2.0",
+            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+        }
     },
     "host": "localhost:3000",
     "schemes": [
