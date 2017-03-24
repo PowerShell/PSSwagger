@@ -744,6 +744,16 @@ function Convert-ParamTable
     return $paramObject
 }
 
+function Get-TemporaryCliXmlFilePath {
+    param(
+        [string]
+        $FullModuleName
+    )
+
+    $filePath = Join-Path -Path $script:AppLocalPath -ChildPath "$FullModuleName.tmp.xml"
+    return $filePath
+}
+
 function Get-PathFunctionBody
 {
     [CmdletBinding()]
@@ -759,7 +769,13 @@ function Get-PathFunctionBody
 
         [Parameter(Mandatory=$true)]
         [PSCustomObject]
-        $SwaggerMetaDict
+        $SwaggerMetaDict,
+
+        [string]
+        $OutputAssembly,
+
+        [string[]]
+        $References
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -784,30 +800,15 @@ function Get-PathFunctionBody
     {
         $apiVersion = $executionContext.InvokeCommand.ExpandString($ApiVersionStr)
     }
-
+    
     $parameterSetBasedMethodStr = ''
     foreach ($parameterSetDetail in $ParameterSetDetails) {
-        $RequiredParamList = $parameterSetDetail.RequiredParamList
         # Responses isn't actually used right now, but keeping this when we need to handle responses per parameter set
         $Responses = $parameterSetDetail.Responses
         $operationId = $parameterSetDetail.OperationId
-        $methodName = ''
-        $operations = ''
-        $opIdValues = $operationId -split '_',2 
-        if(-not $opIdValues -or ($opIdValues.count -ne 2)) {
-            $methodName = $operationId + 'WithHttpMessagesAsync'
-        } else {            
-            $operationName = $operationId.Split('_')[0]
-            $operationType = $operationId.Split('_')[1]
-            $operations = ".$operationName"
-            if ((-not $UseAzureCsharpGenerator) -and 
-                (Test-OperationNameInDefinitionList -Name $operationName -SwaggerDict $SwaggerDict))
-            { 
-                $operations = $operations + 'Operations'
-            }
-            $methodName = $operationType + 'WithHttpMessagesAsync'
-        }
-
+        $methodName = $parameterSetDetail.MethodName
+        $operations = $parameterSetDetail.Operations
+        $ParamList = $parameterSetDetail.ExpandedParamList
         $responseBodyParams = @{
                                 responses = $Responses.PSObject.Properties
                                 namespace = $Namespace
@@ -826,7 +827,7 @@ function Get-PathFunctionBody
             $parameterSetBasedMethodStr += $executionContext.InvokeCommand.ExpandString($parameterSetBasedMethodStrElseIfCase)
         } else {
             # Add the beginning if condition
-             $parameterSetBasedMethodStr += $executionContext.InvokeCommand.ExpandString($parameterSetBasedMethodStrIfCase)
+            $parameterSetBasedMethodStr += $executionContext.InvokeCommand.ExpandString($parameterSetBasedMethodStrIfCase)
         }
     }
 
@@ -836,7 +837,12 @@ function Get-PathFunctionBody
                      Body = $body;
                     }
 
-    return $bodyObject
+    $result = @{
+        BodyObject = $bodyObject
+        ParameterSetDetails = $ParameterSetDetails
+    }
+
+    return $result
 }
 
 function Test-OperationNameInDefinitionList

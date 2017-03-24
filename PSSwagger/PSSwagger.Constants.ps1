@@ -22,9 +22,11 @@ $parameterDefString = @'
     
         $AllParameterSetsString$ValidateSetDefinition
         [$paramType]
-        $paramName,
+        $paramName$parameterDefaultValueOption,
 
 '@
+
+$parameterDefaultValueString = ' = $parameterDefaultValue'
 
 $RootModuleContents = @'
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
@@ -73,7 +75,7 @@ if (-not (Test-Path -Path `$dllFullName)) {
     `$message = `$LocalizedData.HashValidationSuccessful
     Write-Verbose -Message `$message -Verbose
 
-    Initialize-LocalTools -Precompiling
+    Initialize-LocalTools
     `$success = Invoke-AssemblyCompilation -CSharpFiles `$allCSharpFiles -CodeCreatedByAzureGenerator:`$isAzureCSharp $requiredVersionParameter
     if (-not `$success) {
         `$message = `$LocalizedData.CompilationFailed -f (`$dllFullName)
@@ -165,14 +167,14 @@ $functionBodyStr = @'
 $parameterSetBasedMethodStrIfCase = @'
 if ('$operationId' -eq `$PsCmdlet.ParameterSetName) {
         Write-Verbose -Message 'Performing operation $methodName on $clientName.'
-        `$taskResult = $clientName$operations.$methodName($requiredParamList)
+        `$taskResult = $clientName$operations.$methodName($ParamList)
     }
 '@
 
 $parameterSetBasedMethodStrElseIfCase = @'
  elseif ('$operationId' -eq `$PsCmdlet.ParameterSetName ) {
         Write-Verbose -Message 'Performing operation $methodName on $clientName.'
-        `$taskResult = $clientName$operations.$methodName($requiredParamList)
+        `$taskResult = $clientName$operations.$methodName($ParamList)
     }
 '@
 

@@ -19,7 +19,7 @@ function Test-Package {
         [string]$providerName = "NuGet"
     )
 
-    $package = Get-Package $packageName -ProviderName $providerName -ErrorAction Ignore
+    $package = Get-Package $packageName -ProviderName $providerName -ErrorAction Ignore | Select-Object -First 1
     if ($package -eq $null) {
         Write-Verbose "Trying to install missing package $packageName from source $packageSourceName"
         $null = Install-Package $packageName -ProviderName $providerName -Source $packageSourceName -Force
@@ -62,13 +62,9 @@ function Initialize-Test {
                          -TestCSharpFilePath (Join-Path "$TestRootPath" "PSSwagger.TestUtilities" | Join-Path -ChildPath "TestCredentials.cs") `
                          -CompilationUtilsPath (Join-Path $PsSwaggerPath "Utils.ps1") -UseAzureCSharpGenerator $false -Verbose
 
+    
+
     # TODO: Pass all these locations dynamically - See issues/17
-    # Ensure PSSwagger isn't loaded (including the one installed on the machine, if any)
-    Get-Module PSSwagger | Remove-Module
-
-    # Import PSSwagger
-    Import-Module (Join-Path $PsSwaggerPath "PSSwagger.psd1") -Force
-
     $generatedModulesPath = Join-Path -Path "$TestRootPath" -ChildPath "Generated"
     $testCaseDataLocation = Join-Path -Path "$TestRootPath" -ChildPath "Data" | Join-Path -ChildPath "$TestApiName"
 
@@ -81,14 +77,17 @@ function Initialize-Test {
         Remove-Item (Join-Path $generatedModulesPath $GeneratedModuleName) -Recurse -Force
     }
 
+    # Module generation part needs to happen in full powershell
     Write-Verbose "Generating module"
-    New-PSSwaggerModule -SwaggerSpecPath (Join-Path -Path $testCaseDataLocation -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Verbose -SkipAssemblyGeneration
-    if (-not $?) {
-        throw 'Failed to generate module. Expected: Success'
+    if((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ($script:CorePsEditionConstant -eq $PSEdition)) {
+        & "powershell.exe" -command "& {`$env:PSModulePath=`$env:PSModulePath_Backup;
+            Import-Module (Join-Path `"$PsSwaggerPath`" `"PSSwagger.psd1`") -Force;
+            New-PSSwaggerModule -SwaggerSpecPath (Join-Path -Path `"$testCaseDataLocation`" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Verbose -DeleteGeneratedAssemblies;
+        }"
+    } else {
+        Import-Module (Join-Path "$PsSwaggerPath" "PSSwagger.psd1") -Force
+        New-PSSwaggerModule -SwaggerSpecPath (Join-Path -Path "$testCaseDataLocation" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Verbose -DeleteGeneratedAssemblies
     }
-
-    # Import generated module
-    Write-Verbose "Importing module"
 
     # Copy json-server data since it's updated live
     Copy-Item "$testCaseDataLocation\$TestDataFileName" "$TestRootPath\NodeModules\db.json" -Force

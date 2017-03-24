@@ -90,6 +90,7 @@ if ("netstandard1.7" -eq $TestFramework) {
     }
 
     $powershellFolder = "$Env:ProgramFiles\PowerShell\$($powershellCore.Version)"
+    $executeTestsCommand += ";`$env:PSModulePath_Backup=`"$env:PSModulePath`""
 }
 
 $executeTestsCommand += ";`$verbosepreference=`"continue`";Invoke-Pester -ExcludeTag KnownIssue -OutputFormat NUnitXml -OutputFile ScenarioTestResults.xml -Verbose"

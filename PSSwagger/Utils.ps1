@@ -359,18 +359,14 @@ function Initialize-LocalTools {
     param(
         [Parameter(Mandatory=$false)]
         [switch]
-        $AllUsers,
-
-        [Parameter(Mandatory=$false)]
-        [switch]
-        $Precompiling
+        $AllUsers
     )
 
     Initialize-LocalToolsVariables -AllUsers:$AllUsers
 
     $bootstrapActions = @()
     $bootstrapPrompts = @()
-    if ((Test-Downlevel) -and $Precompiling) {
+    if ((Test-Downlevel)) {
         $expectedPath = Get-MicrosoftRestAzureNugetPackagePath
         if (-not $expectedPath) {
             $nugetExePath = Get-NugetExePath

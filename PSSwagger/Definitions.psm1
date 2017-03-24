@@ -521,7 +521,7 @@ function New-SwaggerSpecDefinitionCommand
     $body = ""
     $DefinitionTypeNamePrefix = "$Namespace.Models."
     $ParameterSetPropertyString = ""
-    
+    $parameterDefaultValueOption = ""
     $FunctionDetails.ParametersTable.Keys | ForEach-Object {
         $ParameterDetails = $FunctionDetails.ParametersTable[$_]
 
