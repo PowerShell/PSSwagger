@@ -488,6 +488,9 @@ function New-ModuleManifestUtility
     $NewModuleManifest_params = @{
         Path = "$(Join-Path -Path $Path -ChildPath $Info.ModuleName).psd1"
         ModuleVersion = $Info.Version
+        Description = $Info.Description
+        CopyRight = $info.LicenseName
+        Author = $info.ContactEmail
         RequiredModules = @('Generated.Azure.Common.Helpers')
         RootModule = "$($Info.ModuleName).psm1"
         FormatsToProcess = $FormatsToProcess
@@ -496,6 +499,20 @@ function New-ModuleManifestUtility
     if($Info.DefaultCommandPrefix)
     {
         $NewModuleManifest_params['DefaultCommandPrefix'] = $Info.DefaultCommandPrefix
+    }
+
+    if($PSVersionTable.PSVersion -ge '5.0.0')
+    {
+        # Below parameters are not available on PS 3 and 4 versions.
+        if($Info.ProjectUri)
+        {
+            $NewModuleManifest_params['ProjectUri'] = $Info.ProjectUri
+        }
+
+        if($Info.LicenseUri)
+        {
+            $NewModuleManifest_params['LicenseUri'] = $Info.LicenseUri
+        }
     }
 
     New-ModuleManifest @NewModuleManifest_params

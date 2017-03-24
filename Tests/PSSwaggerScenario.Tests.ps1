@@ -40,6 +40,19 @@ Describe "Basic API" -Tag ScenarioTest {
             Get-Cupcake -Flavor "chocolate"
             New-Cupcake -Flavor "vanilla"
         }
+
+        It "Module medatata test" {
+            $ModuleInfo = Get-Module 'Generated.Basic.Module'
+            $ModuleInfo.Description | Should be 'Very basic API for PSSwagger testing.'
+            $ModuleInfo.Author | Should be 'support@swagger.io'
+            $ModuleInfo.CopyRight | Should be 'Apache 2.0'
+
+            if($PSVersionTable.PSVersion -ge '5.0.0')
+            {
+                $ModuleInfo.PrivateData.PSData.LicenseUri | Should be 'http://www.apache.org/licenses/LICENSE-2.0.html'
+                $ModuleInfo.PrivateData.PSData.ProjectUri | Should be 'http://www.swagger.io/support'
+            }
+        }
     }
 
     AfterAll {

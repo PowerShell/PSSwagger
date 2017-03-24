@@ -114,6 +114,57 @@ function Get-SwaggerInfo {
         $infoName = ($infoTitle -replace '[^a-zA-Z0-9_]','')
     }
 
+    $Description = $null
+    if((Get-Member -InputObject $Info -Name 'Description') -and $Info.Description) { 
+        $Description = $Info.Description
+    }
+
+    $ProjectUri = $null
+    $ContactEmail = $null
+    $ContactName = $null
+    if(Get-Member -InputObject $Info -Name 'Contact')
+    {
+        # The identifying name of the contact person/organization.
+        if((Get-Member -InputObject $Info.Contact -Name 'Name') -and
+            $Info.Contact.Name)
+        { 
+            $ContactName = $Info.Contact.Name
+        }
+
+        # The URL pointing to the contact information. MUST be in the format of a URL.
+        if((Get-Member -InputObject $Info.Contact -Name 'Url') -and
+            $Info.Contact.Url)
+        { 
+            $ProjectUri = $Info.Contact.Url
+        }
+
+        # The email address of the contact person/organization. MUST be in the format of an email address.
+        if((Get-Member -InputObject $Info.Contact -Name 'Email') -and
+            $Info.Contact.Email)
+        { 
+            $ContactEmail = $Info.Contact.Email
+        }        
+    }
+
+    $LicenseUri = $null
+    $LicenseName = $null
+    if(Get-Member -InputObject $Info -Name 'License')
+    {
+        # A URL to the license used for the API. MUST be in the format of a URL.
+        if((Get-Member -InputObject $Info.License -Name 'Url') -and
+          $Info.License.Url)
+        { 
+            $LicenseUri = $Info.License.Url
+        }
+
+        # License name.
+        if((Get-Member -InputObject $Info.License -Name 'Name') -and
+          $Info.License.Name)
+        { 
+            $LicenseName = $Info.License.Name
+        }
+    }
+
     $NamespaceVersionSuffix = "v$("$ModuleVersion" -replace '\.','')"
 
     return @{
@@ -123,6 +174,12 @@ function Get-SwaggerInfo {
         Version = $ModuleVersion
         NameSpace = "Microsoft.PowerShell.$ModuleName.$NamespaceVersionSuffix"
         ModuleName = $ModuleName
+        Description = $Description
+        ContactName = $ContactName
+        ContactEmail = $ContactEmail
+        ProjectUri = $ProjectUri
+        LicenseUri = $LicenseUri
+        LicenseName = $LicenseName
     }
 }
 
