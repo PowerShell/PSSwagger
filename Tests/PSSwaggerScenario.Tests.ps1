@@ -247,11 +247,11 @@ Describe "Optional parameter tests" -Tag ScenarioTest {
         }
 
         It "Generates cmdlet using optional path parameters" {
-            Get-CupcakeByMaker -Flavor "chocolate" -Maker "bob"
+            Get-CupcakesByMaker -Flavor "chocolate" -Maker "bob"
         }
 
         It "Sets default value when specified in spec" {
-            $results = Get-CupcakeWithDefault -Maker "bob"
+            $results = Get-CupcakesWithDefault -Maker "bob"
             $results.Length | should be 1
         }
 

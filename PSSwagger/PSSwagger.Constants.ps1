@@ -39,7 +39,8 @@ if ('Core' -eq (Get-PSEdition)) {
     `$clr = 'fullclr'
 }
 
-`$dllFullName = Join-Path -Path `$PSScriptRoot -ChildPath 'ref' | Join-Path -ChildPath `$clr | Join-Path -ChildPath '$Namespace.dll'
+`$clrPath = Join-Path -Path `$PSScriptRoot -ChildPath 'ref' | Join-Path -ChildPath `$clr
+`$dllFullName = Join-Path -Path `$clrPath -ChildPath '$Namespace.dll'
 `$isAzureCSharp = `$$UseAzureCSharpGenerator
 if (-not (Test-Path -Path `$dllFullName)) {
     `$message = `$LocalizedData.CompilingBinaryComponent -f (`$dllFullName)
@@ -76,7 +77,7 @@ if (-not (Test-Path -Path `$dllFullName)) {
     Write-Verbose -Message `$message -Verbose
 
     Initialize-LocalTools
-    `$success = Invoke-AssemblyCompilation -CSharpFiles `$allCSharpFiles -CodeCreatedByAzureGenerator:`$isAzureCSharp $requiredVersionParameter
+    `$success = Invoke-AssemblyCompilation -CSharpFiles `$allCSharpFiles -CodeCreatedByAzureGenerator:`$isAzureCSharp $requiredVersionParameter -ClrPath `$clrPath
     if (-not `$success) {
         `$message = `$LocalizedData.CompilationFailed -f (`$dllFullName)
         throw `$message

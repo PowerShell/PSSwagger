@@ -744,16 +744,6 @@ function Convert-ParamTable
     return $paramObject
 }
 
-function Get-TemporaryCliXmlFilePath {
-    param(
-        [string]
-        $FullModuleName
-    )
-
-    $filePath = Join-Path -Path $script:AppLocalPath -ChildPath "$FullModuleName.tmp.xml"
-    return $filePath
-}
-
 function Get-PathFunctionBody
 {
     [CmdletBinding()]
@@ -769,13 +759,7 @@ function Get-PathFunctionBody
 
         [Parameter(Mandatory=$true)]
         [PSCustomObject]
-        $SwaggerMetaDict,
-
-        [string]
-        $OutputAssembly,
-
-        [string[]]
-        $References
+        $SwaggerMetaDict
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState

@@ -4,9 +4,9 @@ Tool to generate PowerShell Cmdlets using Swagger based specifications
 
 ## Syntax
 
-New-PSSwaggerModule -SwaggerSpecPath <string> -Path <string> -Name <string> [-Version <version>] [-UseAzureCsharpGenerator] [-DeleteGeneratedAssemblies] [-PowerShellCorePath <string>] [-IncludeCoreFxAssembly] [-DefaultCommandPrefix <string>] [<CommonParameters>]
+New-PSSwaggerModule -SwaggerSpecPath <string> -Path <string> -Name <string> [-Version <version>] [-UseAzureCsharpGenerator] [-NoAssembly] [-PowerShellCorePath <string>] [-IncludeCoreFxAssembly] [-DefaultCommandPrefix <string>] [<CommonParameters>]
 
-New-PSSwaggerModule -SwaggerSpecUri <uri> -Path <string> -Name <string> [-Version <version>] [-UseAzureCsharpGenerator] [-DeleteGeneratedAssemblies] [-PowerShellCorePath <string>] [-IncludeCoreFxAssembly] [-DefaultCommandPrefix <string>] [<CommonParameters>]
+New-PSSwaggerModule -SwaggerSpecUri <uri> -Path <string> -Name <string> [-Version <version>] [-UseAzureCsharpGenerator] [-NoAssembly] [-PowerShellCorePath <string>] [-IncludeCoreFxAssembly] [-DefaultCommandPrefix <string>] [<CommonParameters>]
 | Parameter       | Description                           |
 | ----------------| ------------------------------------- |
 | SwaggerSpecPath | Full Path to a Swagger based JSON spec|
@@ -15,7 +15,7 @@ New-PSSwaggerModule -SwaggerSpecUri <uri> -Path <string> -Name <string> [-Versio
 | Version  | Version of the module to be generated. Default value is '0.0.1' |
 | SwaggerSpecUri  | URI to the swagger spec |
 | DefaultCommandPrefix  | Prefix value to be prepended to cmdlet noun or to cmdlet name without verb. |
-| DeleteGeneratedAssemblies      | Delete the module's generated assemblies. Compilation dependencies pulled in (e.g. Microsoft.Rest.ClientRuntime.Azure.dll) will be kept in the module's ref folder. |
+| NoAssembly      | Don't save the generated assemblies to disk. Enables dynamic compilation scenario. |
 | PowerShellCorePath      | Path to PowerShell.exe for PowerShell Core. Only required if not installed via MSI in the default path |
 | IncludeCoreFxAssembly      | Switch to additionally compile the module's binary component for core CLR |
 | TestBuild      | Switch to enable debug compilation of full CLR binary component. Effects: disables compiler optimization |

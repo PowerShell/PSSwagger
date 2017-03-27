@@ -32,17 +32,19 @@ function Test-Package {
 function Compile-TestAssembly {
     [CmdletBinding()]
     param(
-        [string]$TestAssemblyFullPath,
+        [string]$TestAssemblyName,
+        [string]$TestAssemblyPath,
         [string]$TestCSharpFilePath,
         [string]$CompilationUtilsPath,
         [bool]$UseAzureCSharpGenerator
     )
 
-    Write-Verbose "Checking for test assembly '$TestAssemblyFullPath'"
-    if (-not (Test-Path $TestAssemblyFullPath)) {
+    $fullPath = Join-Path -Path $TestAssemblyPath -ChildPath $TestAssemblyName
+    Write-Verbose "Checking for test assembly '$fullPath'"
+    if (-not (Test-Path $fullPath)) {
         Write-Verbose "Generating test assembly from file '$TestCSharpFilePath' using script '$CompilationUtilsPath'"
         . "$CompilationUtilsPath"
-        Invoke-AssemblyCompilation -CSharpFiles @($TestCSharpFilePath) -OutputAssembly $TestAssemblyFullPath -CodeCreatedByAzureGenerator:$UseAzureCSharpGenerator -Verbose
+        Invoke-AssemblyCompilation -CSharpFiles @($TestCSharpFilePath) -OutputAssemblyName $TestAssemblyName -CodeCreatedByAzureGenerator:$UseAzureCSharpGenerator -ClrPath $TestAssemblyPath -Verbose
     }
 }
 
@@ -58,7 +60,8 @@ function Initialize-Test {
         [string]$GeneratedModuleVersion
     )
 
-    Compile-TestAssembly -TestAssemblyFullPath (Join-Path "$TestRootPath" "PSSwagger.TestUtilities" | Join-Path -ChildPath "$global:testRunGuid.dll") `
+    Compile-TestAssembly -TestAssemblyName "$global:testRunGuid.dll" `
+                         -TestAssemblyPath (Join-Path "$TestRootPath" "PSSwagger.TestUtilities") `
                          -TestCSharpFilePath (Join-Path "$TestRootPath" "PSSwagger.TestUtilities" | Join-Path -ChildPath "TestCredentials.cs") `
                          -CompilationUtilsPath (Join-Path $PsSwaggerPath "Utils.ps1") -UseAzureCSharpGenerator $false -Verbose
 
@@ -82,11 +85,11 @@ function Initialize-Test {
     if((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ($script:CorePsEditionConstant -eq $PSEdition)) {
         & "powershell.exe" -command "& {`$env:PSModulePath=`$env:PSModulePath_Backup;
             Import-Module (Join-Path `"$PsSwaggerPath`" `"PSSwagger.psd1`") -Force;
-            New-PSSwaggerModule -SwaggerSpecPath (Join-Path -Path `"$testCaseDataLocation`" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Verbose -DeleteGeneratedAssemblies;
+            New-PSSwaggerModule -SwaggerSpecPath (Join-Path -Path `"$testCaseDataLocation`" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Verbose -NoAssembly;
         }"
     } else {
         Import-Module (Join-Path "$PsSwaggerPath" "PSSwagger.psd1") -Force
-        New-PSSwaggerModule -SwaggerSpecPath (Join-Path -Path "$testCaseDataLocation" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Verbose -DeleteGeneratedAssemblies
+        New-PSSwaggerModule -SwaggerSpecPath (Join-Path -Path "$testCaseDataLocation" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Verbose -NoAssembly
     }
 
     # Copy json-server data since it's updated live

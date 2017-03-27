@@ -33,6 +33,7 @@ ConvertFrom-StringData @'
     FoundPowerShellCoreMsi=Found MSI installation of PowerShell Core of version '{0}'
     MustSpecifyPsCorePath=No installations of PowerShell Core could be found. Please provide -PowerShellCorePath to specify the location of PowerShell Core.
     PsCorePathNotFound=Couldn't find PowerShell at path '{0}'
+    ParameterSetNotAllowed=The '{0}' parameter is not allowed when '{1}' is specified.
     AssemblyCompilationResult=Result of assembly compilation: {0}
     CmdletHasAmbiguousParameterSets=The generated cmdlet '{0}' contains ambiguous parameter sets. This is due to automatic merging of two or more similar paths.
     PathNotFound=Cannot find the path '{0}' because it does not exist.
@@ -44,8 +45,8 @@ ConvertFrom-StringData @'
     ExpectedServiceClientTypeNotFound=Unable to find expected service client type: {0}
     ExpectedOperationsClientTypeNotFound=Unable to find expected operations client property '{0}' on type '{1}'
     ExpectedMethodOnTypeNotFound=Unable to find expected method '{0}' on type '{1}'
-    OptionalParameterNowRequired=A parameter was marked as optional in the spec but required in generated code. Cmdlet will require this parameter
-    ReferenceTypeDefaultValueNotSupported=PSSwagger doesn't support setting a reference-type default value
+    OptionalParameterNowRequired=The parameter '{0}' was marked as optional in the Swagger specification but required in generated code. Cmdlet '{1}' will require this parameter
+    ReferenceTypeDefaultValueNotSupported=PSSwagger doesn't support setting a reference-type default value. Parameter: '{0}', Parameter Type: '{1}', Cmdlet: '{2}'
     ResultCodeMetadataExtraction=Result of code metadata extraction: {0}
     MetadataExtractFailed=Module generation failed. If no error messages follow, check the output of code metadata extraction above
 ###PSLOC
