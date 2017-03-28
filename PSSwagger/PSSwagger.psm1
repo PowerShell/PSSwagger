@@ -267,24 +267,6 @@ function New-PSSwaggerModule
     Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Utils.ps1") (Join-Path -Path $outputDirectory -ChildPath "Utils.ps1")
     Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Utils.Resources.psd1") (Join-Path -Path $outputDirectory -ChildPath "Utils.Resources.psd1")
 
-    $allCSharpFiles = Get-ChildItem -Path "$generatedCSharpFilePath\*.cs" `
-                                    -Recurse `
-                                    -File `
-                                    -Exclude Program.cs,TemporaryGeneratedFile* | 
-                            Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*'
-
-    $filesHash = New-CodeFileCatalog -Files $allCSharpFiles
-    $fileHashesFileName = "GeneratedCsharpCatalog.json"
-
-     ConvertTo-Json -InputObject $filesHash | 
-        Out-File -FilePath (Join-Path -Path "$outputDirectory" -ChildPath "$fileHashesFileName") `
-                 -Encoding ascii `
-                 -Confirm:$false `
-                 -WhatIf:$false
-
-    $jsonFileHashAlgorithm = "SHA512"
-    $jsonFileHash = (Get-CustomFileHash -Path (Join-Path -Path "$outputDirectory" -ChildPath "$fileHashesFileName") -Algorithm $jsonFileHashAlgorithm).Hash
-
     # If we precompiled the assemblies, we need to require a specific version of the dependent NuGet packages
     # For now, there's only one required package (Microsoft.Rest.ClientRuntime.Azure)
     $requiredVersionParameter = ''
@@ -410,7 +392,14 @@ function ConvertTo-CsharpCode
                                    -Exclude Program.cs,TemporaryGeneratedFile* |
                                         Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*'
 
-    $allCSharpFilesArrayString = "@('"+ $($allCSharpFiles.FullName -join "','") + "')"
+    $allCodeFiles = @()
+    foreach ($file in $allCSharpFiles) {
+        $newFileName = Join-Path -Path $file.Directory -ChildPath "$($file.BaseName).Code.ps1"
+        $null = Move-Item -Path $file.FullName -Destination $newFileName -Force
+        $allCodeFiles += $newFileName
+    }
+
+    $allCSharpFilesArrayString = "@('"+ $($allCodeFiles -join "','") + "')"
 
     # Compile full CLR (PSSwagger requires to be invoked from full PowerShell)
     $codeCreatedByAzureGenerator = [bool]$SwaggerMetaDict['UseAzureCsharpGenerator']
@@ -579,26 +568,5 @@ function New-ModuleManifestUtility
 }
 
 #endregion
-
-function New-CodeFileCatalog
-{
-    param(
-        [Parameter(Mandatory=$true)]
-        [string[]]
-        $Files
-    )
-
-    $hashAlgorithm = "SHA512"
-    $filesTable = @{"Algorithm" = $hashAlgorithm}
-    $Files | ForEach-Object {
-        $fileName = "$_".Replace("$generatedCSharpFilePath","").Trim("\").Trim("/") 
-        $hash = (Get-CustomFileHash $_ -Algorithm $hashAlgorithm).Hash
-        $message = $LocalizedData.FoundFileWithHash -f ($fileName, $hash)
-        Write-Verbose $message
-        $filesTable.Add("$fileName", $hash) 
-    }
-
-    return $filesTable
-}
 
 Export-ModuleMember -Function New-PSSwaggerModule

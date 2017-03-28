@@ -322,9 +322,14 @@ if(('Microsoft.PowerShell.Commands.PSSwagger.PSSwaggerJob' -as [Type]) -and
 }
 else
 {
-    $PSSwaggerJobFilePath = Join-Path -Path $PSScriptRoot -ChildPath 'PSSwaggerJob.cs'
+    $PSSwaggerJobFilePath = Join-Path -Path $PSScriptRoot -ChildPath 'PSSwaggerJob.Code.ps1'
     if(Test-Path -Path $PSSwaggerJobFilePath -PathType Leaf)
     {
+        $sig = Get-AuthenticodeSignature -FilePath $PSSwaggerJobFilePath
+        if (('Valid' -ne $sig.Status) -and ('NotSigned' -ne $sig.Status)) {
+            throw 'Failed to validate PSSwaggerJob.Code.ps1''s signature'
+        }
+        
         $PSSwaggerJobSourceString = Get-Content -Path $PSSwaggerJobFilePath | Out-String
 
         $RequiredAssemblies = @(
