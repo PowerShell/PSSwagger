@@ -1,0 +1,231 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "title": "ParameterTypesSpec",
+        "description": "API that contains tests for all known parameter types",
+        "version": "2017-03-24"
+    },
+    "host": "localhost:3000",
+    "schemes": [
+        "http"
+    ],
+    "basePath": "/",
+    "produces": [
+        "application/json"
+    ],
+    "paths": {
+        "/cupcakes": {
+            "get": {
+                "summary": "List all cupcakes matching parameters",
+                "operationId": "Cupcake_List",
+                "description": "Make a cupcake or update an existing one.",
+                "parameters": [
+                    {
+                        "name": "flavor",
+                        "in": "query",
+                        "description": "Flavor of cupcake",
+                        "required": false,
+                        "type": "string",
+                        "default": "mint-chocolate"
+                    },
+                    {
+                        "name": "ageInYears",
+                        "in": "query",
+                        "description": "Test",
+                        "required": false,
+                        "type": "integer",
+                        "default": 1
+                    },
+                    {
+                        "name": "ageInDays",
+                        "in": "query",
+                        "description": "Test",
+                        "required": false,
+                        "type": "integer",
+                        "default": 365
+                    },
+                    {
+                        "name": "price",
+                        "in": "query",
+                        "description": "Test",
+                        "required": false,
+                        "type": "number",
+                        "format": "float",
+                        "default": 9.99
+                    },
+                    {
+                        "name": "priceInEuros",
+                        "in": "query",
+                        "description": "Test",
+                        "required": false,
+                        "type": "number",
+                        "format": "double",
+                        "default": 9.25
+                    },
+                    {
+                        "name": "matrixIdentity",
+                        "in": "query",
+                        "description": "Test",
+                        "required": false,
+                        "type": "string",
+                        "format": "byte"
+                    },
+                    {
+                        "name": "matrixCode",
+                        "in": "query",
+                        "description": "Test",
+                        "required": false,
+                        "type": "string",
+                        "format": "byte"
+                    },
+                    {
+                        "name": "madeOn",
+                        "in": "query",
+                        "description": "Test",
+                        "required": false,
+                        "type": "string",
+                        "format": "date"
+                    },
+                    {
+                        "name": "madeOnDateTime",
+                        "in": "query",
+                        "description": "Test",
+                        "required": false,
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    {
+                        "name": "password",
+                        "in": "query",
+                        "description": "Test",
+                        "required": false,
+                        "type": "string",
+                        "format": "password"
+                    },
+                    {
+                        "name": "poisoned",
+                        "in": "query",
+                        "description": "Test",
+                        "required": false,
+                        "type": "boolean",
+                        "default": false
+                    }
+                ],
+                "tags": [
+                    "Cupcakes"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "All cupcake entities",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Cupcake"
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "Cupcake": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "Unique identifier"
+                },
+                "flavor": {
+                    "type": "string",
+                    "description": "String test",
+                    "default": "mint-chocolate"
+                },
+                "ageInYears": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Int32 test"
+                },
+                "ageInDays": {
+                    "type": "integer",
+                    "format": "int64",
+                    "description": "Int64 test"
+                },
+                "price": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "float test"
+                },
+                "priceInEuros": {
+                    "type": "number",
+                    "format": "double",
+                    "description": "double test"
+                },
+                "matrixIdentity": {
+                    "type": "string",
+                    "format": "byte",
+                    "description": "byte test"
+                },
+                "matrixCode": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Int32 test"
+                },
+                "madeOn": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "date test"
+                },
+                "madeOnDateTime": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "date-time test"
+                },
+                "password": {
+                    "type": "string",
+                    "format": "password",
+                    "description": "password test"
+                },
+                "poisoned": {
+                    "type": "boolean",
+                    "description": "boolean test"
+                }
+            }
+        },
+        "Error": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "description": "Error code"
+                },
+                "message": {
+                    "type": "string",
+                    "description": "Message"
+                }
+            }
+        }
+    },
+    "parameters": {
+        "SubscriptionIdParameter": {
+            "name": "subscriptionId",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "A unique identifier of a Microsoft Azure subscription. The subscription ID forms part of the URI for every service call."
+        },
+        "ApiVersionParameter": {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to be used with the HTTP request."
+        }
+    }
+}

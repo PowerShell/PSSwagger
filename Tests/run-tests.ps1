@@ -90,6 +90,7 @@ if ("netstandard1.7" -eq $TestFramework) {
     }
 
     $powershellFolder = "$Env:ProgramFiles\PowerShell\$($powershellCore.Version)"
+    $executeTestsCommand += ";`$env:PSModulePath_Backup=`"$env:PSModulePath`""
 }
 
 $executeTestsCommand += ";`$verbosepreference=`"continue`";Invoke-Pester -ExcludeTag KnownIssue -OutputFormat NUnitXml -OutputFile ScenarioTestResults.xml -Verbose"
@@ -112,6 +113,7 @@ if ($TestSuite.Contains("All")) {
 # Clean up generated test assemblies
 Write-Verbose "Cleaning old test assemblies, if any."
 Get-ChildItem -Path (Join-Path "$PSScriptRoot" "PSSwagger.TestUtilities") -Filter *.dll | Remove-Item -Force
+Get-ChildItem -Path (Join-Path "$PSScriptRoot" "PSSwagger.TestUtilities") -Filter *.pdb | Remove-Item -Force
 
 Write-Verbose "Executing: $executeTestsCommand"
 $executeTestsCommand | Out-File pesterCommand.ps1

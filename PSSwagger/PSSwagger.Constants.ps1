@@ -22,9 +22,11 @@ $parameterDefString = @'
     
         $AllParameterSetsString$ValidateSetDefinition
         [$paramType]
-        $paramName,
+        $paramName$parameterDefaultValueOption,
 
 '@
+
+$parameterDefaultValueString = ' = $parameterDefaultValue'
 
 $RootModuleContents = @'
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
@@ -37,7 +39,8 @@ if ('Core' -eq (Get-PSEdition)) {
     `$clr = 'fullclr'
 }
 
-`$dllFullName = Join-Path -Path `$PSScriptRoot -ChildPath 'ref' | Join-Path -ChildPath `$clr | Join-Path -ChildPath '$Namespace.dll'
+`$clrPath = Join-Path -Path `$PSScriptRoot -ChildPath 'ref' | Join-Path -ChildPath `$clr
+`$dllFullName = Join-Path -Path `$clrPath -ChildPath '$Namespace.dll'
 `$isAzureCSharp = `$$UseAzureCSharpGenerator
 if (-not (Test-Path -Path `$dllFullName)) {
     `$message = `$LocalizedData.CompilingBinaryComponent -f (`$dllFullName)
@@ -73,8 +76,8 @@ if (-not (Test-Path -Path `$dllFullName)) {
     `$message = `$LocalizedData.HashValidationSuccessful
     Write-Verbose -Message `$message -Verbose
 
-    Initialize-LocalTools -Precompiling
-    `$success = Invoke-AssemblyCompilation -CSharpFiles `$allCSharpFiles -CodeCreatedByAzureGenerator:`$isAzureCSharp $requiredVersionParameter
+    Initialize-LocalTools
+    `$success = Invoke-AssemblyCompilation -CSharpFiles `$allCSharpFiles -CodeCreatedByAzureGenerator:`$isAzureCSharp $requiredVersionParameter -ClrPath `$clrPath
     if (-not `$success) {
         `$message = `$LocalizedData.CompilationFailed -f (`$dllFullName)
         throw `$message
@@ -165,14 +168,14 @@ $functionBodyStr = @'
 $parameterSetBasedMethodStrIfCase = @'
 if ('$operationId' -eq `$PsCmdlet.ParameterSetName) {
         Write-Verbose -Message 'Performing operation $methodName on $clientName.'
-        `$taskResult = $clientName$operations.$methodName($requiredParamList)
+        `$taskResult = $clientName$operations.$methodName($ParamList)
     }
 '@
 
 $parameterSetBasedMethodStrElseIfCase = @'
  elseif ('$operationId' -eq `$PsCmdlet.ParameterSetName ) {
         Write-Verbose -Message 'Performing operation $methodName on $clientName.'
-        `$taskResult = $clientName$operations.$methodName($requiredParamList)
+        `$taskResult = $clientName$operations.$methodName($ParamList)
     }
 '@
 

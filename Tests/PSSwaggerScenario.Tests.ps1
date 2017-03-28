@@ -198,3 +198,152 @@ Describe "Get/List tests" -Tag ScenarioTest {
         Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
     }
 }
+
+Describe "Optional parameter tests" -Tag ScenarioTest {
+    BeforeAll {
+        Initialize-Test -GeneratedModuleName "Generated.Optional.Module" -GeneratedModuleVersion "0.0.2" -TestApiName "OptionalParametersTests" `
+                        -TestSpecFileName "OptionalParametersTestsSpec.json" -TestDataFileName "OptionalParametersTestsData.json" `
+                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+
+        # Import generated module
+        Write-Verbose "Importing modules"
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "Generated.Azure.Common.Helpers" | `
+                       Join-Path -ChildPath "Generated.Azure.Common.Helpers.psd1") -Force
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
+                       Join-Path -ChildPath "Generated.Optional.Module")
+        
+        # Load the test assembly after the generated module, since the generated module is kind enough to load the required dlls for us
+        try {
+            $null = Add-Type -Path (Join-Path "$PSScriptRoot" "PSSwagger.TestUtilities" | Join-Path -ChildPath "$global:testRunGuid.dll") -PassThru
+        } catch {
+            throw "$($_.Exception.LoaderExceptions)"
+        }
+
+        $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "OptionalParametersTests" -TestRoutesFileName "OptionalParametersTestsRoutes.json"
+    }
+
+    Context "Optional parameter tests" {
+        # Mocks
+        Mock Get-AzServiceCredential -ModuleName Generated.Optional.Module {
+            return New-Object -TypeName PSSwagger.TestUtilities.TestCredentials
+        }
+
+        Mock Get-AzSubscriptionId -ModuleName Generated.Optional.Module {
+            return "Test"
+        }
+
+        Mock Get-AzResourceManagerUrl -ModuleName Generated.Optional.Module {
+            return "$($global:testDataSpec.schemes[0])://$($global:testDataSpec.host)"
+        }
+
+        It "Generates cmdlet using optional query parameters (flavor only)" {
+            $results = Get-Cupcake -Flavor "chocolate"
+            $results.Length | should be 2
+        }
+
+        It "Generates cmdlet using optional query parameters (maker only)" {
+            $results = Get-Cupcake -Maker "bob"
+            $results.Length | should be 2
+        }
+
+        It "Generates cmdlet using optional path parameters" {
+            Get-CupcakesByMaker -Flavor "chocolate" -Maker "bob"
+        }
+
+        It "Sets default value when specified in spec" {
+            $results = Get-CupcakesWithDefault -Maker "bob"
+            $results.Length | should be 1
+        }
+
+        It "Generates datetime parameter with default correctly" {
+            $results = Get-Letter -SentDate ([DateTime]::Parse("2017-03-22T13:25:43.511Z"))
+            $results.Length | should be 2
+        }
+    }
+
+    AfterAll {
+        Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
+    }
+}
+
+Describe "ParameterTypes tests" {
+    BeforeAll {
+        Initialize-Test -GeneratedModuleName "Generated.ParmTypes.Module" -GeneratedModuleVersion "0.0.2" -TestApiName "ParameterTypes" `
+                        -TestSpecFileName "ParameterTypesSpec.json" -TestDataFileName "ParameterTypesData.json" `
+                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+
+        # Import generated module
+        Write-Verbose "Importing modules"
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "Generated.Azure.Common.Helpers" | `
+                       Join-Path -ChildPath "Generated.Azure.Common.Helpers.psd1") -Force
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
+                       Join-Path -ChildPath "Generated.ParmTypes.Module")
+        
+        # Load the test assembly after the generated module, since the generated module is kind enough to load the required dlls for us
+        try {
+            $null = Add-Type -Path (Join-Path "$PSScriptRoot" "PSSwagger.TestUtilities" | Join-Path -ChildPath "$global:testRunGuid.dll") -PassThru
+        } catch {
+            throw "$($_.Exception.LoaderExceptions)"
+        }
+
+        $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "ParameterTypes"
+    }
+
+    Context "ParameterTypes tests" {
+        # Mocks
+        Mock Get-AzServiceCredential -ModuleName Generated.ParmTypes.Module {
+            return New-Object -TypeName PSSwagger.TestUtilities.TestCredentials
+        }
+
+        Mock Get-AzSubscriptionId -ModuleName Generated.ParmTypes.Module {
+            return "Test"
+        }
+
+        Mock Get-AzResourceManagerUrl -ModuleName Generated.ParmTypes.Module {
+            return "$($global:testDataSpec.schemes[0])://$($global:testDataSpec.host)"
+        }
+
+        It "Test expected parameter types" {
+            $commandInfo = Get-Command Get-Cupcake
+            $commandParameters = $commandInfo.Parameters
+            $commandParameters.ContainsKey('AgeInYears') | should be $true
+            $commandParameters['AgeInYears'].ParameterType | should be "System.Nullable[int]"
+            $commandParameters.ContainsKey('Flavor') | should be $true
+            $commandParameters['Flavor'].ParameterType | should be "string"
+            $commandParameters.ContainsKey('Price') | should be $true
+            $commandParameters['Price'].ParameterType | should be "System.Nullable[double]"
+            $commandParameters.ContainsKey('MatrixCode') | should be $true
+            $commandParameters['MatrixCode'].ParameterType | should be "byte[]"
+            $commandParameters.ContainsKey('Password') | should be $true
+            $commandParameters['Password'].ParameterType | should be "string"
+            $commandParameters.ContainsKey('MatrixIdentity') | should be $true
+            $commandParameters['MatrixIdentity'].ParameterType | should be "byte[]"
+            $commandParameters.ContainsKey('MadeOn') | should be $true
+            $commandParameters['MadeOn'].ParameterType | should be "System.Nullable[DateTime]"
+            $commandParameters.ContainsKey('MadeOnDateTime') | should be $true
+            $commandParameters['MadeOnDateTime'].ParameterType | should be "System.Nullable[DateTime]"
+            $commandParameters.ContainsKey('PriceInEuros') | should be $true
+            $commandParameters['PriceInEuros'].ParameterType | should be "System.Nullable[double]"
+            $commandParameters.ContainsKey('AgeInDays') | should be $true
+            $commandParameters['AgeInDays'].ParameterType | should be "System.Nullable[int]" # AutoRest issue - why is this Int32?
+            $commandParameters.ContainsKey('Poisoned') | should be $true
+            $commandParameters['Poisoned'].ParameterType | should be "switch"
+        }
+
+        It "Test default parameter values" {
+            $results = Get-Cupcake
+            $results.Length | should be 1
+        }
+
+        It "Test non-default parameter values" {
+            $aByte = [System.Text.Encoding]::UTF8.GetBytes("a")
+            $testBytes = [System.Text.Encoding]::UTF8.GetBytes("test")
+            $results = Get-Cupcake -AgeInYears 2 -AgeInDays 730 -Flavor "chocolate" -Price 15.95 -PriceInEuros 14.75 -MatrixIdentity $aByte -MatrixCode $testBytes -MadeOn ([DateTime]::Parse("2017-03-23")) -MadeOnDateTime ([DateTime]::Parse("2017-03-23T13:25:43.511Z")) -Password "test2" -Poisoned
+            $results.Length | should be 2
+        }
+    }
+
+    AfterAll {
+        Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
+    }
+}

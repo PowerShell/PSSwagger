@@ -40,5 +40,14 @@ ConvertFrom-StringData @'
     GeneratedPathCommand=Generated path command '{0}'.
     GeneratedDefinitionCommand=Generated command '{0}' for the definition name '{1}'.
     GeneratedFormatFile=Generated output format file for the definition name '{0}'.
+    DeleteGeneratedFile=Deleting generated file '{0}'
+    ExtractingMetadata=Extracting metadata from generated assembly
+    ExpectedServiceClientTypeNotFound=Unable to find expected service client type: {0}
+    ExpectedOperationsClientTypeNotFound=Unable to find expected operations client property '{0}' on type '{1}'
+    ExpectedMethodOnTypeNotFound=Unable to find expected method '{0}' on type '{1}'
+    OptionalParameterNowRequired=The parameter '{0}' was marked as optional in the Swagger specification but required in generated code. Cmdlet '{1}' will require this parameter
+    ReferenceTypeDefaultValueNotSupported=PSSwagger doesn't support setting a reference-type default value. Parameter: '{0}', Parameter Type: '{1}', Cmdlet: '{2}'
+    ResultCodeMetadataExtraction=Result of code metadata extraction: {0}
+    MetadataExtractFailed=Module generation failed. If no error messages follow, check the output of code metadata extraction above
 ###PSLOC
 '@

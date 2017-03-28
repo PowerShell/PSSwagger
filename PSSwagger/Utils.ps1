@@ -37,10 +37,15 @@ function Invoke-AssemblyCompilation {
         [System.IO.FileInfo[]]
         $CSharpFiles,
 
+        [Parameter(Mandatory=$true)]
+        [AllowEmptyString()]
+        [string]
+        $ClrPath,
+
         [Parameter(Mandatory=$false)]
         [AllowEmptyString()]
         [string]
-        $OutputAssembly,
+        $OutputAssemblyName,
 
         [Parameter(Mandatory=$false)]
         [switch]
@@ -75,11 +80,6 @@ function Invoke-AssemblyCompilation {
     $systemRefs = @()
     $extraRefs = @()
     $moduleRefs = Get-AzureRMDllReferences
-    $clrPath = ''
-    if ($OutputAssembly) {
-        $clrPath = Split-Path -Path $OutputAssembly -Parent
-    }
-
     if ($CorePsEditionConstant -eq (Get-PSEdition)) {
         # Base framework references
         $srcContent = ,'#define DNXCORE50' + ,'#define PORTABLE' + $srcContent
@@ -99,10 +99,6 @@ function Invoke-AssemblyCompilation {
         if ($CodeCreatedByAzureGenerator) {
             $systemRefs += 'System.Runtime.Serialization.Primitives.dll'
         }
-
-        if (-not $clrPath) {
-            $clrPath = Join-Path -Path "$PSScriptRoot" -ChildPath 'ref' | Join-Path -ChildPath 'coreclr'
-        }
     } else {
         # Base framework references
         $systemRefs = @('System.dll',
@@ -111,10 +107,6 @@ function Invoke-AssemblyCompilation {
                         'System.Net.Http.WebRequest.dll',
                         'System.Runtime.Serialization.dll',
                         'System.Xml.dll')
-
-        if (-not $clrPath) {
-            $clrPath = Join-Path -Path "$PSScriptRoot" -ChildPath 'ref' | Join-Path -ChildPath 'fullclr'
-        }
 
         # Microsoft.Rest.ClientRuntime.Azure.dll isn't packaged with AzureRM.Profile, but is required by AutoRest generated code
         # If the extra assembly already exists, use it
@@ -170,7 +162,9 @@ function Invoke-AssemblyCompilation {
         $addTypeParams['ReferencedAssemblies'] = ($systemRefs + $extraRefs + $moduleRefs)
     }
 
-    if ($OutputAssembly) {
+    if ($OutputAssemblyName) {
+        $OutputAssembly = Join-Path -Path $clrPath -ChildPath $OutputAssemblyName
+
         if ($addTypeParams.ContainsKey('CompilerParameters')) {
             $addTypeParams['CompilerParameters'].OutputAssembly = $OutputAssembly
         } else {
@@ -359,18 +353,14 @@ function Initialize-LocalTools {
     param(
         [Parameter(Mandatory=$false)]
         [switch]
-        $AllUsers,
-
-        [Parameter(Mandatory=$false)]
-        [switch]
-        $Precompiling
+        $AllUsers
     )
 
     Initialize-LocalToolsVariables -AllUsers:$AllUsers
 
     $bootstrapActions = @()
     $bootstrapPrompts = @()
-    if ((Test-Downlevel) -and $Precompiling) {
+    if ((Test-Downlevel)) {
         $expectedPath = Get-MicrosoftRestAzureNugetPackagePath
         if (-not $expectedPath) {
             $nugetExePath = Get-NugetExePath

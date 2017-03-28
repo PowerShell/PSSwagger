@@ -11,6 +11,7 @@ Import-Module (Join-Path -Path $PSScriptRoot -ChildPath Utilities.psm1)
 Import-Module (Join-Path -Path $PSScriptRoot -ChildPath SwaggerUtils.psm1)
 . "$PSScriptRoot\PSSwagger.Constants.ps1" -Force
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwagger.Resources.psd1
+$script:AppLocalPath = Microsoft.PowerShell.Management\Join-Path -Path $env:LOCALAPPDATA -ChildPath 'Microsoft\Windows\PowerShell\PSSwagger\'
 
 function Get-SwaggerSpecPathInfo
 {
@@ -38,7 +39,8 @@ function Get-SwaggerSpecPathInfo
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
-
+    $UseAzureCsharpGenerator = $SwaggerMetaDict['UseAzureCsharpGenerator']
+    
     $JsonPathItemObject.value.PSObject.Properties | ForEach-Object {
         $operationId = $_.Value.operationId
 
@@ -81,6 +83,11 @@ function Get-SwaggerSpecPathInfo
             $approximateVerb = $operationId
         } else {
             $approximateVerb = $opIdValues[1]
+            if ((-not $UseAzureCsharpGenerator) -and 
+                (Test-OperationNameInDefinitionList -Name $opIdValues[0] -SwaggerDict $swaggerDict))
+            { 
+                $ParameterSetDetail['UseOperationsSuffix'] = $true
+            }
         }
 
         if ($approximateVerb.StartsWith("List")) {
@@ -126,6 +133,11 @@ function New-SwaggerSpecPathCommand
     )
     
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+    $Info = $swaggerDict['Info']
+    $modulePostfix = $Info['infoName']
+    $NameSpace = $info.namespace
+    $fullModuleName = $Namespace + '.' + $modulePostfix
+
     $FunctionsToExport = @()
     $PathFunctionDetails.Keys | ForEach-Object {
         $FunctionDetails = $PathFunctionDetails[$_]
@@ -159,6 +171,16 @@ function New-SwaggerPath
 
     $commandName = $FunctionDetails.CommandName
     $parameterSetDetails = $FunctionDetails['ParameterSetDetails']
+
+    $functionBodyParams = @{
+                                ParameterSetDetails = $FunctionDetails['ParameterSetDetails']
+                                SwaggerDict = $SwaggerDict
+                                SwaggerMetaDict = $SwaggerMetaDict
+                           }
+
+    $pathGenerationPhaseResult = Get-PathFunctionBody @functionBodyParams
+    $bodyObject = $pathGenerationPhaseResult.BodyObject
+    $parameterSetDetails = $pathGenerationPhaseResult.ParameterSetDetails
 
     $description = ''
     $paramBlock = ''
@@ -226,7 +248,7 @@ function New-SwaggerPath
         $DefaultParameterSetName = $defaultParameterSet.OperationId
         $description = $defaultParameterSet.Description
     }
-    
+
     foreach ($parameterToAdd in $parametersToAdd.Values) {
         $parameterName = $parameterToAdd.Details.Name
         $AllParameterSetsString = ''
@@ -242,13 +264,29 @@ function New-SwaggerPath
         }
 
         $paramName = "`$$parameterName" 
-        $paramType = $parameterToAdd.Details.Type
-
+        $paramType = "$($parameterToAdd.Details.ExtendedData.Type)"
         $ValidateSetDefinition = $null
         if ($parameterToAdd.Details.ValidateSet)
         {
             $ValidateSetString = $parameterToAdd.Details.ValidateSet
             $ValidateSetDefinition = $executionContext.InvokeCommand.ExpandString($ValidateSetDefinitionString)
+        }
+
+        $parameterDefaultValueOption = ""
+        if ($parameterToAdd.Details.ExtendedData.HasDefaultValue) {
+            if ($parameterToAdd.Details.ExtendedData.DefaultValue) {
+                if ([NullString]::Value -eq $parameterToAdd.Details.ExtendedData.DefaultValue) {
+                    $parameterDefaultValue = "[NullString]::Value"
+                } elseif ("System.String" -eq $parameterToAdd.Details.ExtendedData.Type) {
+                    $parameterDefaultValue = "`"$($parameterToAdd.Details.ExtendedData.DefaultValue)`""
+                } else {
+                    $parameterDefaultValue = "$($parameterToAdd.Details.ExtendedData.DefaultValue)"
+                }
+            } else {
+                $parameterDefaultValue = "`$null"
+            }
+
+            $parameterDefaultValueOption = $executionContext.InvokeCommand.ExpandString($parameterDefaultValueString)
         }
 
         $paramBlock += $executionContext.InvokeCommand.ExpandString($parameterDefString)
@@ -263,14 +301,6 @@ function New-SwaggerPath
     } else {
         $paramblockWithAsJob = $AsJobParameterString
     }
-    
-    $functionBodyParams = @{
-                ParameterSetDetails = $FunctionDetails['ParameterSetDetails']
-                SwaggerDict = $SwaggerDict
-                SwaggerMetaDict = $SwaggerMetaDict
-            }
-
-    $bodyObject = Get-PathFunctionBody @functionBodyParams
 
     $body = $bodyObject.Body
     $outputTypeBlock = $bodyObject.OutputTypeBlock
@@ -289,4 +319,166 @@ function New-SwaggerPath
     Write-Verbose -Message ($LocalizedData.GeneratedPathCommand -f $commandName)
 
     return $commandName
+}
+
+function Set-ExtendedCodeMetadata {
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory=$true)]
+        [string]
+        $MainClientTypeName,
+
+        [Parameter(Mandatory=$true)]
+        [string]
+        $CliXmlTmpPath
+    )
+
+    $resultRecord = @{
+        VerboseMessages = @()
+        ErrorMessages = @()
+        WarningMessages = @()
+    }
+    
+    $resultRecord.VerboseMessages += $LocalizedData.ExtractingMetadata
+
+    $PathFunctionDetails = Import-CliXml -Path $CliXmlTmpPath
+    $PathFunctionDetails.Keys | ForEach-Object {
+        $FunctionDetails = $PathFunctionDetails[$_]
+        $ParameterSetDetails = $FunctionDetails['ParameterSetDetails']
+        foreach ($parameterSetDetail in $ParameterSetDetails) {
+            $operationId = $parameterSetDetail.OperationId
+            $methodName = ''
+            $operations = ''
+            $opIdValues = $operationId -split '_',2 
+            if(-not $opIdValues -or ($opIdValues.count -ne 2)) {
+                $methodName = $operationId + 'WithHttpMessagesAsync'
+            } else {            
+                $operationName = $opIdValues[0]
+                $operationType = $opIdValues[1]
+                $operations = ".$operationName"
+                if ($parameterSetDetail['UseOperationsSuffix'] -and $parameterSetDetail['UseOperationsSuffix'])
+                { 
+                    $operations = $operations + 'Operations'
+                }
+
+                $methodName = $operationType + 'WithHttpMessagesAsync'
+            }
+
+            $parameterSetDetail['MethodName'] = $methodName
+            $parameterSetDetail['Operations'] = $operations
+            
+            # For some reason, moving this out of this loop causes issues
+            $clientType = $MainClientTypeName -as [Type]
+            if (-not $clientType) {
+                $resultRecord.ErrorMessages += $LocalizedData.ExpectedServiceClientTypeNotFound -f ($MainClientTypeName)
+                Export-CliXml -InputObject $resultRecord -Path $CliXmlTmpPath
+                return
+            }
+
+            if ($operations) {
+                $operationName = $operations.Substring(1)
+                $propertyObject = $clientType.GetProperties() | Where-Object { $_.Name -eq $operationName } | Select-Object -First 1 -ErrorAction Ignore
+                if (-not $propertyObject) {
+                    $resultRecord.ErrorMessages += $LocalizedData.ExpectedOperationsClientTypeNotFound -f ($operationName, $clientType)
+                    Export-CliXml -InputObject $resultRecord -Path $CliXmlTmpPath
+                    return
+                }
+
+                $clientType = $propertyObject.PropertyType
+            }
+
+            $methodInfo = $clientType.GetMethods() | Where-Object { $_.Name -eq $MethodName } | Select-Object -First 1
+            if (-not $methodInfo) {
+                $resultRecord.ErrorMessages += $LocalizedData.ExpectedMethodOnTypeNotFound -f ($MethodName, $clientType)
+                Export-CliXml -InputObject $resultRecord -Path $CliXmlTmpPath
+                return
+            }
+
+            $paramObject = $parameterSetDetail.ParameterDetails
+            $ParamList = @()
+            $methodInfo.GetParameters() | Sort-Object -Property Position | ForEach-Object {
+                $hasDefaultValue = $_.HasDefaultValue
+                # All Types should be converted to their string names, otherwise the CLI XML gets too large
+                $type = $_.ParameterType.ToString()
+                $metadata = @{
+                    Name = Get-PascalCasedString -Name $_.Name
+                    HasDefaultValue = $hasDefaultValue
+                    Type = $type
+                }
+
+                $matchingParamDetail = $paramObject.GetEnumerator() | Where-Object { $_.Value.Name -eq $metadata.Name } | Select-Object -First 1 -ErrorAction Ignore
+                if ($matchingParamDetail) {
+                    $matchingParamDetail = $matchingParamDetail[0].Value
+                    $paramToAdd = "`$$($metadata.Name)"
+                    # Not all parameters in the code is present in the Swagger spec (autogenerated parameters like CustomHeaders)
+                    if ($hasDefaultValue) {
+                        # Setting this default value actually matter, but we might as well
+                        $defaultValue = $_.DefaultValue
+                        if ("System.String" -eq $type) {
+                            if ($defaultValue -eq $null) {
+                                $metadata.HasDefaultValue = $false
+                                # This is the part that works around PS automatic string coercion
+                                $paramToAdd = "`$(if (`$PSBoundParameters.ContainsKey('$($metadata.Name)')) { $paramToAdd } else { [NullString]::Value })"
+                            }
+                        } elseif ("System.Nullable``1[System.Boolean]" -eq $type) {
+                            $defaultValue = "`$$defaultValue"
+                            $metadata.Type = "switch"
+                        } else {
+                            $defaultValue = $_.DefaultValue
+                            if (-not ($_.ParameterType.IsValueType) -and $defaultValue) {
+                                $resultRecord.ErrorMessages += $LocalizedData.ReferenceTypeDefaultValueNotSupported -f ($metadata.Name, $type, $FunctionDetails['CommandName'])
+                                Export-CliXml -InputObject $resultRecord -Path $CliXmlTmpPath
+                                return
+                            }
+                        }
+
+                        $metadata['DefaultValue'] = $defaultValue
+                    } else {
+                        if ('$false' -eq $matchingParamDetail.Mandatory) {
+                            # This happens in the case of optional path parameters, even if the path parameter is at the end
+                            $resultRecord.WarningMessages += ($LocalizedData.OptionalParameterNowRequired -f ($metadata.Name, $FunctionDetails['CommandName']))
+                        }
+                    }
+                    
+                    $matchingParamDetail.ExtendedData = $metadata
+                    $ParamList += $paramToAdd
+                }
+            }
+
+            $parameterSetDetail['ExpandedParamList'] = $ParamList -Join ", "
+        }
+    }
+
+    $resultRecord.Result = $PathFunctionDetails
+    Export-CliXml -InputObject $resultRecord -Path $CliXmlTmpPath
+}
+
+function Get-TemporaryCliXmlFilePath {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]
+        $FullModuleName
+    )
+
+    if (-not (Test-Path -Path $script:AppLocalPath -PathType Container)) {
+        $null = New-Item -Path $script:AppLocalPath -ItemType Directory
+    }
+    
+    $random = [Guid]::NewGuid().Guid
+    $filePath = Join-Path -Path $script:AppLocalPath -ChildPath "$FullModuleName.$random.xml"
+    return $filePath
+}
+
+function DeSerialize-PSObject
+{
+    [CmdletBinding(PositionalBinding=$false)]    
+    Param
+    (
+        [Parameter(Mandatory=$true)]        
+        $Path
+    )
+
+    $filecontent = Microsoft.PowerShell.Management\Get-Content -Path $Path
+    [System.Management.Automation.PSSerializer]::Deserialize($filecontent)    
 }

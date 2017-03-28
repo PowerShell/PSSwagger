@@ -44,8 +44,8 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwa
 .PARAMETER  DefaultCommandPrefix
   Prefix value to be prepended to cmdlet noun or to cmdlet name without verb.
 
-.PARAMETER  SkipAssemblyGeneration
-  Switch to skip precompiling the module's binary component for full CLR.
+.PARAMETER  NoAssembly
+  Switch to disable saving the precompiled module assembly and instead enable dynamic compilation.
 
 .PARAMETER  PowerShellCorePath
   Path to PowerShell.exe for PowerShell Core.
@@ -93,7 +93,7 @@ function New-PSSwaggerModule
 
         [Parameter()]
         [switch]
-        $SkipAssemblyGeneration,
+        $NoAssembly,
 
         [Parameter()]
         [string]
@@ -112,24 +112,24 @@ function New-PSSwaggerModule
         $TestBuild
     )
 
-    if ($SkipAssemblyGeneration -and $PowerShellCorePath) {
-        $message = $LocalizedData.ParameterSetNotAllowed -f ('PowerShellCorePath', 'SkipAssemblyGeneration')
+    if ($NoAssembly -and $IncludeCoreFxAssembly) {
+        $message = $LocalizedData.ParameterSetNotAllowed -f ('IncludeCoreFxAssembly', 'NoAssembly')
         throw $message
         return
     }
 
-    if ($SkipAssemblyGeneration -and $IncludeCoreFxAssembly) {
-        $message = $LocalizedData.ParameterSetNotAllowed -f ('IncludeCoreFxAssembly', 'SkipAssemblyGeneration')
+    if ($NoAssembly -and $TestBuild) {
+        $message = $LocalizedData.ParameterSetNotAllowed -f ('TestBuild', 'NoAssembly')
         throw $message
         return
     }
 
-    if ($SkipAssemblyGeneration -and $TestBuild) {
-        $message = $LocalizedData.ParameterSetNotAllowed -f ('TestBuild', 'SkipAssemblyGeneration')
+    if ($NoAssembly -and $PowerShellCorePath) {
+        $message = $LocalizedData.ParameterSetNotAllowed -f ('PowerShellCorePath', 'NoAssembly')
         throw $message
         return
     }
-
+    
     if ($PSCmdlet.ParameterSetName -eq 'SwaggerURI')
     {
         # Ensure that if the URI is coming from github, it is getting the raw content
@@ -164,9 +164,8 @@ function New-PSSwaggerModule
         return
     }
 
-    $userConsent = Initialize-LocalTools -Precompiling:(-not $SkipAssemblyGeneration) -AllUsers:$InstallToolsForAllUsers
-
-    if ((-not $SkipAssemblyGeneration) -and ($IncludeCoreFxAssembly)) {
+    $userConsent = Initialize-LocalTools -AllUsers:$InstallToolsForAllUsers
+    if ($IncludeCoreFxAssembly) {
         if ((-not ('Core' -eq (Get-PSEdition))) -and (-not $PowerShellCorePath)) {
             $psCore = Get-Msi -Name "PowerShell*" -MaximumVersion "6.0.0.11" | Sort-Object -Property Version -Descending
             if ($null -ne $psCore) {
@@ -233,56 +232,12 @@ function New-PSSwaggerModule
         SwaggerSpecPath = $SwaggerSpecPath
     }
 
-    $generatedCSharpFilePath = ConvertTo-CsharpCode -SwaggerDict $swaggerDict `
-                                                    -SwaggerMetaDict $swaggerMetaDict `
-                                                    -SkipAssemblyGeneration:$SkipAssemblyGeneration `
-                                                    -PowerShellCorePath $PowerShellCorePath `
-                                                    -InstallToolsForAllUsers:$InstallToolsForAllUsers `
-                                                    -UserConsent:$userConsent `
-                                                    -TestBuild:$TestBuild
-
-    # Prepare dynamic compilation
-    Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Utils.ps1") (Join-Path -Path $outputDirectory -ChildPath "Utils.ps1")
-    Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Utils.Resources.psd1") (Join-Path -Path $outputDirectory -ChildPath "Utils.Resources.psd1")
-
-    $allCSharpFiles = Get-ChildItem -Path "$generatedCSharpFilePath\*.cs" `
-                                    -Recurse `
-                                    -File `
-                                    -Exclude Program.cs,TemporaryGeneratedFile* | 
-                          Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*'
-
-    $filesHash = New-CodeFileCatalog -Files $allCSharpFiles
-    $fileHashesFileName = "GeneratedCsharpCatalog.json"
-
-    ConvertTo-Json -InputObject $filesHash | 
-        Out-File -FilePath (Join-Path -Path "$outputDirectory" -ChildPath "$fileHashesFileName") `
-                 -Encoding ascii `
-                 -Confirm:$false `
-                 -WhatIf:$false
-
-    $jsonFileHashAlgorithm = "SHA512"
-    $jsonFileHash = (Get-CustomFileHash -Path (Join-Path -Path "$outputDirectory" -ChildPath "$fileHashesFileName") -Algorithm $jsonFileHashAlgorithm).Hash
-
-    # If we precompiled the assemblies, we need to require a specific version of the dependent NuGet packages
-    # For now, there's only one required package (Microsoft.Rest.ClientRuntime.Azure)
-    $requiredVersionParameter = ''
-    if (-not $SkipAssemblyGeneration) {
-        # Compilation would have already installed this package, so this will just retrieve the package info
-        # As of 3/2/2017, there's a version mismatch between the latest Microsoft.Rest.ClientRuntime.Azure package and the latest AzureRM.Profile package
-        # So we have to hardcode Microsoft.Rest.ClientRuntime.Azure to at most version 3.3.4
-        $package = Install-MicrosoftRestAzurePackage -RequiredVersion 3.3.4 -AllUsers:$InstallToolsForAllUsers -BootstrapConsent:$userConsent
-        if($package)
-        {
-            $requiredVersionParameter = "-RequiredAzureRestVersion $($package.Version)"
-        }
-    }
-
     # Handle the Definitions
     $DefinitionFunctionsDetails = @{}
     $jsonObject.Definitions.PSObject.Properties | ForEach-Object {
-        Get-SwaggerSpecDefinitionInfo -JsonDefinitionItemObject $_ `
-                                      -Namespace $Namespace `
-                                      -DefinitionFunctionsDetails $DefinitionFunctionsDetails
+         Get-SwaggerSpecDefinitionInfo -JsonDefinitionItemObject $_ `
+                                       -Namespace $Namespace `
+                                       -DefinitionFunctionsDetails $DefinitionFunctionsDetails
     }
 
     # Handle the Paths
@@ -295,14 +250,61 @@ function New-PSSwaggerModule
                                 -DefinitionFunctionsDetails $DefinitionFunctionsDetails
     }
 
+    $codePhaseResult = ConvertTo-CsharpCode -SwaggerDict $swaggerDict `
+                                            -SwaggerMetaDict $swaggerMetaDict `
+                                            -PowerShellCorePath $PowerShellCorePath `
+                                            -InstallToolsForAllUsers:$InstallToolsForAllUsers `
+                                            -UserConsent:$userConsent `
+                                            -TestBuild:$TestBuild `
+                                            -PathFunctionDetails $PathFunctionDetails `
+                                            -NoAssembly:$NoAssembly
+
+    $PathFunctionDetails = $codePhaseResult.PathFunctionDetails
+    $generatedCSharpFilePath = $codePhaseResult.GeneratedCSharpPath
+        
+
+    # Prepare dynamic compilation
+    Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Utils.ps1") (Join-Path -Path $outputDirectory -ChildPath "Utils.ps1")
+    Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Utils.Resources.psd1") (Join-Path -Path $outputDirectory -ChildPath "Utils.Resources.psd1")
+
+    $allCSharpFiles = Get-ChildItem -Path "$generatedCSharpFilePath\*.cs" `
+                                    -Recurse `
+                                    -File `
+                                    -Exclude Program.cs,TemporaryGeneratedFile* | 
+                            Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*'
+
+    $filesHash = New-CodeFileCatalog -Files $allCSharpFiles
+    $fileHashesFileName = "GeneratedCsharpCatalog.json"
+
+     ConvertTo-Json -InputObject $filesHash | 
+        Out-File -FilePath (Join-Path -Path "$outputDirectory" -ChildPath "$fileHashesFileName") `
+                 -Encoding ascii `
+                 -Confirm:$false `
+                 -WhatIf:$false
+
+    $jsonFileHashAlgorithm = "SHA512"
+    $jsonFileHash = (Get-CustomFileHash -Path (Join-Path -Path "$outputDirectory" -ChildPath "$fileHashesFileName") -Algorithm $jsonFileHashAlgorithm).Hash
+
+    # If we precompiled the assemblies, we need to require a specific version of the dependent NuGet packages
+    # For now, there's only one required package (Microsoft.Rest.ClientRuntime.Azure)
+    $requiredVersionParameter = ''
+    # Compilation would have already installed this package, so this will just retrieve the package info
+    # As of 3/2/2017, there's a version mismatch between the latest Microsoft.Rest.ClientRuntime.Azure package and the latest AzureRM.Profile package
+    # So we have to hardcode Microsoft.Rest.ClientRuntime.Azure to at most version 3.3.4
+    $package = Install-MicrosoftRestAzurePackage -RequiredVersion 3.3.4 -AllUsers:$InstallToolsForAllUsers -BootstrapConsent:$userConsent
+    if($package)
+    {
+        $requiredVersionParameter = "-RequiredAzureRestVersion $($package.Version)"
+    }
+
     $FunctionsToExport = @()
     $FunctionsToExport += New-SwaggerSpecPathCommand -PathFunctionDetails $PathFunctionDetails `
                                                      -SwaggerMetaDict $swaggerMetaDict `
                                                      -SwaggerDict $swaggerDict
 
     $FunctionsToExport += New-SwaggerDefinitionCommand -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
-                                                        -SwaggerMetaDict $swaggerMetaDict `
-                                                        -NameSpace $nameSpace
+                                                       -SwaggerMetaDict $swaggerMetaDict `
+                                                       -NameSpace $nameSpace
 
     $RootModuleFilePath = Join-Path $outputDirectory "$Name.psm1"
     Out-File -FilePath $RootModuleFilePath `
@@ -334,10 +336,6 @@ function ConvertTo-CsharpCode
         $SwaggerMetaDict,
 
         [Parameter()]
-        [bool]
-        $SkipAssemblyGeneration,
-
-        [Parameter()]
         [string]
         $PowerShellCorePath,
 
@@ -351,7 +349,15 @@ function ConvertTo-CsharpCode
 
         [Parameter()]
         [switch]
-        $TestBuild
+        $TestBuild,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $PathFunctionDetails,
+
+        [Parameter()]
+        [switch]
+        $NoAssembly
     )
 
     Write-Verbose -Message $LocalizedData.GenerateCodeUsingAutoRest
@@ -372,47 +378,129 @@ function ConvertTo-CsharpCode
         $codeGenerator = "Azure.CSharp"
     }
 
+    $clrPath = Join-Path -Path $outputDirectory -ChildPath 'ref' | Join-Path -ChildPath 'fullclr'
+    if (-not (Test-Path -Path $clrPath)) {
+        $null = New-Item -Path $clrPath -ItemType Directory
+    }
+
+    $outAssembly = "$NameSpace.dll"
+    # Delete the previously generated assembly, even if -NoAssembly is specified
+    if (Test-Path -Path (Join-Path -Path $clrPath -ChildPath $outAssembly)) {
+        $null = Remove-Item -Path (Join-Path -Path $clrPath -ChildPath $outAssembly) -Force
+    }
+
+    if ($NoAssembly) {
+        $outAssembly = ''
+    }
+
+    $return = @{
+        GeneratedCSharpPath = $generatedCSharpPath
+    }
+
     $null = & $autoRestExePath -AddCredentials -input $swaggerMetaDict['SwaggerSpecPath'] -CodeGenerator $codeGenerator -OutputDirectory $generatedCSharpPath -NameSpace $Namespace
     if ($LastExitCode)
     {
         throw $LocalizedData.AutoRestError
     }
 
-    if (-not $SkipAssemblyGeneration) {
-        Write-Verbose -Message $LocalizedData.GenerateAssemblyFromCode
-        $allCSharpFiles= Get-ChildItem -Path "$generatedCSharpPath\*.cs" `
-                                       -Recurse `
-                                       -File `
-                                       -Exclude Program.cs,TemporaryGeneratedFile* |
-                                       Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*'
+    Write-Verbose -Message $LocalizedData.GenerateAssemblyFromCode
+    $allCSharpFiles= Get-ChildItem -Path "$generatedCSharpPath\*.cs" `
+                                   -Recurse `
+                                   -File `
+                                   -Exclude Program.cs,TemporaryGeneratedFile* |
+                                        Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*'
 
-        $allCSharpFilesArrayString = "@('"+ $($allCSharpFiles.FullName -join "','") + "')"
+    $allCSharpFilesArrayString = "@('"+ $($allCSharpFiles.FullName -join "','") + "')"
 
-        # Compile full CLR (PSSwagger requires to be invoked from full PowerShell)
-        $outAssembly = Join-Path -Path $outputDirectory -ChildPath 'ref' | Join-Path -ChildPath 'fullclr' | Join-Path -ChildPath "$NameSpace.dll"
-        if (Test-Path -Path $outAssembly)
-        {
+    # Compile full CLR (PSSwagger requires to be invoked from full PowerShell)
+    $codeCreatedByAzureGenerator = [bool]$SwaggerMetaDict['UseAzureCsharpGenerator']
+
+    # As of 3/2/2017, there's a version mismatch between the latest Microsoft.Rest.ClientRuntime.Azure package and the latest AzureRM.Profile package
+    # So we have to hardcode Microsoft.Rest.ClientRuntime.Azure to at most version 3.3.4
+    $info = $SwaggerDict['Info']
+    $modulePostfix = $info['infoName']
+    $NameSpace = $info.namespace
+    $fullModuleName = $Namespace + '.' + $modulePostfix
+    $cliXmlTmpPath = Get-TemporaryCliXmlFilePath -FullModuleName $fullModuleName
+    try {
+        Export-CliXml -InputObject $PathFunctionDetails -Path $cliXmlTmpPath
+        $command = ". '$PSScriptRoot\Utils.ps1'; 
+                                Initialize-LocalToolsVariables;
+                                Invoke-AssemblyCompilation  -OutputAssemblyName '$outAssembly' ``
+                                                            -ClrPath '$clrPath' ``
+                                                            -CSharpFiles $allCSharpFilesArrayString ``
+                                                            -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator ``
+                                                            -RequiredAzureRestVersion 3.3.4 ``
+                                                            -AllUsers:`$$InstallToolsForAllUsers ``
+                                                            -BootstrapConsent:`$$UserConsent ``
+                                                            -TestBuild:`$$TestBuild;
+                                Import-Module `"`$(Join-Path -Path `"$PSScriptRoot`" -ChildPath `"Paths.psm1`")` -DisableNameChecking;
+                                Set-ExtendedCodeMetadata -MainClientTypeName $fullModuleName ``
+                                                         -CliXmlTmpPath $cliXmlTmpPath"
+
+        $success = & "powershell" -command "& {$command}"
+
+        $codeReflectionResult = Import-CliXml -Path $cliXmlTmpPath
+        if ($codeReflectionResult.VerboseMessages -and ($codeReflectionResult.VerboseMessages.Count -gt 0)) {
+            $verboseMessages = $codeReflectionResult.VerboseMessages -Join [Environment]::NewLine
+            Write-Verbose -Message $verboseMessages
+        }
+
+        if ($codeReflectionResult.WarningMessages -and ($codeReflectionResult.WarningMessages.Count -gt 0)) {
+            $warningMessages = $codeReflectionResult.WarningMessages -Join [Environment]::NewLine
+            Write-Warning -Message $warningMessages
+        }
+
+        if ((Test-AssemblyCompilationSuccess -Output ($success | Out-String))) {
+            $message = $LocalizedData.GeneratedAssembly -f ($outAssembly)
+            Write-Verbose -Message $message
+        } else {
+            # This should be enough to let the user know we failed to generate their module's assembly.
+            if (-not $outAssembly) {
+                $outAssembly = "$NameSpace.dll"
+            }
+
+            $message = $LocalizedData.UnableToGenerateAssembly -f ($outAssembly)
+            Throw $message
+        }
+
+        if (-not ($codeReflectionResult.Result)) {
+            $errorMessage = (,($LocalizedData.MetadataExtractFailed) + 
+                $codeReflectionResult.ErrorMessages) -Join [Environment]::NewLine
+            throw $errorMessage
+        }
+
+        $return.PathFunctionDetails = $codeReflectionResult.Result
+    } finally {
+        if (Test-Path -Path $cliXmlTmpPath) {
+            $null = Remove-Item -Path $cliXmlTmpPath
+        }
+    }
+    
+    # If we're not going to save the assembly, no need to generate the core CLR one now
+    if ($PowerShellCorePath -and (-not $NoAssembly)) {
+        if (-not $outAssembly) {
+            $outAssembly = "$NameSpace.dll"
+        }
+
+        # Compile core CLR
+        $clrPath = Join-Path -Path $outputDirectory -ChildPath 'ref' | Join-Path -ChildPath 'coreclr'
+        if (Test-Path (Join-Path -Path $outputDirectory -ChildPath $outAssembly)) {
             $null = Remove-Item -Path $outAssembly -Force
         }
 
-        if (-not (Test-Path -Path (Split-Path -Path $outAssembly -Parent))) {
-            $null = New-Item -Path (Split-Path -Path $outAssembly -Parent) -ItemType Directory
+        if (-not (Test-Path -Path $clrPath)) {
+            $null = New-Item $clrPath -ItemType Directory
         }
-        
-        $codeCreatedByAzureGenerator = [bool]$SwaggerMetaDict['UseAzureCsharpGenerator']
-        # As of 3/2/2017, there's a version mismatch between the latest Microsoft.Rest.ClientRuntime.Azure package and the latest AzureRM.Profile package
-        # So we have to hardcode Microsoft.Rest.ClientRuntime.Azure to at most version 3.3.4
-        $command = ". '$PSScriptRoot\Utils.ps1';
-                    Initialize-LocalToolsVariables;
-                    Invoke-AssemblyCompilation -OutputAssembly '$outAssembly' ``
-                                               -CSharpFiles $allCSharpFilesArrayString ``
-                                               -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator ``
-                                               -RequiredAzureRestVersion 3.3.4 ``
-                                               -AllUsers:`$$InstallToolsForAllUsers ``
-                                               -BootstrapConsent:`$$UserConsent ``
-                                               -TestBuild:`$$TestBuild"
 
-        $success = powershell -command "& {$command}"
+        $command = ". '$PSScriptRoot\Utils.ps1'; 
+                            Initialize-LocalToolsVariables;
+                            Invoke-AssemblyCompilation -OutputAssemblyName '$outAssembly' ``
+                                                       -ClrPath '$clrPath' ``
+                                                       -CSharpFiles $allCSharpFilesArrayString ``
+                                                       -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator"
+
+        $success = & "$PowerShellCorePath" -command "& {$command}"
         if ((Test-AssemblyCompilationSuccess -Output ($success | Out-String))) {
             $message = $LocalizedData.GeneratedAssembly -f ($outAssembly)
             Write-Verbose -Message $message
@@ -420,37 +508,9 @@ function ConvertTo-CsharpCode
             $message = $LocalizedData.UnableToGenerateAssembly -f ($outAssembly)
             Throw $message
         }
-
-        if ($PowerShellCorePath) {
-            # Compile core CLR
-            $outAssembly = Join-Path -Path $outputDirectory -ChildPath 'ref' | Join-Path -ChildPath 'coreclr' | Join-Path -ChildPath "$NameSpace.dll"
-            if (Test-Path $outAssembly)
-            {
-                $null = Remove-Item -Path $outAssembly -Force
-            }
-
-            if (-not (Test-Path (Split-Path $outAssembly -Parent))) {
-                $null = New-Item (Split-Path $outAssembly -Parent) -ItemType Directory
-            }
-            
-            $command = ". '$PSScriptRoot\Utils.ps1'; 
-                        Initialize-LocalToolsVariables;
-                        Invoke-AssemblyCompilation -OutputAssembly '$outAssembly' ``
-                                                   -CSharpFiles $allCSharpFilesArrayString ``
-                                                   -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator"
-
-            $success = & "$PowerShellCorePath" -command "& {$command}"
-            if ((Test-AssemblyCompilationSuccess -Output ($success | Out-String))) {
-                $message = $LocalizedData.GeneratedAssembly -f ($outAssembly)
-                Write-Verbose -Message $message
-            } else {
-                $message = $LocalizedData.UnableToGenerateAssembly -f ($outAssembly)
-                Throw $message
-            }
-        }
     }
 
-    return $generatedCSharpPath
+    return $return
 }
 
 function Test-AssemblyCompilationSuccess {
