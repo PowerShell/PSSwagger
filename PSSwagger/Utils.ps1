@@ -885,12 +885,14 @@ function Get-MsiWithPackageManagement {
 #>
 function Get-SignedContent {
     param(
+        [Parameter(Mandatory=$true)]
         [string]$Path
     )
 
     $content = Get-Content -Path $Path
     $sigStartOneIndexed = $content | Select-String "# SIG # Begin signature block"
-    if ($sigStartOneIndexed) {
+    $sigEnd = $content | Select-String "# SIG # End signature block"
+    if ($sigEnd -and $sigStartOneIndexed) {
         $content[0..($sigStartOneIndexed.LineNumber-2)]
     } else {
         $content
