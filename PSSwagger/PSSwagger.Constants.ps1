@@ -50,7 +50,7 @@ if (-not (Test-Path -Path `$dllFullName)) {
         throw `$LocalizedData.CSharpFilesNotFound -f (`$generatedCSharpFilePath)
     }
 
-    `$allCSharpFiles = Get-ChildItem -Path (Join-Path -Path `$generatedCSharpFilePath -ChildPath "*.Code.ps1") -Recurse -Exclude Program.cs,TemporaryGeneratedFile* | Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*'
+    `$allCSharpFiles = Get-ChildItem -Path (Join-Path -Path `$generatedCSharpFilePath -ChildPath "*.Code.ps1") -Recurse -Exclude Program.cs,TemporaryGeneratedFile* -File | Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*'
 
     `$allCSharpFiles | ForEach-Object {
         `$sig = Get-AuthenticodeSignature -FilePath `$_.FullName 
