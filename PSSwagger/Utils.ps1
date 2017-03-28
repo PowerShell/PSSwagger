@@ -890,11 +890,13 @@ function Get-SignedContent {
     )
 
     $content = Get-Content -Path $Path
-    $sigStartOneIndexed = $content | Select-String "# SIG # Begin signature block"
-    $sigEnd = $content | Select-String "# SIG # End signature block"
-    if ($sigEnd -and $sigStartOneIndexed) {
-        $content[0..($sigStartOneIndexed.LineNumber-2)]
-    } else {
-        $content
+    if ($content) {
+        $sigStartOneIndexed = $content | Select-String "# SIG # Begin signature block"
+        $sigEnd = $content | Select-String "# SIG # End signature block"
+        if ($sigEnd -and $sigStartOneIndexed) {
+            $content[0..($sigStartOneIndexed.LineNumber-2)]
+        } else {
+            $content
+        }
     }
 }
