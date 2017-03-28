@@ -327,7 +327,7 @@ Describe "ParameterTypes tests" {
             $commandParameters.ContainsKey('AgeInDays') | should be $true
             $commandParameters['AgeInDays'].ParameterType | should be "System.Nullable[int]" # AutoRest issue - why is this Int32?
             $commandParameters.ContainsKey('Poisoned') | should be $true
-            $commandParameters['Poisoned'].ParameterType | should be "System.Nullable[bool]"
+            $commandParameters['Poisoned'].ParameterType | should be "switch"
         }
 
         It "Test default parameter values" {
@@ -338,7 +338,7 @@ Describe "ParameterTypes tests" {
         It "Test non-default parameter values" {
             $aByte = [System.Text.Encoding]::UTF8.GetBytes("a")
             $testBytes = [System.Text.Encoding]::UTF8.GetBytes("test")
-            $results = Get-Cupcake -AgeInYears 2 -AgeInDays 730 -Flavor "chocolate" -Price 15.95 -PriceInEuros 14.75 -MatrixIdentity $aByte -MatrixCode $testBytes -MadeOn ([DateTime]::Parse("2017-03-23")) -MadeOnDateTime ([DateTime]::Parse("2017-03-23T13:25:43.511Z")) -Password "test2" -Poisoned $true
+            $results = Get-Cupcake -AgeInYears 2 -AgeInDays 730 -Flavor "chocolate" -Price 15.95 -PriceInEuros 14.75 -MatrixIdentity $aByte -MatrixCode $testBytes -MadeOn ([DateTime]::Parse("2017-03-23")) -MadeOnDateTime ([DateTime]::Parse("2017-03-23T13:25:43.511Z")) -Password "test2" -Poisoned
             $results.Length | should be 2
         }
     }

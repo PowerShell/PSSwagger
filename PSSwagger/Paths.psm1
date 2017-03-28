@@ -461,7 +461,7 @@ function Get-TemporaryCliXmlFilePath {
         $FullModuleName
     )
 
-    if (-not (Test-Path -Path $script:AppLocalPath)) {
+    if (-not (Test-Path -Path $script:AppLocalPath -PathType Container)) {
         $null = New-Item -Path $script:AppLocalPath -ItemType Directory
     }
     
