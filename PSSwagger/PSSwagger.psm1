@@ -400,7 +400,6 @@ function ConvertTo-CsharpCode
     }
 
     $allCSharpFilesArrayString = "@('"+ $($allCodeFiles -join "','") + "')"
-
     # Compile full CLR (PSSwagger requires to be invoked from full PowerShell)
     $codeCreatedByAzureGenerator = [bool]$SwaggerMetaDict['UseAzureCsharpGenerator']
 

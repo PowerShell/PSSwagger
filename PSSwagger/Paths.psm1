@@ -469,16 +469,3 @@ function Get-TemporaryCliXmlFilePath {
     $filePath = Join-Path -Path $script:AppLocalPath -ChildPath "$FullModuleName.$random.xml"
     return $filePath
 }
-
-function DeSerialize-PSObject
-{
-    [CmdletBinding(PositionalBinding=$false)]    
-    Param
-    (
-        [Parameter(Mandatory=$true)]        
-        $Path
-    )
-
-    $filecontent = Microsoft.PowerShell.Management\Get-Content -Path $Path
-    [System.Management.Automation.PSSerializer]::Deserialize($filecontent)    
-}

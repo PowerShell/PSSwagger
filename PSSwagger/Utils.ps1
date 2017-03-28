@@ -71,7 +71,7 @@ function Invoke-AssemblyCompilation {
 
     # Append the content of each file into a single string
     $srcContent = @()
-    $srcContent += $CSharpFiles | ForEach-Object { "// File $($_.FullName)"; get-content -path $_.FullName }
+    $srcContent += $CSharpFiles | ForEach-Object { "// File $($_.FullName)"; Get-SignedContent -Path $_.FullName }
     
     # Find the reference assemblies to use
     # System refs are expected to exist on the system
@@ -874,4 +874,25 @@ function Get-MsiWithPackageManagement {
     }
 
     return $returnObjects
+}
+
+<#
+.DESCRIPTION
+  Gets the content of a file. Removes the signature block, if it exists.
+
+.PARAMETER
+  Path to the file whose contents should be read.
+#>
+function Get-SignedContent {
+    param(
+        [string]$Path
+    )
+
+    $content = Get-Content -Path $Path
+    $sigStartOneIndexed = $content | Select-String "# SIG # Begin signature block"
+    if ($sigStartOneIndexed) {
+        $content[0..($sigStartOneIndexed.LineNumber-2)]
+    } else {
+        $content
+    }
 }
