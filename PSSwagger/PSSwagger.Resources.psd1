@@ -49,5 +49,6 @@ ConvertFrom-StringData @'
     ReferenceTypeDefaultValueNotSupported=PSSwagger doesn't support setting a reference-type default value. Parameter: '{0}', Parameter Type: '{1}', Cmdlet: '{2}'
     ResultCodeMetadataExtraction=Result of code metadata extraction: {0}
     MetadataExtractFailed=Module generation failed. If no error messages follow, check the output of code metadata extraction above
+    SuccessfullyGeneratedModule=Successfully generated module '{0}' at '{1}' for the specified Swagger specification.
 ###PSLOC
 '@

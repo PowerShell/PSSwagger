@@ -379,24 +379,26 @@ function New-SwaggerDefinitionCommand
     {
         $ExpandedAllDefinitions = $true
 
-        $DefinitionFunctionsDetails.Keys | ForEach-Object {
+        $DefinitionFunctionsDetails.GetEnumerator() | ForEach-Object {
             
-            $FunctionDetails = $DefinitionFunctionsDetails[$_]
+            $FunctionDetails = $_.Value
 
             if(-not $FunctionDetails.ExpandedParameters)
             {
                 $message = $LocalizedData.ExpandDefinition -f ($FunctionDetails.Name)
                 Write-Verbose -Message $message
 
-                $Unexpanded_AllOf_DefinitionNames = $FunctionDetails.Unexpanded_AllOf_DefinitionNames | ForEach-Object {
+                $Unexpanded_AllOf_DefinitionNames = @()
+                $Unexpanded_AllOf_DefinitionNames += $FunctionDetails.Unexpanded_AllOf_DefinitionNames | ForEach-Object {
                                                         $ReferencedDefinitionName = $_
                                                         if($DefinitionFunctionsDetails.ContainsKey($ReferencedDefinitionName) -and
                                                            $DefinitionFunctionsDetails[$ReferencedDefinitionName].ExpandedParameters)
                                                         {
                                                             $RefFunctionDetails = $DefinitionFunctionsDetails[$ReferencedDefinitionName]
                                                 
-                                                            $RefFunctionDetails.ParametersTable.Keys | ForEach-Object {
-                                                                $RefParameterName = $_
+                                                            $RefFunctionDetails.ParametersTable.GetEnumerator() | ForEach-Object {
+                                                                $RefParameterName = $_.Name
+
                                                                 if($RefParameterName)
                                                                 {
                                                                     if($FunctionDetails.ParametersTable.ContainsKey($RefParameterName))
@@ -415,8 +417,8 @@ function New-SwaggerDefinitionCommand
                                                             $_
                                                         }
                                                     }
-
-                $Unexpanded_x_ms_client_flatten_DefinitionNames = $FunctionDetails.Unexpanded_x_ms_client_flatten_DefinitionNames | ForEach-Object {
+                $Unexpanded_x_ms_client_flatten_DefinitionNames = @()
+                $Unexpanded_x_ms_client_flatten_DefinitionNames += $FunctionDetails.Unexpanded_x_ms_client_flatten_DefinitionNames | ForEach-Object {
                                                                         $ReferencedDefinitionName = $_
                                                                         if($ReferencedDefinitionName)
                                                                         {
@@ -425,8 +427,8 @@ function New-SwaggerDefinitionCommand
                                                                             {
                                                                                 $RefFunctionDetails = $DefinitionFunctionsDetails[$ReferencedDefinitionName]
                                                 
-                                                                                $RefFunctionDetails.ParametersTable.Keys | ForEach-Object {
-                                                                                    $RefParameterName = $_
+                                                                                $RefFunctionDetails.ParametersTable.GetEnumerator() | ForEach-Object {
+                                                                                    $RefParameterName = $_.Name
                                                                                     if($RefParameterName)
                                                                                     {
                                                                                         if($FunctionDetails.ParametersTable.ContainsKey($RefParameterName))
@@ -457,7 +459,7 @@ function New-SwaggerDefinitionCommand
 
                 if(-not $FunctionDetails.ExpandedParameters)
                 {
-                    $message = $LocalizedData.UnableToExpandDefinition -f ($($FunctionDetails.Name))
+                    $message = $LocalizedData.UnableToExpandDefinition -f ($FunctionDetails.Name)
                     Write-Verbose -Message $message
                     $ExpandedAllDefinitions = $false
                 }
@@ -465,13 +467,13 @@ function New-SwaggerDefinitionCommand
         } # Foeach-Object
     } # while()
 
-    $DefinitionFunctionsDetails.Keys | ForEach-Object {
+    $DefinitionFunctionsDetails.GetEnumerator() | ForEach-Object {
         
-        $FunctionDetails = $DefinitionFunctionsDetails[$_]
+        $FunctionDetails = $_.Value
 
         # Denifitions defined as x_ms_client_flatten are not used as an object anywhere. 
         # Also AutoRest doesn't generate a Model class for the definitions declared as x_ms_client_flatten for other definitions.
-        if(-not $FunctionDetails.IsUsedAs_x_ms_client_flatten -and $FunctionDetails.ParametersTable.Count)
+        if(-not $FunctionDetails.IsUsedAs_x_ms_client_flatten -and (Get-HashtableKeyCount -Hashtable $FunctionDetails.ParametersTable))
         {
             if ($FunctionDetails.ContainsKey('GenerateDefinitionCmdlet') -and ($FunctionDetails['GenerateDefinitionCmdlet'] -eq $true)) {
                 $FunctionsToExport += New-SwaggerSpecDefinitionCommand -FunctionDetails $FunctionDetails `
@@ -522,8 +524,9 @@ function New-SwaggerSpecDefinitionCommand
     $DefinitionTypeNamePrefix = "$Namespace.Models."
     $ParameterSetPropertyString = ""
     $parameterDefaultValueOption = ""
-    $FunctionDetails.ParametersTable.Keys | ForEach-Object {
-        $ParameterDetails = $FunctionDetails.ParametersTable[$_]
+
+    $FunctionDetails.ParametersTable.GetEnumerator() | ForEach-Object {
+        $ParameterDetails = $_.Value
 
         $isParamMandatory = $ParameterDetails.Mandatory
         $parameterName = $ParameterDetails.Name
@@ -588,11 +591,12 @@ function New-SwaggerDefinitionFormatFile
     $ViewTypeName = $ViewName
     $TableColumnItemsList = @()
     $TableColumnItemCount = 0
-    $ParametersCount = $FunctionDetails.ParametersTable.Keys.Count
+    $ParametersCount = Get-HashtableKeyCount -Hashtable $FunctionDetails.ParametersTable
     $SkipParameterList = @('id', 'tags')
 
-    $FunctionDetails.ParametersTable.Keys | ForEach-Object {
-        $ParameterDetails = $FunctionDetails.ParametersTable[$_]
+    $FunctionDetails.ParametersTable.GetEnumerator() | ForEach-Object {        
+        
+        $ParameterDetails = $_.Value
 
         # Add all properties when definition has 4 or less properties.
         # Otherwise add the first 4 properties with basic types by skipping the complex types, id and tags.

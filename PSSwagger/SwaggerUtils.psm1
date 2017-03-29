@@ -704,7 +704,7 @@ function Convert-ParamTable
 
     $requiredParamList = @()
     $optionalParamList = @()
-    $keyCount = $ParamTable.Keys.Count
+    $keyCount = Get-HashtableKeyCount -Hashtable $ParamTable
     if($keyCount)
     {
         # This foreach is required to get the parameters in sequential/expected order 

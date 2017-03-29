@@ -214,7 +214,7 @@ Write-Verbose -Message "Waiting for the operation to complete."
         $ScriptBlockParameters = New-Object -TypeName 'System.Collections.Generic.Dictionary[string,object]'
         $ScriptBlockParameters['TaskResult'] = $TaskResult
         $ScriptBlockParameters['AsJob'] = $AsJob
-        $PSCommonParameters.Keys | ForEach-Object { $ScriptBlockParameters[$_] = $PSCommonParameters[$_] }
+        $PSCommonParameters.GetEnumerator() | ForEach-Object { $ScriptBlockParameters[$_.Name] = $_.Value }
 
         Invoke-SwaggerCommandUtility -ScriptBlock $PSSwaggerJobScriptBlock `
                                      -CallerPSBoundParameters $ScriptBlockParameters `
@@ -268,8 +268,8 @@ $createObjectStr = @'
 
     `$Object = New-Object -TypeName $DefinitionTypeName
 
-    `$PSBoundParameters.Keys | ForEach-Object { 
-        `$Object.`$_ = `$PSBoundParameters[`$_]
+    `$PSBoundParameters.GetEnumerator() | ForEach-Object { 
+        `$Object.`$(`$_.Key) = `$_.Value
     }
 
     if(Get-Member -InputObject `$Object -Name Validate -MemberType Method)
@@ -282,10 +282,10 @@ $createObjectStr = @'
 
 $ApiVersionStr = @'
 
-        if(Get-Member -InputObject $clientName -Name 'ApiVersion' -MemberType Property)
-        {
-            $clientName.ApiVersion = "$infoVersion"
-        }
+    if(Get-Member -InputObject $clientName -Name 'ApiVersion' -MemberType Property)
+    {
+        $clientName.ApiVersion = "$infoVersion"
+    }
 '@
 
 $GeneratedCommandsName = 'Generated.PowerShell.Commands'
