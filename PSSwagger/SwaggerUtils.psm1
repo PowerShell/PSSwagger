@@ -602,11 +602,12 @@ function Get-PathCommandName
         return (Get-SingularizedValue -Name $opId)
     }
 
-    $cmdNoun = $opIdValues[0]
+    $cmdNoun = (Get-SingularizedValue -Name $opIdValues[0])
     $cmdVerb = $opIdValues[1]
     if (-not (get-verb $cmdVerb))
     {
-        $message = $LocalizedData.UnapprovedVerb -f ($cmdVerb)
+        $UnapprovedVerb = $cmdVerb
+        $message = $LocalizedData.UnapprovedVerb -f ($UnapprovedVerb)
         Write-Verbose $message
         
         if ($cmdVerbMap.ContainsKey($cmdVerb))
@@ -614,7 +615,7 @@ function Get-PathCommandName
             # This condition happens when there aren't any suffixes
             $cmdVerb = $cmdVerbMap[$cmdVerb] -Split ',' | ForEach-Object { if($_.Trim()){ $_.Trim() } }
             $cmdVerb | ForEach-Object {
-                $message = $LocalizedData.ReplacedVerb -f ($_, ($cmdVerb -join ','))
+                $message = $LocalizedData.ReplacedVerb -f ($_, $UnapprovedVerb)
                 Write-Verbose -Message $message
             }
         }
@@ -675,11 +676,6 @@ function Get-PathCommandName
                     $cmdNoun = $cmdNoun + $opIdValues[1].Substring($firstWordEnd)
                 }
             }
-
-            $cmdVerb | ForEach-Object {
-                $message = $LocalizedData.UsingNounVerb -f ($cmdNoun, $_)
-                Write-Verbose -Message $message
-            }
         }
     }
 
@@ -688,6 +684,7 @@ function Get-PathCommandName
 
     $cmdletNames = $cmdVerb | ForEach-Object {
         "$_-$cmdNoun"
+        Write-Verbose -Message ($LocalizedData.UsingCmdletNameForSwaggerPathOperation -f ("$_-$cmdNoun", $OperationId))
     }
 
     return $cmdletNames

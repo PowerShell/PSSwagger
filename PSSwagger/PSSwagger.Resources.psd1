@@ -15,7 +15,7 @@ ConvertFrom-StringData @'
     UnableToExpandDefinition=Unable to expand the '{0}' definition in current iteration.
     UnapprovedVerb=Verb '{0}' not an approved verb.
     ReplacedVerb=Using Verb '{0}' in place of '{1}'.
-    UsingNounVerb=Using Noun '{0}'. Using Verb '{1}'
+    UsingCmdletNameForSwaggerPathOperation=Using cmdlet name '{0}' for Swagger path operationid '{1}'.
     GenerateCodeUsingAutoRest=Generating CSharp Code using AutoRest
     GenerateAssemblyFromCode=Generating assembly from the CSharp code
     GeneratedAssembly=Generated '{0}' assembly
