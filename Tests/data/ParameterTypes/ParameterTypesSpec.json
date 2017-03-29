@@ -109,6 +109,14 @@
                         "required": false,
                         "type": "boolean",
                         "default": false
+                    },
+                    {
+                        "name": "filter",
+                        "in": "query",
+                        "required": false,
+                        "type": "string",
+                        "enum": [ "resourceType eq 'Test.Namespace/ServiceNameA'", "resourceType eq 'Test.Namespace/ServiceNameZ'", "OtherValidValue" ],
+                        "description": "The filter to apply on the operation."
                     }
                 ],
                 "tags": [

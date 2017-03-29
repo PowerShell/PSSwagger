@@ -328,6 +328,13 @@ Describe "ParameterTypes tests" {
             $commandParameters['AgeInDays'].ParameterType | should be "System.Nullable[int]" # AutoRest issue - why is this Int32?
             $commandParameters.ContainsKey('Poisoned') | should be $true
             $commandParameters['Poisoned'].ParameterType | should be "switch"
+
+            $commandParameters.ContainsKey('Filter') | should be $true
+            $commandParameters['Filter'].ParameterType | should be "string"
+            $ValidateSetAttribute = $commandParameters['Filter'].Attributes | Where-Object {"$($_.GetType())" -eq 'ValidateSet'}
+            $ValidateSetAttribute.ValidValues -contains "resourceType eq 'Test.Namespace/ServiceNameA'" | should be $true
+            $ValidateSetAttribute.ValidValues -contains "resourceType eq 'Test.Namespace/ServiceNameZ'" | should be $true
+            $ValidateSetAttribute.ValidValues -contains "OtherValidValue" | should be $true
         }
 
         It "Test default parameter values" {

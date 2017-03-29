@@ -528,7 +528,7 @@ function Get-ParamType
         }
         else
         {
-            $ValidateSet = $ParameterJsonObject.Enum
+            $ValidateSet = $ParameterJsonObject.Enum | ForEach-Object {$_ -replace "'","''"}
             $ValidateSetString = "'$($ValidateSet -join "', '")'"
         }
     }
