@@ -139,9 +139,8 @@ function New-SwaggerSpecPathCommand
     $fullModuleName = $Namespace + '.' + $modulePostfix
 
     $FunctionsToExport = @()
-    $PathFunctionDetails.Keys | ForEach-Object {
-        $FunctionDetails = $PathFunctionDetails[$_]
-        $FunctionsToExport += New-SwaggerPath -FunctionDetails $FunctionDetails `
+    $PathFunctionDetails.GetEnumerator() | ForEach-Object {
+        $FunctionsToExport += New-SwaggerPath -FunctionDetails $_.Value `
                                               -SwaggerMetaDict $SwaggerMetaDict `
                                               -SwaggerDict $SwaggerDict
     }
@@ -188,7 +187,8 @@ function New-SwaggerPath
     $parametersToAdd = @{}
     $parameterHitCount = @{}
     foreach ($parameterSetDetail in $parameterSetDetails) {
-        foreach ($parameterDetails in $parameterSetDetail.ParameterDetails.Values) {
+        $parameterSetDetail.ParameterDetails.GetEnumerator() | ForEach-Object {
+            $parameterDetails = $_.Value
             $parameterName = $parameterDetails.Name
             if($parameterDetails.IsParameter) {
                 if (-not $parameterHitCount.ContainsKey($parameterName)) {
@@ -218,7 +218,8 @@ function New-SwaggerPath
     $nonUniqueParameterSets = @()
     foreach ($parameterSetDetail in $parameterSetDetails) {
         $isUnique = $false
-        foreach ($parameterDetails in $parameterSetDetail.ParameterDetails.Values) {
+        $parameterSetDetail.ParameterDetails.GetEnumerator() | ForEach-Object {
+            $parameterDetails = $_.Value
             if ($parameterHitCount[$parameterDetails.Name] -eq 1) {
                 $isUnique = $true
                 break
@@ -249,7 +250,8 @@ function New-SwaggerPath
         $description = $defaultParameterSet.Description
     }
 
-    foreach ($parameterToAdd in $parametersToAdd.Values) {
+    $parametersToAdd.GetEnumerator() | ForEach-Object {
+        $parameterToAdd = $_.Value
         $parameterName = $parameterToAdd.Details.Name
         $AllParameterSetsString = ''
         foreach ($parameterSetInfo in $parameterToAdd.ParameterSetInfo) {
@@ -343,8 +345,8 @@ function Set-ExtendedCodeMetadata {
     $resultRecord.VerboseMessages += $LocalizedData.ExtractingMetadata
 
     $PathFunctionDetails = Import-CliXml -Path $CliXmlTmpPath
-    $PathFunctionDetails.Keys | ForEach-Object {
-        $FunctionDetails = $PathFunctionDetails[$_]
+    $PathFunctionDetails.GetEnumerator() | ForEach-Object {
+        $FunctionDetails = $_.Value
         $ParameterSetDetails = $FunctionDetails['ParameterSetDetails']
         foreach ($parameterSetDetail in $ParameterSetDetails) {
             $operationId = $parameterSetDetail.OperationId

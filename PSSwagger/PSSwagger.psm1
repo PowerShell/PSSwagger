@@ -301,6 +301,8 @@ function New-PSSwaggerModule
                               -Info $swaggerDict['info']
 
     Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Generated.Resources.psd1") (Join-Path -Path "$outputDirectory" -ChildPath "$Name.Resources.psd1") -Force
+
+    Write-Verbose -Message ($LocalizedData.SuccessfullyGeneratedModule -f $Name,$outputDirectory)
 }
 
 #region Module Generation Helpers

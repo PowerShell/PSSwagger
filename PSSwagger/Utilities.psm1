@@ -29,6 +29,25 @@ function Get-PascalCasedString
 
 }
 
+<#
+.DESCRIPTION
+    Some hashtables can have 'Count' as a key value, 
+    in that case, $Hashtable.Count return the value rather than hashtable keys count in PowerShell.
+    This utility uses enumerator to count the number of keys in a hashtable.
+#>
+function Get-HashtableKeyCount
+{
+    param(
+        [Parameter(Mandatory=$true)]
+        [PSCustomObject]
+        $Hashtable
+    )
+
+    $KeyCount = 0
+    $Hashtable.GetEnumerator() | ForEach-Object { $KeyCount++ }    
+    return $KeyCount
+}
+
 function Remove-SpecialCharacter
 {
     param([string] $Name)
@@ -112,9 +131,9 @@ function Get-CallerPreference
         'PSDefaultParameterValues' = $null
     }
 
-    $Variables.keys | ForEach-Object {
-        $VariableName = $_
-        $VariableValue = $Variables[$_]
+    $Variables.GetEnumerator() | ForEach-Object {
+        $VariableName = $_.Name
+        $VariableValue = $_.Value
 
         if (-not $VariableValue -or
             -not $Cmdlet.MyInvocation.BoundParameters.ContainsKey($VariableValue))
