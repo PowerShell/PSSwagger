@@ -101,6 +101,31 @@ function Remove-AzSRmEnvironment
 
 <#
 .DESCRIPTION
+  Gets the content of a file. Removes the signature block, if it exists.
+
+.PARAMETER
+  Path to the file whose contents should be read.
+#>
+function Get-SignedContent {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$Path
+    )
+
+    $content = Get-Content -Path $Path
+    if ($content) {
+        $sigStartOneIndexed = $content | Select-String "# SIG # Begin signature block"
+        $sigEnd = $content | Select-String "# SIG # End signature block"
+        if ($sigEnd -and $sigStartOneIndexed) {
+            $content[0..($sigStartOneIndexed.LineNumber-2)]
+        } else {
+            $content
+        }
+    }
+}
+
+<#
+.DESCRIPTION
   Gets the list of required modules to be imported for the scriptblock.
 
 .PARAMETER  ModuleInfo
@@ -322,10 +347,15 @@ if(('Microsoft.PowerShell.Commands.PSSwagger.PSSwaggerJob' -as [Type]) -and
 }
 else
 {
-    $PSSwaggerJobFilePath = Join-Path -Path $PSScriptRoot -ChildPath 'PSSwaggerJob.cs'
+    $PSSwaggerJobFilePath = Join-Path -Path $PSScriptRoot -ChildPath 'PSSwaggerJob.Code.ps1'
     if(Test-Path -Path $PSSwaggerJobFilePath -PathType Leaf)
     {
-        $PSSwaggerJobSourceString = Get-Content -Path $PSSwaggerJobFilePath | Out-String
+        $sig = Get-AuthenticodeSignature -FilePath $PSSwaggerJobFilePath
+        if (('Valid' -ne $sig.Status) -and ('NotSigned' -ne $sig.Status)) {
+            throw 'Failed to validate PSSwaggerJob.Code.ps1''s signature'
+        }
+
+        $PSSwaggerJobSourceString = Get-SignedContent -Path $PSSwaggerJobFilePath | Out-String
 
         $RequiredAssemblies = @(
             [System.Management.Automation.PSCmdlet].Assembly.FullName,

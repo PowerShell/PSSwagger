@@ -50,26 +50,12 @@ if (-not (Test-Path -Path `$dllFullName)) {
         throw `$LocalizedData.CSharpFilesNotFound -f (`$generatedCSharpFilePath)
     }
 
-    `$allCSharpFiles = Get-ChildItem -Path `$generatedCSharpFilePath -Filter *.cs -Recurse -Exclude Program.cs,TemporaryGeneratedFile* | Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*'
-    `$fileHashFullPath = Join-Path -Path "`$PSScriptRoot" -ChildPath "$fileHashesFileName"
-    if (-not (Test-Path -Path `$fileHashFullPath)) {
-        `$message = `$LocalizedData.MissingFileHashesFile
-        throw `$message
-    }
+    `$allCSharpFiles = Get-ChildItem -Path (Join-Path -Path `$generatedCSharpFilePath -ChildPath "*.Code.ps1") -Recurse -Exclude Program.cs,TemporaryGeneratedFile* -File | Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*'
 
-    if ("$jsonFileHash" -ne (Get-CustomFileHash -Path `$fileHashFullPath -Algorithm $jsonFileHashAlgorithm).Hash) {
-        `$message = `$LocalizedData.CatalogHashNotValid
-        throw `$message
-    }
-
-    `$fileHashes = ConvertFrom-Json -InputObject (Get-Content -Path `$fileHashFullPath | Out-String)
-    `$algorithm = `$fileHashes.Algorithm
     `$allCSharpFiles | ForEach-Object {
-        `$fileName = "`$_".Replace("`$generatedCSharpFilePath","").Trim("\").Trim("/")
-        `$hash = `$(`$fileHashes.`$fileName)
-        if ((Get-CustomFileHash -Path `$_ -Algorithm `$algorithm).Hash -ne `$hash) {
-            `$message = `$LocalizedData.HashValidationFailed
-            throw `$message
+        `$sig = Get-AuthenticodeSignature -FilePath `$_.FullName 
+        if (('NotSigned' -ne `$sig.Status) -and ('Valid' -ne `$sig.Status)) {
+            throw `$LocalizedData.HashValidationFailed
         }
     }
 

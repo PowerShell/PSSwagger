@@ -71,7 +71,7 @@ function Invoke-AssemblyCompilation {
 
     # Append the content of each file into a single string
     $srcContent = @()
-    $srcContent += $CSharpFiles | ForEach-Object { "// File $($_.FullName)"; get-content -path $_.FullName }
+    $srcContent += $CSharpFiles | ForEach-Object { "// File $($_.FullName)"; Get-SignedContent -Path $_.FullName }
     
     # Find the reference assemblies to use
     # System refs are expected to exist on the system
@@ -668,123 +668,6 @@ function Register-NugetPackageSource
 
 <#
 .DESCRIPTION
-  Runs the built-in Get-FileHash cmdlet if PowerShell is 5.1+ or PowerShell Core. Otherwise, runs a similar custom implementation of Get-FileHash (Get-InternalFileHash).
-  Unlike the built-in Get-FileHash, this function does not support MACTripleDES.
-
-.PARAMETER  Path
-  Path to file to hash.
-
-.PARAMETER  Algorithm
-  Hash algorithm to use.
-#>
-function Get-CustomFileHash {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory=$True)]
-        [System.String]
-        $Path,
-
-        [ValidateSet("SHA1", "SHA256", "SHA384", "SHA512", "MD5", "RIPEMD160")]
-        [System.String]
-        $Algorithm="SHA256"
-    )
-
-    if ($PSVersionTable.PSVersion -lt '5.0.0') {
-        return Get-InternalFileHash -Path $Path -Algorithm $Algorithm
-    } else {
-        return Get-FileHash -Path $Path -Algorithm $Algorithm
-    }
-}
-
-<#
-.DESCRIPTION
-  Implementation of Get-FileHash from PowerShell 5.1+ and PowerShell Core. For use with PowerShell 5.0 or older. Has pipeline and multiple file support removed for simplicity.
-
-.PARAMETER  Path
-  Path to file to hash.
-
-.PARAMETER  Algorithm
-  Hash algorithm to use.
-#>
-function Get-InternalFileHash {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory=$True)]
-        [System.String]
-        $Path,
-
-        [ValidateSet("SHA1", "SHA256", "SHA384", "SHA512", "MD5", "RIPEMD160")]
-        [System.String]
-        $Algorithm="SHA256"
-    )
-    
-    begin {
-        # Construct the strongly-typed crypto object
-        
-        # First see if it has a FIPS algorithm  
-        $hasherType = "System.Security.Cryptography.${Algorithm}CryptoServiceProvider" -as [Type]
-        if ($hasherType) {
-            $hasher = New-Object $hasherType
-        } else {
-            # Check if the type is supported in the current system
-            $algorithmType = "System.Security.Cryptography.${Algorithm}" -as [Type]
-            if ($algorithmType) {
-                if ($Algorithm -eq "MACTripleDES") {
-                    $hasher = New-Object $algorithmType
-                } else {
-                    $hasher = $algorithmType::Create()
-                }
-            }
-            else {
-                throw $UtilsLocalizedData.AlgorithmNotSupported -f ($Algorithm)
-            }
-        }
-
-        function GetStreamHash {
-            param(
-                [System.IO.Stream]
-                $InputStream,
-
-                [System.Security.Cryptography.HashAlgorithm]
-                $Hasher)
-
-            # Compute file-hash using the crypto object
-            [Byte[]] $computedHash = $Hasher.ComputeHash($InputStream)
-            [string] $hash = [BitConverter]::ToString($computedHash) -replace '-',''
-
-            $retVal = [PSCustomObject] @{
-                Algorithm = $Algorithm.ToUpperInvariant()
-                Hash = $hash
-            }
-
-            $retVal
-        }
-    }
-    
-    process {
-        $filePath = Resolve-Path -Path $Path
-        if(Test-Path -Path $filePath -PathType Container) {
-            continue
-        }
-
-        try {
-            # Read the file specified in $FilePath as a Byte array
-            [system.io.stream]$stream = [system.io.file]::OpenRead($filePath)
-            GetStreamHash -InputStream $stream -Hasher $hasher
-        }
-        catch [Exception] {
-            throw $UtilsLocalizedData.FailedToReadFile -f ($filePath)
-        }
-        finally {
-            if($stream) {
-                $stream.Dispose()
-            }
-        }
-    }
-}
-
-<#
-.DESCRIPTION
   Get PowerShell Common parameter/preference values.
 
 .PARAMETER  CallerPSBoundParameters
@@ -991,4 +874,29 @@ function Get-MsiWithPackageManagement {
     }
 
     return $returnObjects
+}
+
+<#
+.DESCRIPTION
+  Gets the content of a file. Removes the signature block, if it exists.
+
+.PARAMETER
+  Path to the file whose contents should be read.
+#>
+function Get-SignedContent {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$Path
+    )
+
+    $content = Get-Content -Path $Path
+    if ($content) {
+        $sigStartOneIndexed = $content | Select-String "# SIG # Begin signature block"
+        $sigEnd = $content | Select-String "# SIG # End signature block"
+        if ($sigEnd -and $sigStartOneIndexed) {
+            $content[0..($sigStartOneIndexed.LineNumber-2)]
+        } else {
+            $content
+        }
+    }
 }
