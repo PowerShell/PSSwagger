@@ -190,7 +190,8 @@ function Get-DefinitionParameters
                                  $ParameterJsonObject.'x-ms-enum' -and 
                                  ($ParameterJsonObject.'x-ms-enum'.modelAsString -eq $false)))
                         {
-                            $ValidateSetString = "'$($ParameterJsonObject.Enum -join "', '")'"
+                            $EnumValues = $ParameterJsonObject.Enum | ForEach-Object {$_ -replace "'","''"}
+                            $ValidateSetString = "'$($EnumValues -join "', '")'"
                         }
                     }
 
