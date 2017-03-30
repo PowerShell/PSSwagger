@@ -42,80 +42,89 @@ function Get-SwaggerSpecPathInfo
     $UseAzureCsharpGenerator = $SwaggerMetaDict['UseAzureCsharpGenerator']
     
     $JsonPathItemObject.value.PSObject.Properties | ForEach-Object {
-        $operationId = $_.Value.operationId
-
-        $FunctionDescription = ""
-        if((Get-Member -InputObject $_.value -Name 'description') -and $_.value.description) {
-            $FunctionDescription = $_.value.description 
-        }
-        
-        $paramInfo = Get-PathParamInfo -JsonPathItemObject $_.value `
-                                       -SwaggerDict $swaggerDict `
-                                       -DefinitionFunctionsDetails $DefinitionFunctionsDetails
-
-        $responses = ""
-        if((Get-Member -InputObject $_.value -Name 'responses') -and $_.value.responses) {
-            $responses = $_.value.responses 
-        }
-
-        
-        $paramObject = Convert-ParamTable -ParamTable $paramInfo
-
-        if((Get-Member -InputObject $_.value -Name 'x-ms-cmdlet-name') -and $_.value.'x-ms-cmdlet-name')
+        if(Get-Member -InputObject $_.Value -Name 'OperationId')
         {
-            $commandNames = $_.value.'x-ms-cmdlet-name'
-        } else {
-            $commandNames = Get-PathCommandName -OperationId $operationId
-        }
+            $operationId = $_.Value.operationId
+            Write-Verbose -Message ($LocalizedData.GettingSwaggerSpecPathInfo -f $operationId)
 
-        $ParameterSetDetail = @{
-            Description = $FunctionDescription
-            ParameterDetails = $paramInfo
-            RequiredParamList = $paramObject['RequiredParamList']
-            OptionalParamList = $paramObject['OptionalParamList']
-            Responses = $responses
-            OperationId = $operationId
-            Priority = 100 # Default
-        }
-
-        if ((Get-Member -InputObject $_.Value -Name 'x-ms-odata') -and $_.Value.'x-ms-odata') {
-            # Currently only the existence of this property is really important, but might as well save the value
-            $ParameterSetDetail.ODataDefinition = $_.Value.'x-ms-odata'
-        }
-
-        # There's probably a better way to do this...
-        $opIdValues = $operationId -split "_",2
-        if(-not $opIdValues -or ($opIdValues.Count -ne 2)) {
-            $approximateVerb = $operationId
-        } else {
-            $approximateVerb = $opIdValues[1]
-            if ((-not $UseAzureCsharpGenerator) -and 
-                (Test-OperationNameInDefinitionList -Name $opIdValues[0] -SwaggerDict $swaggerDict))
-            { 
-                $ParameterSetDetail['UseOperationsSuffix'] = $true
+            $FunctionDescription = ""
+            if((Get-Member -InputObject $_.value -Name 'description') -and $_.value.description) {
+                $FunctionDescription = $_.value.description 
             }
-        }
+            
+            $paramInfo = Get-PathParamInfo -JsonPathItemObject $_.value `
+                                        -SwaggerDict $swaggerDict `
+                                        -DefinitionFunctionsDetails $DefinitionFunctionsDetails
 
-        if ($approximateVerb.StartsWith("List")) {
-            $ParameterSetDetail.Priority = 0
-        }
+            $responses = ""
+            if((Get-Member -InputObject $_.value -Name 'responses') -and $_.value.responses) {
+                $responses = $_.value.responses 
+            }
 
-        $commandNames | ForEach-Object {
-            $FunctionDetails = @{}
-            if ($PathFunctionDetails.ContainsKey($_)) {
-                $FunctionDetails = $PathFunctionDetails[$_]
+            
+            $paramObject = Convert-ParamTable -ParamTable $paramInfo
+
+            if((Get-Member -InputObject $_.value -Name 'x-ms-cmdlet-name') -and $_.value.'x-ms-cmdlet-name')
+            {
+                $commandNames = $_.value.'x-ms-cmdlet-name'
             } else {
-                $FunctionDetails['CommandName'] = $_
+                $commandNames = Get-PathCommandName -OperationId $operationId
             }
 
-            $ParameterSetDetails = @()
-            if ($FunctionDetails.ContainsKey('ParameterSetDetails')) {
-                $ParameterSetDetails = $FunctionDetails['ParameterSetDetails']
-            } 
+            $ParameterSetDetail = @{
+                Description = $FunctionDescription
+                ParameterDetails = $paramInfo
+                RequiredParamList = $paramObject['RequiredParamList']
+                OptionalParamList = $paramObject['OptionalParamList']
+                Responses = $responses
+                OperationId = $operationId
+                Priority = 100 # Default
+            }
 
-            $ParameterSetDetails += $ParameterSetDetail
-            $FunctionDetails['ParameterSetDetails'] = $ParameterSetDetails
-            $PathFunctionDetails[$_] = $FunctionDetails
+            if ((Get-Member -InputObject $_.Value -Name 'x-ms-odata') -and $_.Value.'x-ms-odata') {
+                # Currently only the existence of this property is really important, but might as well save the value
+                $ParameterSetDetail.ODataDefinition = $_.Value.'x-ms-odata'
+            }
+
+            # There's probably a better way to do this...
+            $opIdValues = $operationId -split "_",2
+            if(-not $opIdValues -or ($opIdValues.Count -ne 2)) {
+                $approximateVerb = $operationId
+            } else {
+                $approximateVerb = $opIdValues[1]
+                if ((-not $UseAzureCsharpGenerator) -and 
+                    (Test-OperationNameInDefinitionList -Name $opIdValues[0] -SwaggerDict $swaggerDict))
+                { 
+                    $ParameterSetDetail['UseOperationsSuffix'] = $true
+                }
+            }
+
+            if ($approximateVerb.StartsWith("List")) {
+                $ParameterSetDetail.Priority = 0
+            }
+
+            $commandNames | ForEach-Object {
+                $FunctionDetails = @{}
+                if ($PathFunctionDetails.ContainsKey($_)) {
+                    $FunctionDetails = $PathFunctionDetails[$_]
+                } else {
+                    $FunctionDetails['CommandName'] = $_
+                }
+
+                $ParameterSetDetails = @()
+                if ($FunctionDetails.ContainsKey('ParameterSetDetails')) {
+                    $ParameterSetDetails = $FunctionDetails['ParameterSetDetails']
+                } 
+
+                $ParameterSetDetails += $ParameterSetDetail
+                $FunctionDetails['ParameterSetDetails'] = $ParameterSetDetails
+                $PathFunctionDetails[$_] = $FunctionDetails
+            }
+        }
+        else 
+        {
+            $Message = $LocalizedData.UnsupportedSwaggerProperties -f ('JsonPathItemObject', $($_.Value | Out-String))
+            Write-Warning -Message $Message
         }
     }
 }
@@ -447,7 +456,9 @@ function Set-ExtendedCodeMetadata {
                                 $paramToAdd = "`$(if (`$PSBoundParameters.ContainsKey('$($metadata.Name)')) { $paramToAdd } else { [NullString]::Value })"
                             }
                         } elseif ("System.Nullable``1[System.Boolean]" -eq $type) {
-                            $defaultValue = "`$$defaultValue"
+                            if($defaultValue -ne $null){
+                                $defaultValue = "`$$defaultValue"
+                            }
                             $metadata.Type = "switch"
                         } else {
                             $defaultValue = $_.DefaultValue
