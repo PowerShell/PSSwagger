@@ -83,7 +83,7 @@ function Get-SwaggerSpecPathInfo
 
             if ((Get-Member -InputObject $_.Value -Name 'x-ms-odata') -and $_.Value.'x-ms-odata') {
                 # Currently only the existence of this property is really important, but might as well save the value
-                $ParameterSetDetail.ODataDefinition = $_.Value.'x-ms-odata'
+                $ParameterSetDetail.'x-ms-odata' = $_.Value.'x-ms-odata'
             }
 
             # There's probably a better way to do this...
@@ -495,15 +495,17 @@ function Set-ExtendedCodeMetadata {
                 }
             }
 
-            $paramObject.GetEnumerator() | ForEach-Object {
-                $paramDetail = $_.Value
+            if ($parameterSetDetail.ContainsKey('x-ms-odata') -and $parameterSetDetail.'x-ms-odata') {
+                $paramObject.GetEnumerator() | ForEach-Object {
+                    $paramDetail = $_.Value
 
-                if (-not $paramDetail.ContainsKey('ExtendedData')) {
-                    $metadata = @{
-                        IsODataParameter = $true
+                    if (-not $paramDetail.ContainsKey('ExtendedData')) {
+                        $metadata = @{
+                            IsODataParameter = $true
+                        }
+
+                        $paramDetail.ExtendedData = $metadata
                     }
-
-                    $paramDetail.ExtendedData = $metadata
                 }
             }
 
