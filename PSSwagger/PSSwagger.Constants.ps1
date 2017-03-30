@@ -128,6 +128,12 @@ $helpParamStr = @'
 
 '@
 
+$oDataExpressionBlockStr = @'
+`$oDataQuery = ""
+    $oDataExpression
+    `$oDataQuery = `$oDataQuery.Trim("&")
+    
+'@
 
 $functionBodyStr = @'
 
@@ -145,6 +151,7 @@ $functionBodyStr = @'
     }
     $clientName.BaseUri = `$ResourceManagerUrl
 
+    $oDataExpressionBlock
     $parameterSetBasedMethodStr else {
         Write-Verbose -Message 'Failed to map parameter set to operation method.'
         throw 'Module failed to find operation to execute.'
