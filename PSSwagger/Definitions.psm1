@@ -53,20 +53,27 @@ function Get-SwaggerSpecDefinitionInfo
        $JsonDefinitionItemObject.Value.'AllOf')
     {
        $JsonDefinitionItemObject.Value.'AllOf' | ForEach-Object {
-           $AllOfRefFullName = $_.'$ref'
-           $AllOfRefName = $AllOfRefFullName.Substring( $( $AllOfRefFullName.LastIndexOf('/') ) + 1 )
-           $AllOf_DefinitionNames += $AllOfRefName
-                      
-           $ReferencedFunctionDetails = @{}
-           if($DefinitionFunctionsDetails.ContainsKey($AllOfRefName))
-           {
-               $ReferencedFunctionDetails = $DefinitionFunctionsDetails[$AllOfRefName]
-           }
+            if(Get-Member -InputObject $_ -Name '$ref')
+            {
+                $AllOfRefFullName = $_.'$ref'
+                $AllOfRefName = $AllOfRefFullName.Substring( $( $AllOfRefFullName.LastIndexOf('/') ) + 1 )
+                $AllOf_DefinitionNames += $AllOfRefName
+                            
+                $ReferencedFunctionDetails = @{}
+                if($DefinitionFunctionsDetails.ContainsKey($AllOfRefName))
+                {
+                    $ReferencedFunctionDetails = $DefinitionFunctionsDetails[$AllOfRefName]
+                }
 
-           $ReferencedFunctionDetails['Name'] = $AllOfRefName
-           $ReferencedFunctionDetails['IsUsedAs_AllOf'] = $true
+                $ReferencedFunctionDetails['Name'] = $AllOfRefName
+                $ReferencedFunctionDetails['IsUsedAs_AllOf'] = $true
 
-           $DefinitionFunctionsDetails[$AllOfRefName] = $ReferencedFunctionDetails
+                $DefinitionFunctionsDetails[$AllOfRefName] = $ReferencedFunctionDetails
+            }
+            else {
+                $Message = $LocalizedData.UnsupportedSwaggerProperties -f ('JsonDefinitionItemObject', $($_ | Out-String))
+                Write-Warning -Message $Message
+            }
        }
     }
 
@@ -188,7 +195,8 @@ function Get-DefinitionParameters
                     {
                         if(-not ((Get-Member -InputObject $ParameterJsonObject -Name 'x-ms-enum') -and 
                                  $ParameterJsonObject.'x-ms-enum' -and 
-                                 ($ParameterJsonObject.'x-ms-enum'.modelAsString -eq $false)))
+                                 (-not (Get-Member -InputObject $ParameterJsonObject.'x-ms-enum' -Name 'modelAsString') -or
+                                 ($ParameterJsonObject.'x-ms-enum'.modelAsString -eq $false))))
                         {
                             $EnumValues = $ParameterJsonObject.Enum | ForEach-Object {$_ -replace "'","''"}
                             $ValidateSetString = "'$($EnumValues -join "', '")'"
@@ -253,10 +261,13 @@ function Get-DefinitionParameterType
     {
         $ParameterType = $ParameterJsonObject.Type
 
+        # When a definition property has single enum value, AutoRest doesn't generate an enum type.
         if ((Get-Member -InputObject $ParameterJsonObject -Name 'Enum') -and 
+            ($ParameterJsonObject.Enum.Count -gt 1) -and 
             (Get-Member -InputObject $ParameterJsonObject -Name 'x-ms-enum') -and 
-            $ParameterJsonObject.'x-ms-enum' -and 
-            ($ParameterJsonObject.'x-ms-enum'.modelAsString -eq $false))
+            $ParameterJsonObject.'x-ms-enum' -and             
+            (-not (Get-Member -InputObject $ParameterJsonObject.'x-ms-enum' -Name 'modelAsString') -or
+             ($ParameterJsonObject.'x-ms-enum'.modelAsString -eq $false)))
         {
             $ParameterType = $DefinitionTypeNamePrefix + $ParameterJsonObject.'x-ms-enum'.Name
         }
@@ -283,12 +294,23 @@ function Get-DefinitionParameterType
                 $ParameterType = "$($ParameterJsonObject.Items.Type)[]"
             }
         }
-        elseif (($ParameterJsonObject.Type -eq 'object') -and
-                (Get-Member -InputObject $ParameterJsonObject -Name 'AdditionalProperties') -and 
+        elseif ((Get-Member -InputObject $ParameterJsonObject -Name 'AdditionalProperties') -and 
                 $ParameterJsonObject.AdditionalProperties)
         {
-            $AdditionalPropertiesType = $ParameterJsonObject.AdditionalProperties.Type
-            $ParameterType = "System.Collections.Generic.Dictionary[[$AdditionalPropertiesType],[$AdditionalPropertiesType]]"
+
+            if(($ParameterJsonObject.Type -eq 'object') -and
+               (Get-Member -InputObject $ParameterJsonObject.AdditionalProperties -Name 'Type') -and
+               $ParameterJsonObject.AdditionalProperties.Type)
+            {
+                $AdditionalPropertiesType = $ParameterJsonObject.AdditionalProperties.Type
+
+                # Dictionary
+                $ParameterType = "System.Collections.Generic.Dictionary[[$AdditionalPropertiesType],[$AdditionalPropertiesType]]"
+            }
+            else {
+                $Message = $LocalizedData.UnsupportedSwaggerProperties -f ('ParameterJsonObject', $($ParameterJsonObject | Out-String))
+                Write-Warning -Message $Message
+            }
         }
     }
     elseif ($ParameterName -eq 'Properties' -and
@@ -340,9 +362,17 @@ function Get-DefinitionParameterType
         $ParameterType = 'object'
     }
 
-    if($ParameterType -and ($ParameterType -eq 'Boolean'))
+    if($ParameterType)
     {
-        $ParameterType = 'switch'
+        if($ParameterType -eq 'Boolean')
+        {
+            $ParameterType = 'switch'
+        }
+
+        if($ParameterType -eq 'Integer')
+        {
+            $ParameterType = 'int'
+        }
     }
 
     return $ParameterType
