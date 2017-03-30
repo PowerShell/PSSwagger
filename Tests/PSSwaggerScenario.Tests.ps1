@@ -329,9 +329,9 @@ Describe "ParameterTypes tests" {
             $commandParameters.ContainsKey('Poisoned') | should be $true
             $commandParameters['Poisoned'].ParameterType | should be "switch"
 
-            $commandParameters.ContainsKey('Filter') | should be $true
-            $commandParameters['Filter'].ParameterType | should be "string"
-            $ValidateSetAttribute = $commandParameters['Filter'].Attributes | Where-Object {"$($_.GetType())" -eq 'ValidateSet'}
+            $commandParameters.ContainsKey('Enumparameter') | should be $true
+            $commandParameters['Enumparameter'].ParameterType | should be "string"
+            $ValidateSetAttribute = $commandParameters['Enumparameter'].Attributes | Where-Object {"$($_.GetType())" -eq 'ValidateSet'}
             $ValidateSetAttribute.ValidValues -contains "resourceType eq 'Test.Namespace/ServiceNameA'" | should be $true
             $ValidateSetAttribute.ValidValues -contains "resourceType eq 'Test.Namespace/ServiceNameZ'" | should be $true
             $ValidateSetAttribute.ValidValues -contains "OtherValidValue" | should be $true
@@ -347,6 +347,10 @@ Describe "ParameterTypes tests" {
             $testBytes = [System.Text.Encoding]::UTF8.GetBytes("test")
             $results = Get-Cupcake -AgeInYears 2 -AgeInDays 730 -Flavor "chocolate" -Price 15.95 -PriceInEuros 14.75 -MatrixIdentity $aByte -MatrixCode $testBytes -MadeOn ([DateTime]::Parse("2017-03-23")) -MadeOnDateTime ([DateTime]::Parse("2017-03-23T13:25:43.511Z")) -Password "test2" -Poisoned
             $results.Length | should be 2
+        }
+
+        It "Test OData parameters" {
+            Get-Cupcake -Filter "filter" -Expand "expand" -Select "select"
         }
     }
 

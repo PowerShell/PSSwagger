@@ -751,6 +751,11 @@ function Get-PathFunctionBody
         $ParameterSetDetails,
 
         [Parameter(Mandatory=$true)]
+        [string]
+        [AllowEmptyString()]
+        $ODataExpressionBlock,
+
+        [Parameter(Mandatory=$true)]
         [PSCustomObject]
         $SwaggerDict,
 
@@ -776,7 +781,7 @@ function Get-PathFunctionBody
     $GetServiceCredentialStr = ''
     $AdvancedFunctionEndCodeBlock = ''
     $GetServiceCredentialStr = 'Get-AzServiceCredential'
-
+    
     if (-not $UseAzureCsharpGenerator)
     {
         $apiVersion = $executionContext.InvokeCommand.ExpandString($ApiVersionStr)

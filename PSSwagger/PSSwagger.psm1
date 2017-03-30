@@ -454,7 +454,7 @@ function ConvertTo-CsharpCode
             Throw $message
         }
 
-        if (-not ($codeReflectionResult.Result)) {
+        if (-not $codeReflectionResult.Result) {
             $errorMessage = (,($LocalizedData.MetadataExtractFailed) + 
                 $codeReflectionResult.ErrorMessages) -Join [Environment]::NewLine
             throw $errorMessage

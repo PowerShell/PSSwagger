@@ -60,6 +60,7 @@ function Get-SwaggerSpecPathInfo
 
         
         $paramObject = Convert-ParamTable -ParamTable $paramInfo
+
         if((Get-Member -InputObject $_.value -Name 'x-ms-cmdlet-name') -and $_.value.'x-ms-cmdlet-name')
         {
             $commandNames = $_.value.'x-ms-cmdlet-name'
@@ -75,6 +76,11 @@ function Get-SwaggerSpecPathInfo
             Responses = $responses
             OperationId = $operationId
             Priority = 100 # Default
+        }
+
+        if ((Get-Member -InputObject $_.Value -Name 'x-ms-odata') -and $_.Value.'x-ms-odata') {
+            # Currently only the existence of this property is really important, but might as well save the value
+            $ParameterSetDetail.ODataDefinition = $_.Value.'x-ms-odata'
         }
 
         # There's probably a better way to do this...
@@ -171,16 +177,6 @@ function New-SwaggerPath
     $commandName = $FunctionDetails.CommandName
     $parameterSetDetails = $FunctionDetails['ParameterSetDetails']
 
-    $functionBodyParams = @{
-                                ParameterSetDetails = $FunctionDetails['ParameterSetDetails']
-                                SwaggerDict = $SwaggerDict
-                                SwaggerMetaDict = $SwaggerMetaDict
-                           }
-
-    $pathGenerationPhaseResult = Get-PathFunctionBody @functionBodyParams
-    $bodyObject = $pathGenerationPhaseResult.BodyObject
-    $parameterSetDetails = $pathGenerationPhaseResult.ParameterSetDetails
-
     $description = ''
     $paramBlock = ''
     $paramHelp = ''
@@ -250,6 +246,8 @@ function New-SwaggerPath
         $description = $defaultParameterSet.Description
     }
 
+    $oDataExpression = ""
+    $oDataExpressionBlock = ""
     $parametersToAdd.GetEnumerator() | ForEach-Object {
         $parameterToAdd = $_.Value
         $parameterName = $parameterToAdd.Details.Name
@@ -266,7 +264,6 @@ function New-SwaggerPath
         }
 
         $paramName = "`$$parameterName" 
-        $paramType = "$($parameterToAdd.Details.ExtendedData.Type)"
         $ValidateSetDefinition = $null
         if ($parameterToAdd.Details.ValidateSet)
         {
@@ -275,25 +272,40 @@ function New-SwaggerPath
         }
 
         $parameterDefaultValueOption = ""
-        if ($parameterToAdd.Details.ExtendedData.HasDefaultValue) {
-            if ($parameterToAdd.Details.ExtendedData.DefaultValue) {
-                if ([NullString]::Value -eq $parameterToAdd.Details.ExtendedData.DefaultValue) {
-                    $parameterDefaultValue = "[NullString]::Value"
-                } elseif ("System.String" -eq $parameterToAdd.Details.ExtendedData.Type) {
-                    $parameterDefaultValue = "`"$($parameterToAdd.Details.ExtendedData.DefaultValue)`""
-                } else {
-                    $parameterDefaultValue = "$($parameterToAdd.Details.ExtendedData.DefaultValue)"
-                }
+        if ($parameterToAdd.Details.ContainsKey('ExtendedData')) {
+            if ($parameterToAdd.Details.ExtendedData.ContainsKey('IsODataParameter') -and $parameterToAdd.Details.ExtendedData.IsODataParameter) {
+                $paramType = "$($parameterToAdd.Details.Type)"
+                $oDataExpression += "    if (`$$parameterName) { `$oDataQuery += `"&```$$parameterName=`$$parameterName`" }" + [Environment]::NewLine
             } else {
-                $parameterDefaultValue = "`$null"
+                $paramType = "$($parameterToAdd.Details.ExtendedData.Type)"
+                if ($parameterToAdd.Details.ExtendedData.HasDefaultValue) {
+                    if ($parameterToAdd.Details.ExtendedData.DefaultValue) {
+                        if ([NullString]::Value -eq $parameterToAdd.Details.ExtendedData.DefaultValue) {
+                            $parameterDefaultValue = "[NullString]::Value"
+                        } elseif ("System.String" -eq $parameterToAdd.Details.ExtendedData.Type) {
+                            $parameterDefaultValue = "`"$($parameterToAdd.Details.ExtendedData.DefaultValue)`""
+                        } else {
+                            $parameterDefaultValue = "$($parameterToAdd.Details.ExtendedData.DefaultValue)"
+                        }
+                    } else {
+                        $parameterDefaultValue = "`$null"
+                    }
+
+                    $parameterDefaultValueOption = $executionContext.InvokeCommand.ExpandString($parameterDefaultValueString)
+                }
             }
 
-            $parameterDefaultValueOption = $executionContext.InvokeCommand.ExpandString($parameterDefaultValueString)
+            $paramBlock += $executionContext.InvokeCommand.ExpandString($parameterDefString)
+            $pDescription = $parameterToAdd.Details.Description
+            $paramHelp += $executionContext.InvokeCommand.ExpandString($helpParamStr)
+        } else {
+            Write-Warning ($LocalizedData.ParameterMissingFromAutoRestCode -f ($parameterName, $commandName))
         }
+    }
 
-        $paramBlock += $executionContext.InvokeCommand.ExpandString($parameterDefString)
-        $pDescription = $parameterToAdd.Details.Description
-        $paramHelp += $executionContext.InvokeCommand.ExpandString($helpParamStr)
+    if ($oDataExpression) {
+        $oDataExpression = $oDataExpression.Trim()
+        $oDataExpressionBlock = $executionContext.InvokeCommand.ExpandString($oDataExpressionBlockStr)
     }
 
     $paramBlock = $paramBlock.TrimEnd().TrimEnd(",")
@@ -303,6 +315,16 @@ function New-SwaggerPath
     } else {
         $paramblockWithAsJob = $AsJobParameterString
     }
+
+    $functionBodyParams = @{
+                                ParameterSetDetails = $FunctionDetails['ParameterSetDetails']
+                                ODataExpressionBlock = $oDataExpressionBlock
+                                SwaggerDict = $SwaggerDict
+                                SwaggerMetaDict = $SwaggerMetaDict
+                           }
+
+    $pathGenerationPhaseResult = Get-PathFunctionBody @functionBodyParams
+    $bodyObject = $pathGenerationPhaseResult.BodyObject
 
     $body = $bodyObject.Body
     $outputTypeBlock = $bodyObject.OutputTypeBlock
@@ -399,6 +421,7 @@ function Set-ExtendedCodeMetadata {
 
             $paramObject = $parameterSetDetail.ParameterDetails
             $ParamList = @()
+            $oDataQueryFound = $false
             $methodInfo.GetParameters() | Sort-Object -Property Position | ForEach-Object {
                 $hasDefaultValue = $_.HasDefaultValue
                 # All Types should be converted to their string names, otherwise the CLI XML gets too large
@@ -445,6 +468,31 @@ function Set-ExtendedCodeMetadata {
                     
                     $matchingParamDetail.ExtendedData = $metadata
                     $ParamList += $paramToAdd
+                } else {
+                    if ($metadata.Type.StartsWith("Microsoft.Rest.Azure.OData.ODataQuery``1")) {
+                        if ($oDataQueryFound) {
+                            $resultRecord.ErrorMessages += ($LocalizedData.MultipleODataQueriesOneFunction -f ($operationId))
+                            Export-CliXml -InputObject $resultRecord -Path $CliXmlTmpPath
+                            return
+                        } else {
+                            # Escape backticks
+                            $oDataQueryType = $metadata.Type.Replace("``", "````")
+                            $ParamList += "`$(if (`$oDataQuery) { New-Object -TypeName `"$oDataQueryType`" -ArgumentList `$oDataQuery } else { `$null })"
+                            $oDataQueryFound = $true
+                        }
+                    }
+                }
+            }
+
+            $paramObject.GetEnumerator() | ForEach-Object {
+                $paramDetail = $_.Value
+
+                if (-not $paramDetail.ContainsKey('ExtendedData')) {
+                    $metadata = @{
+                        IsODataParameter = $true
+                    }
+
+                    $paramDetail.ExtendedData = $metadata
                 }
             }
 

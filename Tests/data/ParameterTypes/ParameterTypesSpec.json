@@ -111,12 +111,33 @@
                         "default": false
                     },
                     {
-                        "name": "filter",
+                        "name": "enumparameter",
                         "in": "query",
                         "required": false,
                         "type": "string",
                         "enum": [ "resourceType eq 'Test.Namespace/ServiceNameA'", "resourceType eq 'Test.Namespace/ServiceNameZ'", "OtherValidValue" ],
                         "description": "The filter to apply on the operation."
+					},
+                    {
+                        "name": "$filter",
+                        "in": "query",
+                        "description": "OData test",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "name": "$expand",
+                        "in": "query",
+                        "description": "OData test",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "name": "$select",
+                        "in": "query",
+                        "description": "OData test",
+                        "required": false,
+                        "type": "string"
                     }
                 ],
                 "tags": [
@@ -138,7 +159,8 @@
                             "$ref": "#/definitions/Error"
                         }
                     }
-                }
+                },
+                "x-ms-odata": "#/definitions/Cupcake"
             }
         }
     },
