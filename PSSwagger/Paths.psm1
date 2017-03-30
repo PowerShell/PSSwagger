@@ -495,15 +495,17 @@ function Set-ExtendedCodeMetadata {
                 }
             }
 
-            $paramObject.GetEnumerator() | ForEach-Object {
-                $paramDetail = $_.Value
+            if ($parameterSetDetail.ContainsKey('ODataDefinition') -and $parameterSetDetail.ODataDefinition) {
+                $paramObject.GetEnumerator() | ForEach-Object {
+                    $paramDetail = $_.Value
 
-                if (-not $paramDetail.ContainsKey('ExtendedData')) {
-                    $metadata = @{
-                        IsODataParameter = $true
+                    if (-not $paramDetail.ContainsKey('ExtendedData')) {
+                        $metadata = @{
+                            IsODataParameter = $true
+                        }
+
+                        $paramDetail.ExtendedData = $metadata
                     }
-
-                    $paramDetail.ExtendedData = $metadata
                 }
             }
 
