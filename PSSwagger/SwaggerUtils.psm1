@@ -419,35 +419,66 @@ function Expand-Parameters {
                 Expand-Parameters -ReferenceTypeName $unexpandedDefinitionName -DefinitionFunctionsDetails $DefinitionFunctionsDetails -AllParameterDetails $AllParameterDetails
             }
 
-            foreach ($unexpandedDefinitionParameterEntry in $DefinitionFunctionsDetails[$unexpandedDefinitionName]['ParametersTable'].GetEnumerator()) {
-                if ($AllParameterDetails.ContainsKey($unexpandedDefinitionParameterEntry.Key)) {
-                    throw $LocalizedData.DuplicateExpandedProperty -f ($unexpandedDefinitionParameterEntry.Key)
-                }
-
-                $clonedParameterDetail = @{}
-                foreach ($kvp in $unexpandedDefinitionParameterEntry.Value.GetEnumerator()) {
-                    $clonedParameterDetail[$kvp.Key] = $kvp.Value
-                }
-
-                $clonedParameterDetail.IsParameter = $true
-                $AllParameterDetails[$unexpandedDefinitionParameterEntry.Key] = $clonedParameterDetail
-            }
+            Flatten-ParameterTable -ReferenceTypeName $unexpandedDefinitionName -DefinitionFunctionsDetails $DefinitionFunctionsDetails -AllParameterDetails $AllParameterDetails
         }
     }
 
+    Flatten-ParameterTable -ReferenceTypeName $ReferenceTypeName -DefinitionFunctionsDetails $DefinitionFunctionsDetails -AllParameterDetails $AllParameterDetails
+}
+
+<#
+.DESCRIPTION
+   Flattens the given type's parameter table into cmdlet parameters.
+#>
+function Flatten-ParameterTable {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]
+        $ReferenceTypeName,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $DefinitionFunctionsDetails,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $AllParameterDetails
+    )
     foreach ($parameterEntry in $DefinitionFunctionsDetails[$ReferenceTypeName]['ParametersTable'].GetEnumerator()) {
         if ($AllParameterDetails.ContainsKey($parameterEntry.Key)) {
             throw $LocalizedData.DuplicateExpandedProperty -f ($parameterEntry.Key)
         }
 
-        $clonedParameterDetail = @{}
-        foreach ($kvp in $parameterEntry.Value.GetEnumerator()) {
-            $clonedParameterDetail[$kvp.Key] = $kvp.Value
-        }
-
-        $clonedParameterDetail.IsParameter = $true
-        $AllParameterDetails[$parameterEntry.Key] = $clonedParameterDetail
+        $AllParameterDetails[$parameterEntry.Key] = Clone-ParameterDetail -ParameterDetail $parameterEntry.Value -OtherEntries @{'IsParameter'=$true}
     }
+}
+
+<#
+.DESCRIPTION
+   Clones a given parameter detail object by shallow copying all properties. Optionally adds additional entries.
+#>
+function Clone-ParameterDetail {
+    param(
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $ParameterDetail,
+
+        [Parameter(Mandatory=$false)]
+        [hashtable]
+        $OtherEntries
+    )
+
+    $clonedParameterDetail = @{}
+    foreach ($kvp in $ParameterDetail.GetEnumerator()) {
+        $clonedParameterDetail[$kvp.Key] = $kvp.Value
+    }
+
+    foreach ($kvp in $OtherEntries.GetEnumerator()) {
+        $clonedParameterDetail[$kvp.Key] = $kvp.Value
+    }
+
+    return $clonedParameterDetail
 }
 
 function Get-ParamType

@@ -7,8 +7,8 @@
 #########################################################################################
 
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
-Import-Module (Join-Path -Path $PSScriptRoot -ChildPath Utilities.psm1)
-Import-Module (Join-Path -Path $PSScriptRoot -ChildPath SwaggerUtils.psm1)
+Import-Module (Join-Path -Path $PSScriptRoot -ChildPath Utilities.psm1) -DisableNameChecking
+Import-Module (Join-Path -Path $PSScriptRoot -ChildPath SwaggerUtils.psm1) -DisableNameChecking
 . "$PSScriptRoot\PSSwagger.Constants.ps1" -Force
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwagger.Resources.psd1
 $script:AppLocalPath = Microsoft.PowerShell.Management\Join-Path -Path $env:LOCALAPPDATA -ChildPath 'Microsoft\Windows\PowerShell\PSSwagger\'
@@ -405,7 +405,8 @@ function Set-ExtendedCodeMetadata {
             }
 
             $parameterSetDetail['MethodName'] = $methodName
-            
+            $parameterSetDetail['Operations'] = $operations
+
             # For some reason, moving this out of this loop causes issues
             $clientType = $MainClientTypeName -as [Type]
             if (-not $clientType) {
@@ -428,8 +429,6 @@ function Set-ExtendedCodeMetadata {
                         $errorOccurred = $true
                         return
                     }
-
-                    $parameterSetDetail['Operations'] = $operations
                 } else {
                     $parameterSetDetail['Operations'] = $operationsWithSuffix
                 }
@@ -445,7 +444,7 @@ function Set-ExtendedCodeMetadata {
                     return
                 }
 
-                $parameterSetDetail['Operations'] = $operations
+                $clientType = $propertyObject.PropertyType
             }
 
             $methodInfo = $clientType.GetMethods() | Where-Object { $_.Name -eq $MethodName } | Select-Object -First 1
