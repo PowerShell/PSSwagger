@@ -54,5 +54,8 @@ ConvertFrom-StringData @'
     UnsupportedSwaggerProperties='{0}' has unsupported properties. {1}
     GettingSwaggerSpecPathInfo=Getting details for Swagger path operation with operationid '{0}'.
     SuccessfullyGeneratedModule=Successfully generated module '{0}' at '{1}' for the specified Swagger specification.
+    FlatteningParameterType=Flattening parameter '{0}' of type '{1}'
+    ParameterExpandedTo=Parameter '{0}' was expanded to parameter '{1}'
+    DuplicateExpandedProperty=Duplicate expanded property name: '{0}'
 ###PSLOC
 '@

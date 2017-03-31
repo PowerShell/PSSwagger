@@ -21,7 +21,7 @@ $SubModules = @(
     'Paths.psm1',
     'Definitions.psm1'
 )
-$SubModules | ForEach-Object {Import-Module -Name (Join-Path -Path $PSScriptRoot -ChildPath $_) -Force -Scope Local}
+$SubModules | ForEach-Object {Import-Module -Name (Join-Path -Path $PSScriptRoot -ChildPath $_) -Force -Scope Local -DisableNameChecking}
 
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwagger.Resources.psd1
 
@@ -454,7 +454,7 @@ function ConvertTo-CsharpCode
             Throw $message
         }
 
-        if (-not $codeReflectionResult.Result) {
+        if (-not $codeReflectionResult.Result -or $codeReflectionResult.ErrorMessages.Count -gt 0) {
             $errorMessage = (,($LocalizedData.MetadataExtractFailed) + 
                 $codeReflectionResult.ErrorMessages) -Join [Environment]::NewLine
             throw $errorMessage

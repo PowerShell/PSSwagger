@@ -287,14 +287,15 @@ function Get-PathParamInfo
     $index = 0
     
     $JsonPathItemObject.parameters | ForEach-Object {
-        $ParameterDetails = Get-ParameterDetails -ParameterJsonObject $_ `
+        $AllParameterDetails = Get-ParameterDetails -ParameterJsonObject $_ `
                                                  -SwaggerDict $SwaggerDict `
                                                  -DefinitionFunctionsDetails $DefinitionFunctionsDetails
-
-        if($ParameterDetails -and $ParameterDetails.Type)
-        {
-            $ParametersTable[$index] = $ParameterDetails
-            $index = $index + 1            
+        foreach ($ParameterDetails in $AllParameterDetails) {
+            if($ParameterDetails -and $ParameterDetails.Type)
+            {
+                $ParametersTable[$index] = $ParameterDetails
+                $index = $index + 1            
+            }
         }
     }
 
@@ -322,7 +323,7 @@ function Get-ParameterDetails
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
 
     $NameSpace = $SwaggerDict['Info'].NameSpace
-
+    $DefinitionTypeNamePrefix = "$Namespace.Models."
     $parameterName = ''        
     if((Get-Member -InputObject $ParameterJsonObject -Name 'Name') -and $ParameterJsonObject.Name)
     {
@@ -373,7 +374,111 @@ function Get-ParameterDetails
         }
     }
 
-    return $ParameterDetails
+    if ((Get-Member -InputObject $ParameterJsonObject -Name 'x-ms-client-flatten') -and $ParameterJsonObject.'x-ms-client-flatten') {
+        $referenceTypeName = $ParameterDetails.Type.Replace($DefinitionTypeNamePrefix, '')
+        # If the parameter should be flattened, return an array of parameter detail objects for each parameter of the referenced definition
+        Write-Verbose -Message ($LocalizedData.FlatteningParameterType -f ($parameterName, $referenceTypeName))
+        $AllParameterDetails = @{}
+        $AllParameterDetailsArray = @()
+        Expand-Parameters -ReferenceTypeName $referenceTypeName -DefinitionFunctionsDetails $DefinitionFunctionsDetails -AllParameterDetails $AllParameterDetails
+        foreach ($expandedParameterDetail in $AllParameterDetails.GetEnumerator()) {
+            Write-Verbose -Message ($LocalizedData.ParameterExpandedTo -f ($parameterName, $expandedParameterDetail.Key))
+            $AllParameterDetailsArray += $expandedParameterDetail.Value
+        }
+
+        return $AllParameterDetailsArray
+    } else {
+        # If the parameter shouldn't be flattened, just return the original parameter detail object
+        return $ParameterDetails
+    }
+}
+
+function Expand-Parameters {
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory=$true)]
+        [string]
+        $ReferenceTypeName,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $DefinitionFunctionsDetails,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $AllParameterDetails
+    )
+
+    # Expand unexpanded x-ms-client-flatten
+    # Leave it unexpanded afterwards
+    if ($DefinitionFunctionsDetails[$ReferenceTypeName].ContainsKey('Unexpanded_x_ms_client_flatten_DefinitionNames') -and
+        ($DefinitionFunctionsDetails[$ReferenceTypeName].'Unexpanded_x_ms_client_flatten_DefinitionNames'.Count -gt 0)) {
+        foreach ($unexpandedDefinitionName in $DefinitionFunctionsDetails[$ReferenceTypeName].'Unexpanded_x_ms_client_flatten_DefinitionNames') {
+            if ($DefinitionFunctionsDetails[$unexpandedDefinitionName].ContainsKey('ExpandedParameters') -and -not $DefinitionFunctionsDetails[$unexpandedDefinitionName].ExpandedParameters) {
+                Expand-Parameters -ReferenceTypeName $unexpandedDefinitionName -DefinitionFunctionsDetails $DefinitionFunctionsDetails -AllParameterDetails $AllParameterDetails
+            }
+
+            Flatten-ParameterTable -ReferenceTypeName $unexpandedDefinitionName -DefinitionFunctionsDetails $DefinitionFunctionsDetails -AllParameterDetails $AllParameterDetails
+        }
+    }
+
+    Flatten-ParameterTable -ReferenceTypeName $ReferenceTypeName -DefinitionFunctionsDetails $DefinitionFunctionsDetails -AllParameterDetails $AllParameterDetails
+}
+
+<#
+.DESCRIPTION
+   Flattens the given type's parameter table into cmdlet parameters.
+#>
+function Flatten-ParameterTable {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]
+        $ReferenceTypeName,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $DefinitionFunctionsDetails,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $AllParameterDetails
+    )
+    foreach ($parameterEntry in $DefinitionFunctionsDetails[$ReferenceTypeName]['ParametersTable'].GetEnumerator()) {
+        if ($AllParameterDetails.ContainsKey($parameterEntry.Key)) {
+            throw $LocalizedData.DuplicateExpandedProperty -f ($parameterEntry.Key)
+        }
+
+        $AllParameterDetails[$parameterEntry.Key] = Clone-ParameterDetail -ParameterDetail $parameterEntry.Value -OtherEntries @{'IsParameter'=$true}
+    }
+}
+
+<#
+.DESCRIPTION
+   Clones a given parameter detail object by shallow copying all properties. Optionally adds additional entries.
+#>
+function Clone-ParameterDetail {
+    param(
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $ParameterDetail,
+
+        [Parameter(Mandatory=$false)]
+        [hashtable]
+        $OtherEntries
+    )
+
+    $clonedParameterDetail = @{}
+    foreach ($kvp in $ParameterDetail.GetEnumerator()) {
+        $clonedParameterDetail[$kvp.Key] = $kvp.Value
+    }
+
+    foreach ($kvp in $OtherEntries.GetEnumerator()) {
+        $clonedParameterDetail[$kvp.Key] = $kvp.Value
+    }
+
+    return $clonedParameterDetail
 }
 
 function Get-ParamType

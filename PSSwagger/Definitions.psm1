@@ -7,8 +7,8 @@
 #########################################################################################
 
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
-Import-Module (Join-Path -Path $PSScriptRoot -ChildPath Utilities.psm1)
-Import-Module (Join-Path -Path $PSScriptRoot -ChildPath SwaggerUtils.psm1)
+Import-Module (Join-Path -Path $PSScriptRoot -ChildPath Utilities.psm1) -DisableNameChecking
+Import-Module (Join-Path -Path $PSScriptRoot -ChildPath SwaggerUtils.psm1) -DisableNameChecking
 . "$PSScriptRoot\PSSwagger.Constants.ps1" -Force
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwagger.Resources.psd1
 
