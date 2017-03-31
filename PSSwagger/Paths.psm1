@@ -376,13 +376,19 @@ function Set-ExtendedCodeMetadata {
     $resultRecord.VerboseMessages += $LocalizedData.ExtractingMetadata
 
     $PathFunctionDetails = Import-CliXml -Path $CliXmlTmpPath
+    $errorOccurred = $false
     $PathFunctionDetails.GetEnumerator() | ForEach-Object {
         $FunctionDetails = $_.Value
         $ParameterSetDetails = $FunctionDetails['ParameterSetDetails']
         foreach ($parameterSetDetail in $ParameterSetDetails) {
+            if ($errorOccurred) {
+                return
+            }
+            
             $operationId = $parameterSetDetail.OperationId
             $methodName = ''
             $operations = ''
+            $operationsWithSuffix = ''
             $opIdValues = $operationId -split '_',2 
             if(-not $opIdValues -or ($opIdValues.count -ne 2)) {
                 $methodName = $operationId + 'WithHttpMessagesAsync'
@@ -392,39 +398,61 @@ function Set-ExtendedCodeMetadata {
                 $operations = ".$operationName"
                 if ($parameterSetDetail['UseOperationsSuffix'] -and $parameterSetDetail['UseOperationsSuffix'])
                 { 
-                    $operations = $operations + 'Operations'
+                    $operationsWithSuffix = $operations + 'Operations'
                 }
 
                 $methodName = $operationType + 'WithHttpMessagesAsync'
             }
 
             $parameterSetDetail['MethodName'] = $methodName
-            $parameterSetDetail['Operations'] = $operations
             
             # For some reason, moving this out of this loop causes issues
             $clientType = $MainClientTypeName -as [Type]
             if (-not $clientType) {
                 $resultRecord.ErrorMessages += $LocalizedData.ExpectedServiceClientTypeNotFound -f ($MainClientTypeName)
                 Export-CliXml -InputObject $resultRecord -Path $CliXmlTmpPath
+                $errorOccurred = $true
                 return
             }
 
-            if ($operations) {
+            if ($operationsWithSuffix) {
+                $operationName = $operationsWithSuffix.Substring(1)
+                $propertyObject = $clientType.GetProperties() | Where-Object { $_.Name -eq $operationName } | Select-Object -First 1 -ErrorAction Ignore
+                if (-not $propertyObject) {
+                    # The Operations suffix logic isn't rock solid, so this is safety check.
+                    $operationName = $operations.Substring(1)
+                    $propertyObject = $clientType.GetProperties() | Where-Object { $_.Name -eq $operationName } | Select-Object -First 1 -ErrorAction Ignore
+                    if (-not $propertyObject) {
+                        $resultRecord.ErrorMessages += $LocalizedData.ExpectedOperationsClientTypeNotFound -f ($operationName, $clientType)
+                        Export-CliXml -InputObject $resultRecord -Path $CliXmlTmpPath
+                        $errorOccurred = $true
+                        return
+                    }
+
+                    $parameterSetDetail['Operations'] = $operations
+                } else {
+                    $parameterSetDetail['Operations'] = $operationsWithSuffix
+                }
+
+                $clientType = $propertyObject.PropertyType
+            } elseif ($operations) {
                 $operationName = $operations.Substring(1)
                 $propertyObject = $clientType.GetProperties() | Where-Object { $_.Name -eq $operationName } | Select-Object -First 1 -ErrorAction Ignore
                 if (-not $propertyObject) {
                     $resultRecord.ErrorMessages += $LocalizedData.ExpectedOperationsClientTypeNotFound -f ($operationName, $clientType)
                     Export-CliXml -InputObject $resultRecord -Path $CliXmlTmpPath
+                    $errorOccurred = $true
                     return
                 }
 
-                $clientType = $propertyObject.PropertyType
+                $parameterSetDetail['Operations'] = $operations
             }
 
             $methodInfo = $clientType.GetMethods() | Where-Object { $_.Name -eq $MethodName } | Select-Object -First 1
             if (-not $methodInfo) {
                 $resultRecord.ErrorMessages += $LocalizedData.ExpectedMethodOnTypeNotFound -f ($MethodName, $clientType)
                 Export-CliXml -InputObject $resultRecord -Path $CliXmlTmpPath
+                $errorOccurred = $true
                 return
             }
 
@@ -510,6 +538,10 @@ function Set-ExtendedCodeMetadata {
             }
 
             $parameterSetDetail['ExpandedParamList'] = $ParamList -Join ", "
+        }
+
+        if ($errorOccurred) {
+            return
         }
     }
 

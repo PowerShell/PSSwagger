@@ -358,3 +358,58 @@ Describe "ParameterTypes tests" {
         Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
     }
 }
+
+Describe "AzureExtensions" {
+    BeforeAll {
+        Initialize-Test -GeneratedModuleName "Generated.AzExt.Module" -GeneratedModuleVersion "1.3.3.7" -TestApiName "AzureExtensions" `
+                        -TestSpecFileName "AzureExtensionsSpec.json" -TestDataFileName "AzureExtensionsData.json" `
+                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+
+        # Import generated module
+        Write-Verbose "Importing modules"
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "Generated.Azure.Common.Helpers" | `
+                       Join-Path -ChildPath "Generated.Azure.Common.Helpers.psd1") -Force
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
+                       Join-Path -ChildPath "Generated.AzExt.Module")
+        
+        # Load the test assembly after the generated module, since the generated module is kind enough to load the required dlls for us
+        try {
+            $null = Add-Type -Path (Join-Path "$PSScriptRoot" "PSSwagger.TestUtilities" | Join-Path -ChildPath "$global:testRunGuid.dll") -PassThru
+        } catch {
+            throw "$($_.Exception.LoaderExceptions)"
+        }
+
+        $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "AzureExtensions"
+    }
+
+    Context "AzureExtensions" {
+        # Mocks
+        Mock Get-AzServiceCredential -ModuleName Generated.AzExt.Module {
+            return New-Object -TypeName PSSwagger.TestUtilities.TestCredentials
+        }
+
+        Mock Get-AzSubscriptionId -ModuleName Generated.AzExt.Module {
+            return "Test"
+        }
+
+        Mock Get-AzResourceManagerUrl -ModuleName Generated.AzExt.Module {
+            return "$($global:testDataSpec.schemes[0])://$($global:testDataSpec.host)"
+        }
+
+        It "Test flattened parameters" {
+            New-Cupcake -Id "3" -Flavor "strawberry"
+            $results = Get-Cupcake
+            $results.Count | should be 3
+        }
+
+        It "Test multi-level flattened parameters" {
+            New-CupcakeBatch -Id "2" -Flavor "strawberry"
+            $results = Get-CupcakeBatch
+            $results.Count | should be 2
+        }
+    }
+
+    AfterAll {
+        Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
+    }
+}
