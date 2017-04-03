@@ -207,7 +207,9 @@ function Get-SwaggerParameters {
         $ParameterDescription = ''
         $x_ms_parameter_location = ''
         $x_ms_parameter_grouping = ''
-        if((Get-Member -InputObject $GPJsonValueObject -Name 'Name') -and $GPJsonValueObject.Name)
+        if ((Get-Member -InputObject $GPJsonValueObject -Name 'x-ms-client-name') -and $GPJsonValueObject.'x-ms-client-name') {
+            $parameterName = Get-PascalCasedString -Name $GPJsonValueObject.'x-ms-client-name'
+        } elseif ((Get-Member -InputObject $GPJsonValueObject -Name 'Name') -and $GPJsonValueObject.Name)
         {
             $parameterName = Get-PascalCasedString -Name $GPJsonValueObject.Name
         }
@@ -352,7 +354,9 @@ function Get-ParameterDetails
     $NameSpace = $SwaggerDict['Info'].NameSpace
     $DefinitionTypeNamePrefix = "$Namespace.Models."
     $parameterName = ''        
-    if((Get-Member -InputObject $ParameterJsonObject -Name 'Name') -and $ParameterJsonObject.Name)
+    if ((Get-Member -InputObject $ParameterJsonObject -Name 'x-ms-client-name') -and $ParameterJsonObject.'x-ms-client-name') {
+        $parameterName = Get-PascalCasedString -Name $ParameterJsonObject.'x-ms-client-name'
+    } elseif ((Get-Member -InputObject $ParameterJsonObject -Name 'Name') -and $ParameterJsonObject.Name)
     {
         $parameterName = Get-PascalCasedString -Name $ParameterJsonObject.Name
     }
