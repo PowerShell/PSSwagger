@@ -35,7 +35,11 @@ function Get-SwaggerSpecPathInfo
 
         [Parameter(Mandatory = $true)]
         [hashtable]
-        $DefinitionFunctionsDetails
+        $DefinitionFunctionsDetails,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $ParameterGroupCache
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -54,15 +58,13 @@ function Get-SwaggerSpecPathInfo
             
             $paramInfo = Get-PathParamInfo -JsonPathItemObject $_.value `
                                         -SwaggerDict $swaggerDict `
-                                        -DefinitionFunctionsDetails $DefinitionFunctionsDetails
+                                        -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
+                                        -ParameterGroupCache $ParameterGroupCache
 
             $responses = ""
             if((Get-Member -InputObject $_.value -Name 'responses') -and $_.value.responses) {
                 $responses = $_.value.responses 
             }
-
-            
-            $paramObject = Convert-ParamTable -ParamTable $paramInfo
 
             if((Get-Member -InputObject $_.value -Name 'x-ms-cmdlet-name') -and $_.value.'x-ms-cmdlet-name')
             {
@@ -74,8 +76,6 @@ function Get-SwaggerSpecPathInfo
             $ParameterSetDetail = @{
                 Description = $FunctionDescription
                 ParameterDetails = $paramInfo
-                RequiredParamList = $paramObject['RequiredParamList']
-                OptionalParamList = $paramObject['OptionalParamList']
                 Responses = $responses
                 OperationId = $operationId
                 Priority = 100 # Default
@@ -163,6 +163,54 @@ function New-SwaggerSpecPathCommand
     return $FunctionsToExport
 }
 
+function Add-UniqueParameter {
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $CandidateParameterDetails,
+
+        [Parameter(Mandatory=$true)]
+        [string]
+        $OperationId,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $ParametersToAdd,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $ParameterHitCount
+    )
+
+    Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+
+    $parameterName = $CandidateParameterDetails.Name
+    if($parameterDetails.IsParameter) {
+        if (-not $parameterHitCount.ContainsKey($parameterName)) {
+            $parameterHitCount[$parameterName] = 0
+        }
+
+        $parameterHitCount[$parameterName]++
+        if (-not ($parametersToAdd.ContainsKey($parameterName))) {
+            $parametersToAdd[$parameterName] = @{
+                # We can grab details like Type, Name, ValidateSet from any of the parameter definitions
+                Details = $CandidateParameterDetails
+                ParameterSetInfo = @{$OperationId = @{
+                    Name = $OperationId
+                    Mandatory = $CandidateParameterDetails.Mandatory
+                }}
+            }
+        } else {
+            $parametersToAdd[$parameterName].ParameterSetInfo[$OperationId] = @{
+                                                                        Name = $OperationId
+                                                                        Mandatory = $CandidateParameterDetails.Mandatory
+                                                                    }
+        }
+    }
+}
+
 function New-SwaggerPath
 {
     [CmdletBinding()]
@@ -194,28 +242,12 @@ function New-SwaggerPath
     foreach ($parameterSetDetail in $parameterSetDetails) {
         $parameterSetDetail.ParameterDetails.GetEnumerator() | ForEach-Object {
             $parameterDetails = $_.Value
-            $parameterName = $parameterDetails.Name
-            if($parameterDetails.IsParameter) {
-                if (-not $parameterHitCount.ContainsKey($parameterName)) {
-                    $parameterHitCount[$parameterName] = 0
+            if ($parameterDetails.ContainsKey('x_ms_parameter_grouping_group')) {
+                foreach ($parameterDetailEntry in $parameterDetails.'x_ms_parameter_grouping_group'.GetEnumerator()) {
+                    Add-UniqueParameter -CandidateParameterDetails $parameterDetailEntry.Value -OperationId $parameterSetDetail.OperationId -ParametersToAdd $parametersToAdd -ParameterHitCount $parameterHitCount
                 }
-
-                $parameterHitCount[$parameterName]++
-                if (-not ($parametersToAdd.ContainsKey($parameterName))) {
-                    $parametersToAdd[$parameterName] = @{
-                        # We can grab details like Type, Name, ValidateSet from any of the parameter definitions
-                        Details = $parameterDetails
-                        ParameterSetInfo = @(@{
-                            Name = $parameterSetDetail.OperationId
-                            Mandatory = $parameterDetails.Mandatory
-                        })
-                    }
-                } else {
-                    $parametersToAdd[$parameterName].ParameterSetInfo += @{
-                                                                                Name = $parameterSetDetail.OperationId
-                                                                                Mandatory = $parameterDetails.Mandatory
-                                                                          }
-                }
+            } else {
+                Add-UniqueParameter -CandidateParameterDetails $parameterDetails -OperationId $parameterSetDetail.OperationId -ParametersToAdd $parametersToAdd -ParameterHitCount $parameterHitCount
             }
         }
     }
@@ -257,11 +289,16 @@ function New-SwaggerPath
 
     $oDataExpression = ""
     $oDataExpressionBlock = ""
+    # Variable used to replace in function body
+    $parameterGroupsExpressionBlock = ""
+    # Variable used to store all group expressions, concatenate, then store in $parameterGroupsExpressionBlock
+    $parameterGroupsExpressions = @{}
     $parametersToAdd.GetEnumerator() | ForEach-Object {
         $parameterToAdd = $_.Value
         $parameterName = $parameterToAdd.Details.Name
         $AllParameterSetsString = ''
-        foreach ($parameterSetInfo in $parameterToAdd.ParameterSetInfo) {
+        foreach ($parameterSetInfoEntry in $parameterToAdd.ParameterSetInfo.GetEnumerator()) {
+            $parameterSetInfo = $parameterSetInfoEntry.Value
             $isParamMandatory = $parameterSetInfo.Mandatory
             $ParameterSetPropertyString = ", ParameterSetName = '$($parameterSetInfo.Name)'"
             if ($AllParameterSetsString) {
@@ -286,6 +323,21 @@ function New-SwaggerPath
                 $paramType = "$($parameterToAdd.Details.Type)"
                 $oDataExpression += "    if (`$$parameterName) { `$oDataQuery += `"&```$$parameterName=`$$parameterName`" }" + [Environment]::NewLine
             } else {
+                # Assuming you can't group ODataQuery parameters
+                if ($parameterToAdd.Details.ContainsKey('x_ms_parameter_grouping') -and $parameterToAdd.Details.'x_ms_parameter_grouping') {
+                    $parameterGroupPropertyName = $parameterToAdd.Details.Name
+                    $groupName = $parameterToAdd.Details.'x_ms_parameter_grouping'
+                    $fullGroupName = $parameterToAdd.Details.ExtendedData.GroupType
+                    if ($parameterGroupsExpressions.ContainsKey($groupName)) {
+                        $parameterGroupsExpression = $parameterGroupsExpressions[$groupName]
+                    } else {
+                        $parameterGroupsExpression = $executionContext.InvokeCommand.ExpandString($parameterGroupCreateExpression)
+                    }
+
+                    $parameterGroupsExpression += [Environment]::NewLine + $executionContext.InvokeCommand.ExpandString($parameterGroupPropertyExpression)
+                    $parameterGroupsExpressions[$groupName] = $parameterGroupsExpression
+                }
+
                 $paramType = "$($parameterToAdd.Details.ExtendedData.Type)"
                 if ($parameterToAdd.Details.ExtendedData.HasDefaultValue) {
                     if ($parameterToAdd.Details.ExtendedData.DefaultValue) {
@@ -312,6 +364,10 @@ function New-SwaggerPath
         }
     }
 
+    foreach ($parameterGroupsExpressionEntry in $parameterGroupsExpressions.GetEnumerator()) {
+        $parameterGroupsExpressionBlock += $parameterGroupsExpressionEntry.Value + [Environment]::NewLine
+    }
+
     if ($oDataExpression) {
         $oDataExpression = $oDataExpression.Trim()
         $oDataExpressionBlock = $executionContext.InvokeCommand.ExpandString($oDataExpressionBlockStr)
@@ -328,6 +384,7 @@ function New-SwaggerPath
     $functionBodyParams = @{
                                 ParameterSetDetails = $FunctionDetails['ParameterSetDetails']
                                 ODataExpressionBlock = $oDataExpressionBlock
+                                ParameterGroupsExpressionBlock = $parameterGroupsExpressionBlock
                                 SwaggerDict = $SwaggerDict
                                 SwaggerMetaDict = $SwaggerMetaDict
                            }
@@ -454,7 +511,7 @@ function Set-ExtendedCodeMetadata {
                 $errorOccurred = $true
                 return
             }
-
+            # TODO: The parameter group will never be in the parameter details list
             $paramObject = $parameterSetDetail.ParameterDetails
             $ParamList = @()
             $oDataQueryFound = $false
@@ -470,41 +527,62 @@ function Set-ExtendedCodeMetadata {
 
                 $matchingParamDetail = $paramObject.GetEnumerator() | Where-Object { $_.Value.Name -eq $metadata.Name } | Select-Object -First 1 -ErrorAction Ignore
                 if ($matchingParamDetail) {
+                    # Not all parameters in the code is present in the Swagger spec (autogenerated parameters like CustomHeaders or ODataQuery parameters)
                     $matchingParamDetail = $matchingParamDetail[0].Value
-                    $paramToAdd = "`$$($metadata.Name)"
-                    # Not all parameters in the code is present in the Swagger spec (autogenerated parameters like CustomHeaders)
-                    if ($hasDefaultValue) {
-                        # Setting this default value actually matter, but we might as well
-                        $defaultValue = $_.DefaultValue
-                        if ("System.String" -eq $type) {
-                            if ($defaultValue -eq $null) {
-                                $metadata.HasDefaultValue = $false
-                                # This is the part that works around PS automatic string coercion
-                                $paramToAdd = "`$(if (`$PSBoundParameters.ContainsKey('$($metadata.Name)')) { $paramToAdd } else { [NullString]::Value })"
+                    if ($matchingParamDetail.ContainsKey('x_ms_parameter_grouping_group')) {
+                        # Look through this parameter group's parameters and extract the individual metadata
+                        $paramToAdd = "`$$($matchingParamDetail.Name)"
+                        $parameterGroupType = $_.ParameterType
+                        $parameterGroupType.GetProperties() | ForEach-Object {
+                            $parameterGroupProperty = $_
+                            $matchingGroupedParameterDetailEntry = $matchingParamDetail.'x_ms_parameter_grouping_group'.GetEnumerator() | Where-Object { $_.Value.Name -eq $parameterGroupProperty.Name } | Select-Object -First 1 -ErrorAction Ignore
+                            if ($matchingGroupedParameterDetailEntry) {
+                                $setSingleParameterMetadataParms = @{
+                                    CommandName = $FunctionDetails['CommandName']
+                                    Name = $matchingParamDetail.Name
+                                    HasDefaultValue = $false
+                                    IsGrouped = $true
+                                    Type = $_.PropertyType
+                                    MatchingParamDetail = $matchingGroupedParameterDetailEntry.Value
+                                    ResultRecord = $resultRecord
+                                }
+
+                                if (-not (Set-SingleParameterMetadata @setSingleParameterMetadataParms))
+                                {
+                                    Export-CliXml -InputObject $ResultRecord -Path $CliXmlTmpPath
+                                    $errorOccurred = $true
+                                    return
+                                }
+
+                                $matchingGroupedParameterDetailEntry.Value.ExtendedData.GroupType = $parameterGroupType.ToString()
                             }
-                        } elseif ("System.Nullable``1[System.Boolean]" -eq $type) {
-                            if($defaultValue -ne $null){
-                                $defaultValue = "`$$defaultValue"
-                            }
-                            $metadata.Type = "switch"
-                        } else {
-                            $defaultValue = $_.DefaultValue
-                            if (-not ($_.ParameterType.IsValueType) -and $defaultValue) {
-                                $resultRecord.ErrorMessages += $LocalizedData.ReferenceTypeDefaultValueNotSupported -f ($metadata.Name, $type, $FunctionDetails['CommandName'])
-                                Export-CliXml -InputObject $resultRecord -Path $CliXmlTmpPath
-                                return
-                            }
+                        }
+                    } else {
+                        # Single parameter
+                        $setSingleParameterMetadataParms = @{
+                            CommandName = $FunctionDetails['CommandName']
+                            Name = $_.Name
+                            HasDefaultValue = $hasDefaultValue
+                            IsGrouped = $false
+                            Type = $_.ParameterType
+                            MatchingParamDetail = $matchingParamDetail
+                            ResultRecord = $resultRecord
                         }
 
-                        $metadata['DefaultValue'] = $defaultValue
-                    } else {
-                        if ('$false' -eq $matchingParamDetail.Mandatory) {
-                            # This happens in the case of optional path parameters, even if the path parameter is at the end
-                            $resultRecord.WarningMessages += ($LocalizedData.OptionalParameterNowRequired -f ($metadata.Name, $FunctionDetails['CommandName']))
+                        if ($hasDefaultValue) {
+                            $setSingleParameterMetadataParms['DefaultValue'] = $_.DefaultValue
                         }
+
+                        if (-not (Set-SingleParameterMetadata @setSingleParameterMetadataParms))
+                        {
+                            Export-CliXml -InputObject $ResultRecord -Path $CliXmlTmpPath
+                            $errorOccurred = $true
+                            return
+                        }
+
+                        $paramToAdd = $matchingParamDetail.ExtendedData.ParamToAdd
                     }
                     
-                    $matchingParamDetail.ExtendedData = $metadata
                     $ParamList += $paramToAdd
                 } else {
                     if ($metadata.Type.StartsWith("Microsoft.Rest.Azure.OData.ODataQuery``1")) {
@@ -546,6 +624,83 @@ function Set-ExtendedCodeMetadata {
 
     $resultRecord.Result = $PathFunctionDetails
     Export-CliXml -InputObject $resultRecord -Path $CliXmlTmpPath
+}
+
+function Set-SingleParameterMetadata {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]
+        $CommandName,
+
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Name,
+
+        [Parameter(Mandatory=$true)]
+        [bool]
+        $HasDefaultValue,
+
+        [Parameter(Mandatory=$true)]
+        [bool]
+        $IsGrouped,
+
+        [Parameter(Mandatory=$true)]
+        [System.Type]
+        $Type,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $MatchingParamDetail,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $ResultRecord,
+
+        [Parameter(Mandatory=$false)]
+        [object]
+        $DefaultValue
+    )
+    
+    $name = Get-PascalCasedString -Name $_.Name
+    $metadata = @{
+                    Name = $name
+                    HasDefaultValue = $HasDefaultValue
+                    Type = $Type.ToString()
+                    ParamToAdd = "`$$name"
+                }
+
+    if ($HasDefaultValue) {
+        # Setting this default value actually matter, but we might as well
+        if ("System.String" -eq $metadata.Type) {
+            if ($DefaultValue -eq $null) {
+                $metadata.HasDefaultValue = $false
+                # This is the part that works around PS automatic string coercion
+                $metadata.ParamToAdd = "`$(if (`$PSBoundParameters.ContainsKey('$($metadata.Name)')) { $($metadata.ParamToAdd) } else { [NullString]::Value })"
+            }
+        } elseif ("System.Nullable``1[System.Boolean]" -eq $metadata.Type) {
+            if($DefaultValue -ne $null) {
+                $DefaultValue = "`$$DefaultValue"
+            }
+
+            $metadata.Type = "switch"
+        } else {
+            $DefaultValue = $_.DefaultValue
+            if (-not ($_.ParameterType.IsValueType) -and $DefaultValue) {
+                $ResultRecord.ErrorMessages += $LocalizedData.ReferenceTypeDefaultValueNotSupported -f ($metadata.Name, $metadata.Type, $CommandName)
+                return $false
+            }
+        }
+
+        $metadata['DefaultValue'] = $DefaultValue
+    } else {
+        if ('$false' -eq $matchingParamDetail.Mandatory -and (-not $IsGrouped)) {
+            # This happens in the case of optional path parameters, even if the path parameter is at the end
+            $ResultRecord.WarningMessages += ($LocalizedData.OptionalParameterNowRequired -f ($metadata.Name, $CommandName))
+        }
+    }
+
+    $MatchingParamDetail['ExtendedData'] = $metadata
+    return $true
 }
 
 function Get-TemporaryCliXmlFilePath {

@@ -136,6 +136,14 @@ $oDataExpressionBlockStr = @'
     `$oDataQuery = `$oDataQuery.Trim("&")
 '@
 
+$parameterGroupCreateExpression = @'
+`$$groupName = New-Object -TypeName $fullGroupName
+'@
+
+$parameterGroupPropertyExpression = @'
+    if (`$PSBoundParameters.ContainsKey('$parameterGroupPropertyName')) { `$$groupName.$parameterGroupPropertyName = `$$parameterGroupPropertyName }
+'@
+
 $functionBodyStr = @'
 
     `$ErrorActionPreference = 'Stop'
@@ -151,6 +159,7 @@ $functionBodyStr = @'
         $clientName.SubscriptionId = `$SubscriptionId
     }
     $clientName.BaseUri = `$ResourceManagerUrl$oDataExpressionBlock
+    $parameterGroupsExpressionBlock
 
     $parameterSetBasedMethodStr else {
         Write-Verbose -Message 'Failed to map parameter set to operation method.'

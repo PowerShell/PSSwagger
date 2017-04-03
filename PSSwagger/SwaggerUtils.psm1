@@ -206,8 +206,10 @@ function Get-SwaggerParameters {
         $IsParamMandatory = '$false'
         $ParameterDescription = ''
         $x_ms_parameter_location = ''
-
-        if((Get-Member -InputObject $GPJsonValueObject -Name 'Name') -and $GPJsonValueObject.Name)
+        $x_ms_parameter_grouping = ''
+        if ((Get-Member -InputObject $GPJsonValueObject -Name 'x-ms-client-name') -and $GPJsonValueObject.'x-ms-client-name') {
+            $parameterName = Get-PascalCasedString -Name $GPJsonValueObject.'x-ms-client-name'
+        } elseif ((Get-Member -InputObject $GPJsonValueObject -Name 'Name') -and $GPJsonValueObject.Name)
         {
             $parameterName = Get-PascalCasedString -Name $GPJsonValueObject.Name
         }
@@ -232,6 +234,18 @@ function Get-SwaggerParameters {
         $paramTypeObject = Get-ParamType -ParameterJsonObject $GPJsonValueObject `
                                          -NameSpace $Info.NameSpace `
                                          -ParameterName $parameterName
+        if (Get-Member -InputObject $GPJsonValueObject -Name 'x-ms-parameter-grouping') {
+            $groupObject = $GPJsonValueObject.'x-ms-parameter-grouping'
+            if (Get-Member -InputObject $groupObject -Name 'name') {
+                $parsedName = Get-ParameterGroupName -RawName $groupObject.name
+            } elseif (Get-Member -InputObject $groupObject -Name 'postfix') {
+                $parsedName = Get-ParameterGroupName -OperationId $OperationId -Postfix $groupObject.postfix
+            } else {
+                $parsedName = Get-ParameterGroupName -OperationId $OperationId
+            }
+
+            $x_ms_parameter_grouping = $parsedName
+        }
 
         $SwaggerParameters[$GlobalParameterName] = @{
             Name = $parameterName
@@ -241,6 +255,7 @@ function Get-SwaggerParameters {
             Description = $ParameterDescription
             IsParameter = $paramTypeObject.IsParameter
             x_ms_parameter_location = $x_ms_parameter_location
+            x_ms_parameter_grouping = $x_ms_parameter_grouping
         }
     }
 
@@ -278,20 +293,26 @@ function Get-PathParamInfo
 
         [Parameter(Mandatory=$true)]
         [hashtable]
-        $DefinitionFunctionsDetails
+        $DefinitionFunctionsDetails,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $ParameterGroupCache
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
 
     $ParametersTable = @{}
     $index = 0
-    
+    $operationId = $JsonPathItemObject.operationId
     $JsonPathItemObject.parameters | ForEach-Object {
         $AllParameterDetails = Get-ParameterDetails -ParameterJsonObject $_ `
                                                  -SwaggerDict $SwaggerDict `
-                                                 -DefinitionFunctionsDetails $DefinitionFunctionsDetails
+                                                 -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
+                                                 -OperationId $operationId `
+                                                 -ParameterGroupCache $ParameterGroupCache
         foreach ($ParameterDetails in $AllParameterDetails) {
-            if($ParameterDetails -and $ParameterDetails.Type)
+            if($ParameterDetails -and ($ParameterDetails.ContainsKey('x_ms_parameter_grouping_group') -or $ParameterDetails.Type))
             {
                 $ParametersTable[$index] = $ParameterDetails
                 $index = $index + 1            
@@ -317,7 +338,15 @@ function Get-ParameterDetails
 
         [Parameter(Mandatory=$true)]
         [hashtable]
-        $DefinitionFunctionsDetails
+        $DefinitionFunctionsDetails,
+
+        [Parameter(Mandatory=$true)]
+        [string]
+        $OperationId,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $ParameterGroupCache
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -325,7 +354,9 @@ function Get-ParameterDetails
     $NameSpace = $SwaggerDict['Info'].NameSpace
     $DefinitionTypeNamePrefix = "$Namespace.Models."
     $parameterName = ''        
-    if((Get-Member -InputObject $ParameterJsonObject -Name 'Name') -and $ParameterJsonObject.Name)
+    if ((Get-Member -InputObject $ParameterJsonObject -Name 'x-ms-client-name') -and $ParameterJsonObject.'x-ms-client-name') {
+        $parameterName = Get-PascalCasedString -Name $ParameterJsonObject.'x-ms-client-name'
+    } elseif ((Get-Member -InputObject $ParameterJsonObject -Name 'Name') -and $ParameterJsonObject.Name)
     {
         $parameterName = Get-PascalCasedString -Name $ParameterJsonObject.Name
     }
@@ -341,16 +372,19 @@ function Get-ParameterDetails
 
     # Swagger Path Operations can be defined with reference to the global method based parameters.
     # Add the method based global parameters as a function parameter.
+    $AllParameterDetailsArrayTemp = @()
+    $x_ms_parameter_grouping = ''
     if($paramTypeObject.GlobalParameterDetails)
     {
         $ParameterDetails = $paramTypeObject.GlobalParameterDetails
+        $x_ms_parameter_grouping = $ParameterDetails.'x_ms_parameter_grouping'
     }
     else
     {
         $IsParamMandatory = '$false'
         $ParameterDescription = ''
         $x_ms_parameter_location = ''
-        
+
         if ((Get-Member -InputObject $ParameterJsonObject -Name 'Required') -and 
             $ParameterJsonObject.Required)
         {
@@ -363,6 +397,19 @@ function Get-ParameterDetails
             $ParameterDescription = $ParameterJsonObject.Description
         }
 
+        if (Get-Member -InputObject $ParameterJsonObject -Name 'x-ms-parameter-grouping') {
+            $groupObject = $ParameterJsonObject.'x-ms-parameter-grouping'
+            if (Get-Member -InputObject $groupObject -Name 'name') {
+                $parsedName = Get-ParameterGroupName -RawName $groupObject.name
+            } elseif (Get-Member -InputObject $groupObject -Name 'postfix') {
+                $parsedName = Get-ParameterGroupName -OperationId $OperationId -Postfix $groupObject.postfix
+            } else {
+                $parsedName = Get-ParameterGroupName -OperationId $OperationId
+            }
+
+            $x_ms_parameter_grouping = $parsedName
+        }
+
         $ParameterDetails = @{
             Name = $parameterName
             Type = $paramTypeObject.ParamType
@@ -371,6 +418,7 @@ function Get-ParameterDetails
             Description = $ParameterDescription
             IsParameter = $paramTypeObject.IsParameter
             x_ms_parameter_location = $x_ms_parameter_location
+            x_ms_parameter_grouping = $x_ms_parameter_grouping
         }
     }
 
@@ -379,18 +427,48 @@ function Get-ParameterDetails
         # If the parameter should be flattened, return an array of parameter detail objects for each parameter of the referenced definition
         Write-Verbose -Message ($LocalizedData.FlatteningParameterType -f ($parameterName, $referenceTypeName))
         $AllParameterDetails = @{}
-        $AllParameterDetailsArray = @()
         Expand-Parameters -ReferenceTypeName $referenceTypeName -DefinitionFunctionsDetails $DefinitionFunctionsDetails -AllParameterDetails $AllParameterDetails
         foreach ($expandedParameterDetail in $AllParameterDetails.GetEnumerator()) {
             Write-Verbose -Message ($LocalizedData.ParameterExpandedTo -f ($parameterName, $expandedParameterDetail.Key))
-            $AllParameterDetailsArray += $expandedParameterDetail.Value
+            $AllParameterDetailsArrayTemp += $expandedParameterDetail.Value
         }
-
-        return $AllParameterDetailsArray
     } else {
         # If the parameter shouldn't be flattened, just return the original parameter detail object
-        return $ParameterDetails
+        $AllParameterDetailsArrayTemp += $ParameterDetails
     }
+
+    # Loop through the parameters in case they belong to different groups after being expanded
+    $AllParameterDetailsArray = @()
+    foreach ($expandedParameterDetail in $AllParameterDetailsArrayTemp) {
+        # The parent parameter object, wherever it is, set a grouping name
+        if ($x_ms_parameter_grouping) {
+            $expandedParameterDetail.'x_ms_parameter_grouping' = $x_ms_parameter_grouping
+            # An empty parameter details object is created that contains all known parameters in this group
+            if ($ParameterGroupCache.ContainsKey($x_ms_parameter_grouping)) {
+                $ParameterDetails = $ParameterGroupCache[$x_ms_parameter_grouping]
+            } else {
+                $ParameterDetails = @{
+                    Name = $x_ms_parameter_grouping
+                    x_ms_parameter_grouping_group = @{}
+                    IsParameter = $true
+                }
+            }
+
+            if (-not $ParameterDetails.'x_ms_parameter_grouping_group'.ContainsKey($expandedParameterDetail.Name)) {
+                $ParameterDetails.'x_ms_parameter_grouping_group'[$expandedParameterDetail.Name] = $expandedParameterDetail
+            }
+
+            $AllParameterDetailsArray += $ParameterDetails
+            $ParameterGroupCache[$x_ms_parameter_grouping] = $ParameterDetails
+        } else {
+            $AllParameterDetailsArray += $expandedParameterDetail
+        }
+    }
+
+    # Properties of ParameterDetails object
+    # .x_ms_parameter_grouping - string - non-empty if this is part of a group, contains the group's parsed name (should be the C# Type name)
+    # .x_ms_parameter_grouping_group - hashtable - table of parameter names to ParameterDetails, indicates this ParameterDetails object is a grouping
+    return $AllParameterDetailsArray
 }
 
 function Expand-Parameters {
@@ -813,57 +891,6 @@ function Get-PathCommandName
     return $cmdletNames
 }
 
-function Convert-ParamTable
-{
-    [CmdletBinding()]
-    param
-    (
-        [Parameter(Mandatory=$true)]
-        [hashtable]
-        $ParamTable
-    )
-
-    Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
-
-    $requiredParamList = @()
-    $optionalParamList = @()
-    $keyCount = Get-HashtableKeyCount -Hashtable $ParamTable
-    if($keyCount)
-    {
-        # This foreach is required to get the parameters in sequential/expected order 
-        # to call the AutoRest generated client API.
-        foreach($key in 0..($keyCount - 1))
-        {
-            $ParameterDetails = $ParamTable[$key]
-
-            if($ParameterDetails.IsParameter) {
-                $isParamMandatory = $ParameterDetails.Mandatory
-                $parameterName = $ParameterDetails.Name
-                $paramName = "`$$parameterName" 
-
-                if ($isParamMandatory -eq '$true')
-                {
-                    $requiredParamList += $paramName
-                }
-                else
-                {
-                    $optionalParamList += $paramName
-                }
-            }
-        }
-    }
-
-    $requiredParamList = $requiredParamList -join ', '
-    $optionalParamList = $optionalParamList -join ', '
-
-    $paramObject = @{ 
-                      RequiredParamList = $requiredParamList
-                      OptionalParamList = $optionalParamList
-                    }
-
-    return $paramObject
-}
-
 function Get-PathFunctionBody
 {
     [CmdletBinding()]
@@ -877,6 +904,11 @@ function Get-PathFunctionBody
         [string]
         [AllowEmptyString()]
         $ODataExpressionBlock,
+
+        [Parameter(Mandatory=$true)]
+        [string]
+        [AllowEmptyString()]
+        $ParameterGroupsExpressionBlock,
 
         [Parameter(Mandatory=$true)]
         [PSCustomObject]

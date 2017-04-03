@@ -379,7 +379,7 @@ Describe "AzureExtensions" {
             throw "$($_.Exception.LoaderExceptions)"
         }
 
-        $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "AzureExtensions"
+        $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "AzureExtensions" -TestRoutesFileName "AzureExtensionsRoutes.json"
     }
 
     Context "AzureExtensions" {
@@ -406,6 +406,35 @@ Describe "AzureExtensions" {
             New-CupcakeBatch -Id "2" -Flavor "strawberry"
             $results = Get-CupcakeBatch
             $results.Count | should be 2
+        }
+
+        It "Test basic parameter group" {
+            # As long as this makes a proper request, the results don't matter
+            $results = Path-GroupTestParameter -Parm "test" -Parm2 "test2"
+        }
+
+        It "Test parameter group of mixed local and global" {
+            $results = Mixed-GroupTestParameter -Parm "test" -MethodParameter "test2"
+        }
+
+        It "Test parameter group with postfix instead of name" {
+            $results = Postfix-GroupTest -Parm "test"
+        }
+
+        It "Test parameter group with neither postfix nor name" {
+            $results = No-GroupTestPostfixTest -Parm "test"
+        }
+
+        It "Test parameter group when operation ID has no hyphens" {
+            $results = GroupTestsNoHyphen -Parm "test"
+        }
+
+        It "Test parameter group with flattened parameters" {
+            $results = Flattened-GroupTestParm -Id "1000" -Flavor "chocolate"
+        }
+
+        It "Test when multiple parameter groups exist" {
+            $results = Multiple-GroupTestGroup -parm "test" -parm2 "test2"
         }
     }
 
