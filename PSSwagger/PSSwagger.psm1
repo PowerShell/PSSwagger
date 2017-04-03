@@ -232,6 +232,8 @@ function New-PSSwaggerModule
         SwaggerSpecPath = $SwaggerSpecPath
     }
 
+    $ParameterGroupCache = @{}
+
     # Handle the Definitions
     $DefinitionFunctionsDetails = @{}
     $jsonObject.Definitions.PSObject.Properties | ForEach-Object {
@@ -247,7 +249,8 @@ function New-PSSwaggerModule
                                 -PathFunctionDetails $PathFunctionDetails `
                                 -SwaggerDict $swaggerDict `
                                 -SwaggerMetaDict $swaggerMetaDict `
-                                -DefinitionFunctionsDetails $DefinitionFunctionsDetails
+                                -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
+                                -ParameterGroupCache $ParameterGroupCache
     }
 
     $codePhaseResult = ConvertTo-CsharpCode -SwaggerDict $swaggerDict `

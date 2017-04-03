@@ -1,0 +1,486 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "title": "AzureExtensions",
+        "description": "API that tests known AutoRest Azure extensions",
+        "version": "2017-03-30"
+    },
+    "host": "localhost:3000",
+    "schemes": [
+        "http"
+    ],
+    "basePath": "/",
+    "produces": [
+        "application/json"
+    ],
+    "paths": {
+        "/cupcakes": {
+            "get": {
+                "summary": "Get all cupcakes",
+                "operationId": "Cupcake_List",
+                "description": "List all cupcakes.",
+                "parameters": [
+                ],
+                "tags": [
+                    "Cupcakes"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "All cupcake entities.",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Cupcake"
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Create cupcake",
+                "operationId": "Cupcake_Create",
+                "description": "Create a cupcake.",
+                "parameters": [
+                    {
+                        "name": "cupcake",
+                        "in": "body",
+                        "description": "x-ms-client-flatten on parameter test",
+                        "x-ms-client-flatten": true,
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Cupcake"
+                        }
+                    }
+                ],
+                "tags": [
+                    "Cupcakes"
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created cupcake",
+                        "schema": {
+                            "$ref": "#/definitions/Cupcake"
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/cupcakeBatches": {
+            "get": {
+                "summary": "Get all cupcake batches",
+                "operationId": "CupcakeBatch_List",
+                "description": "List all cupcake batches.",
+                "parameters": [
+                ],
+                "tags": [
+                    "CupcakeBatch"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "All cupcake batch entities.",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/CupcakeBatch"
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Create cupcake batch",
+                "operationId": "CupcakeBatch_Create",
+                "description": "Create a cupcake batch.",
+                "parameters": [
+                    {
+                        "name": "CupcakeBatch",
+                        "in": "body",
+                        "description": "x-ms-client-flatten on parameter test",
+                        "x-ms-client-flatten": true,
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/CupcakeBatch"
+                        }
+                    }
+                ],
+                "tags": [
+                    "CupcakeBatch"
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created cupcake batch",
+                        "schema": {
+                            "$ref": "#/definitions/CupcakeBatch"
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/groupTests/{pathParameter}": {
+             "get": {
+                "summary": "Test path parameter group",
+                "operationId": "GroupTests_PathParameter",
+                "description": "Test path parameter group",
+                "parameters": [
+                    {
+                        "name": "parm",
+                        "in": "path",
+                        "description": "x-ms-parameter-grouping test",
+                        "required": true,
+                        "type": "string",
+                        "x-ms-parameter-grouping": {
+                            "name": "my-test.GrouP"
+                        }
+                    },
+                    {
+                        "name": "parm2",
+                        "in": "query",
+                        "description": "x-ms-parameter-grouping test",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "tags": [
+                    "Cupcake"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Results",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Cupcake"
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/groupTests/localAndGlobal": {
+             "get": {
+                 "summary": "Test local/global parameter group",
+                 "operationId": "GroupTest_MixedParameter",
+                 "description": "Test local/global parameter group",
+                 "parameters": [
+                    {
+                        "name": "parm",
+                        "in": "path",
+                        "description": "x-ms-parameter-grouping test",
+                        "required": true,
+                        "type": "string",
+                        "x-ms-parameter-grouping": {
+                            "name": "my-test.GrouP2"
+                        }
+                    },
+                    {
+                        "$ref": "#/parameters/GlobalParameter"
+                    }
+                 ],
+                 "tags": [
+                    "Cupcake"
+                 ],
+                 "responses": {
+                    "200": {
+                        "description": "Results",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Cupcake"
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                 }
+             }
+        },
+         "/groupTests/postfixTest": {
+             "get": {
+                "summary": "Test postfix parameter group",
+                "operationId": "GroupTests_PostfixTest",
+                "description": "Test postfix parameter group",
+                "parameters": [
+                    {
+                        "name": "parm",
+                        "in": "query",
+                        "description": "x-ms-parameter-grouping test",
+                        "required": true,
+                        "type": "string",
+                        "x-ms-parameter-grouping": {
+                            "postfix": "Contoso"
+                        }
+                    }
+                ],
+                "tags": [
+                    "Cupcake"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Results",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Cupcake"
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+         },
+         "/groupTests/noPostfixTest": {
+             "get": {
+                "summary": "Test postfix parameter group",
+                "operationId": "GroupTests_NoPostfixTest",
+                "description": "Test postfix parameter group",
+                "parameters": [
+                    {
+                        "name": "parm",
+                        "in": "query",
+                        "description": "x-ms-parameter-grouping test",
+                        "required": true,
+                        "type": "string",
+                        "x-ms-parameter-grouping": {
+                        }
+                    }
+                ],
+                "tags": [
+                    "Cupcake"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Results",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Cupcake"
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+         },
+         "/groupTests/noHyphen": {
+             "get": {
+                "summary": "Test postfix parameter group",
+                "operationId": "GroupTestsNoHyphen",
+                "description": "Test postfix parameter group",
+                "parameters": [
+                    {
+                        "name": "parm",
+                        "in": "query",
+                        "description": "x-ms-parameter-grouping test",
+                        "required": true,
+                        "type": "string",
+                        "x-ms-parameter-grouping": {
+                        }
+                    }
+                ],
+                "tags": [
+                    "Cupcake"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Results",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Cupcake"
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+         },
+         "/groupTests/flattened": {
+             "post": {
+                "summary": "Test flattened parameter group",
+                "operationId": "GroupTests_FlattenedParms",
+                "description": "Test flattened parameter group",
+                "parameters": [
+                    {
+                        "name": "parm",
+                        "in": "body",
+                        "description": "x-ms-parameter-grouping test",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/CupcakeBatch"
+                        },
+                        "x-ms-client-flatten": true,
+                        "x-ms-parameter-grouping": {
+                            "name": "flattened-group"
+                        }
+                    }
+                ],
+                "tags": [
+                    "Cupcake"
+                ],
+                "responses": {
+                }
+            }
+         },
+         "/groupTests/multipleGroups": {
+             "get": {
+                "summary": "Test multiple parameter group",
+                "operationId": "GroupTests_MultipleGroups",
+                "description": "Test multiple parameter group",
+                "parameters": [
+                    {
+                        "name": "parm",
+                        "in": "query",
+                        "description": "x-ms-parameter-grouping test",
+                        "required": true,
+                        "type": "string",
+                        "x-ms-parameter-grouping": {
+                            "name": "group-a"
+                        }
+                    },
+                    {
+                        "name": "parm2",
+                        "in": "query",
+                        "description": "x-ms-parameter-grouping test",
+                        "required": true,
+                        "type": "string",
+                        "x-ms-parameter-grouping": {
+                            "name": "group-b"
+                        }
+                    }
+                ],
+                "tags": [
+                    "Cupcake"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Results",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Cupcake"
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+         }
+    },
+    "definitions": {
+        "CupcakeBatch": {
+            "type": "object",
+            "properties": {
+                "properties": {
+                    "x-ms-client-flatten": true,
+                    "$ref": "#/definitions/Cupcake"
+                }
+            }
+        },
+        "Cupcake": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "Unique identifier"
+                },
+                "flavor": {
+                    "type": "string",
+                    "description": "Flavor"
+                }
+            }
+        },
+        "Error": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "description": "Error code"
+                },
+                "message": {
+                    "type": "string",
+                    "description": "Message"
+                }
+            }
+        }
+    },
+    "parameters": {
+        "SubscriptionIdParameter": {
+            "name": "subscriptionId",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "A unique identifier of a Microsoft Azure subscription. The subscription ID forms part of the URI for every service call."
+        },
+        "ApiVersionParameter": {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to be used with the HTTP request."
+        },
+        "GlobalParameter": {
+            "name": "method-parameter",
+            "in": "header",
+            "required": false,
+            "type": "string",
+            "x-ms-parameter-grouping": {
+                "name": "my-test.GrouP2"
+            },
+            "x-ms-parameter-location": "method"
+        }
+    }
+}

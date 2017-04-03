@@ -1,0 +1,5 @@
+{
+    "/cupcakes/:flavor": "/cupcakes?flavor=:flavor",
+    "/cupcakes/:flavor/:id": "/cupcakes/:id?flavor=:flavor",
+	"/groupTests/:anything": "/cupcakes"
+}
