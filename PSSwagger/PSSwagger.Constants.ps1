@@ -82,6 +82,13 @@ if ('Core' -ne (Get-PSEdition)) {
 Get-ChildItem -Path (Join-Path -Path "`$PSScriptRoot" -ChildPath "ref" | Join-Path -ChildPath "`$clr" | Join-Path -ChildPath "*.dll") -File | ForEach-Object { Add-Type -Path `$_.FullName -ErrorAction SilentlyContinue }
 
 Get-ChildItem -Path "`$PSScriptRoot\$GeneratedCommandsName\*.ps1" -Recurse -File | ForEach-Object { . `$_.FullName}
+
+if(`$PSVersionTable.PSVersion -ge '5.0.0') {
+    # Load and enable service client tracer
+    Import-Module "`$PSScriptRoot\PowerShellServiceClientTracer.psm1"
+    `$psTracer = New-PowerShellServiceClientTracer
+    [Microsoft.Rest.ServiceClientTracing]::AddTracingInterceptor(`$psTracer)
+}
 '@
 
 $advFnSignatureForDefintion = @'

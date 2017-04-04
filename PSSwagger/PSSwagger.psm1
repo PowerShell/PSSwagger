@@ -299,11 +299,15 @@ function New-PSSwaggerModule
              -Confirm:$false `
              -WhatIf:$false
 
+    # Add tracing utilities
+    $FunctionsToExport += @('Set-ServiceClientTracing', 'New-PowerShellServiceClientTracer')
+
     New-ModuleManifestUtility -Path $outputDirectory `
                               -FunctionsToExport $FunctionsToExport `
                               -Info $swaggerDict['info']
 
     Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Generated.Resources.psd1") (Join-Path -Path "$outputDirectory" -ChildPath "$Name.Resources.psd1") -Force
+    Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Tracing" | Join-Path -ChildPath "PowerShellServiceClientTracer.psm1") (Join-Path -Path "$outputDirectory" -ChildPath "PowerShellServiceClientTracer.psm1") -Force
 
     Write-Verbose -Message ($LocalizedData.SuccessfullyGeneratedModule -f $Name,$outputDirectory)
 }
@@ -404,6 +408,16 @@ function ConvertTo-CsharpCode
         $allCodeFiles += $newFileName
     }
 
+    # Also include our tracer code
+    $tracerFileSource = (Join-Path -Path $PSScriptRoot -ChildPath "Tracing" | Join-Path -ChildPath "PowerShellServiceClientTracerBase.Code.ps1")
+    $tracerFileTarget = (Join-Path -Path $generatedCSharpPath -ChildPath "PowerShellServiceClientTracerBase.Code.ps1")
+    $authenticodeSig = Get-AuthenticodeSignature -FilePath $tracerFileSource
+    if (('NotSigned' -ne $authenticodeSig.Status) -and ('Valid' -ne $authenticodeSig.Status)) {
+        throw $LocalizedData.TracerFileSignatureValidationFailed
+    }
+
+    $null = Copy-Item -Path $tracerFileSource -Destination $tracerFileTarget
+    $allCodeFiles += $tracerFileTarget
     $allCSharpFilesArrayString = "@('"+ $($allCodeFiles -join "','") + "')"
     # Compile full CLR (PSSwagger requires to be invoked from full PowerShell)
     $codeCreatedByAzureGenerator = [bool]$SwaggerMetaDict['UseAzureCsharpGenerator']
