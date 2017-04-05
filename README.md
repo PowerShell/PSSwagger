@@ -3,10 +3,12 @@
 Tool to generate PowerShell Cmdlets using Swagger based specifications
 
 ## Syntax
-
+```powershell
 New-PSSwaggerModule -SwaggerSpecPath <string> -Path <string> -Name <string> [-Version <version>] [-UseAzureCsharpGenerator] [-NoAssembly] [-PowerShellCorePath <string>] [-IncludeCoreFxAssembly] [-DefaultCommandPrefix <string>] [-IncludeCoreFxAssembly <string>] [-TestBuild <string>] [-SymbolPath <string>] [<CommonParameters>]
-
+```
+```powershell
 New-PSSwaggerModule -SwaggerSpecUri <uri> -Path <string> -Name <string> [-Version <version>] [-UseAzureCsharpGenerator] [-NoAssembly] [-PowerShellCorePath <string>] [-IncludeCoreFxAssembly] [-DefaultCommandPrefix <string>] [-IncludeCoreFxAssembly <string>] [-TestBuild <string>] [-SymbolPath <string>] [<CommonParameters>]
+```
 
 | Parameter       | Description                           |
 | ----------------| ------------------------------------- |

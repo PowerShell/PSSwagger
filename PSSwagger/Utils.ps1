@@ -143,10 +143,19 @@ function Invoke-AssemblyCompilation {
     # Compile
     $oneSrc = $srcContent -join "`n"
     if ($SymbolPath) {
-        $oneSrc | Out-File -FilePath (Join-Path -Path $SymbolPath -ChildPath "Generated.cs")
-        $addTypeParams = @{
-            Path = (Join-Path -Path $SymbolPath -ChildPath "Generated.cs")
-            WarningAction = 'Ignore'
+        if ($OutputAssemblyName) {
+            $OutputAssemblyBaseName = [System.IO.Path]::GetFileNameWithoutExtension("$OutputAssemblyName")
+            $oneSrc | Out-File -FilePath (Join-Path -Path $SymbolPath -ChildPath "Generated.$OutputAssemblyBaseName.cs")
+            $addTypeParams = @{
+                Path = (Join-Path -Path $SymbolPath -ChildPath "Generated.cs")
+                WarningAction = 'Ignore'
+            }
+        } else {
+            $oneSrc | Out-File -FilePath (Join-Path -Path $SymbolPath -ChildPath "Generated.cs")
+            $addTypeParams = @{
+                Path = (Join-Path -Path $SymbolPath -ChildPath "Generated.cs")
+                WarningAction = 'Ignore'
+            }
         }
     } else {
         $addTypeParams = @{
