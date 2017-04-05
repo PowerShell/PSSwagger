@@ -58,6 +58,9 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwa
   
 .PARAMETER  TestBuild
   Switch to disable optimizations during build of full CLR binary component.
+
+.PARAMETER  SymbolPath
+  Path to save generated C# code and PDB file. Defaults to $Path\symbols
 #>
 function New-PSSwaggerModule
 {
@@ -109,7 +112,11 @@ function New-PSSwaggerModule
 
         [Parameter()]
         [switch]
-        $TestBuild
+        $TestBuild,
+
+        [Parameter()]
+        [string]
+        $SymbolPath
     )
 
     if ($NoAssembly -and $IncludeCoreFxAssembly) {
@@ -126,6 +133,12 @@ function New-PSSwaggerModule
 
     if ($NoAssembly -and $PowerShellCorePath) {
         $message = $LocalizedData.ParameterSetNotAllowed -f ('PowerShellCorePath', 'NoAssembly')
+        throw $message
+        return
+    }
+
+    if ($NoAssembly -and $SymbolPath) {
+        $message = $LocalizedData.ParameterSetNotAllowed -f ('SymbolPath', 'NoAssembly')
         throw $message
         return
     }
@@ -152,6 +165,10 @@ function New-PSSwaggerModule
 
     $outputDirectory = Microsoft.PowerShell.Management\Resolve-Path -Path $Path | Select-Object -First 1 -ErrorAction Ignore
     $outputDirectory = "$outputDirectory".TrimEnd('\').TrimEnd('/')
+    if (-not $SymbolPath) {
+        $SymbolPath = Join-Path -Path $Path -ChildPath "symbols"
+    }
+
     if (-not $outputDirectory -or (-not (Test-path -Path $outputDirectory -PathType Container)))
     {
         throw $LocalizedData.PathNotFound -f ($Path)
@@ -213,18 +230,22 @@ function New-PSSwaggerModule
     if($PSVersionTable.PSVersion -lt '5.0.0') {
         if (-not $outputDirectory.EndsWith($Name, [System.StringComparison]::OrdinalIgnoreCase)) {
             $outputDirectory = Join-Path -Path $outputDirectory -ChildPath $Name
+            $SymbolPath = Join-Path -Path $SymbolPath -ChildPath $Name
         }
     } else {
         $ModuleNameandVersionFolder = Join-Path -Path $Name -ChildPath $Version
 
         if ($outputDirectory.EndsWith($Name, [System.StringComparison]::OrdinalIgnoreCase)) {
             $outputDirectory = Join-Path -Path $outputDirectory -ChildPath $ModuleVersion
+            $SymbolPath = Join-Path -Path $SymbolPath -ChildPath $ModuleVersion
         } elseif (-not $outputDirectory.EndsWith($ModuleNameandVersionFolder, [System.StringComparison]::OrdinalIgnoreCase)) {
             $outputDirectory = Join-Path -Path $outputDirectory -ChildPath $ModuleNameandVersionFolder
+            $SymbolPath = Join-Path -Path $SymbolPath -ChildPath $ModuleNameandVersionFolder
         }
     }
 
     $null = New-Item -ItemType Directory $outputDirectory -Force -ErrorAction Stop
+    $null = New-Item -ItemType Directory $SymbolPath -Force -ErrorAction Stop
 
     $swaggerMetaDict = @{
         OutputDirectory = $outputDirectory
@@ -260,7 +281,8 @@ function New-PSSwaggerModule
                                             -UserConsent:$userConsent `
                                             -TestBuild:$TestBuild `
                                             -PathFunctionDetails $PathFunctionDetails `
-                                            -NoAssembly:$NoAssembly
+                                            -NoAssembly:$NoAssembly `
+                                            -SymbolPath $SymbolPath
 
     $PathFunctionDetails = $codePhaseResult.PathFunctionDetails
     $generatedCSharpFilePath = $codePhaseResult.GeneratedCSharpPath
@@ -344,7 +366,11 @@ function ConvertTo-CsharpCode
 
         [Parameter()]
         [switch]
-        $NoAssembly
+        $NoAssembly,
+
+        [Parameter()]
+        [string]
+        $SymbolPath
     )
 
     Write-Verbose -Message $LocalizedData.GenerateCodeUsingAutoRest
@@ -426,7 +452,8 @@ function ConvertTo-CsharpCode
                                                             -RequiredAzureRestVersion 3.3.4 ``
                                                             -AllUsers:`$$InstallToolsForAllUsers ``
                                                             -BootstrapConsent:`$$UserConsent ``
-                                                            -TestBuild:`$$TestBuild;
+                                                            -TestBuild:`$$TestBuild ``
+                                                            -SymbolPath $SymbolPath;
                                 Import-Module `"`$(Join-Path -Path `"$PSScriptRoot`" -ChildPath `"Paths.psm1`")` -DisableNameChecking;
                                 Set-ExtendedCodeMetadata -MainClientTypeName $fullModuleName ``
                                                          -CliXmlTmpPath $cliXmlTmpPath"

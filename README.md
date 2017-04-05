@@ -4,9 +4,9 @@ Tool to generate PowerShell Cmdlets using Swagger based specifications
 
 ## Syntax
 
-New-PSSwaggerModule -SwaggerSpecPath <string> -Path <string> -Name <string> [-Version <version>] [-UseAzureCsharpGenerator] [-NoAssembly] [-PowerShellCorePath <string>] [-IncludeCoreFxAssembly] [-DefaultCommandPrefix <string>] [<CommonParameters>]
+New-PSSwaggerModule -SwaggerSpecPath <string> -Path <string> -Name <string> [-Version <version>] [-UseAzureCsharpGenerator] [-NoAssembly] [-PowerShellCorePath <string>] [-IncludeCoreFxAssembly] [-DefaultCommandPrefix <string>] [-IncludeCoreFxAssembly <string>] [-TestBuild <string>] [-SymbolPath <string>] [<CommonParameters>]
 
-New-PSSwaggerModule -SwaggerSpecUri <uri> -Path <string> -Name <string> [-Version <version>] [-UseAzureCsharpGenerator] [-NoAssembly] [-PowerShellCorePath <string>] [-IncludeCoreFxAssembly] [-DefaultCommandPrefix <string>] [<CommonParameters>]
+New-PSSwaggerModule -SwaggerSpecUri <uri> -Path <string> -Name <string> [-Version <version>] [-UseAzureCsharpGenerator] [-NoAssembly] [-PowerShellCorePath <string>] [-IncludeCoreFxAssembly] [-DefaultCommandPrefix <string>] [-IncludeCoreFxAssembly <string>] [-TestBuild <string>] [-SymbolPath <string>] [<CommonParameters>]
 
 | Parameter       | Description                           |
 | ----------------| ------------------------------------- |
@@ -20,6 +20,7 @@ New-PSSwaggerModule -SwaggerSpecUri <uri> -Path <string> -Name <string> [-Versio
 | PowerShellCorePath      | Path to PowerShell.exe for PowerShell Core. Only required if not installed via MSI in the default path |
 | IncludeCoreFxAssembly      | Switch to additionally compile the module's binary component for core CLR |
 | TestBuild      | Switch to enable debug compilation of full CLR binary component. Effects: disables compiler optimization |
+| SymbolPath     | Path that will contain the generated module's generated code and corresponding PDB file. Defaults to $Path\symbols if not specified. |
 
 ## Supported Platforms
 | Usage | Platforms |
@@ -88,6 +89,11 @@ When the module is imported to older version of PowerShell, the following steps 
 3. If you use the Verbose or Debug streams of PowerShell, set $VerbosePreference or $DebugPreference, respectively
 
 Note 1: We're not sure why yet, but something is setting [Microsoft.Rest.ServiceClientTracing]::IsEnabled to true before all cmdlet calls
+
+## Symbol Path
+If the module's full CLR assembly is precompiled, the symbols folder will contain:
+1. Generated.cs - The C# code used to generate the assembly
+2. *.pdb - The corresponding PDB file that defines Generated.cs as the source file
 
 ## Upcoming additions
 

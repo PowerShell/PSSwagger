@@ -66,7 +66,11 @@ function Invoke-AssemblyCompilation {
 
         [Parameter(Mandatory=$false)]
         [switch]
-        $TestBuild
+        $TestBuild,
+
+        [Parameter(Mandatory=$false)]
+        [string]
+        $SymbolPath
     )
 
     # Append the content of each file into a single string
@@ -138,10 +142,18 @@ function Invoke-AssemblyCompilation {
 
     # Compile
     $oneSrc = $srcContent -join "`n"
-    $addTypeParams = @{
-        TypeDefinition = $oneSrc
-        Language = 'CSharp'
-        WarningAction = 'Ignore'
+    if ($SymbolPath) {
+        $oneSrc | Out-File -FilePath (Join-Path -Path $SymbolPath -ChildPath "Generated.cs")
+        $addTypeParams = @{
+            Path = (Join-Path -Path $SymbolPath -ChildPath "Generated.cs")
+            WarningAction = 'Ignore'
+        }
+    } else {
+        $addTypeParams = @{
+            TypeDefinition = $oneSrc
+            Language = "CSharp"
+            WarningAction = 'Ignore'
+        }
     }
 
     if ($CorePsEditionConstant -ne (Get-PSEdition)) {
@@ -162,9 +174,10 @@ function Invoke-AssemblyCompilation {
         $addTypeParams['ReferencedAssemblies'] = ($systemRefs + $extraRefs + $moduleRefs)
     }
 
+    $OutputPdbName = ''
     if ($OutputAssemblyName) {
         $OutputAssembly = Join-Path -Path $clrPath -ChildPath $OutputAssemblyName
-
+        
         if ($addTypeParams.ContainsKey('CompilerParameters')) {
             $addTypeParams['CompilerParameters'].OutputAssembly = $OutputAssembly
         } else {
@@ -179,6 +192,9 @@ function Invoke-AssemblyCompilation {
         if ((-not (Test-Path -Path $OutputAssembly)) -or ((Get-Item -Path $OutputAssembly).Length -eq 0kb)) {
             return $false
         }
+
+        $outputAssemblyItem = Get-Item -Path $OutputAssembly
+        $OutputPdbName = "$($outputAssemblyItem.BaseName).pdb"
     } else {
         if ($addTypeParams.ContainsKey('CompilerParameters')) {
             $addTypeParams['CompilerParameters'].GenerateInMemory = $true
@@ -188,6 +204,10 @@ function Invoke-AssemblyCompilation {
         $extraRefs | ForEach-Object { Add-Type -Path $_ -ErrorAction Ignore }
         
         Add-Type @addTypeParams 
+    }
+
+    if ($SymbolPath -and $OutputPdbName -and (Test-Path -Path (Join-Path -Path $ClrPath -ChildPath $OutputPdbName))) {
+        $null = Copy-Item -Path (Join-Path -Path $ClrPath -ChildPath $OutputPdbName) -Destination (Join-Path -Path $SymbolPath -ChildPath $OutputPdbName)
     }
         
     return $true
