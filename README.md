@@ -83,12 +83,11 @@ Because of the dynamic compilation feature, it is highly recommended that publis
 Service client tracing is built-in when the module is imported to PowerShell 5.0+. To see these messages, you must set $VerbosePreference, as passing in the -Verbose flag to the cmdlet won't carry over to the tracing client.
 
 When the module is imported to older version of PowerShell, the following steps will need to be taken:
-1. Implement either Microsoft.PowerShell.Commands.PSSwagger.PowerShellServiceClientTracerBase or Microsoft.Rest.IServiceClientTracingInterceptor
+1. Implement either Microsoft.PowerShell.Commands.PSSwagger.PSSwaggerClientTracing or Microsoft.Rest.IServiceClientTracingInterceptor
 2. Call: [Microsoft.Rest.ServiceClientTracing]::AddTracingInterceptor($myTracer)
 3. If you use the Verbose or Debug streams of PowerShell, set $VerbosePreference or $DebugPreference, respectively
 
 Note 1: We're not sure why yet, but something is setting [Microsoft.Rest.ServiceClientTracing]::IsEnabled to true before all cmdlet calls
-Note 2: PowerShellServiceClientTracerBase is in the generated assembly, and both the generated assembly and Microsoft.Rest.ClientRuntime.dll are loaded by the generated module
 
 ## Upcoming additions
 

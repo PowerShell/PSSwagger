@@ -14,8 +14,8 @@ FunctionsToExport = @('Get-AzDelegatingHandler',
                       'Remove-AzSRmEnvironment',
                       'Invoke-SwaggerCommandUtility',
 					  'New-PSSwaggerClientTracing',
-					  'Enable-ServiceClientTracing',
-					  'Disable-ServiceClientTracing')
+					  'Register-PSSwaggerClientTracing',
+					  'Unregister-PSSwaggerClientTracing')
 CmdletsToExport = @('Start-PSSwaggerJob')
 VariablesToExport = ''
 AliasesToExport = ''

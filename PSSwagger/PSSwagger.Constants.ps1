@@ -29,6 +29,7 @@ $parameterDefString = @'
 $parameterDefaultValueString = ' = $parameterDefaultValue'
 
 $RootModuleContents = @'
+`$script:ServiceClientTracer = `$null
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename $Name.Resources.psd1
 . (Join-Path -Path "`$PSScriptRoot" -ChildPath "Utils.ps1")
@@ -83,10 +84,15 @@ Get-ChildItem -Path (Join-Path -Path "`$PSScriptRoot" -ChildPath "ref" | Join-Pa
 
 Get-ChildItem -Path "`$PSScriptRoot\$GeneratedCommandsName\*.ps1" -Recurse -File | ForEach-Object { . `$_.FullName}
 
-if(`$PSVersionTable.PSVersion -ge '5.0.0') {
+if(`$PSVersionTable.PSVersion -ge '5.0.0' -and (-not `$script:ServiceClientTracer)) {
     # Load and enable service client tracer
-    `$psTracer = New-PSSwaggerClientTracing
-    [Microsoft.Rest.ServiceClientTracing]::AddTracingInterceptor(`$psTracer)
+    `$script:ServiceClientTracer = New-PSSwaggerClientTracing
+    Register-PSSwaggerClientTracing -TracerObject `$script:ServiceClientTracer
+    `$PSModule = `$ExecutionContext.SessionState.Module
+    `$PSModule.OnRemove = { 
+        Unregister-PSSwaggerClientTracing -TracerObject `$script:ServiceClientTracer
+        `$script:ServiceClientTracer = `$null
+    }
 }
 '@
 

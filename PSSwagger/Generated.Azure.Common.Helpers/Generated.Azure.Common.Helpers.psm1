@@ -379,7 +379,7 @@ else
 		
         $TempPath = [System.IO.Path]::GetTempPath() + [System.IO.Path]::GetRandomFileName()
         $null = New-Item -Path $TempPath -ItemType Directory -Force
-        $PSSwaggerJobAssemblyPath = Join-Path -Path $TempPath -ChildPath 'PSSwaggerNetUtilities.dll'
+        $PSSwaggerJobAssemblyPath = Join-Path -Path $TempPath -ChildPath 'Microsoft.PowerShell.PSSwagger.Utility.dll'
 
         Add-Type -ReferencedAssemblies $RequiredAssemblies `
                  -TypeDefinition $PSSwaggerJobSourceString `

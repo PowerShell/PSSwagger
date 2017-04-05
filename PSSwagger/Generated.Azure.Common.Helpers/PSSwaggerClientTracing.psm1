@@ -11,18 +11,22 @@ function New-PSSwaggerClientTracing {
 	return New-Object -TypeName PSSwaggerClientTracing
 }
 
-function Enable-ServiceClientTracing {
+function Register-PSSwaggerClientTracing {
 	[CmdletBinding()]
-	param()
+	param(
+		[PSSwaggerClientTracing]$TracerObject
+	)
 	
-	[Microsoft.Rest.ServiceClientTracing]::IsEnabled = $true
+	[Microsoft.Rest.ServiceClientTracing]::AddTracingInterceptor($TracerObject)
 }
 
-function Disable-ServiceClientTracing {
+function Unregister-PSSwaggerClientTracing {
 	[CmdletBinding()]
-	param()
+	param(
+		[PSSwaggerClientTracing]$TracerObject
+	)
 	
-	[Microsoft.Rest.ServiceClientTracing]::IsEnabled = $false
+	[Microsoft.Rest.ServiceClientTracing]::RemoveTracingInterceptor($TracerObject)
 }
 
 Export-ModuleMember -Function *
