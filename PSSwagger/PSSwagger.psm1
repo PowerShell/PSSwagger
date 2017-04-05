@@ -403,7 +403,7 @@ function ConvertTo-CsharpCode
         $null = Move-Item -Path $file.FullName -Destination $newFileName -Force
         $allCodeFiles += $newFileName
     }
-
+    
     $allCSharpFilesArrayString = "@('"+ $($allCodeFiles -join "','") + "')"
     # Compile full CLR (PSSwagger requires to be invoked from full PowerShell)
     $codeCreatedByAzureGenerator = [bool]$SwaggerMetaDict['UseAzureCsharpGenerator']

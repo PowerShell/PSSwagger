@@ -12,7 +12,10 @@ FunctionsToExport = @('Get-AzDelegatingHandler',
                       'Get-AzResourceManagerUrl',
                       'Add-AzSRmEnvironment',
                       'Remove-AzSRmEnvironment',
-                      'Invoke-SwaggerCommandUtility')
+                      'Invoke-SwaggerCommandUtility',
+					  'New-PSSwaggerClientTracing',
+					  'Register-PSSwaggerClientTracing',
+					  'Unregister-PSSwaggerClientTracing')
 CmdletsToExport = @('Start-PSSwaggerJob')
 VariablesToExport = ''
 AliasesToExport = ''
