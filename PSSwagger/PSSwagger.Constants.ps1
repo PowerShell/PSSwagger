@@ -85,8 +85,7 @@ Get-ChildItem -Path "`$PSScriptRoot\$GeneratedCommandsName\*.ps1" -Recurse -File
 
 if(`$PSVersionTable.PSVersion -ge '5.0.0') {
     # Load and enable service client tracer
-    Import-Module "`$PSScriptRoot\PowerShellServiceClientTracer.psm1"
-    `$psTracer = New-PowerShellServiceClientTracer
+    `$psTracer = New-PSSwaggerClientTracing
     [Microsoft.Rest.ServiceClientTracing]::AddTracingInterceptor(`$psTracer)
 }
 '@

@@ -57,6 +57,5 @@ ConvertFrom-StringData @'
     FlatteningParameterType=Flattening parameter '{0}' of type '{1}'
     ParameterExpandedTo=Parameter '{0}' was expanded to parameter '{1}'
     DuplicateExpandedProperty=Duplicate expanded property name: '{0}'
-    TracerFileSignatureValidationFailed=File containing PowerShellServiceClientTracerBase code failed signature validation.
 ###PSLOC
 '@

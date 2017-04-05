@@ -347,12 +347,12 @@ if(('Microsoft.PowerShell.Commands.PSSwagger.PSSwaggerJob' -as [Type]) -and
 }
 else
 {
-    $PSSwaggerJobFilePath = Join-Path -Path $PSScriptRoot -ChildPath 'PSSwaggerJob.Code.ps1'
+    $PSSwaggerJobFilePath = Join-Path -Path $PSScriptRoot -ChildPath 'PSSwaggerNetUtilities.Code.ps1'
     if(Test-Path -Path $PSSwaggerJobFilePath -PathType Leaf)
     {
         $sig = Get-AuthenticodeSignature -FilePath $PSSwaggerJobFilePath
         if (('Valid' -ne $sig.Status) -and ('NotSigned' -ne $sig.Status)) {
-            throw 'Failed to validate PSSwaggerJob.Code.ps1''s signature'
+            throw 'Failed to validate PSSwaggerNetUtilities.Code.ps1''s signature'
         }
 
         $PSSwaggerJobSourceString = Get-SignedContent -Path $PSSwaggerJobFilePath | Out-String
@@ -361,12 +361,25 @@ else
             [System.Management.Automation.PSCmdlet].Assembly.FullName,
             [System.ComponentModel.AsyncCompletedEventArgs].Assembly.FullName,
             [System.Linq.Enumerable].Assembly.FullName,
-            [System.Collections.StructuralComparisons].Assembly.FullName
+            [System.Collections.StructuralComparisons].Assembly.FullName,
+			[System.Net.Http.HttpRequestMessage].Assembly.FullName
         )
 
+		if ((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
+			$module = Get-Module -Name AzureRM.Profile.NetCore.Preview -ListAvailable | 
+						  Select-Object -First 1 -ErrorAction Ignore
+		} else {
+			$module = Get-Module -Name AzureRM.Profile -ListAvailable | 
+						  Select-Object -First 1 -ErrorAction Ignore
+		}
+		
+		if ($module) {
+			$RequiredAssemblies += (Join-Path -Path "$($module.ModuleBase)" -ChildPath 'Microsoft.Rest.ClientRuntime.dll')
+		}
+		
         $TempPath = [System.IO.Path]::GetTempPath() + [System.IO.Path]::GetRandomFileName()
         $null = New-Item -Path $TempPath -ItemType Directory -Force
-        $PSSwaggerJobAssemblyPath = Join-Path -Path $TempPath -ChildPath 'PSSwaggerJob.dll'
+        $PSSwaggerJobAssemblyPath = Join-Path -Path $TempPath -ChildPath 'PSSwaggerNetUtilities.dll'
 
         Add-Type -ReferencedAssemblies $RequiredAssemblies `
                  -TypeDefinition $PSSwaggerJobSourceString `
@@ -388,3 +401,5 @@ if(-not ('Microsoft.PowerShell.Commands.PSSwagger.PSSwaggerJob' -as [Type]))
 {
     Write-Error -Message "Unable to add PSSwaggerJob type."
 }
+
+Import-Module -Name (Join-Path -Path "$PSScriptRoot" -ChildPath "PSSwaggerClientTracing.psm1")
