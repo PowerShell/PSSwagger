@@ -166,10 +166,7 @@ $functionBodyStr = @'
 
     $clientName = New-Object -TypeName $fullModuleName -ArgumentList `$serviceCredentials,`$delegatingHandler$apiVersion
 
-    if(Get-Member -InputObject $clientName -Name 'SubscriptionId' -MemberType Property)
-    {
-        $clientName.SubscriptionId = `$SubscriptionId
-    }
+    $GlobalParameterBlock
     $clientName.BaseUri = `$ResourceManagerUrl$oDataExpressionBlock
     $parameterGroupsExpressionBlock
 
@@ -313,6 +310,13 @@ $ApiVersionStr = @'
     if(Get-Member -InputObject $clientName -Name 'ApiVersion' -MemberType Property)
     {
         $clientName.ApiVersion = "$infoVersion"
+    }
+'@
+
+$GlobalParameterBlockStr = @'
+    if(Get-Member -InputObject `$clientName -Name '$globalParameterName' -MemberType Property)
+    {
+        `$clientName.$globalParameterName = $globalParameterValue
     }
 '@
 

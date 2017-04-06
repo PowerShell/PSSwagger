@@ -42,5 +42,17 @@
       "password": "test2",
       "poisoned": true
     }
+  ],
+  "cookies": [
+    {
+      "id": "1",
+      "api-version": "test",
+      "TestGlobalParameter": "test"
+    },
+    {
+      "id": "2",
+      "api-version": "2017-03-24",
+      "TestGlobalParameter": "test"
+    }
   ]
 }

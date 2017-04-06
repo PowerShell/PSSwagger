@@ -57,13 +57,14 @@ function Initialize-Test {
         [string]$TestDataFileName,
         [string]$PsSwaggerPath,
         [string]$TestRootPath,
-        [string]$GeneratedModuleVersion
+        [string]$GeneratedModuleVersion,
+        [switch]$UseAzureCSharpGenerator
     )
 
     Compile-TestAssembly -TestAssemblyName "$global:testRunGuid.dll" `
                          -TestAssemblyPath (Join-Path "$TestRootPath" "PSSwagger.TestUtilities") `
                          -TestCSharpFilePath (Join-Path "$TestRootPath" "PSSwagger.TestUtilities" | Join-Path -ChildPath "TestCredentials.cs") `
-                         -CompilationUtilsPath (Join-Path $PsSwaggerPath "Utils.ps1") -UseAzureCSharpGenerator $false -Verbose
+                         -CompilationUtilsPath (Join-Path $PsSwaggerPath "Utils.ps1") -UseAzureCSharpGenerator $UseAzureCSharpGenerator -Verbose
 
     
 
@@ -89,7 +90,7 @@ function Initialize-Test {
         }"
     } else {
         Import-Module (Join-Path "$PsSwaggerPath" "PSSwagger.psd1") -Force
-        New-PSSwaggerModule -SwaggerSpecPath (Join-Path -Path "$testCaseDataLocation" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Verbose -NoAssembly
+        New-PSSwaggerModule -SwaggerSpecPath (Join-Path -Path "$testCaseDataLocation" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Verbose -NoAssembly -UseAzureCSharpGenerator:$UseAzureCSharpGenerator
     }
 
     # Copy json-server data since it's updated live
