@@ -92,11 +92,20 @@
     }
   },
   "definitions": {
+    "DefTypeName1": {
+      "description": "type description",
+      "type": "Integer",
+      "format": "int64"
+    },
     "Product": {
       "description": "The product documentation.",
       "properties": {
         "product_id": {
           "type": "string",
+          "description": "Unique identifier representing a specific product for a given latitude & longitude. For example, uberX in San Francisco will have a different product_id than uberX in Los Angeles."
+        },
+        "ParamWithRefDefName": {
+          "$ref": "#/definitions/DefTypeName1",
           "description": "Unique identifier representing a specific product for a given latitude & longitude. For example, uberX in San Francisco will have a different product_id than uberX in Los Angeles."
         },
         "description": {

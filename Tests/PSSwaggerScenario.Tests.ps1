@@ -446,10 +446,10 @@ Describe "AzureExtensions" {
 Describe "Composite Swagger Tests" -Tag @('Composite','ScenarioTest') {
     Context "Module generation for composite swagger specs" {
         It "New-PSSwaggerModule with composite swagger spec" {            
-            $ModuleName = 'CompositeComputeClient'
+            $ModuleName = 'CompositeSwaggerModule'
             $PsSwaggerPath = Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger"
             $Path = Join-Path -Path $PSScriptRoot -ChildPath 'Generated'
-            $SwaggerSpecPath = Join-Path -Path $PSScriptRoot -ChildPath 'Data' | Join-Path -ChildPath 'CompositeSwaggerTest' | Join-Path -ChildPath 'compositeComputeClient.json'
+            $SwaggerSpecPath = Join-Path -Path $PSScriptRoot -ChildPath 'Data' | Join-Path -ChildPath 'CompositeSwaggerTest' | Join-Path -ChildPath 'composite-swagger.json'
             # Module generation part needs to happen in full powershell
             Write-Verbose "Generating $ModuleName module"
             Import-Module $PsSwaggerPath -Force
@@ -468,8 +468,9 @@ Describe "Composite Swagger Tests" -Tag @('Composite','ScenarioTest') {
 
             $CommandList = Get-Command -Module $ModuleName -ErrorVariable ev
             $ev | Should BeNullOrEmpty
-            $CommandList.Name -contains 'Start-VirtualMachineScaleSetVM' | Should be $True
-            $commandList.Count | Should be 96
+            $CommandList.Name -contains 'New-ProductObject' | Should be $True
+            $CommandList.Name -contains 'New-Product2Object' | Should be $True
+            $commandList.Count | Should be 7
 
             $commandsSyntax = Get-Command -Module $ModuleName -Syntax -ErrorVariable ev
             $ev | Should BeNullOrEmpty
