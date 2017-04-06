@@ -147,7 +147,7 @@ function Invoke-AssemblyCompilation {
             $OutputAssemblyBaseName = [System.IO.Path]::GetFileNameWithoutExtension("$OutputAssemblyName")
             $oneSrc | Out-File -FilePath (Join-Path -Path $SymbolPath -ChildPath "Generated.$OutputAssemblyBaseName.cs")
             $addTypeParams = @{
-                Path = (Join-Path -Path $SymbolPath -ChildPath "Generated.cs")
+                Path = (Join-Path -Path $SymbolPath -ChildPath "Generated.$OutputAssemblyBaseName.cs")
                 WarningAction = 'Ignore'
             }
         } else {
