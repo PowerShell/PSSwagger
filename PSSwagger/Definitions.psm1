@@ -603,7 +603,7 @@ function Expand-NonModelDefinition
                 }
 
                 $ParamsToBeReplaced.GetEnumerator() | ForEach-Object {
-                    $FunctionDetails.ParametersTable[$_.Name] = $_.Value
+                    $FunctionDetails.ParametersTable[$_.Key] = $_.Value
                 }
             }            
         }

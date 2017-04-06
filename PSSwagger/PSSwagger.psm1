@@ -595,11 +595,11 @@ function ConvertTo-CsharpCode
         }
 
         $command = ". '$PSScriptRoot\Utils.ps1'; 
-                            Initialize-LocalToolsVariables;
-                            Invoke-AssemblyCompilation -OutputAssemblyName '$outAssembly' ``
-                                                       -ClrPath '$clrPath' ``
-                                                       -CSharpFiles $allCSharpFilesArrayString ``
-                                                       -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator"
+                    Initialize-LocalToolsVariables;
+                    Invoke-AssemblyCompilation -OutputAssemblyName '$outAssembly' ``
+                                                -ClrPath '$clrPath' ``
+                                                -CSharpFiles $allCSharpFilesArrayString ``
+                                                -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator"
 
         $success = & "$PowerShellCorePath" -command "& {$command}"
         if ((Test-AssemblyCompilationSuccess -Output ($success | Out-String))) {
