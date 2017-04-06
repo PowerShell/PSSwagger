@@ -162,6 +162,44 @@
                 },
                 "x-ms-odata": "#/definitions/Cupcake"
             }
+        },
+        "/cookies": {
+            "get": {
+                "summary": "List all cookies matching parameters",
+                "operationId": "Cookie_Get",
+                "description": "List all cookies matching parameters",
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/ApiVersionParameter"
+                    },
+                    {
+                        "$ref": "#/parameters/SubscriptionIdParameter"
+                    },
+                    {
+                        "$ref": "#/parameters/TestGlobalParameter"
+                    }
+                ],
+                "tags": [
+                    "Cookies"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "All cookie entities",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Cookie"
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -228,6 +266,23 @@
                 }
             }
         },
+        "Cookie": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "Unique identifier"
+                },
+                "api-version": {
+                    "type": "string",
+                    "description": "API version"
+                },
+                "TestGlobalParameter": {
+                    "type": "string",
+                    "description": "Something"
+                }
+            }
+        },
         "Error": {
             "type": "object",
             "properties": {
@@ -256,6 +311,14 @@
             "required": true,
             "type": "string",
             "description": "The API version to be used with the HTTP request."
+        },
+        "TestGlobalParameter": {
+            "name": "TestGlobalParameter",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "Stuff",
+            "default": "defaultValue"
         }
     }
 }

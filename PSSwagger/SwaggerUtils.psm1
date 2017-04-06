@@ -50,7 +50,11 @@ function ConvertTo-SwaggerDictionary {
 
         [Parameter(Mandatory = $false)]
         [string]
-        $DefaultCommandPrefix
+        $DefaultCommandPrefix,
+
+        [Parameter(Mandatory = $false)]
+        [switch]
+        $AzureSpec
     )
     
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -77,6 +81,7 @@ function ConvertTo-SwaggerDictionary {
                 Info = $swaggerDict['Info']
                 SwaggerParameters = $swaggerParameters
                 DefinitionFunctionsDetails = $DefinitionFunctionsDetails
+				AzureSpec = $AzureSpec
             }
 
             Get-SwaggerParameters @GetSwaggerParameters_Params
@@ -230,7 +235,11 @@ function Get-SwaggerParameters {
 
         [Parameter(Mandatory=$true)]
         [PSCustomObject]
-        $SwaggerParameters
+        $SwaggerParameters,
+
+        [Parameter(Mandatory = $false)]
+        [switch]
+        $AzureSpec
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -247,8 +256,10 @@ function Get-SwaggerParameters {
 
         $IsParamMandatory = '$false'
         $ParameterDescription = ''
-        $x_ms_parameter_location = ''
+        $x_ms_parameter_location = 'client'
         $x_ms_parameter_grouping = ''
+        $ConstantValue = ''
+        $ReadOnlyGlobalParameter = $false
         if ((Get-Member -InputObject $GPJsonValueObject -Name 'x-ms-client-name') -and $GPJsonValueObject.'x-ms-client-name') {
             $parameterName = Get-PascalCasedString -Name $GPJsonValueObject.'x-ms-client-name'
         } elseif ((Get-Member -InputObject $GPJsonValueObject -Name 'Name') -and $GPJsonValueObject.Name)
@@ -259,6 +270,16 @@ function Get-SwaggerParameters {
         if(Get-Member -InputObject $GPJsonValueObject -Name 'x-ms-parameter-location')
         {
             $x_ms_parameter_location = $GPJsonValueObject.'x-ms-parameter-location'
+        }
+
+        if ($AzureSpec) {
+            # Some global parameters have constant values not expressed in the Swagger spec when dealing with Azure
+            if ('subscriptionId' -eq $parameterName) {
+                # See PSSwagger.Constants.ps1 $functionBodyStr for this variable name
+                $ConstantValue = '`$subscriptionId'
+            } elseif ('apiversion' -eq $parameterName) {
+                $ReadOnlyGlobalParameter = $true
+            }       
         }
 
         if((Get-Member -InputObject $GPJsonValueObject -Name 'Required') -and
@@ -304,6 +325,8 @@ function Get-SwaggerParameters {
             IsParameter = $paramTypeObject.IsParameter
             x_ms_parameter_location = $x_ms_parameter_location
             x_ms_parameter_grouping = $x_ms_parameter_grouping
+            ConstantValue = $ConstantValue
+            ReadOnlyGlobalParameter = $ReadOnlyGlobalParameter
         }
     }
 }
@@ -433,7 +456,7 @@ function Get-ParameterDetails
     {
         $IsParamMandatory = '$false'
         $ParameterDescription = ''
-        $x_ms_parameter_location = ''
+        $x_ms_parameter_location = 'method'
 
         if ((Get-Member -InputObject $ParameterJsonObject -Name 'Required') -and 
             $ParameterJsonObject.Required)
@@ -740,13 +763,10 @@ function Get-ParamType
                 $GlobalParamDetails = $GlobalParameters[$ReferenceParts[2]]
 
                 # Valid values for this extension are: "client", "method".
-                if($GlobalParamDetails -and 
+                $GlobalParameterDetails = $GlobalParamDetails
+                if(-not ($GlobalParamDetails -and 
                    $GlobalParamDetails.ContainsKey('x_ms_parameter_location') -and 
-                   ($GlobalParamDetails.x_ms_parameter_location -eq 'method'))
-                {
-                    $GlobalParameterDetails = $GlobalParamDetails
-                }
-                else
+                   ($GlobalParamDetails.x_ms_parameter_location -eq 'method')))
                 {
                     $isParameter = $false
                 }
@@ -1042,6 +1062,11 @@ function Get-PathFunctionBody
         $ParameterGroupsExpressionBlock,
 
         [Parameter(Mandatory=$true)]
+        [string]
+        [AllowEmptyString()]
+        $GlobalParameterBlock,
+
+        [Parameter(Mandatory=$true)]
         [PSCustomObject]
         $SwaggerDict,
 
@@ -1067,11 +1092,9 @@ function Get-PathFunctionBody
     $GetServiceCredentialStr = ''
     $AdvancedFunctionEndCodeBlock = ''
     $GetServiceCredentialStr = 'Get-AzServiceCredential'
-    
-    if (-not $UseAzureCsharpGenerator)
-    {
-        $apiVersion = $executionContext.InvokeCommand.ExpandString($ApiVersionStr)
-    }
+
+    # Expanding again expands $clientName
+    $GlobalParameterBlock = $executionContext.InvokeCommand.ExpandString($GlobalParameterBlock)
     
     $parameterSetBasedMethodStr = ''
     foreach ($parameterSetDetail in $ParameterSetDetails) {

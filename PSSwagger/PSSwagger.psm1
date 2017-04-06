@@ -295,6 +295,7 @@ function New-PSSwaggerModule
         DefaultCommandPrefix = $DefaultCommandPrefix
         SwaggerSpecFilePaths = $SwaggerSpecFilePaths
         DefinitionFunctionsDetails = $DefinitionFunctionsDetails
+        AzureSpec = $UseAzureCsharpGenerator
     }
     $swaggerDict = ConvertTo-SwaggerDictionary @ConvertToSwaggerDictionary_params
     $nameSpace = $swaggerDict['info'].NameSpace
