@@ -151,9 +151,8 @@
           "type": "string",
           "description": "Unique identifier representing a specific product for a given latitude & longitude. For example, uberX in San Francisco will have a different product_id than uberX in Los Angeles."
         },
-        "ParamWithRefDefName": {
-          "$ref": "#/definitions/DefTypeName1",
-          "description": "Unique identifier representing a specific product for a given latitude & longitude. For example, uberX in San Francisco will have a different product_id than uberX in Los Angeles."
+        "Tags": {
+          "$ref": "#/definitions/Tags"
         },
         "description": {
           "type": "string",
@@ -161,10 +160,12 @@
         }
       }
     },
-    "DefTypeName1": {
-      "description": "type description",
-      "type": "Integer",
-      "format": "int64"
+    "Tags": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Tags are a list of key-value pairs that describe the resource. These tags can be used in viewing and grouping this resource (across resource groups). A maximum of 15 tags can be provided for a resource. Each tag must have a key no greater than 128 characters and value no greater than 256 characters."
     },
     "Error": {
       "properties": {
