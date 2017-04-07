@@ -143,6 +143,9 @@ function New-PSSwaggerModule
         return
     }
     
+    $SwaggerSpecFilePaths = @()
+    $AutoRestModeler = 'Swagger'
+
     if ($PSCmdlet.ParameterSetName -eq 'SwaggerURI')
     {
         # Ensure that if the URI is coming from github, it is getting the raw content
@@ -152,8 +155,13 @@ function New-PSSwaggerModule
             Write-Verbose -Message $message -Verbose
         }
 
-        $SwaggerSpecPath = [io.path]::GetTempFileName() + ".json"
-        $message = $LocalizedData.SwaggerSpecDownloadedTo -f ($SwaggerSpecURI, $SwaggerSpecPath)
+        $TempPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath (Get-Random)
+        $null = New-Item -Path $TempPath -ItemType Directory -Force -Confirm:$false -WhatIf:$false
+
+        $SwaggerFileName = Split-Path -Path $SwaggerSpecUri -Leaf
+        $SwaggerSpecPath = Join-Path -Path $TempPath -ChildPath $SwaggerFileName
+
+        $message = $LocalizedData.SwaggerSpecDownloadedTo -f ($SwaggerSpecUri, $SwaggerSpecPath)
         Write-Verbose -Message $message
         
         $ev = $null
@@ -161,7 +169,38 @@ function New-PSSwaggerModule
         if($ev) {
             return 
         }
-    }
+
+        $jsonObject = ConvertFrom-Json -InputObject ((Get-Content -Path $SwaggerSpecPath) -join [Environment]::NewLine) -ErrorAction Stop
+        if((Get-Member -InputObject $jsonObject -Name 'Documents') -and ($jsonObject.Documents.Count))
+        {
+            $AutoRestModeler = 'CompositeSwagger'
+            $BaseSwaggerUri = "$SwaggerSpecUri".Substring(0, "$SwaggerSpecUri".LastIndexOf('/'))
+            foreach($document in $jsonObject.Documents)
+            {
+                $FileName = Split-Path -Path $document -Leaf
+                $DocumentFolderPrefix = (Split-Path -Path $document -Parent).Replace('/', [System.IO.Path]::DirectorySeparatorChar).TrimStart('.')
+                
+                $DocumentFolderPath = Join-Path -Path $TempPath -ChildPath $DocumentFolderPrefix
+
+                if(-not (Test-Path -LiteralPath $DocumentFolderPath -PathType Container))
+                {
+                    $null = New-Item -Path $DocumentFolderPath -ItemType Container -Force -Confirm:$false -WhatIf:$false
+                }
+                $SwaggerDocumentPath = Join-Path -Path $DocumentFolderPath -ChildPath $FileName
+
+                $ev = $null
+                Invoke-WebRequest -Uri $($BaseSwaggerUri + $($document.replace('\','/').TrimStart('.'))) -OutFile $SwaggerDocumentPath -ErrorVariable ev
+                if($ev) {
+                    return 
+                }
+                $SwaggerSpecFilePaths += $SwaggerDocumentPath
+            }
+        }
+        else
+        {
+            $SwaggerSpecFilePaths += $SwaggerSpecPath
+        }
+    }    
 
     $outputDirectory = Microsoft.PowerShell.Management\Resolve-Path -Path $Path | Select-Object -First 1 -ErrorAction Ignore
     $outputDirectory = "$outputDirectory".TrimEnd('\').TrimEnd('/')
@@ -174,11 +213,42 @@ function New-PSSwaggerModule
         throw $LocalizedData.PathNotFound -f ($Path)
         return
     }
-
+  
+    # Validate swagger path and composite swagger paths
     if (-not (Test-path -Path $SwaggerSpecPath))
     {
         throw $LocalizedData.SwaggerSpecPathNotExist -f ($SwaggerSpecPath)
         return
+    }
+
+    if ($PSCmdlet.ParameterSetName -eq 'SwaggerPath')
+    {
+        $jsonObject = ConvertFrom-Json -InputObject ((Get-Content -Path $SwaggerSpecPath) -join [Environment]::NewLine) -ErrorAction Stop
+        if((Get-Member -InputObject $jsonObject -Name 'Documents') -and ($jsonObject.Documents.Count))
+        {
+            $AutoRestModeler = 'CompositeSwagger'
+            $SwaggerBaseDir = Split-Path -Path $SwaggerSpecPath -Parent
+            foreach($document in $jsonObject.Documents)
+            {
+                $FileName = Split-Path -Path $document -Leaf
+                if(Test-Path -Path $document -PathType Leaf)
+                {
+                    $SwaggerSpecFilePaths += $SwaggerDocumentPath
+                }
+                elseif(Test-Path -Path (Join-Path -Path $SwaggerBaseDir -ChildPath $document) -PathType Leaf)
+                {
+                    $SwaggerSpecFilePaths += Join-Path -Path $SwaggerBaseDir -ChildPath $document
+                }
+                else {
+                    throw $LocalizedData.PathNotFound -f ($document)
+                    return
+                }
+            }
+        }
+        else
+        {
+            $SwaggerSpecFilePaths += $SwaggerSpecPath
+        }
     }
 
     $userConsent = Initialize-LocalTools -AllUsers:$InstallToolsForAllUsers
@@ -215,7 +285,7 @@ function New-PSSwaggerModule
         }
     }
 
-    $jsonObject = ConvertFrom-Json -InputObject ((Get-Content -Path $SwaggerSpecPath) -join [Environment]::NewLine) -ErrorAction Stop
+    $DefinitionFunctionsDetails = @{}
 
     # Parse the JSON and populate the dictionary
     $ConvertToSwaggerDictionary_params = @{
@@ -223,6 +293,8 @@ function New-PSSwaggerModule
         ModuleName = $Name
         ModuleVersion = $Version
         DefaultCommandPrefix = $DefaultCommandPrefix
+        SwaggerSpecFilePaths = $SwaggerSpecFilePaths
+        DefinitionFunctionsDetails = $DefinitionFunctionsDetails
     }
     $swaggerDict = ConvertTo-SwaggerDictionary @ConvertToSwaggerDictionary_params
     $nameSpace = $swaggerDict['info'].NameSpace
@@ -251,27 +323,36 @@ function New-PSSwaggerModule
         OutputDirectory = $outputDirectory
         UseAzureCsharpGenerator = $UseAzureCsharpGenerator
         SwaggerSpecPath = $SwaggerSpecPath
+        SwaggerSpecFilePaths = $SwaggerSpecFilePaths
+        AutoRestModeler = $AutoRestModeler
     }
 
     $ParameterGroupCache = @{}
-
-    # Handle the Definitions
-    $DefinitionFunctionsDetails = @{}
-    $jsonObject.Definitions.PSObject.Properties | ForEach-Object {
-         Get-SwaggerSpecDefinitionInfo -JsonDefinitionItemObject $_ `
-                                       -Namespace $Namespace `
-                                       -DefinitionFunctionsDetails $DefinitionFunctionsDetails
-    }
-
-    # Handle the Paths
     $PathFunctionDetails = @{}
-    $jsonObject.Paths.PSObject.Properties | ForEach-Object {
-        Get-SwaggerSpecPathInfo -JsonPathItemObject $_ `
-                                -PathFunctionDetails $PathFunctionDetails `
-                                -SwaggerDict $swaggerDict `
-                                -SwaggerMetaDict $swaggerMetaDict `
-                                -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
-                                -ParameterGroupCache $ParameterGroupCache
+
+    foreach($FilePath in $SwaggerSpecFilePaths) {
+        $jsonObject = ConvertFrom-Json -InputObject ((Get-Content -Path $FilePath) -join [Environment]::NewLine) -ErrorAction Stop
+
+        if(Get-Member -InputObject $jsonObject -Name 'Definitions') {
+            # Handle the Definitions
+            $jsonObject.Definitions.PSObject.Properties | ForEach-Object {
+                Get-SwaggerSpecDefinitionInfo -JsonDefinitionItemObject $_ `
+                                            -Namespace $Namespace `
+                                            -DefinitionFunctionsDetails $DefinitionFunctionsDetails
+            }
+        }
+
+        if(Get-Member -InputObject $jsonObject -Name 'Paths') {
+            # Handle the Paths
+            $jsonObject.Paths.PSObject.Properties | ForEach-Object {
+                Get-SwaggerSpecPathInfo -JsonPathItemObject $_ `
+                                        -PathFunctionDetails $PathFunctionDetails `
+                                        -SwaggerDict $swaggerDict `
+                                        -SwaggerMetaDict $swaggerMetaDict `
+                                        -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
+                                        -ParameterGroupCache $ParameterGroupCache
+            }
+        }
     }
 
     $codePhaseResult = ConvertTo-CsharpCode -SwaggerDict $swaggerDict `
@@ -410,7 +491,7 @@ function ConvertTo-CsharpCode
         GeneratedCSharpPath = $generatedCSharpPath
     }
 
-    $null = & $autoRestExePath -AddCredentials -input $swaggerMetaDict['SwaggerSpecPath'] -CodeGenerator $codeGenerator -OutputDirectory $generatedCSharpPath -NameSpace $Namespace
+    $null = & $autoRestExePath -AddCredentials -input $swaggerMetaDict['SwaggerSpecPath'] -CodeGenerator $codeGenerator -OutputDirectory $generatedCSharpPath -NameSpace $Namespace -Modeler $swaggerMetaDict['AutoRestModeler']
     if ($LastExitCode)
     {
         throw $LocalizedData.AutoRestError
@@ -444,19 +525,19 @@ function ConvertTo-CsharpCode
     try {
         Export-CliXml -InputObject $PathFunctionDetails -Path $cliXmlTmpPath
         $command = ". '$PSScriptRoot\Utils.ps1'; 
-                                Initialize-LocalToolsVariables;
-                                Invoke-AssemblyCompilation  -OutputAssemblyName '$outAssembly' ``
-                                                            -ClrPath '$clrPath' ``
-                                                            -CSharpFiles $allCSharpFilesArrayString ``
-                                                            -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator ``
-                                                            -RequiredAzureRestVersion 3.3.4 ``
-                                                            -AllUsers:`$$InstallToolsForAllUsers ``
-                                                            -BootstrapConsent:`$$UserConsent ``
-                                                            -TestBuild:`$$TestBuild ``
-                                                            -SymbolPath $SymbolPath;
-                                Import-Module `"`$(Join-Path -Path `"$PSScriptRoot`" -ChildPath `"Paths.psm1`")` -DisableNameChecking;
-                                Set-ExtendedCodeMetadata -MainClientTypeName $fullModuleName ``
-                                                         -CliXmlTmpPath $cliXmlTmpPath"
+                    Initialize-LocalToolsVariables;
+                    Invoke-AssemblyCompilation  -OutputAssemblyName '$outAssembly' ``
+                                                -ClrPath '$clrPath' ``
+                                                -CSharpFiles $allCSharpFilesArrayString ``
+                                                -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator ``
+                                                -RequiredAzureRestVersion 3.3.4 ``
+                                                -AllUsers:`$$InstallToolsForAllUsers ``
+                                                -BootstrapConsent:`$$UserConsent ``
+                                                -TestBuild:`$$TestBuild ``
+                                                -SymbolPath $SymbolPath;
+                    Import-Module `"`$(Join-Path -Path `"$PSScriptRoot`" -ChildPath `"Paths.psm1`")` -DisableNameChecking;
+                    Set-ExtendedCodeMetadata -MainClientTypeName $fullModuleName ``
+                                                -CliXmlTmpPath $cliXmlTmpPath"
 
         $success = & "powershell" -command "& {$command}"
 
@@ -514,11 +595,11 @@ function ConvertTo-CsharpCode
         }
 
         $command = ". '$PSScriptRoot\Utils.ps1'; 
-                            Initialize-LocalToolsVariables;
-                            Invoke-AssemblyCompilation -OutputAssemblyName '$outAssembly' ``
-                                                       -ClrPath '$clrPath' ``
-                                                       -CSharpFiles $allCSharpFilesArrayString ``
-                                                       -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator"
+                    Initialize-LocalToolsVariables;
+                    Invoke-AssemblyCompilation -OutputAssemblyName '$outAssembly' ``
+                                                -ClrPath '$clrPath' ``
+                                                -CSharpFiles $allCSharpFilesArrayString ``
+                                                -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator"
 
         $success = & "$PowerShellCorePath" -command "& {$command}"
         if ((Test-AssemblyCompilationSuccess -Output ($success | Out-String))) {

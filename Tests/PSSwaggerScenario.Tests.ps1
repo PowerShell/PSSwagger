@@ -442,3 +442,47 @@ Describe "AzureExtensions" {
         Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
     }
 }
+
+Describe "Composite Swagger Tests" -Tag @('Composite','ScenarioTest') {
+    Context "Module generation for composite swagger specs" {
+        It "New-PSSwaggerModule with composite swagger spec" {            
+            $ModuleName = 'CompositeSwaggerModule'
+            $PsSwaggerPath = Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger"
+            $Path = Join-Path -Path $PSScriptRoot -ChildPath 'Generated'
+            $SwaggerSpecPath = Join-Path -Path $PSScriptRoot -ChildPath 'Data' | Join-Path -ChildPath 'CompositeSwaggerTest' | Join-Path -ChildPath 'composite-swagger.json'
+            # Module generation part needs to happen in full powershell
+            Write-Verbose "Generating $ModuleName module"
+            Import-Module $PsSwaggerPath -Force
+            New-PSSwaggerModule -SwaggerSpecPath $SwaggerSpecPath -Name $ModuleName -UseAzureCsharpGenerator -Path $Path -NoAssembly -Verbose
+
+            $ModulePath = Join-Path -Path $Path -ChildPath $ModuleName
+            Get-Module -ListAvailable -Name $ModulePath | Should BeOfType 'System.Management.Automation.PSModuleInfo'
+
+            # Import generated module
+            Write-Verbose "Importing $ModuleName module"
+            Import-Module (Join-Path -Path $PsSwaggerPath -ChildPath "Generated.Azure.Common.Helpers") -Force
+            $ev = $null
+            Import-Module $ModulePath -Force -ErrorVariable ev
+            $ev | Should BeNullOrEmpty
+            Get-Module -Name $ModuleName | Should BeOfType 'System.Management.Automation.PSModuleInfo'
+
+            $CommandList = Get-Command -Module $ModuleName -ErrorVariable ev
+            $ev | Should BeNullOrEmpty
+            $CommandList.Name -contains 'New-ProductObject' | Should be $True
+            $CommandList.Name -contains 'New-Product2Object' | Should be $True
+            $commandList.Count | Should be 7
+
+            $commandsSyntax = Get-Command -Module $ModuleName -Syntax -ErrorVariable ev
+            $ev | Should BeNullOrEmpty
+
+            # Validate expanded parameter types with referenced definition
+            $command = Get-Command -Name New-ProductObject -Module $ModuleName            
+            $command.Parameters.IntParamName.ParameterType.Name | Should be 'Int64'
+            
+            $command.Parameters.Tags.ParameterType.Name | Should be 'string'
+            $command.Parameters.StartDate.ParameterType.Name | Should be 'string'
+            $command.Parameters.EndDate.ParameterType.Name | Should be 'string'
+            $command.Parameters.ContainerUrl.ParameterType.Name | Should be 'uri'
+        }
+    }
+}
