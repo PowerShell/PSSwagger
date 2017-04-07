@@ -28,7 +28,9 @@ ConvertFrom-StringData @'
     AutoRestError=AutoRest resulted in an error
     SwaggerParamsMissing=No parameters in the Swagger
     SwaggerDefinitionsMissing=No definitions in the Swagger
-    SwaggerPathsMissing=No paths in the Swagger
+    SwaggerPathsMissing=No paths found in the Swagger document '{0}'.
+    SkippingExistingParameter=Skipping an existing swagger parameter {0}.
+    SkippingExistingKeyFromSwaggerMultiItemObject=Skipping an existing key '{0}' from SwaggerMultiItemObject.
     FoundFileWithHash=Found file '{0}' with hash '{1}'
     FoundPowerShellCoreMsi=Found MSI installation of PowerShell Core of version '{0}'
     MustSpecifyPsCorePath=No installations of PowerShell Core could be found. Please provide -PowerShellCorePath to specify the location of PowerShell Core.
@@ -57,5 +59,7 @@ ConvertFrom-StringData @'
     FlatteningParameterType=Flattening parameter '{0}' of type '{1}'
     ParameterExpandedTo=Parameter '{0}' was expanded to parameter '{1}'
     DuplicateExpandedProperty=Duplicate expanded property name: '{0}'
+    InvalidPathParameterType=Extracted an invalid parameter type '{0}' for parameter '{1}' in path operation.
+    InvalidDefinitionParameterType=Extracted an invalid parameter type '{0}' for parameter '{1}' in definition '{2}'.
 ###PSLOC
 '@

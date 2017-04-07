@@ -44,8 +44,6 @@ function Get-SwaggerSpecDefinitionInfo
         $FunctionDescription = $JsonDefinitionItemObject.Value.Description
     }
 
-    $DefinitionTypeNamePrefix = "$Namespace.Models."
-
     $AllOf_DefinitionNames = @()
     $ParametersTable = @{}
 
@@ -108,6 +106,19 @@ function Get-SwaggerSpecDefinitionInfo
     $FunctionDetails['Unexpanded_AllOf_DefinitionNames'] = $Unexpanded_AllOf_DefinitionNames
     $FunctionDetails['ExpandedParameters'] = $ExpandedParameters
 
+    $DefinitionType = ""
+    if ((Get-HashtableKeyCount -Hashtable $ParametersTable) -lt 1)
+    {
+        $GetDefinitionParameterType_params = @{
+            ParameterJsonObject = $JsonDefinitionItemObject.value
+            DefinitionName = $Name
+            Namespace = $NameSpace
+            DefinitionFunctionsDetails = $DefinitionFunctionsDetails
+        }
+        $DefinitionType = Get-DefinitionParameterType @GetDefinitionParameterType_params
+    }
+    $FunctionDetails['Type'] = $DefinitionType
+
     if(-not $FunctionDetails.ContainsKey('IsUsedAs_x_ms_client_flatten'))
     {
         $FunctionDetails['IsUsedAs_x_ms_client_flatten'] = $false
@@ -116,6 +127,16 @@ function Get-SwaggerSpecDefinitionInfo
     if(-not $FunctionDetails.ContainsKey('IsUsedAs_AllOf'))
     {
         $FunctionDetails['IsUsedAs_AllOf'] = $false
+    }
+
+    if((Get-Member -InputObject $JsonDefinitionItemObject -Name Value) -and
+       (Get-Member -InputObject $JsonDefinitionItemObject.Value -Name properties))
+    {
+        $FunctionDetails['IsModel'] = $true
+    }
+    else
+    {
+        $FunctionDetails['IsModel'] = $false
     }
 
     $DefinitionFunctionsDetails[$Name] = $FunctionDetails
@@ -236,7 +257,7 @@ function Get-DefinitionParameterType
         [string]
         $DefinitionName,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$false)]
         [string]
         $ParameterName,
 
@@ -254,6 +275,8 @@ function Get-DefinitionParameterType
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+
+    $DefinitionTypeNamePrefix = "$Namespace.Models."
 
     $ParameterType = $null
 
@@ -291,21 +314,33 @@ function Get-DefinitionParameterType
             }
             elseif((Get-Member -InputObject $ParameterJsonObject.Items -Name 'Type') -and $ParameterJsonObject.Items.Type)
             {
-                $ParameterType = "$($ParameterJsonObject.Items.Type)[]"
+                $ArrayItemType = Get-PSTypeFromSwaggerObject -JsonObject $ParameterJsonObject.Items
+                $ParameterType = "$($ArrayItemType)[]"
             }
         }
         elseif ((Get-Member -InputObject $ParameterJsonObject -Name 'AdditionalProperties') -and 
                 $ParameterJsonObject.AdditionalProperties)
         {
-
-            if(($ParameterJsonObject.Type -eq 'object') -and
-               (Get-Member -InputObject $ParameterJsonObject.AdditionalProperties -Name 'Type') -and
-               $ParameterJsonObject.AdditionalProperties.Type)
-            {
-                $AdditionalPropertiesType = $ParameterJsonObject.AdditionalProperties.Type
-
-                # Dictionary
-                $ParameterType = "System.Collections.Generic.Dictionary[[$AdditionalPropertiesType],[$AdditionalPropertiesType]]"
+            if($ParameterJsonObject.Type -eq 'object') {                
+                if((Get-Member -InputObject $ParameterJsonObject.AdditionalProperties -Name 'Type') -and
+                $ParameterJsonObject.AdditionalProperties.Type) {
+                    $AdditionalPropertiesType = Get-PSTypeFromSwaggerObject -JsonObject $ParameterJsonObject.AdditionalProperties
+                    # Dictionary
+                    $ParameterType = "System.Collections.Generic.Dictionary[[$AdditionalPropertiesType],[$AdditionalPropertiesType]]"
+                }
+                elseif((Get-Member -InputObject $ParameterJsonObject.AdditionalProperties -Name '$ref') -and
+                    $ParameterJsonObject.AdditionalProperties.'$ref')
+                {
+                    $ReferenceTypeValue = $ParameterJsonObject.AdditionalProperties.'$ref'
+                    $ReferenceTypeName = $ReferenceTypeValue.Substring( $( $ReferenceTypeValue.LastIndexOf('/') ) + 1 )
+                    $AdditionalPropertiesType = $DefinitionTypeNamePrefix + "$ReferenceTypeName"
+                    # Dictionary
+                    $ParameterType = "System.Collections.Generic.Dictionary[[string],[$AdditionalPropertiesType]]"
+                }
+                else {
+                    $Message = $LocalizedData.UnsupportedSwaggerProperties -f ('ParameterJsonObject', $($ParameterJsonObject | Out-String))
+                    Write-Warning -Message $Message
+                }
             }
             else {
                 $Message = $LocalizedData.UnsupportedSwaggerProperties -f ('ParameterJsonObject', $($ParameterJsonObject | Out-String))
@@ -313,7 +348,7 @@ function Get-DefinitionParameterType
             }
         }
     }
-    elseif ($ParameterName -eq 'Properties' -and
+    elseif ($ParameterName -and ($ParameterName -eq 'Properties') -and
             (Get-Member -InputObject $ParameterJsonObject -Name 'x-ms-client-flatten') -and 
             ($ParameterJsonObject.'x-ms-client-flatten') )
     {                         
@@ -362,17 +397,13 @@ function Get-DefinitionParameterType
         $ParameterType = 'object'
     }
 
-    if($ParameterType)
-    {
-        if($ParameterType -eq 'Boolean')
-        {
-            $ParameterType = 'switch'
-        }
+    $ParameterType = Get-PSTypeFromSwaggerObject -ParameterType $ParameterType
 
-        if($ParameterType -eq 'Integer')
-        {
-            $ParameterType = 'int'
-        }
+    if($ParameterType -and 
+       (-not $ParameterType.Contains($DefinitionTypeNamePrefix)) -and
+       ($null -eq ($ParameterType -as [Type])))
+    {
+        Write-Warning -Message ($LocalizedData.InvalidDefinitionParameterType -f $ParameterType, $ParameterName, $DefinitionName)
     }
 
     return $ParameterType
@@ -498,13 +529,15 @@ function New-SwaggerDefinitionCommand
         } # Foeach-Object
     } # while()
 
+    Expand-NonModelDefinition -DefinitionFunctionsDetails $DefinitionFunctionsDetails -NameSpace $NameSpace
+
     $DefinitionFunctionsDetails.GetEnumerator() | ForEach-Object {
         
         $FunctionDetails = $_.Value
 
         # Denifitions defined as x_ms_client_flatten are not used as an object anywhere. 
         # Also AutoRest doesn't generate a Model class for the definitions declared as x_ms_client_flatten for other definitions.
-        if(-not $FunctionDetails.IsUsedAs_x_ms_client_flatten -and (Get-HashtableKeyCount -Hashtable $FunctionDetails.ParametersTable))
+        if((-not $FunctionDetails.IsUsedAs_x_ms_client_flatten) -and $FunctionDetails.IsModel)
         {
             if ($FunctionDetails.ContainsKey('GenerateDefinitionCmdlet') -and ($FunctionDetails['GenerateDefinitionCmdlet'] -eq $true)) {
                 $FunctionsToExport += New-SwaggerSpecDefinitionCommand -FunctionDetails $FunctionDetails `
@@ -519,6 +552,72 @@ function New-SwaggerDefinitionCommand
     }
 
     return $FunctionsToExport
+}
+
+function Expand-NonModelDefinition
+{
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [hashtable]
+        $DefinitionFunctionsDetails,
+
+        [Parameter(Mandatory = $true)]
+        [string]
+        $NameSpace
+    )
+
+    $DefinitionFunctionsDetails.GetEnumerator() | ForEach-Object {
+        $DefFunctionDetails = $_.Value 
+
+        if(-not $DefFunctionDetails.IsModel) {
+            # Replace parameter details from referenced definition details.
+            $DefinitionFunctionsDetails.GetEnumerator() | ForEach-Object {
+                $FunctionDetails = $_.Value
+                $ParamsToBeReplaced = @{}
+                if($DefFunctionDetails.ContainsKey('ParametersTable') -and 
+                    ((Get-HashtableKeyCount -Hashtable $DefFunctionDetails.ParametersTable) -eq 1)) {
+                    $DefFunctionDetails.ParametersTable.GetEnumerator() | ForEach-Object { $SourceDetails = $_.Value }
+                } else {
+                    $SourceDetails = $DefFunctionDetails
+                }
+
+                if(Get-HashtableKeyCount -Hashtable $FunctionDetails.ParametersTable)
+                {
+                    $FunctionDetails.ParametersTable.GetEnumerator() | ForEach-Object {
+                        $ParameterDetails = $_.Value
+                        if ($ParameterDetails.Type -eq "$Namespace.Models.$($DefFunctionDetails.Name)") {
+                            if($SourceDetails.ContainsKey('Type')) {
+                                $ParameterDetails['Type'] = $SourceDetails.Type
+                            }
+
+                            if($SourceDetails.ContainsKey('ValidateSet')) {
+                                $ParameterDetails['ValidateSet'] = $SourceDetails.ValidateSet
+                            }
+
+                            if((-not $ParameterDetails.Description) -and 
+                               $SourceDetails.ContainsKey('Description') -and $SourceDetails.Description)
+                            {
+                                $ParameterDetails['Description'] = $SourceDetails.Description
+                            }
+
+                            $ParamsToBeReplaced[$ParameterDetails.Name] = $ParameterDetails 
+                        }
+                    }
+
+                    $ParamsToBeReplaced.GetEnumerator() | ForEach-Object {
+                        $FunctionDetails.ParametersTable[$_.Key] = $_.Value
+                    }
+                }
+                elseif (($FunctionDetails.Type -eq "$Namespace.Models.$($DefFunctionDetails.Name)") -and 
+                        $SourceDetails.ContainsKey('Type'))
+                {
+                    $FunctionDetails.Type = $SourceDetails.Type
+                }
+            }
+        }
+    }
 }
 
 <#

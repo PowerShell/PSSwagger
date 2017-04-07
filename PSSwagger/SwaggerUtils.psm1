@@ -33,6 +33,14 @@ function ConvertTo-SwaggerDictionary {
         $SwaggerSpecPath,
 
         [Parameter(Mandatory=$true)]
+        [string[]]
+        $SwaggerSpecFilePaths,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $DefinitionFunctionsDetails,
+
+        [Parameter(Mandatory=$true)]
         [string]
         $ModuleName,
 
@@ -47,32 +55,46 @@ function ConvertTo-SwaggerDictionary {
     
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
 
-    $swaggerObject = ConvertFrom-Json ((Get-Content $SwaggerSpecPath) -join [Environment]::NewLine) -ErrorAction Stop
+    $swaggerDocObject = ConvertFrom-Json ((Get-Content $SwaggerSpecPath) -join [Environment]::NewLine) -ErrorAction Stop
     $swaggerDict = @{}
 
-    if(-not (Get-Member -InputObject $swaggerObject -Name 'info')) {
+    if(-not (Get-Member -InputObject $swaggerDocObject -Name 'info')) {
         Throw $LocalizedData.InvalidSwaggerSpecification
     }
-    $swaggerDict['Info'] = Get-SwaggerInfo -Info $swaggerObject.info -ModuleName $ModuleName -ModuleVersion $ModuleVersion
+    $swaggerDict['Info'] = Get-SwaggerInfo -Info $swaggerDocObject.info -ModuleName $ModuleName -ModuleVersion $ModuleVersion
     $swaggerDict['Info']['DefaultCommandPrefix'] = $DefaultCommandPrefix
 
-    $swaggerParameters = $null
-    if(Get-Member -InputObject $swaggerObject -Name 'parameters') {
-        $swaggerParameters = Get-SwaggerParameters -Parameters $swaggerObject.parameters -Info $swaggerDict['Info']
+    $SwaggerParameters = @{}
+    $SwaggerDefinitions = @{}
+    $SwaggerPaths = @{}
+
+    foreach($FilePath in $SwaggerSpecFilePaths) {
+        $swaggerObject = ConvertFrom-Json ((Get-Content $FilePath) -join [Environment]::NewLine) -ErrorAction Stop
+        if(Get-Member -InputObject $swaggerObject -Name 'parameters') {
+            
+            $GetSwaggerParameters_Params = @{
+                Parameters = $swaggerObject.parameters
+                Info = $swaggerDict['Info']
+                SwaggerParameters = $swaggerParameters
+                DefinitionFunctionsDetails = $DefinitionFunctionsDetails
+            }
+
+            Get-SwaggerParameters @GetSwaggerParameters_Params
+        }
+
+        if(Get-Member -InputObject $swaggerObject -Name 'definitions') {
+            Get-SwaggerMultiItemObject -Object $swaggerObject.definitions -SwaggerDictionary $SwaggerDefinitions
+        }
+
+        if(-not (Get-Member -InputObject $swaggerObject -Name 'paths')) {
+            Write-Warning -Message ($LocalizedData.SwaggerPathsMissing -f $FilePath)
+        }
+
+        Get-SwaggerMultiItemObject -Object $swaggerObject.paths -SwaggerDictionary $SwaggerPaths
     }
+
     $swaggerDict['Parameters'] = $swaggerParameters
-
-    $swaggerDefinitions = $null
-    if(Get-Member -InputObject $swaggerObject -Name 'definitions') {
-        $swaggerDefinitions = Get-SwaggerMultiItemObject -Object $swaggerObject.definitions
-    }
     $swaggerDict['Definitions'] = $swaggerDefinitions
-
-    if(-not (Get-Member -InputObject $swaggerObject -Name 'paths')) {
-        Throw $LocalizedData.SwaggerPathsMissing
-    }
-
-    $swaggerPaths = Get-SwaggerMultiItemObject -Object $swaggerObject.paths
     $swaggerDict['Paths'] = $swaggerPaths
 
     return $swaggerDict
@@ -193,15 +215,28 @@ function Get-SwaggerParameters {
 
         [Parameter(Mandatory=$true)]
         [PSCustomObject]
-        $Info
+        $Info,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $DefinitionFunctionsDetails,
+
+        [Parameter(Mandatory=$true)]
+        [PSCustomObject]
+        $SwaggerParameters
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
 
-    $SwaggerParameters = @{}
-    $Parameters.PSObject.Properties | ForEach-Object {
-        $GlobalParameterName = $_.Name
-        $GPJsonValueObject = $_.Value
+    foreach($Parameter in $Parameters.PSObject.Properties.GetEnumerator()) {
+        $GlobalParameterName = $Parameter.Name
+        $GPJsonValueObject = $Parameter.Value
+
+        if ($SwaggerParameters.ContainsKey($GlobalParameterName))
+        {
+            Write-Verbose -Message ($LocalizedData.SkippingExistingParameter -f $GlobalParameterName)
+            continue
+        }
 
         $IsParamMandatory = '$false'
         $ParameterDescription = ''
@@ -231,9 +266,15 @@ function Get-SwaggerParameters {
             $ParameterDescription = $GPJsonValueObject.Description
         }
 
-        $paramTypeObject = Get-ParamType -ParameterJsonObject $GPJsonValueObject `
-                                         -NameSpace $Info.NameSpace `
-                                         -ParameterName $parameterName
+        $GetParamTypeParams = @{
+            ParameterJsonObject = $GPJsonValueObject
+            NameSpace = $Info.NameSpace
+            ParameterName = $parameterName
+            DefinitionFunctionsDetails = $DefinitionFunctionsDetails
+        }
+
+        $paramTypeObject = Get-ParamType @GetParamTypeParams
+
         if (Get-Member -InputObject $GPJsonValueObject -Name 'x-ms-parameter-grouping') {
             $groupObject = $GPJsonValueObject.'x-ms-parameter-grouping'
             if (Get-Member -InputObject $groupObject -Name 'name') {
@@ -258,24 +299,26 @@ function Get-SwaggerParameters {
             x_ms_parameter_grouping = $x_ms_parameter_grouping
         }
     }
-
-    return $SwaggerParameters
 }
 
 function Get-SwaggerMultiItemObject {
     param(
         [Parameter(Mandatory=$true)]
         [PSCustomObject]
-        $Object
+        $Object,
+
+        [Parameter(Mandatory=$true)]
+        [PSCustomObject]
+        $SwaggerDictionary
     )
 
-    $swaggerMultiItemObject = @{}
-
     $Object.PSObject.Properties | ForEach-Object {
-        $swaggerMultiItemObject[$_.name] = $_
+        if($SwaggerDictionary.ContainsKey($_)) {
+            Write-Verbose -Message ($LocalizedData.SkippingExistingKeyFromSwaggerMultiItemObject -f $_)
+        } else {
+            $SwaggerDictionary[$_.name] = $_
+        }
     }
-
-    return $swaggerMultiItemObject
 }
 
 function Get-PathParamInfo
@@ -618,15 +661,37 @@ function Get-ParamType
             }
             elseif((Get-Member -InputObject $ParameterJsonObject.Items -Name 'Type') -and $ParameterJsonObject.Items.Type)
             {
-                $paramType = "$($ParameterJsonObject.Items.Type)[]"
+                $ArrayItemType = Get-PSTypeFromSwaggerObject -JsonObject $ParameterJsonObject.Items
+                $paramType = "$($ArrayItemType)[]"
             }
         }
-        elseif (($ParameterJsonObject.Type -eq 'object') -and
-                (Get-Member -InputObject $ParameterJsonObject -Name 'AdditionalProperties') -and 
+        elseif ((Get-Member -InputObject $ParameterJsonObject -Name 'AdditionalProperties') -and 
                 $ParameterJsonObject.AdditionalProperties)
         {
-            $AdditionalPropertiesType = $ParameterJsonObject.AdditionalProperties.Type
-            $paramType = "System.Collections.Generic.Dictionary[[$AdditionalPropertiesType],[$AdditionalPropertiesType]]"
+            # Dictionary
+            if($ParameterJsonObject.Type -eq 'object') {
+                if((Get-Member -InputObject $ParameterJsonObject.AdditionalProperties -Name 'Type') -and
+                $ParameterJsonObject.AdditionalProperties.Type) {
+                    $AdditionalPropertiesType = Get-PSTypeFromSwaggerObject -JsonObject $ParameterJsonObject.AdditionalProperties
+                    $paramType = "System.Collections.Generic.Dictionary[[$AdditionalPropertiesType],[$AdditionalPropertiesType]]"
+                }
+                elseif((Get-Member -InputObject $ParameterJsonObject.AdditionalProperties -Name '$ref') -and
+                    $ParameterJsonObject.AdditionalProperties.'$ref')
+                {
+                    $ReferenceTypeValue = $ParameterJsonObject.AdditionalProperties.'$ref'
+                    $ReferenceTypeName = $ReferenceTypeValue.Substring( $( $ReferenceTypeValue.LastIndexOf('/') ) + 1 )
+                    $AdditionalPropertiesType = $DefinitionTypeNamePrefix + "$ReferenceTypeName"
+                    $paramType = "System.Collections.Generic.Dictionary[[string],[$AdditionalPropertiesType]]"
+                }
+                else {
+                    $Message = $LocalizedData.UnsupportedSwaggerProperties -f ('ParameterJsonObject', $($ParameterJsonObject | Out-String))
+                    Write-Warning -Message $Message
+                }
+            }
+            else {
+                $Message = $LocalizedData.UnsupportedSwaggerProperties -f ('ParameterJsonObject', $($ParameterJsonObject | Out-String))
+                Write-Warning -Message $Message
+            }
         }
     }
     elseif($parameterName -eq 'Properties' -and
@@ -668,7 +733,9 @@ function Get-ParamType
                 $GlobalParamDetails = $GlobalParameters[$ReferenceParts[2]]
 
                 # Valid values for this extension are: "client", "method".
-                if($GlobalParamDetails.x_ms_parameter_location -eq 'method')
+                if($GlobalParamDetails -and 
+                   $GlobalParamDetails.ContainsKey('x_ms_parameter_location') -and 
+                   ($GlobalParamDetails.x_ms_parameter_location -eq 'method'))
                 {
                     $GlobalParameterDetails = $GlobalParamDetails
                 }
@@ -697,19 +764,7 @@ function Get-ParamType
         $paramType = 'object'
     }
 
-    if($paramType)
-    {
-        if($paramType -eq 'Boolean')
-        {
-            $paramType = 'switch'
-        }
-
-        if($paramType -eq 'Integer')
-        {
-            $paramType = 'int'
-        }
-    }
-
+    $paramType = Get-PSTypeFromSwaggerObject -ParameterType $paramType
     if ((Get-Member -InputObject $ParameterJsonObject -Name 'Enum') -and $ParameterJsonObject.Enum)
     {
         # AutoRest doesn't generate a parameter on Async method for the path operation 
@@ -735,7 +790,18 @@ function Get-ParamType
     }
     
     if ($ReferenceTypeName) {
-        $DefinitionFunctionsDetails[$ReferenceTypeName]['GenerateDefinitionCmdlet'] = $true
+        $ReferencedDefinitionDetails = @{}
+        if($DefinitionFunctionsDetails.ContainsKey($ReferenceTypeName)) {
+            $ReferencedDefinitionDetails = $DefinitionFunctionsDetails[$ReferenceTypeName]
+        }
+        $ReferencedDefinitionDetails['GenerateDefinitionCmdlet'] = $true
+    }
+
+    if($paramType -and 
+       (-not $paramType.Contains($DefinitionTypeNamePrefix)) -and
+       ($null -eq ($paramType -as [Type])))
+    {
+        Write-Warning -Message ($LocalizedData.InvalidPathParameterType -f $paramType, $ParameterName)
     }
 
     return @{
@@ -744,6 +810,64 @@ function Get-ParamType
         IsParameter = $isParameter
         GlobalParameterDetails = $GlobalParameterDetails
     }
+}
+
+function Get-PSTypeFromSwaggerObject
+{
+    param(
+        [Parameter(Mandatory=$false)]
+        [AllowEmptyString()]
+        [string]
+        $ParameterType,
+
+        [Parameter(Mandatory=$false)]
+        [PSObject]
+        $JsonObject
+    )
+
+    $ParameterFormat = $null
+
+    if($JsonObject) {
+        if((Get-Member -InputObject $JsonObject -Name 'Type') -and $JsonObject.Type)
+        {
+            $ParameterType = $JsonObject.Type
+        }
+
+        if((Get-Member -InputObject $JsonObject -Name 'Format') -and
+        $JsonObject.Format -and ($null -ne ($JsonObject.Format -as [Type])))
+        {
+            $ParameterFormat = $JsonObject.Format
+        }
+    }
+    
+    switch ($ParameterType) {
+        'Boolean' {
+            $ParameterType = 'switch'
+            break
+        }
+
+        'Integer' {
+            if($ParameterFormat) {
+                $ParameterType = $ParameterFormat
+            }
+            else {
+                $ParameterType = 'int64'
+            }
+            break
+        }
+
+        'Number' {
+            if($ParameterFormat) {
+                $ParameterType = $ParameterFormat
+            }
+            else {
+                $ParameterType = 'double'
+            }
+            break
+        }
+    }
+
+    return $ParameterType
 }
 
 function Get-SingularizedValue
