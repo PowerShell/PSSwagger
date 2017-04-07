@@ -1,6 +1,6 @@
 {
   "info": {
-    "title": "CompositeSwaggerClient",
+    "title": "CompositeSwaggerModule",
     "description": "Swagger description."
   },
   "documents": [
