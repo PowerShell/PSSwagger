@@ -110,7 +110,7 @@ function Get-SwaggerSpecDefinitionInfo
     if ((Get-HashtableKeyCount -Hashtable $ParametersTable) -lt 1)
     {
         $GetDefinitionParameterType_params = @{
-            ParameterJsonObject = $JsonDefinitionItemObject
+            ParameterJsonObject = $JsonDefinitionItemObject.value
             DefinitionName = $Name
             Namespace = $NameSpace
             DefinitionFunctionsDetails = $DefinitionFunctionsDetails

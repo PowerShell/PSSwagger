@@ -474,6 +474,14 @@ Describe "Composite Swagger Tests" -Tag @('Composite','ScenarioTest') {
 
             $commandsSyntax = Get-Command -Module $ModuleName -Syntax -ErrorVariable ev
             $ev | Should BeNullOrEmpty
+
+            # Validate expanded parameter types with referenced definition
+            $command = Get-Command -Name New-ProductObject -Module $ModuleName            
+            $command.Parameters.IntParamName.ParameterType.Name | Should be 'Int64'
+            
+            $command.Parameters.Tags.ParameterType.Name | Should be 'string'
+            $command.Parameters.StartDate.ParameterType.Name | Should be 'string'
+            $command.Parameters.EndDate.ParameterType.Name | Should be 'string'
         }
     }
 }

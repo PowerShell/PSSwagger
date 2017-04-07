@@ -100,7 +100,20 @@
           "description": "Unique identifier representing a specific product for a given latitude & longitude. For example, uberX in San Francisco will have a different product_id than uberX in Los Angeles."
         },
         "Tags": {
-          "$ref": "#/definitions/Tags"
+          "$ref": "#/definitions/Tags",
+          "description": "Tags are a list of key-value pairs that describe the resource. These tags can be used in viewing and grouping this resource (across resource groups). A maximum of 15 tags can be provided for a resource. Each tag must have a key no greater than 128 characters and value no greater than 256 characters."
+        },
+        "startDate": {
+          "$ref": "#/definitions/date",
+          "description": "The RFC3339 full-date of the start of the period for which data is exported."
+        },
+        "endDate": {
+          "$ref": "#/definitions/date",
+          "description": "The RFC3339 full-date of the end of the period for which data is exported."
+        },
+        "IntParamName": {
+          "$ref": "#/definitions/IntTypeDef",
+          "description": "Int type parameter referencing a definition."
         },
         "description": {
           "type": "string",
@@ -108,11 +121,18 @@
         }
       }
     },
+    "IntTypeDef": {
+      "type": "integer",
+      "format": "int64",
+      "description": "integer type common definition"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "A date as defined by full-date in RFC3339."
+    },
     "Tags": {
-      "type": "object",
-      "additionalProperties": {
-        "type": "string"
-      },
+      "type": "string",
       "description": "Tags are a list of key-value pairs that describe the resource. These tags can be used in viewing and grouping this resource (across resource groups). A maximum of 15 tags can be provided for a resource. Each tag must have a key no greater than 128 characters and value no greater than 256 characters."
     },
     "Error": {
