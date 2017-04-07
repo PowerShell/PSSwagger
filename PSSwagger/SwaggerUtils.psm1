@@ -189,13 +189,20 @@ function Get-SwaggerInfo {
     }
 
     $NamespaceVersionSuffix = "v$("$ModuleVersion" -replace '\.','')"
+    $NameSpace = "Microsoft.PowerShell.$ModuleName.$NamespaceVersionSuffix"
+
+    # AutoRest generates client name with 'Client' appended to info title when a NameSpace part is same as the info name.
+    if($NameSpace.Split('.', [System.StringSplitOptions]::RemoveEmptyEntries) -contains $infoName)
+    {
+        $infoName = $infoName + 'Client'
+    }
 
     return @{
         InfoVersion = $infoVersion
         InfoTitle = $infoTitle
         InfoName = $infoName
         Version = $ModuleVersion
-        NameSpace = "Microsoft.PowerShell.$ModuleName.$NamespaceVersionSuffix"
+        NameSpace = $NameSpace
         ModuleName = $ModuleName
         Description = $Description
         ContactName = $ContactName
