@@ -583,29 +583,39 @@ function Expand-NonModelDefinition
                     $SourceDetails = $DefFunctionDetails
                 }
 
-                $FunctionDetails.ParametersTable.GetEnumerator() | ForEach-Object {
-                    $ParameterDetails = $_.Value
-                    if ($ParameterDetails.Type -eq "$Namespace.Models.$($DefFunctionDetails.Name)") {
-                        if($SourceDetails.ContainsKey('Type')) {
-                            $ParameterDetails['Type'] = $SourceDetails.Type
-                        }
+                if(Get-HashtableKeyCount -Hashtable $FunctionDetails.ParametersTable)
+                {
+                    $FunctionDetails.ParametersTable.GetEnumerator() | ForEach-Object {
+                        $ParameterDetails = $_.Value
+                        if ($ParameterDetails.Type -eq "$Namespace.Models.$($DefFunctionDetails.Name)") {
+                            if($SourceDetails.ContainsKey('Type')) {
+                                $ParameterDetails['Type'] = $SourceDetails.Type
+                            }
 
-                        if($SourceDetails.ContainsKey('ValidateSet')) {
-                            $ParameterDetails['ValidateSet'] = $SourceDetails.ValidateSet
-                        }
+                            if($SourceDetails.ContainsKey('ValidateSet')) {
+                                $ParameterDetails['ValidateSet'] = $SourceDetails.ValidateSet
+                            }
 
-                        if($SourceDetails.ContainsKey('Mandatory')) {
-                            $ParameterDetails['Mandatory'] = $SourceDetails.Mandatory
-                        }
+                            if((-not $ParameterDetails.Description) -and 
+                               $SourceDetails.ContainsKey('Description') -and $SourceDetails.Description)
+                            {
+                                $ParameterDetails['Description'] = $SourceDetails.Description
+                            }
 
-                        $ParamsToBeReplaced[$ParameterDetails.Name] = $ParameterDetails 
+                            $ParamsToBeReplaced[$ParameterDetails.Name] = $ParameterDetails 
+                        }
+                    }
+
+                    $ParamsToBeReplaced.GetEnumerator() | ForEach-Object {
+                        $FunctionDetails.ParametersTable[$_.Key] = $_.Value
                     }
                 }
-
-                $ParamsToBeReplaced.GetEnumerator() | ForEach-Object {
-                    $FunctionDetails.ParametersTable[$_.Key] = $_.Value
+                elseif (($FunctionDetails.Type -eq "$Namespace.Models.$($DefFunctionDetails.Name)") -and 
+                        $SourceDetails.ContainsKey('Type'))
+                {
+                    $FunctionDetails.Type = $SourceDetails.Type
                 }
-            }            
+            }
         }
     }
 }

@@ -482,6 +482,7 @@ Describe "Composite Swagger Tests" -Tag @('Composite','ScenarioTest') {
             $command.Parameters.Tags.ParameterType.Name | Should be 'string'
             $command.Parameters.StartDate.ParameterType.Name | Should be 'string'
             $command.Parameters.EndDate.ParameterType.Name | Should be 'string'
+            $command.Parameters.ContainerUrl.ParameterType.Name | Should be 'uri'
         }
     }
 }

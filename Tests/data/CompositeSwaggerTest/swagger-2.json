@@ -167,11 +167,22 @@
           "$ref": "#/definitions/IntTypeDef",
           "description": "Int type parameter referencing a definition."
         },
+        "containerUrl": {
+          "$ref": "#/definitions/containerUrl"
+        },
         "description": {
           "type": "string",
           "description": "Description of product."
         }
       }
+    },
+    "url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "containerUrl": {
+      "$ref": "#/definitions/url",
+      "description": "A shared Access Signature (SAS) BLOB container URL to contain the exported data."
     },
     "IntTypeDef": {
       "type": "integer",
