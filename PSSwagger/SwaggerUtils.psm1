@@ -370,14 +370,21 @@ function Get-PathParamInfo
 
         [Parameter(Mandatory=$true)]
         [hashtable]
-        $ParameterGroupCache
+        $ParameterGroupCache,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $ParametersTable
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
 
-    $ParametersTable = @{}
-    $index = 0
-    $operationId = $JsonPathItemObject.operationId
+    $index = (Get-HashtableKeyCount -Hashtable $ParametersTable)
+    $operationId = $null
+    if(Get-Member -InputObject $JsonPathItemObject -Name 'OperationId'){
+        $operationId = $JsonPathItemObject.operationId
+    }
+    
     $JsonPathItemObject.parameters | ForEach-Object {
         $AllParameterDetails = Get-ParameterDetails -ParameterJsonObject $_ `
                                                  -SwaggerDict $SwaggerDict `
@@ -392,8 +399,6 @@ function Get-PathParamInfo
             }
         }
     }
-
-    return $ParametersTable
 }
 
 function Get-ParameterDetails
@@ -413,7 +418,7 @@ function Get-ParameterDetails
         [hashtable]
         $DefinitionFunctionsDetails,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$false)]
         [string]
         $OperationId,
 
@@ -470,7 +475,7 @@ function Get-ParameterDetails
             $ParameterDescription = $ParameterJsonObject.Description
         }
 
-        if (Get-Member -InputObject $ParameterJsonObject -Name 'x-ms-parameter-grouping') {
+        if ($OperationId -and (Get-Member -InputObject $ParameterJsonObject -Name 'x-ms-parameter-grouping')) {
             $groupObject = $ParameterJsonObject.'x-ms-parameter-grouping'
             if (Get-Member -InputObject $groupObject -Name 'name') {
                 $parsedName = Get-ParameterGroupName -RawName $groupObject.name

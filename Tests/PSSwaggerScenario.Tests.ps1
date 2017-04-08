@@ -136,6 +136,13 @@ Describe "All Operations: Basic" -Tag ScenarioTest {
             $results = Get-Cupcake
             $results.Count -gt 1 | should be $true
         }
+
+        It "Verify Path level common parameters" {
+            @('Get-CupCake2','New-CupCake2','Remove-CupCake2', 'Set-CupCake2') | ForEach-Object {
+                $Command = Get-Command $_
+                $Command.Parameters.ContainsKey('Id') | Should be $true
+            }
+        }
     }
 
     AfterAll {
