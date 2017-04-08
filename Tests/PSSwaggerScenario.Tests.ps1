@@ -3,7 +3,7 @@ Describe "Basic API" -Tag ScenarioTest {
     BeforeAll {
         Initialize-Test -GeneratedModuleName "Generated.Basic.Module" -GeneratedModuleVersion "0.0.1" -TestApiName "PsSwaggerTestBasic" `
                         -TestSpecFileName "PsSwaggerTestBasicSpec.json" -TestDataFileName "PsSwaggerTestBasicData.json" `
-                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot -UseAzureCSharpGenerator
 
         # Import generated module
         Write-Verbose "Importing modules"
@@ -64,7 +64,7 @@ Describe "All Operations: Basic" -Tag ScenarioTest {
     BeforeAll {
         Initialize-Test -GeneratedModuleName "Generated.TypesTest.Module" -GeneratedModuleVersion "0.0.1" -TestApiName "OperationTypes" `
                         -TestSpecFileName "OperationTypesSpec.json" -TestDataFileName "OperationTypesData.json" `
-                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot -UseAzureCSharpGenerator
 
         # Import generated module
         Write-Verbose "Importing modules"
@@ -147,7 +147,7 @@ Describe "Get/List tests" -Tag ScenarioTest {
     BeforeAll {
         Initialize-Test -GeneratedModuleName "Generated.GetList.Module" -GeneratedModuleVersion "0.0.1" -TestApiName "GetListTests" `
                         -TestSpecFileName "GetListTestsSpec.json" -TestDataFileName "GetListTestsData.json" `
-                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot -UseAzureCSharpGenerator
 
         # Import generated module
         Write-Verbose "Importing modules"
@@ -203,7 +203,7 @@ Describe "Optional parameter tests" -Tag ScenarioTest {
     BeforeAll {
         Initialize-Test -GeneratedModuleName "Generated.Optional.Module" -GeneratedModuleVersion "0.0.2" -TestApiName "OptionalParametersTests" `
                         -TestSpecFileName "OptionalParametersTestsSpec.json" -TestDataFileName "OptionalParametersTestsData.json" `
-                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot -UseAzureCSharpGenerator
 
         # Import generated module
         Write-Verbose "Importing modules"
@@ -270,7 +270,7 @@ Describe "ParameterTypes tests" {
     BeforeAll {
         Initialize-Test -GeneratedModuleName "Generated.ParmTypes.Module" -GeneratedModuleVersion "0.0.2" -TestApiName "ParameterTypes" `
                         -TestSpecFileName "ParameterTypesSpec.json" -TestDataFileName "ParameterTypesData.json" `
-                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot -UseAzureCSharpGenerator
 
         # Import generated module
         Write-Verbose "Importing modules"
@@ -351,6 +351,11 @@ Describe "ParameterTypes tests" {
 
         It "Test OData parameters" {
             Get-Cupcake -Filter "filter" -Expand "expand" -Select "select"
+        }
+
+        It "Test global parameters" {
+            $results = Get-Cookie -TestGlobalParameter "test"
+            $results.Length | should be 1
         }
     }
 

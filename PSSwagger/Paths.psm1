@@ -60,7 +60,6 @@ function Get-SwaggerSpecPathInfo
                                         -SwaggerDict $swaggerDict `
                                         -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
                                         -ParameterGroupCache $ParameterGroupCache
-
             $responses = ""
             if((Get-Member -InputObject $_.value -Name 'responses') -and $_.value.responses) {
                 $responses = $_.value.responses 
@@ -239,15 +238,35 @@ function New-SwaggerPath
     $paramHelp = ''
     $parametersToAdd = @{}
     $parameterHitCount = @{}
+    $globalParameterBlock = ''
     foreach ($parameterSetDetail in $parameterSetDetails) {
         $parameterSetDetail.ParameterDetails.GetEnumerator() | ForEach-Object {
             $parameterDetails = $_.Value
-            if ($parameterDetails.ContainsKey('x_ms_parameter_grouping_group')) {
-                foreach ($parameterDetailEntry in $parameterDetails.'x_ms_parameter_grouping_group'.GetEnumerator()) {
-                    Add-UniqueParameter -CandidateParameterDetails $parameterDetailEntry.Value -OperationId $parameterSetDetail.OperationId -ParametersToAdd $parametersToAdd -ParameterHitCount $parameterHitCount
+            $parameterRequiresAdding = $true
+            if ($parameterDetails.ContainsKey('x_ms_parameter_location') -and ('client' -eq $parameterDetails.'x_ms_parameter_location')) {
+                if ($parameterDetails.ContainsKey('ReadOnlyGlobalParameter') -and $parameterDetails.ReadOnlyGlobalParameter) {
+                    $parameterRequiresAdding = $false
+                } else {
+                    $globalParameterName = $parameterDetails.Name
+                    $globalParameterValue = "```$$($parameterDetails.Name)"
+                    if ($parameterDetails.ContainsKey('ConstantValue') -and $parameterDetails.ConstantValue) {
+                        # A parameter with a constant value doesn't need to be in the parameter block
+                        $parameterRequiresAdding = $false
+                        $globalParameterValue = $parameterDetails.ConstantValue
+                    }
+                    
+                    $globalParameterBlock += [Environment]::NewLine + $executionContext.InvokeCommand.ExpandString($GlobalParameterBlockStr)
                 }
-            } else {
-                Add-UniqueParameter -CandidateParameterDetails $parameterDetails -OperationId $parameterSetDetail.OperationId -ParametersToAdd $parametersToAdd -ParameterHitCount $parameterHitCount
+            }
+
+            if ($parameterRequiresAdding) {
+                if ($parameterDetails.ContainsKey('x_ms_parameter_grouping_group')) {
+                    foreach ($parameterDetailEntry in $parameterDetails.'x_ms_parameter_grouping_group'.GetEnumerator()) {
+                        Add-UniqueParameter -CandidateParameterDetails $parameterDetailEntry.Value -OperationId $parameterSetDetail.OperationId -ParametersToAdd $parametersToAdd -ParameterHitCount $parameterHitCount
+                    }
+                } else {
+                    Add-UniqueParameter -CandidateParameterDetails $parameterDetails -OperationId $parameterSetDetail.OperationId -ParametersToAdd $parametersToAdd -ParameterHitCount $parameterHitCount
+                }
             }
         }
     }
@@ -385,6 +404,7 @@ function New-SwaggerPath
                                 ParameterSetDetails = $FunctionDetails['ParameterSetDetails']
                                 ODataExpressionBlock = $oDataExpressionBlock
                                 ParameterGroupsExpressionBlock = $parameterGroupsExpressionBlock
+                                GlobalParameterBlock = $GlobalParameterBlock
                                 SwaggerDict = $SwaggerDict
                                 SwaggerMetaDict = $SwaggerMetaDict
                            }
@@ -473,6 +493,30 @@ function Set-ExtendedCodeMetadata {
                 return
             }
 
+            # Process global parameters
+            $paramObject = $parameterSetDetail.ParameterDetails
+            $clientType.GetProperties() | ForEach-Object {
+                $propertyName = $_.Name
+                $matchingParamDetail = $paramObject.GetEnumerator() | Where-Object { $_.Value.Name -eq $propertyName } | Select-Object -First 1 -ErrorAction Ignore
+                if ($matchingParamDetail) {
+                    $setSingleParameterMetadataParms = @{
+                                                            CommandName = $FunctionDetails['CommandName']
+                                                            Name = $matchingParamDetail.Value.Name
+                                                            HasDefaultValue = $false
+                                                            IsGrouped = $false
+                                                            Type = $_.PropertyType
+                                                            MatchingParamDetail = $matchingParamDetail.Value
+                                                            ResultRecord = $resultRecord
+                                                        }
+                    if (-not (Set-SingleParameterMetadata @setSingleParameterMetadataParms))
+                    {
+                        Export-CliXml -InputObject $ResultRecord -Path $CliXmlTmpPath
+                        $errorOccurred = $true
+                        return
+                    }
+                }
+            }
+
             if ($operationsWithSuffix) {
                 $operationName = $operationsWithSuffix.Substring(1)
                 $propertyObject = $clientType.GetProperties() | Where-Object { $_.Name -eq $operationName } | Select-Object -First 1 -ErrorAction Ignore
@@ -511,8 +555,7 @@ function Set-ExtendedCodeMetadata {
                 $errorOccurred = $true
                 return
             }
-            # TODO: The parameter group will never be in the parameter details list
-            $paramObject = $parameterSetDetail.ParameterDetails
+
             $ParamList = @()
             $oDataQueryFound = $false
             $methodInfo.GetParameters() | Sort-Object -Property Position | ForEach-Object {
@@ -599,11 +642,10 @@ function Set-ExtendedCodeMetadata {
                     }
                 }
             }
-
+            
             if ($parameterSetDetail.ContainsKey('x-ms-odata') -and $parameterSetDetail.'x-ms-odata') {
                 $paramObject.GetEnumerator() | ForEach-Object {
                     $paramDetail = $_.Value
-
                     if (-not $paramDetail.ContainsKey('ExtendedData')) {
                         $metadata = @{
                             IsODataParameter = $true
