@@ -45,6 +45,20 @@ function Get-SwaggerSpecPathInfo
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
     $UseAzureCsharpGenerator = $SwaggerMetaDict['UseAzureCsharpGenerator']
     
+    # First get path level common parameters, if any, which will be common to all operations in this swagger path.
+    $PathCommonParameters = @{}
+    if(Get-Member -InputObject $JsonPathItemObject.value -Name 'Parameters')
+    {
+        $GetPathParamInfo_params = @{
+            JsonPathItemObject = $JsonPathItemObject.Value
+            SwaggerDict = $swaggerDict
+            DefinitionFunctionsDetails = $DefinitionFunctionsDetails
+            ParameterGroupCache = $ParameterGroupCache
+            ParametersTable = $PathCommonParameters
+        }
+        Get-PathParamInfo @GetPathParamInfo_params
+    }
+
     $JsonPathItemObject.value.PSObject.Properties | ForEach-Object {
         if(Get-Member -InputObject $_.Value -Name 'OperationId')
         {
@@ -56,10 +70,21 @@ function Get-SwaggerSpecPathInfo
                 $FunctionDescription = $_.value.description 
             }
             
-            $paramInfo = Get-PathParamInfo -JsonPathItemObject $_.value `
-                                        -SwaggerDict $swaggerDict `
-                                        -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
-                                        -ParameterGroupCache $ParameterGroupCache
+            $ParametersTable = @{}
+            # Add Path common parameters to the operation's parameters list.
+            $PathCommonParameters.GetEnumerator() | ForEach-Object {
+                $ParametersTable[$_.Key] = $_.Value
+            }
+
+            $GetPathParamInfo_params2 = @{
+                JsonPathItemObject = $_.value
+                SwaggerDict = $swaggerDict
+                DefinitionFunctionsDetails = $DefinitionFunctionsDetails
+                ParameterGroupCache = $ParameterGroupCache
+                ParametersTable = $ParametersTable
+            }
+            Get-PathParamInfo @GetPathParamInfo_params2
+
             $responses = ""
             if((Get-Member -InputObject $_.value -Name 'responses') -and $_.value.responses) {
                 $responses = $_.value.responses 
@@ -74,7 +99,7 @@ function Get-SwaggerSpecPathInfo
 
             $ParameterSetDetail = @{
                 Description = $FunctionDescription
-                ParameterDetails = $paramInfo
+                ParameterDetails = $ParametersTable
                 Responses = $responses
                 OperationId = $operationId
                 Priority = 100 # Default
@@ -120,7 +145,7 @@ function Get-SwaggerSpecPathInfo
                 $PathFunctionDetails[$_] = $FunctionDetails
             }
         }
-        else 
+        elseif(-not ((Get-Member -InputObject $_ -Name 'Name') -and ($_.Name -eq 'Parameters')))
         {
             $Message = $LocalizedData.UnsupportedSwaggerProperties -f ('JsonPathItemObject', $($_.Value | Out-String))
             Write-Warning -Message $Message
@@ -147,10 +172,6 @@ function New-SwaggerSpecPathCommand
     )
     
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
-    $Info = $swaggerDict['Info']
-    $modulePostfix = $Info['infoName']
-    $NameSpace = $info.namespace
-    $fullModuleName = $Namespace + '.' + $modulePostfix
 
     $FunctionsToExport = @()
     $PathFunctionDetails.GetEnumerator() | ForEach-Object {

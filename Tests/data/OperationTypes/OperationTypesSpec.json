@@ -149,6 +149,103 @@
                     }
                 }
             }
+        },
+        "/cupcakes2/{id}": {
+            "parameters": [
+                {
+                    "$ref": "#/parameters/SubscriptionIdParameter"
+                },
+                {
+                    "$ref": "#/parameters/CupcakeIdParameter"
+                },
+                {
+                    "$ref": "#/parameters/ApiVersionParameter"
+                }
+            ],
+            "put": {
+                "summary": "Simple create or update",
+                "operationId": "Cupcake2_CreateOrUpdate",
+                "description": "Make a cupcake or update an existing one.",
+                "parameters": [
+                    {
+                        "name": "details",
+                        "in": "body",
+                        "description": "Details of cupcake",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Cupcake"
+                        }
+                    }
+                ],
+                "tags": [
+                    "Cupcakes"
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Cupcake entity created.",
+                        "schema": {
+                            "$ref": "#/definitions/Cupcake"
+                        }
+                    },
+                    "200": {
+                        "description": "Cupcake entity updated.",
+                        "schema": {
+                            "$ref": "#/definitions/Cupcake"
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            },
+            "get": {
+                "summary": "Simple get",
+                "operationId": "Cupcake2_Get",
+                "description": "Get a cupcake by ID.",
+                "parameters": [
+                ],
+                "tags": [
+                    "Cupcakes"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cupcake entity with matching ID.",
+                        "schema": {
+                            "$ref": "#/definitions/Cupcake"
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Simple delete",
+                "operationId": "Cupcake2_Delete",
+                "description": "Delete a cupcake by ID.",
+                "parameters": [
+                ],
+                "tags": [
+                    "Cupcakes"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cupcake entity was successfully deleted"
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -193,6 +290,14 @@
             "required": true,
             "type": "string",
             "description": "The API version to be used with the HTTP request."
+        },
+        "CupcakeIdParameter": {
+            "name": "Id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "ID of cupcake",
+            "x-ms-parameter-location": "method"
         }
     }
 }
