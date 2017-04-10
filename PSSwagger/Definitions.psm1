@@ -36,7 +36,6 @@ function Get-SwaggerSpecDefinitionInfo
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
 
     $Name = $JsonDefinitionItemObject.Name.Replace('[','').Replace(']','')
-    
     $FunctionDescription = ""
     if((Get-Member -InputObject $JsonDefinitionItemObject.Value -Name 'Description') -and 
        $JsonDefinitionItemObject.Value.Description)
@@ -46,7 +45,8 @@ function Get-SwaggerSpecDefinitionInfo
 
     $AllOf_DefinitionNames = @()
     $ParametersTable = @{}
-
+    $isModel = $false
+    $AllOf_InlineObjects = @()
     if((Get-Member -InputObject $JsonDefinitionItemObject.Value -Name 'AllOf') -and 
        $JsonDefinitionItemObject.Value.'AllOf')
     {
@@ -67,6 +67,16 @@ function Get-SwaggerSpecDefinitionInfo
                 $ReferencedFunctionDetails['IsUsedAs_AllOf'] = $true
 
                 $DefinitionFunctionsDetails[$AllOfRefName] = $ReferencedFunctionDetails
+            } elseif ((Get-Member -InputObject $_ -Name 'type') -and $_.type -eq 'object') {
+                # Create an anonymous type for objects defined inline
+                $anonObjName = [Guid]::NewGuid().Guid
+                [PSCustomObject]$obj = New-Object -TypeName PsObject
+                Add-Member -InputObject $obj -MemberType NoteProperty -Name 'Name' -Value $anonObjName
+                Add-Member -InputObject $obj -MemberType NoteProperty -Name 'Value' -Value $_
+                Get-SwaggerSpecDefinitionInfo -JsonDefinitionItemObject $obj -DefinitionFunctionsDetails $DefinitionFunctionsDetails -Namespace $Namespace
+                $DefinitionFunctionsDetails[$anonObjName]['IsUsedAs_AllOf'] = $true
+                $AllOf_InlineObjects += $DefinitionFunctionsDetails[$anonObjName]
+                $isModel = $true
             }
             else {
                 $Message = $LocalizedData.UnsupportedSwaggerProperties -f ('JsonDefinitionItemObject', $($_ | Out-String))
@@ -80,6 +90,16 @@ function Get-SwaggerSpecDefinitionInfo
                              -DefinitionName $Name `
                              -Namespace $Namespace `
                              -ParametersTable $ParametersTable
+
+    # AutoRest doesn't generate a property for a discriminator property
+    if((Get-Member -InputObject $JsonDefinitionItemObject.Value -Name 'discriminator') -and 
+       $JsonDefinitionItemObject.Value.'discriminator')
+    {
+        $discriminator = $JsonDefinitionItemObject.Value.'discriminator'
+        if ($ParametersTable.ContainsKey($discriminator)) {
+            $ParametersTable[$discriminator]['Discriminator'] = $true
+        }
+    }
 
     $FunctionDetails = @{}
     $x_ms_Client_flatten_DefinitionNames = @()
@@ -132,13 +152,14 @@ function Get-SwaggerSpecDefinitionInfo
     if((Get-Member -InputObject $JsonDefinitionItemObject -Name Value) -and
        (Get-Member -InputObject $JsonDefinitionItemObject.Value -Name properties))
     {
-        $FunctionDetails['IsModel'] = $true
-    }
-    else
-    {
-        $FunctionDetails['IsModel'] = $false
+        $isModel = $true
     }
 
+    $FunctionDetails['IsModel'] = $isModel
+    $AllOf_InlineObjects | ForEach-Object {
+        Copy-FunctionDetailsParameters -RefFunctionDetails $_ -FunctionDetails $FunctionDetails
+    }
+    
     $DefinitionFunctionsDetails[$Name] = $FunctionDetails
 }
 
@@ -168,7 +189,6 @@ function Get-DefinitionParameters
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
-
     if((Get-Member -InputObject $JsonDefinitionItemObject -Name Value) -and
        (Get-Member -InputObject $JsonDefinitionItemObject.Value -Name properties))
     {
@@ -457,10 +477,8 @@ function New-SwaggerDefinitionCommand
                                                            $DefinitionFunctionsDetails[$ReferencedDefinitionName].ExpandedParameters)
                                                         {
                                                             $RefFunctionDetails = $DefinitionFunctionsDetails[$ReferencedDefinitionName]
-                                                
                                                             $RefFunctionDetails.ParametersTable.GetEnumerator() | ForEach-Object {
                                                                 $RefParameterName = $_.Name
-
                                                                 if($RefParameterName)
                                                                 {
                                                                     if($FunctionDetails.ParametersTable.ContainsKey($RefParameterName))
@@ -488,24 +506,7 @@ function New-SwaggerDefinitionCommand
                                                                                $DefinitionFunctionsDetails[$ReferencedDefinitionName].ExpandedParameters)
                                                                             {
                                                                                 $RefFunctionDetails = $DefinitionFunctionsDetails[$ReferencedDefinitionName]
-                                                
-                                                                                $RefFunctionDetails.ParametersTable.GetEnumerator() | ForEach-Object {
-                                                                                    $RefParameterName = $_.Name
-                                                                                    if($RefParameterName)
-                                                                                    {
-                                                                                        if($FunctionDetails.ParametersTable.ContainsKey($RefParameterName))
-                                                                                        {
-                                                                                            $ParameterName = $FunctionDetails.Name + $RefParameterName
-
-                                                                                            $FunctionDetails.ParametersTable[$ParameterName] = $RefFunctionDetails.ParametersTable[$RefParameterName]
-                                                                                            $FunctionDetails.ParametersTable[$ParameterName].Name = $ParameterName
-                                                                                        }
-                                                                                        else
-                                                                                        {
-                                                                                            $FunctionDetails.ParametersTable[$RefParameterName] = $RefFunctionDetails.ParametersTable[$RefParameterName]
-                                                                                        }
-                                                                                    }
-                                                                                }
+                                                                                Copy-FunctionDetailsParameters -RefFunctionDetails $RefFunctionDetails -FunctionDetails $FunctionDetails
                                                                             }
                                                                             else
                                                                             {
@@ -534,7 +535,6 @@ function New-SwaggerDefinitionCommand
     $DefinitionFunctionsDetails.GetEnumerator() | ForEach-Object {
         
         $FunctionDetails = $_.Value
-
         # Denifitions defined as x_ms_client_flatten are not used as an object anywhere. 
         # Also AutoRest doesn't generate a Model class for the definitions declared as x_ms_client_flatten for other definitions.
         if((-not $FunctionDetails.IsUsedAs_x_ms_client_flatten) -and $FunctionDetails.IsModel)
@@ -554,6 +554,31 @@ function New-SwaggerDefinitionCommand
     return $FunctionsToExport
 }
 
+function Copy-FunctionDetailsParameters {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        $RefFunctionDetails,
+
+        [Parameter(Mandatory = $true)]
+        $FunctionDetails
+    )
+
+    $RefFunctionDetails.ParametersTable.GetEnumerator() | ForEach-Object {
+                                                                $RefParameterName = $_.Name
+                                                                if($RefParameterName)
+                                                                {
+                                                                    if($FunctionDetails.ParametersTable.ContainsKey($RefParameterName))
+                                                                    {
+                                                                        Write-Verbose -Message ($LocalizedData.SamePropertyName -f ($RefParameterName, $FunctionDetails.Name))
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        $FunctionDetails.ParametersTable[$RefParameterName] = $RefFunctionDetails.ParametersTable[$RefParameterName]
+                                                                    }
+                                                                }
+                                                            }
+}
 function Expand-NonModelDefinition
 {
     [CmdletBinding()]
@@ -657,22 +682,23 @@ function New-SwaggerSpecDefinitionCommand
 
     $FunctionDetails.ParametersTable.GetEnumerator() | ForEach-Object {
         $ParameterDetails = $_.Value
+        if (-not ($ParameterDetails.ContainsKey('Discriminator')) -or (-not $ParameterDetails.Discriminator)) {
+            $isParamMandatory = $ParameterDetails.Mandatory
+            $parameterName = $ParameterDetails.Name
+            $paramName = "`$$parameterName" 
+            $paramType = $ParameterDetails.Type
+            $AllParameterSetsString = $executionContext.InvokeCommand.ExpandString($parameterAttributeString)
+            $ValidateSetDefinition = $null
+            if ($ParameterDetails.ValidateSet)
+            {
+                $ValidateSetString = $ParameterDetails.ValidateSet
+                $ValidateSetDefinition = $executionContext.InvokeCommand.ExpandString($ValidateSetDefinitionString)
+            }
+            $paramblock += $executionContext.InvokeCommand.ExpandString($parameterDefString)
 
-        $isParamMandatory = $ParameterDetails.Mandatory
-        $parameterName = $ParameterDetails.Name
-        $paramName = "`$$parameterName" 
-        $paramType = $ParameterDetails.Type
-        $AllParameterSetsString = $executionContext.InvokeCommand.ExpandString($parameterAttributeString)
-        $ValidateSetDefinition = $null
-        if ($ParameterDetails.ValidateSet)
-        {
-            $ValidateSetString = $ParameterDetails.ValidateSet
-            $ValidateSetDefinition = $executionContext.InvokeCommand.ExpandString($ValidateSetDefinitionString)
+            $pDescription = $ParameterDetails.Description
+            $paramHelp += $executionContext.InvokeCommand.ExpandString($helpParamStr)
         }
-        $paramblock += $executionContext.InvokeCommand.ExpandString($parameterDefString)
-
-        $pDescription = $ParameterDetails.Description
-        $paramHelp += $executionContext.InvokeCommand.ExpandString($helpParamStr)
     }
 
     $paramblock = $paramBlock.TrimEnd().TrimEnd(",")
