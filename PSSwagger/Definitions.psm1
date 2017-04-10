@@ -46,7 +46,7 @@ function Get-SwaggerSpecDefinitionInfo
     $AllOf_DefinitionNames = @()
     $ParametersTable = @{}
     $isModel = $false
-
+    $AllOf_InlineObjects = @()
     if((Get-Member -InputObject $JsonDefinitionItemObject.Value -Name 'AllOf') -and 
        $JsonDefinitionItemObject.Value.'AllOf')
     {
@@ -75,7 +75,7 @@ function Get-SwaggerSpecDefinitionInfo
                 Add-Member -InputObject $obj -MemberType NoteProperty -Name 'Value' -Value $_
                 Get-SwaggerSpecDefinitionInfo -JsonDefinitionItemObject $obj -DefinitionFunctionsDetails $DefinitionFunctionsDetails -Namespace $Namespace
                 $DefinitionFunctionsDetails[$anonObjName]['IsUsedAs_AllOf'] = $true
-                $AllOf_DefinitionNames += $anonObjName
+                $AllOf_InlineObjects += $DefinitionFunctionsDetails[$anonObjName]
                 $isModel = $true
             }
             else {
@@ -156,6 +156,10 @@ function Get-SwaggerSpecDefinitionInfo
     }
 
     $FunctionDetails['IsModel'] = $isModel
+    $AllOf_InlineObjects | ForEach-Object {
+        Copy-FunctionDetailsParameters -RefFunctionDetails $_ -FunctionDetails $FunctionDetails
+    }
+    
     $DefinitionFunctionsDetails[$Name] = $FunctionDetails
 }
 
@@ -502,24 +506,7 @@ function New-SwaggerDefinitionCommand
                                                                                $DefinitionFunctionsDetails[$ReferencedDefinitionName].ExpandedParameters)
                                                                             {
                                                                                 $RefFunctionDetails = $DefinitionFunctionsDetails[$ReferencedDefinitionName]
-                                                
-                                                                                $RefFunctionDetails.ParametersTable.GetEnumerator() | ForEach-Object {
-                                                                                    $RefParameterName = $_.Name
-                                                                                    if($RefParameterName)
-                                                                                    {
-                                                                                        if($FunctionDetails.ParametersTable.ContainsKey($RefParameterName))
-                                                                                        {
-                                                                                            $ParameterName = $FunctionDetails.Name + $RefParameterName
-
-                                                                                            $FunctionDetails.ParametersTable[$ParameterName] = $RefFunctionDetails.ParametersTable[$RefParameterName]
-                                                                                            $FunctionDetails.ParametersTable[$ParameterName].Name = $ParameterName
-                                                                                        }
-                                                                                        else
-                                                                                        {
-                                                                                            $FunctionDetails.ParametersTable[$RefParameterName] = $RefFunctionDetails.ParametersTable[$RefParameterName]
-                                                                                        }
-                                                                                    }
-                                                                                }
+                                                                                Copy-FunctionDetailsParameters -RefFunctionDetails $RefFunctionDetails -FunctionDetails $FunctionDetails
                                                                             }
                                                                             else
                                                                             {
@@ -567,6 +554,31 @@ function New-SwaggerDefinitionCommand
     return $FunctionsToExport
 }
 
+function Copy-FunctionDetailsParameters {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        $RefFunctionDetails,
+
+        [Parameter(Mandatory = $true)]
+        $FunctionDetails
+    )
+
+    $RefFunctionDetails.ParametersTable.GetEnumerator() | ForEach-Object {
+                                                                $RefParameterName = $_.Name
+                                                                if($RefParameterName)
+                                                                {
+                                                                    if($FunctionDetails.ParametersTable.ContainsKey($RefParameterName))
+                                                                    {
+                                                                        Write-Verbose -Message ($LocalizedData.SamePropertyName -f ($RefParameterName, $FunctionDetails.Name))
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        $FunctionDetails.ParametersTable[$RefParameterName] = $RefFunctionDetails.ParametersTable[$RefParameterName]
+                                                                    }
+                                                                }
+                                                            }
+}
 function Expand-NonModelDefinition
 {
     [CmdletBinding()]
