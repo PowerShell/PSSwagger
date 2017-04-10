@@ -92,9 +92,11 @@ function Initialize-Test {
         Import-Module (Join-Path "$PsSwaggerPath" "PSSwagger.psd1") -Force
         New-PSSwaggerModule -SwaggerSpecPath (Join-Path -Path "$testCaseDataLocation" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Verbose -NoAssembly -UseAzureCSharpGenerator:$UseAzureCSharpGenerator
     }
-
-    # Copy json-server data since it's updated live
-    Copy-Item "$testCaseDataLocation\$TestDataFileName" "$TestRootPath\NodeModules\db.json" -Force
+    
+    if ($TestDataFileName) {
+        # Copy json-server data since it's updated live
+        Copy-Item "$testCaseDataLocation\$TestDataFileName" "$TestRootPath\NodeModules\db.json" -Force
+    }
 }
 
 function Start-JsonServer {

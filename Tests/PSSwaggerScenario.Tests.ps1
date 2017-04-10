@@ -498,3 +498,29 @@ Describe "Composite Swagger Tests" -Tag @('Composite','ScenarioTest') {
         }
     }
 }
+
+Describe "AllOfDefinition" {
+    BeforeAll {
+        Initialize-Test -GeneratedModuleName "Generated.AllOfDefinition.Module" -TestApiName "AllOfDefinition" `
+                        -TestSpecFileName "AllOfDefinitionSpec.json"  `
+                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+
+        # Import generated module
+        Write-Verbose "Importing modules"
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "Generated.Azure.Common.Helpers" | `
+                       Join-Path -ChildPath "Generated.Azure.Common.Helpers.psd1") -Force
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
+                       Join-Path -ChildPath "Generated.AllOfDefinition.Module")
+    }
+
+    Context "AllOfDefinition" {
+        It "Test subclass object creation" {
+            $guitar = New-GuitarObject -ISTuned
+            Get-Member -InputObject $guitar -Name 'ISTuned' | should be $true
+            Get-Member -InputObject $guitar -Name 'Id' | should be $null
+            Get-Member -InputObject $guitar -Name 'NumberOfStrings' | should be $true
+            $guitar.ISTuned | should be $true
+            $guitar.NumberOfStrings | should be $null
+        }
+    }
+}
