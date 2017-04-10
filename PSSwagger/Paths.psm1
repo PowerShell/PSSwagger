@@ -265,7 +265,10 @@ function New-SwaggerPath
             $parameterDetails = $_.Value
             $parameterRequiresAdding = $true
             if ($parameterDetails.ContainsKey('x_ms_parameter_location') -and ('client' -eq $parameterDetails.'x_ms_parameter_location')) {
-                if ($parameterDetails.ContainsKey('ReadOnlyGlobalParameter') -and $parameterDetails.ReadOnlyGlobalParameter) {
+                # Check if a global has been added already
+                if ($parametersToAdd.ContainsKey("$($parameterDetails.Name)Global")) {
+                    $parameterRequiresAdding = $false
+                } elseif ($parameterDetails.ContainsKey('ReadOnlyGlobalParameter') -and $parameterDetails.ReadOnlyGlobalParameter) {
                     $parameterRequiresAdding = $false
                 } else {
                     $globalParameterName = $parameterDetails.Name
@@ -288,6 +291,9 @@ function New-SwaggerPath
                 } else {
                     Add-UniqueParameter -CandidateParameterDetails $parameterDetails -OperationId $parameterSetDetail.OperationId -ParametersToAdd $parametersToAdd -ParameterHitCount $parameterHitCount
                 }
+            } else {
+                # This magic string is here to distinguish local vs global parameters with the same name, e.g. in the Azure Resources API
+                $parametersToAdd["$($parameterDetails.Name)Global"] = $null
             }
         }
     }
@@ -335,72 +341,74 @@ function New-SwaggerPath
     $parameterGroupsExpressions = @{}
     $parametersToAdd.GetEnumerator() | ForEach-Object {
         $parameterToAdd = $_.Value
-        $parameterName = $parameterToAdd.Details.Name
-        $AllParameterSetsString = ''
-        foreach ($parameterSetInfoEntry in $parameterToAdd.ParameterSetInfo.GetEnumerator()) {
-            $parameterSetInfo = $parameterSetInfoEntry.Value
-            $isParamMandatory = $parameterSetInfo.Mandatory
-            $ParameterSetPropertyString = ", ParameterSetName = '$($parameterSetInfo.Name)'"
-            if ($AllParameterSetsString) {
-                # Two tabs
-                $AllParameterSetsString += [Environment]::NewLine + "        " + $executionContext.InvokeCommand.ExpandString($parameterAttributeString)
-            } else {
-                $AllParameterSetsString = $executionContext.InvokeCommand.ExpandString($parameterAttributeString)
-            }
-        }
-
-        $paramName = "`$$parameterName" 
-        $ValidateSetDefinition = $null
-        if ($parameterToAdd.Details.ValidateSet)
-        {
-            $ValidateSetString = $parameterToAdd.Details.ValidateSet
-            $ValidateSetDefinition = $executionContext.InvokeCommand.ExpandString($ValidateSetDefinitionString)
-        }
-
-        $parameterDefaultValueOption = ""
-        if ($parameterToAdd.Details.ContainsKey('ExtendedData')) {
-            if ($parameterToAdd.Details.ExtendedData.ContainsKey('IsODataParameter') -and $parameterToAdd.Details.ExtendedData.IsODataParameter) {
-                $paramType = "$($parameterToAdd.Details.Type)"
-                $oDataExpression += "    if (`$$parameterName) { `$oDataQuery += `"&```$$parameterName=`$$parameterName`" }" + [Environment]::NewLine
-            } else {
-                # Assuming you can't group ODataQuery parameters
-                if ($parameterToAdd.Details.ContainsKey('x_ms_parameter_grouping') -and $parameterToAdd.Details.'x_ms_parameter_grouping') {
-                    $parameterGroupPropertyName = $parameterToAdd.Details.Name
-                    $groupName = $parameterToAdd.Details.'x_ms_parameter_grouping'
-                    $fullGroupName = $parameterToAdd.Details.ExtendedData.GroupType
-                    if ($parameterGroupsExpressions.ContainsKey($groupName)) {
-                        $parameterGroupsExpression = $parameterGroupsExpressions[$groupName]
-                    } else {
-                        $parameterGroupsExpression = $executionContext.InvokeCommand.ExpandString($parameterGroupCreateExpression)
-                    }
-
-                    $parameterGroupsExpression += [Environment]::NewLine + $executionContext.InvokeCommand.ExpandString($parameterGroupPropertyExpression)
-                    $parameterGroupsExpressions[$groupName] = $parameterGroupsExpression
+        if ($parameterToAdd) {
+            $parameterName = $parameterToAdd.Details.Name
+            $AllParameterSetsString = ''
+            foreach ($parameterSetInfoEntry in $parameterToAdd.ParameterSetInfo.GetEnumerator()) {
+                $parameterSetInfo = $parameterSetInfoEntry.Value
+                $isParamMandatory = $parameterSetInfo.Mandatory
+                $ParameterSetPropertyString = ", ParameterSetName = '$($parameterSetInfo.Name)'"
+                if ($AllParameterSetsString) {
+                    # Two tabs
+                    $AllParameterSetsString += [Environment]::NewLine + "        " + $executionContext.InvokeCommand.ExpandString($parameterAttributeString)
+                } else {
+                    $AllParameterSetsString = $executionContext.InvokeCommand.ExpandString($parameterAttributeString)
                 }
+            }
 
-                $paramType = "$($parameterToAdd.Details.ExtendedData.Type)"
-                if ($parameterToAdd.Details.ExtendedData.HasDefaultValue) {
-                    if ($parameterToAdd.Details.ExtendedData.DefaultValue) {
-                        if ([NullString]::Value -eq $parameterToAdd.Details.ExtendedData.DefaultValue) {
-                            $parameterDefaultValue = "[NullString]::Value"
-                        } elseif ("System.String" -eq $parameterToAdd.Details.ExtendedData.Type) {
-                            $parameterDefaultValue = "`"$($parameterToAdd.Details.ExtendedData.DefaultValue)`""
+            $paramName = "`$$parameterName" 
+            $ValidateSetDefinition = $null
+            if ($parameterToAdd.Details.ValidateSet)
+            {
+                $ValidateSetString = $parameterToAdd.Details.ValidateSet
+                $ValidateSetDefinition = $executionContext.InvokeCommand.ExpandString($ValidateSetDefinitionString)
+            }
+
+            $parameterDefaultValueOption = ""
+            if ($parameterToAdd.Details.ContainsKey('ExtendedData')) {
+                if ($parameterToAdd.Details.ExtendedData.ContainsKey('IsODataParameter') -and $parameterToAdd.Details.ExtendedData.IsODataParameter) {
+                    $paramType = "$($parameterToAdd.Details.Type)"
+                    $oDataExpression += "    if (`$$parameterName) { `$oDataQuery += `"&```$$parameterName=`$$parameterName`" }" + [Environment]::NewLine
+                } else {
+                    # Assuming you can't group ODataQuery parameters
+                    if ($parameterToAdd.Details.ContainsKey('x_ms_parameter_grouping') -and $parameterToAdd.Details.'x_ms_parameter_grouping') {
+                        $parameterGroupPropertyName = $parameterToAdd.Details.Name
+                        $groupName = $parameterToAdd.Details.'x_ms_parameter_grouping'
+                        $fullGroupName = $parameterToAdd.Details.ExtendedData.GroupType
+                        if ($parameterGroupsExpressions.ContainsKey($groupName)) {
+                            $parameterGroupsExpression = $parameterGroupsExpressions[$groupName]
                         } else {
-                            $parameterDefaultValue = "$($parameterToAdd.Details.ExtendedData.DefaultValue)"
+                            $parameterGroupsExpression = $executionContext.InvokeCommand.ExpandString($parameterGroupCreateExpression)
                         }
-                    } else {
-                        $parameterDefaultValue = "`$null"
+
+                        $parameterGroupsExpression += [Environment]::NewLine + $executionContext.InvokeCommand.ExpandString($parameterGroupPropertyExpression)
+                        $parameterGroupsExpressions[$groupName] = $parameterGroupsExpression
                     }
 
-                    $parameterDefaultValueOption = $executionContext.InvokeCommand.ExpandString($parameterDefaultValueString)
-                }
-            }
+                    $paramType = "$($parameterToAdd.Details.ExtendedData.Type)"
+                    if ($parameterToAdd.Details.ExtendedData.HasDefaultValue) {
+                        if ($parameterToAdd.Details.ExtendedData.DefaultValue) {
+                            if ([NullString]::Value -eq $parameterToAdd.Details.ExtendedData.DefaultValue) {
+                                $parameterDefaultValue = "[NullString]::Value"
+                            } elseif ("System.String" -eq $parameterToAdd.Details.ExtendedData.Type) {
+                                $parameterDefaultValue = "`"$($parameterToAdd.Details.ExtendedData.DefaultValue)`""
+                            } else {
+                                $parameterDefaultValue = "$($parameterToAdd.Details.ExtendedData.DefaultValue)"
+                            }
+                        } else {
+                            $parameterDefaultValue = "`$null"
+                        }
 
-            $paramBlock += $executionContext.InvokeCommand.ExpandString($parameterDefString)
-            $pDescription = $parameterToAdd.Details.Description
-            $paramHelp += $executionContext.InvokeCommand.ExpandString($helpParamStr)
-        } else {
-            Write-Warning ($LocalizedData.ParameterMissingFromAutoRestCode -f ($parameterName, $commandName))
+                        $parameterDefaultValueOption = $executionContext.InvokeCommand.ExpandString($parameterDefaultValueString)
+                    }
+                }
+
+                $paramBlock += $executionContext.InvokeCommand.ExpandString($parameterDefString)
+                $pDescription = $parameterToAdd.Details.Description
+                $paramHelp += $executionContext.InvokeCommand.ExpandString($helpParamStr)
+            } else {
+                Write-Warning ($LocalizedData.ParameterMissingFromAutoRestCode -f ($parameterName, $commandName))
+            }
         }
     }
 
