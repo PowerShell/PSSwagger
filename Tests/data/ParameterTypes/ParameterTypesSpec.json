@@ -200,6 +200,47 @@
                     }
                 }
             }
+        },
+        "/cookiesPathWithDummyRef": {
+            "get": {
+                "summary": "List all cookies matching parameters",
+                "operationId": "OpWithDummyRef_Get",
+                "description": "List all cookies matching parameters",
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/ApiVersionParameter"
+                    },
+                    {
+                        "$ref": "#/parameters/SubscriptionIdParameter"
+                    },
+                    {
+                        "name": "parameters",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/DefWithDummyRef"
+                        },
+                        "description": "Group filtering parameters."
+                    }
+                ],
+                "tags": [
+                    "Cookies"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Object"
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -295,6 +336,26 @@
                     "description": "Message"
                 }
             }
+        },
+        "DefWithDummyRef": {
+            "type": "object",
+            "properties": {
+                "createdTime": {
+                    "type": "string",
+                    "format": "date-time",
+                    "readOnly": true,
+                    "description": "Gets the created time."
+                },
+                "definition": {
+                    "$ref": "#/definitions/Object",
+                    "description": "The definition."
+                }
+            },
+            "description": "The workflow properties."
+        },    
+        "Object": {
+            "type": "object",
+            "properties": {}
         }
     },
     "parameters": {
