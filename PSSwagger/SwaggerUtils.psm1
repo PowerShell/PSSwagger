@@ -1189,55 +1189,61 @@ function Get-OutputType
                 $definition = ($definitionList[$key]).Value
                 if(Get-Member -InputObject $definition -name 'properties')
                 {
-                    $defProperties = $definition.properties
                     $fullPathDataType = ""
-
-                    # If this data type is actually a collection of another $ref 
-                    if(Get-member -InputObject $defProperties -Name 'value')
+                    if(Get-HashtableKeyCount -Hashtable $definition.properties.PSObject.Properties)
                     {
-                        $defValue = $defProperties.value
-                        $outputValueType = ""
-                        
-                        # Iff the value has items with $ref nested properties,
-                        # this is a collection and hence we need to find the type of collection
+                        $defProperties = $definition.properties
 
-                        if((Get-Member -InputObject $defValue -Name 'items') -and 
-                            (Get-Member -InputObject $defValue.items -Name '$ref'))
+                        # If this data type is actually a collection of another $ref 
+                        if(Get-member -InputObject $defProperties -Name 'value')
                         {
-                            $defRef = $defValue.items.'$ref'
-                            if($ref.StartsWith("#/definitions")) 
-                            {
-                                $defKey = $defRef.split("/")[-1]
-                                $fullPathDataType = $NameSpace + ".Models.$defKey"
-                            }
+                            $defValue = $defProperties.value
+                            $outputValueType = ""
+                            
+                            # Iff the value has items with $ref nested properties,
+                            # this is a collection and hence we need to find the type of collection
 
-                            if(Get-member -InputObject $defValue -Name 'type') 
+                            if((Get-Member -InputObject $defValue -Name 'items') -and 
+                                (Get-Member -InputObject $defValue.items -Name '$ref'))
                             {
-                                $defType = $defValue.type
-                                switch ($defType) 
+                                $defRef = $defValue.items.'$ref'
+                                if($ref.StartsWith("#/definitions")) 
                                 {
-                                    "array" { $outputValueType = '[]' }
-                                    Default {
-                                        $exceptionMessage = $LocalizedData.DataTypeNotImplemented -f ($defType, $ref)
-                                        throw ([System.NotImplementedException] $exceptionMessage)
+                                    $defKey = $defRef.split("/")[-1]
+                                    $fullPathDataType = $NameSpace + ".Models.$defKey"
+                                }
+
+                                if(Get-member -InputObject $defValue -Name 'type') 
+                                {
+                                    $defType = $defValue.type
+                                    switch ($defType) 
+                                    {
+                                        "array" { $outputValueType = '[]' }
+                                        Default {
+                                            $exceptionMessage = $LocalizedData.DataTypeNotImplemented -f ($defType, $ref)
+                                            throw ([System.NotImplementedException] $exceptionMessage)
+                                        }
                                     }
                                 }
-                            }
 
-                            if($outputValueType -and $fullPathDataType) {$fullPathDataType = $fullPathDataType + " " + $outputValueType}
+                                if($outputValueType -and $fullPathDataType) {$fullPathDataType = $fullPathDataType + " " + $outputValueType}
+                            }
+                            else
+                            { # if this datatype has value, but no $ref and items
+                                $fullPathDataType = $NameSpace + ".Models.$key"
+                            }
                         }
                         else
-                        { # if this datatype has value, but no $ref and items
+                        { # if this datatype is not a collection of another $ref
                             $fullPathDataType = $NameSpace + ".Models.$key"
                         }
                     }
-                    else
-                    { # if this datatype is not a collection of another $ref
-                        $fullPathDataType = $NameSpace + ".Models.$key"
-                    }
 
-                    $fullPathDataType = $fullPathDataType.Replace('[','').Replace(']','').Trim()
-                    $outputType += $executionContext.InvokeCommand.ExpandString($outputTypeStr)
+                    if($fullPathDataType)
+                    {
+                        $fullPathDataType = $fullPathDataType.Replace('[','').Replace(']','').Trim()
+                        $outputType += $executionContext.InvokeCommand.ExpandString($outputTypeStr)
+                    }
                 }
             }
         }

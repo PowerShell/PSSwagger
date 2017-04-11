@@ -150,7 +150,8 @@ function Get-SwaggerSpecDefinitionInfo
     }
 
     if((Get-Member -InputObject $JsonDefinitionItemObject -Name Value) -and
-       (Get-Member -InputObject $JsonDefinitionItemObject.Value -Name properties))
+       (Get-Member -InputObject $JsonDefinitionItemObject.Value -Name properties) -and
+       ((Get-HashtableKeyCount -Hashtable $JsonDefinitionItemObject.Value.Properties.PSObject.Properties) -ge 1))
     {
         $isModel = $true
     }

@@ -273,7 +273,7 @@ Describe "Optional parameter tests" -Tag ScenarioTest {
     }
 }
 
-Describe "ParameterTypes tests" {
+Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
     BeforeAll {
         Initialize-Test -GeneratedModuleName "Generated.ParmTypes.Module" -GeneratedModuleVersion "0.0.2" -TestApiName "ParameterTypes" `
                         -TestSpecFileName "ParameterTypesSpec.json" -TestDataFileName "ParameterTypesData.json" `
@@ -363,6 +363,26 @@ Describe "ParameterTypes tests" {
         It "Test global parameters" {
             $results = Get-Cookie -TestGlobalParameter "test"
             $results.Length | should be 1
+        }
+
+        It "Test dummy definition references" {
+            $ModuleName = 'Generated.ParmTypes.Module'
+            $ev = $null
+            $CommandList = Get-Command -Module $ModuleName -ErrorVariable ev
+            $ev | Should BeNullOrEmpty
+            $CommandList.Name -contains 'Get-OpWithDummyRef' | Should be $True
+
+            $commandsSyntax = Get-Command -Module $ModuleName -Name 'Get-OpWithDummyRef' -Syntax -ErrorVariable ev
+            $ev | Should BeNullOrEmpty
+
+            $command = Get-Command -Name 'Get-OpWithDummyRef' -Module $ModuleName
+            $command.OutputType | Should BeNullOrEmpty
+            $command.Parameters.ContainsKey('Parameters') | Should Be $True
+            $command.Parameters.Parameters.ParameterType.Name | Should be 'DefWithDummyRef'
+
+            $command2 = Get-Command -Name 'New-DefWithDummyRefObject' -Module $ModuleName
+            $command2.Parameters.ContainsKey('Definition') | Should Be $True
+            $command2.Parameters.Definition.ParameterType.Name | Should be 'object'
         }
     }
 
