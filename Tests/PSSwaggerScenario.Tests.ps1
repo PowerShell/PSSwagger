@@ -460,6 +460,14 @@ Describe "AzureExtensions" {
             $ev | Should BeNullOrEmpty
             $cmdInfo.Parameters.ContainsKey('AsJob') | should be $false
         }
+
+        It "Test x-ms-paths generated cmdlets" {
+            $results = Get-CupcakeById -Id 1
+            $results.Count | should be 1
+
+            $results = Get-CupcakeByFlavor -Flavor 'vanilla'
+            $results.Count | should be 1
+        }
     }
 
     AfterAll {
