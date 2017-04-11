@@ -228,6 +228,42 @@
                  }
              }
         },
+        "/virtualMachines": {
+            "put": {
+                "summary": "Create or update VM",
+                "operationId": "VirtualMachine_CreateOrUpdate",
+                "description": "Create or update VM.",
+                "parameters": [
+                    {
+                        "name": "virtualMachine",
+                        "in": "body",
+                        "description": "long running operation test",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/VirtualMachine"
+                        }
+                    }
+                ],
+                "tags": [
+                    "VirtualMachines"
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created VM",
+                        "schema": {
+                            "$ref": "#/definitions/VirtualMachine"
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                },
+                "x-ms-long-running-operation": true
+            }
+        },
          "/groupTests/postfixTest": {
              "get": {
                 "summary": "Test postfix parameter group",
@@ -440,6 +476,19 @@
                 "flavor": {
                     "type": "string",
                     "description": "Flavor"
+                }
+            }
+        },
+        "VirtualMachine": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "Unique identifier"
+                },
+                "sku": {
+                    "type": "string",
+                    "description": "SKU"
                 }
             }
         },
