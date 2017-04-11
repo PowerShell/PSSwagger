@@ -60,6 +60,11 @@ function Get-SwaggerSpecPathInfo
     }
 
     $JsonPathItemObject.value.PSObject.Properties | ForEach-Object {
+        $longRunningOperation = $false
+        if (((Get-Member -InputObject $_.Value -Name 'x-ms-long-running-operation') -and $_.Value.'x-ms-long-running-operation')) {
+            $longRunningOperation = $true
+        }
+
         if(Get-Member -InputObject $_.Value -Name 'OperationId')
         {
             $operationId = $_.Value.operationId
@@ -133,6 +138,7 @@ function Get-SwaggerSpecPathInfo
                     $FunctionDetails = $PathFunctionDetails[$_]
                 } else {
                     $FunctionDetails['CommandName'] = $_
+                    $FunctionDetails['x-ms-long-running-operation'] = $longRunningOperation
                 }
 
                 $ParameterSetDetails = @()
@@ -253,6 +259,7 @@ function New-SwaggerPath
 
     $commandName = $FunctionDetails.CommandName
     $parameterSetDetails = $FunctionDetails['ParameterSetDetails']
+    $isLongRunningOperation = $FunctionDetails.ContainsKey('x-ms-long-running-operation') -and $FunctionDetails.'x-ms-long-running-operation'
 
     $description = ''
     $paramBlock = ''
@@ -423,10 +430,17 @@ function New-SwaggerPath
 
     $paramBlock = $paramBlock.TrimEnd().TrimEnd(",")
     $commandHelp = $executionContext.InvokeCommand.ExpandString($helpDescStr)
-    if ($paramBlock) {
-        $paramblockWithAsJob = $paramBlock + ",`r`n" + $AsJobParameterString
+    if ($isLongRunningOperation) {
+        if ($paramBlock) {
+            $ParamBlockReplaceStr = $paramBlock + ",`r`n" + $AsJobParameterString
+        } else {
+            $ParamBlockReplaceStr = $AsJobParameterString
+        }
+
+        $PathFunctionBody = $PathFunctionBodyAsJob
     } else {
-        $paramblockWithAsJob = $AsJobParameterString
+        $ParamBlockReplaceStr = $paramBlock
+        $PathFunctionBody = $PathFunctionBodySynch
     }
 
     $functionBodyParams = @{

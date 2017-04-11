@@ -125,11 +125,11 @@ $paramHelp
 function $commandName
 {
     $outputTypeBlock[CmdletBinding(DefaultParameterSetName='$DefaultParameterSetName')]
-    param($paramblockWithAsJob
+    param($ParamBlockReplaceStr
     )
     $body
 
-    $PathFunctionCommonBody
+    $PathFunctionBody
 }
 '@
 
@@ -190,7 +190,7 @@ $parameterSetBasedMethodStrElseIfCase = @'
     }
 '@
 
-$PathFunctionCommonBody = @'
+$PathFunctionBodyAsJob = @'
 Write-Verbose -Message "Waiting for the operation to complete."
 
     $PSSwaggerJobScriptBlock = {
@@ -251,6 +251,40 @@ Write-Verbose -Message "Waiting for the operation to complete."
         Invoke-Command -ScriptBlock $PSSwaggerJobScriptBlock `
                        -ArgumentList $taskResult `
                        @PSCommonParameters
+    }
+'@
+
+$PathFunctionBodySynch = @'
+Write-Verbose -Message "Waiting for the operation to complete."
+
+    $ErrorActionPreference = 'Stop'
+        
+    $null = $taskResult.AsyncWaitHandle.WaitOne()
+        
+    Write-Debug -Message "$($taskResult | Out-String)"
+
+    if($taskResult.IsFaulted)
+    {
+        Write-Verbose -Message 'Operation failed.'
+        Throw "$($taskResult.Exception.InnerExceptions | Out-String)"
+    } 
+    elseif ($taskResult.IsCanceled)
+    {
+        Write-Verbose -Message 'Operation got cancelled.'
+        Throw 'Operation got cancelled.'
+    }
+    else
+    {
+        Write-Verbose -Message 'Operation completed successfully.'
+
+        if($taskResult.Result -and
+            (Get-Member -InputObject $taskResult.Result -Name 'Body') -and
+            $taskResult.Result.Body)
+        {
+            $result = $taskResult.Result.Body
+            Write-Verbose -Message "$($result | Out-String)"
+            $result
+        }
     }
 '@
 

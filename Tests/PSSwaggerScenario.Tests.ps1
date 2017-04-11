@@ -448,6 +448,18 @@ Describe "AzureExtensions" {
         It "Test when multiple parameter groups exist" {
             $results = Multiple-GroupTestGroup -parm "test" -parm2 "test2"
         }
+
+        It "Test long running operation with AsJob" {
+            $cmdInfo = Get-Command New-VirtualMachine -ErrorVariable ev
+            $ev | Should BeNullOrEmpty
+            $cmdInfo.Parameters.ContainsKey('AsJob') | should be $true
+        }
+
+        It "Test non long running operation with no AsJob" {
+            $cmdInfo = Get-Command Get-Cupcake -ErrorVariable ev
+            $ev | Should BeNullOrEmpty
+            $cmdInfo.Parameters.ContainsKey('AsJob') | should be $false
+        }
     }
 
     AfterAll {
