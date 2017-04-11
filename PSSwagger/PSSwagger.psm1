@@ -354,6 +354,18 @@ function New-PSSwaggerModule
                                         -ParameterGroupCache $ParameterGroupCache
             }
         }
+
+        if(Get-Member -InputObject $jsonObject -Name 'x-ms-paths') {
+            # Handle extended paths
+            $jsonObject.'x-ms-paths'.PSObject.Properties | ForEach-Object {
+                Get-SwaggerSpecPathInfo -JsonPathItemObject $_ `
+                                        -PathFunctionDetails $PathFunctionDetails `
+                                        -SwaggerDict $swaggerDict `
+                                        -SwaggerMetaDict $swaggerMetaDict `
+                                        -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
+                                        -ParameterGroupCache $ParameterGroupCache
+            }
+        }
     }
 
     $codePhaseResult = ConvertTo-CsharpCode -SwaggerDict $swaggerDict `

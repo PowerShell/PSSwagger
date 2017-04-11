@@ -456,6 +456,80 @@
             }
          }
     },
+    "x-ms-paths": {
+        "/cupcakes?id={id}": {
+             "get": {
+                "summary": "Get a cupcake",
+                "operationId": "Cupcake_GetById",
+                "description": "Get a cupcake.",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "description": "x-ms-paths test",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "tags": [
+                    "Cupcakes"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "All cupcake entities.",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Cupcake"
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+         "/cupcakes?flavor={flavor}": {
+             "get": {
+                "summary": "Get a cupcake",
+                "operationId": "Cupcake_GetByFlavor",
+                "description": "Get a cupcake.",
+                "parameters": [
+                    {
+                        "name": "flavor",
+                        "in": "query",
+                        "description": "x-ms-paths test",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "tags": [
+                    "Cupcakes"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "All cupcake entities.",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Cupcake"
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        }
+    },
     "definitions": {
         "CupcakeBatch": {
             "type": "object",
