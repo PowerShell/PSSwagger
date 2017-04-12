@@ -468,6 +468,7 @@ function ConvertTo-CsharpCode
     )
 
     Write-Verbose -Message $LocalizedData.GenerateCodeUsingAutoRest
+    $info = $SwaggerDict['Info']
 
     $autoRestExePath = "autorest.exe"
     if (-not (get-command -name autorest.exe))
@@ -496,6 +497,11 @@ function ConvertTo-CsharpCode
         $null = Remove-Item -Path (Join-Path -Path $clrPath -ChildPath $outAssembly) -Force
     }
 
+    # Clean old generated code for when operations change or the command is re-run (Copy-Item can't clobber)
+    if (Test-Path -Path $generatedCSharpPath) {
+        $null = Remove-Item -Path $generatedCSharpPath -Recurse -Force
+    }
+
     if ($NoAssembly) {
         $outAssembly = ''
     }
@@ -511,12 +517,15 @@ function ConvertTo-CsharpCode
     }
 
     Write-Verbose -Message $LocalizedData.GenerateAssemblyFromCode
+    if ($info.ContainsKey('CodeOutputDirectory') -and $info.CodeOutputDirectory) {
+        $null = Copy-Item -Path $info.CodeOutputDirectory -Destination $generatedCSharpPath -Recurse
+    }
+
     $allCSharpFiles= Get-ChildItem -Path "$generatedCSharpPath\*.cs" `
                                    -Recurse `
                                    -File `
                                    -Exclude Program.cs,TemporaryGeneratedFile* |
                                         Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*'
-
     $allCodeFiles = @()
     foreach ($file in $allCSharpFiles) {
         $newFileName = Join-Path -Path $file.Directory -ChildPath "$($file.BaseName).Code.ps1"
@@ -530,7 +539,6 @@ function ConvertTo-CsharpCode
 
     # As of 3/2/2017, there's a version mismatch between the latest Microsoft.Rest.ClientRuntime.Azure package and the latest AzureRM.Profile package
     # So we have to hardcode Microsoft.Rest.ClientRuntime.Azure to at most version 3.3.4
-    $info = $SwaggerDict['Info']
     $modulePostfix = $info['infoName']
     $NameSpace = $info.namespace
     $fullModuleName = $Namespace + '.' + $modulePostfix
