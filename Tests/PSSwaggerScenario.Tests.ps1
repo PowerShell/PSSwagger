@@ -275,7 +275,7 @@ Describe "Optional parameter tests" -Tag ScenarioTest {
 
 Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
     BeforeAll {
-        Initialize-Test -GeneratedModuleName "Generated.ParmTypes.Module" -GeneratedModuleVersion "0.0.2" -TestApiName "ParameterTypes" `
+        Initialize-Test -GeneratedModuleName "Generated.ParamTypes.Module" -GeneratedModuleVersion "0.0.2" -TestApiName "ParameterTypes" `
                         -TestSpecFileName "ParameterTypesSpec.json" -TestDataFileName "ParameterTypesData.json" `
                         -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot -UseAzureCSharpGenerator
 
@@ -284,7 +284,7 @@ Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "Generated.Azure.Common.Helpers" | `
                        Join-Path -ChildPath "Generated.Azure.Common.Helpers.psd1") -Force
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
-                       Join-Path -ChildPath "Generated.ParmTypes.Module")
+                       Join-Path -ChildPath "Generated.ParamTypes.Module")
         
         # Load the test assembly after the generated module, since the generated module is kind enough to load the required dlls for us
         try {
@@ -298,15 +298,15 @@ Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
 
     Context "ParameterTypes tests" {
         # Mocks
-        Mock Get-AzServiceCredential -ModuleName Generated.ParmTypes.Module {
+        Mock Get-AzServiceCredential -ModuleName Generated.ParamTypes.Module {
             return New-Object -TypeName PSSwagger.TestUtilities.TestCredentials
         }
 
-        Mock Get-AzSubscriptionId -ModuleName Generated.ParmTypes.Module {
+        Mock Get-AzSubscriptionId -ModuleName Generated.ParamTypes.Module {
             return "Test"
         }
 
-        Mock Get-AzResourceManagerUrl -ModuleName Generated.ParmTypes.Module {
+        Mock Get-AzResourceManagerUrl -ModuleName Generated.ParamTypes.Module {
             return "$($global:testDataSpec.schemes[0])://$($global:testDataSpec.host)"
         }
 
@@ -366,7 +366,7 @@ Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
         }
 
         It "Test dummy definition references" {
-            $ModuleName = 'Generated.ParmTypes.Module'
+            $ModuleName = 'Generated.ParamTypes.Module'
             $ev = $null
             $CommandList = Get-Command -Module $ModuleName -ErrorVariable ev
             $ev | Should BeNullOrEmpty
@@ -383,6 +383,36 @@ Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
             $command2 = Get-Command -Name 'New-DefWithDummyRefObject' -Module $ModuleName
             $command2.Parameters.ContainsKey('Definition') | Should Be $True
             $command2.Parameters.Definition.ParameterType.Name | Should be 'object'
+        }
+
+        It "Test CSharp reserved keywords as definition or type names" {
+            $ModuleName = 'Generated.ParamTypes.Module'
+            $ev = $null
+            $CommandList = Get-Command -Module $ModuleName -ErrorVariable ev
+            $ev | Should BeNullOrEmpty
+            $CommandNames = @('New-NamespaceModelObject', 'New-NamespaceListObject', 'Get-PathWithReservedKeywordType')
+
+            $CommandNames | ForEach-Object {
+                $CommandList.Name -contains $_ | Should be $True
+            }
+
+            $commandsSyntax = Get-Command -Module $ModuleName -Name $CommandNames -Syntax -ErrorVariable ev
+            $ev | Should BeNullOrEmpty
+
+            $command = Get-Command -Name 'Get-PathWithReservedKeywordType' -Module $ModuleName
+            $command.OutputType[0].Type.Name | Should Be 'NamespaceModel'            
+            $command.Parameters.ContainsKey('Parameters') | Should Be $True
+            $command.Parameters.Parameters.ParameterType.Name | Should be 'NamespaceList'
+            $command.Parameters.ContainsKey('ParameterWithReservedKeywordType') | Should Be $True
+            $command.Parameters.ParameterWithReservedKeywordType.ParameterType.Name | Should be 'NamespaceModel'
+
+            $command2 = Get-Command -Name 'New-NamespaceModelObject' -Module $ModuleName
+            $command2.Parameters.ContainsKey('ProvisioningState') | Should Be $True
+            $command2.Parameters.ProvisioningState.ParameterType.Name | Should be 'EnumModel'
+
+            $command3 = Get-Command -Name 'New-NamespaceListObject' -Module $ModuleName
+            $command3.Parameters.ContainsKey('Value') | Should Be $True
+            $command3.Parameters.Value.ParameterType.Name | Should be 'NamespaceModel[]'
         }
     }
 
@@ -539,7 +569,7 @@ Describe "Composite Swagger Tests" -Tag @('Composite','ScenarioTest') {
     }
 }
 
-Describe "AllOfDefinition" {
+Describe "AllOfDefinition" -Tag @('AllOf','ScenarioTest')  {
     BeforeAll {
         Initialize-Test -GeneratedModuleName "Generated.AllOfDefinition.Module" -TestApiName "AllOfDefinition" `
                         -TestSpecFileName "AllOfDefinitionSpec.json"  `

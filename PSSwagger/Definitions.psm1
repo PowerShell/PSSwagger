@@ -39,7 +39,7 @@ function Get-SwaggerSpecDefinitionInfo
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
 
-    $Name = $JsonDefinitionItemObject.Name.Replace('[','').Replace(']','')
+    $Name = Get-CSharpModelName -Name $JsonDefinitionItemObject.Name
     $FunctionDescription = ""
     if((Get-Member -InputObject $JsonDefinitionItemObject.Value -Name 'Description') -and 
        $JsonDefinitionItemObject.Value.Description)
@@ -58,7 +58,7 @@ function Get-SwaggerSpecDefinitionInfo
             if(Get-Member -InputObject $_ -Name '$ref')
             {
                 $AllOfRefFullName = $_.'$ref'
-                $AllOfRefName = $AllOfRefFullName.Substring( $( $AllOfRefFullName.LastIndexOf('/') ) + 1 )
+                $AllOfRefName = Get-CSharpModelName -Name $AllOfRefFullName.Substring( $( $AllOfRefFullName.LastIndexOf('/') ) + 1 )
                 $AllOf_DefinitionNames += $AllOfRefName
                             
                 $ReferencedFunctionDetails = @{}
@@ -73,12 +73,13 @@ function Get-SwaggerSpecDefinitionInfo
                 $DefinitionFunctionsDetails[$AllOfRefName] = $ReferencedFunctionDetails
             } elseif ((Get-Member -InputObject $_ -Name 'type') -and $_.type -eq 'object') {
                 # Create an anonymous type for objects defined inline
-                $anonObjName = [Guid]::NewGuid().Guid
+                $anonObjName = Get-CSharpModelName -Name ([Guid]::NewGuid().Guid)
                 [PSCustomObject]$obj = New-Object -TypeName PsObject
                 Add-Member -InputObject $obj -MemberType NoteProperty -Name 'Name' -Value $anonObjName
                 Add-Member -InputObject $obj -MemberType NoteProperty -Name 'Value' -Value $_
                 Get-SwaggerSpecDefinitionInfo -JsonDefinitionItemObject $obj -DefinitionFunctionsDetails $DefinitionFunctionsDetails -Namespace $Namespace -Models $Models
                 $DefinitionFunctionsDetails[$anonObjName]['IsUsedAs_AllOf'] = $true
+                $DefinitionFunctionsDetails[$anonObjName]['IsModel'] = $false
                 $AllOf_InlineObjects += $DefinitionFunctionsDetails[$anonObjName]
                 $isModel = $true
             }
@@ -323,7 +324,7 @@ function Get-DefinitionParameterType
             (-not (Get-Member -InputObject $ParameterJsonObject.'x-ms-enum' -Name 'modelAsString') -or
              ($ParameterJsonObject.'x-ms-enum'.modelAsString -eq $false)))
         {
-            $ParameterType = $DefinitionTypeNamePrefix + $ParameterJsonObject.'x-ms-enum'.Name
+            $ParameterType = $DefinitionTypeNamePrefix + (Get-CSharpModelName -Name $ParameterJsonObject.'x-ms-enum'.Name)
         }
         # Use the format as parameter type if that is available as a type in PowerShell
         elseif ((Get-Member -InputObject $ParameterJsonObject -Name 'Format') -and 
@@ -340,7 +341,7 @@ function Get-DefinitionParameterType
                 $ParameterJsonObject.Items.'$ref')
             {
                 $ReferenceTypeValue = $ParameterJsonObject.Items.'$ref'
-                $ReferenceTypeName = $ReferenceTypeValue.Substring( $( $ReferenceTypeValue.LastIndexOf('/') ) + 1 )
+                $ReferenceTypeName = Get-CSharpModelName -Name $ReferenceTypeValue.Substring( $( $ReferenceTypeValue.LastIndexOf('/') ) + 1 )
                 $ParameterType = $DefinitionTypeNamePrefix + "$ReferenceTypeName[]"
             }
             elseif((Get-Member -InputObject $ParameterJsonObject.Items -Name 'Type') -and $ParameterJsonObject.Items.Type)
@@ -363,7 +364,7 @@ function Get-DefinitionParameterType
                     $ParameterJsonObject.AdditionalProperties.'$ref')
                 {
                     $ReferenceTypeValue = $ParameterJsonObject.AdditionalProperties.'$ref'
-                    $ReferenceTypeName = $ReferenceTypeValue.Substring( $( $ReferenceTypeValue.LastIndexOf('/') ) + 1 )
+                    $ReferenceTypeName = Get-CSharpModelName -Name $ReferenceTypeValue.Substring( $( $ReferenceTypeValue.LastIndexOf('/') ) + 1 )
                     $AdditionalPropertiesType = $DefinitionTypeNamePrefix + "$ReferenceTypeName"
                     # Dictionary
                     $ParameterType = "System.Collections.Generic.Dictionary[[string],[$AdditionalPropertiesType]]"
@@ -388,7 +389,7 @@ function Get-DefinitionParameterType
         # By applying the x-ms-client-flatten extension, you move the inner properties to the top level of your definition.
 
         $ReferenceParameterValue = $ParameterJsonObject.'$ref'
-        $ReferenceDefinitionName = $ReferenceParameterValue.Substring( $( $ReferenceParameterValue.LastIndexOf('/') ) + 1 )
+        $ReferenceDefinitionName = Get-CSharpModelName -Name $ReferenceParameterValue.Substring( $( $ReferenceParameterValue.LastIndexOf('/') ) + 1 )
 
         $x_ms_Client_flatten_DefinitionNames = @($ReferenceDefinitionName)
 
@@ -420,8 +421,9 @@ function Get-DefinitionParameterType
     }
     elseif ( (Get-Member -InputObject $ParameterJsonObject -Name '$ref') -and ($ParameterJsonObject.'$ref') )
     {
-        $ReferenceParameterValue = $ParameterJsonObject.'$ref'
-        $ParameterType = $DefinitionTypeNamePrefix + $ReferenceParameterValue.Substring( $( $ReferenceParameterValue.LastIndexOf('/') ) + 1 )
+        $ReferenceParameterValue = $ParameterJsonObject.'$ref'        
+        $ReferenceTypeName = Get-CSharpModelName -Name $ReferenceParameterValue.Substring( $( $ReferenceParameterValue.LastIndexOf('/') ) + 1 )
+        $ParameterType = $DefinitionTypeNamePrefix + $ReferenceTypeName
     }
     else
     {
