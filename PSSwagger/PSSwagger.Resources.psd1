@@ -66,5 +66,6 @@ ConvertFrom-StringData @'
     AutoRestParam=  {0} = {1}
     OutputDirectoryMustBeEmpty=Code output directory '{0}' must not contain any .cs files in order for PSSwagger to correctly determine the files from which the SDK should be built.
     CustomNamespaceNotRecommended=Custom namespaces are not recommended when using PSSwagger, as the generated modules may not support side-by-side.
+    CodeDirectoryWillBeCreated=Code output directory '{0}' will be created by AutoRest.exe and contain unused generated code. You may delete this directory after the module has finished generating if you wish.
 ###PSLOC
 '@

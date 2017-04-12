@@ -153,6 +153,8 @@ function Get-SwaggerInfo {
             $CodeOutputDirectory = $Info.'x-ms-code-generation-settings'.$prop
             if ((Test-Path -Path $CodeOutputDirectory) -and (Get-ChildItem -Path (Join-Path -Path $CodeOutputDirectory -ChildPath "*.cs") -Recurse)) {
                 throw $LocalizedData.OutputDirectoryMustBeEmpty -f ($CodeOutputDirectory)
+            } else {
+                Write-Warning -Message ($LocalizedData.CodeDirectoryWillBeCreated -f $CodeOutputDirectory)
             }
         }
 
@@ -1364,7 +1366,7 @@ function Get-Response
                     # Add the [OutputType] for the function
                     $OutputTypeParams = @{
                         "schema"  = $value.schema
-                        "ModelsNamespace" = "$NameSpace.$Models "
+                        "ModelsNamespace" = "$NameSpace.$Models"
                         "definitionList" = $definitionList
                     }
 
