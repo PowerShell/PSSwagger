@@ -12,6 +12,7 @@ Import-Module (Join-Path -Path $PSScriptRoot -ChildPath Utilities.psm1)
 . "$PSScriptRoot\Trie.ps1" -Force
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwagger.Resources.psd1
 $script:CmdVerbTrie = $null
+$script:CSharpCodeNamer = $null
 
 $script:PluralizationService = $null
 # System.Data.Entity.Design.PluralizationServices.PluralizationService is not yet supported on coreclr.
@@ -95,14 +96,15 @@ function ConvertTo-SwaggerDictionary {
         }
 
         if(Get-Member -InputObject $swaggerObject -Name 'definitions') {
-            Get-SwaggerMultiItemObject -Object $swaggerObject.definitions -SwaggerDictionary $SwaggerDefinitions
+            Get-SwaggerDefinitionMultiItemObject -Object $swaggerObject.definitions -SwaggerDictionary $SwaggerDefinitions
         }
 
-        if(-not (Get-Member -InputObject $swaggerObject -Name 'paths')) {
+        if(-not (Get-Member -InputObject $swaggerObject -Name 'paths') -or 
+           -not (Get-HashtableKeyCount -Hashtable $swaggerObject.Paths.PSObject.Properties)) {
             Write-Warning -Message ($LocalizedData.SwaggerPathsMissing -f $FilePath)
         }
 
-        Get-SwaggerMultiItemObject -Object $swaggerObject.paths -SwaggerDictionary $SwaggerPaths
+        Get-SwaggerPathMultiItemObject -Object $swaggerObject.paths -SwaggerDictionary $SwaggerPaths
     }
 
     $swaggerDict['Parameters'] = $swaggerParameters
@@ -403,7 +405,7 @@ function Get-SwaggerParameters {
     }
 }
 
-function Get-SwaggerMultiItemObject {
+function Get-SwaggerPathMultiItemObject {
     param(
         [Parameter(Mandatory=$true)]
         [PSCustomObject]
@@ -415,10 +417,31 @@ function Get-SwaggerMultiItemObject {
     )
 
     $Object.PSObject.Properties | ForEach-Object {
-        if($SwaggerDictionary.ContainsKey($_)) {
+        if($SwaggerDictionary.ContainsKey($_.name)) {
             Write-Verbose -Message ($LocalizedData.SkippingExistingKeyFromSwaggerMultiItemObject -f $_)
         } else {
             $SwaggerDictionary[$_.name] = $_
+        }
+    }
+}
+
+function Get-SwaggerDefinitionMultiItemObject {
+    param(
+        [Parameter(Mandatory=$true)]
+        [PSCustomObject]
+        $Object,
+
+        [Parameter(Mandatory=$true)]
+        [PSCustomObject]
+        $SwaggerDictionary
+    )
+
+    $Object.PSObject.Properties | ForEach-Object {
+        $ModelName = Get-CSharpModelName -Name $_.Name
+        if($SwaggerDictionary.ContainsKey($ModelName)) {
+            Write-Verbose -Message ($LocalizedData.SkippingExistingKeyFromSwaggerMultiItemObject -f $ModelName)
+        } else {
+            $SwaggerDictionary[$ModelName] = $_
         }
     }
 }
@@ -765,7 +788,7 @@ function Get-ParamType
                 $ParameterJsonObject.Items.'$ref')
             {
                 $ReferenceTypeValue = $ParameterJsonObject.Items.'$ref'
-                $ReferenceTypeName = $ReferenceTypeValue.Substring( $( $ReferenceTypeValue.LastIndexOf('/') ) + 1 )
+                $ReferenceTypeName = Get-CSharpModelName -Name $ReferenceTypeValue.Substring( $( $ReferenceTypeValue.LastIndexOf('/') ) + 1 )
                 $paramType = $DefinitionTypeNamePrefix + "$ReferenceTypeName[]"
             }
             elseif((Get-Member -InputObject $ParameterJsonObject.Items -Name 'Type') -and $ParameterJsonObject.Items.Type)
@@ -788,7 +811,7 @@ function Get-ParamType
                     $ParameterJsonObject.AdditionalProperties.'$ref')
                 {
                     $ReferenceTypeValue = $ParameterJsonObject.AdditionalProperties.'$ref'
-                    $ReferenceTypeName = $ReferenceTypeValue.Substring( $( $ReferenceTypeValue.LastIndexOf('/') ) + 1 )
+                    $ReferenceTypeName = Get-CSharpModelName -Name $ReferenceTypeValue.Substring( $( $ReferenceTypeValue.LastIndexOf('/') ) + 1 )
                     $AdditionalPropertiesType = $DefinitionTypeNamePrefix + "$ReferenceTypeName"
                     $paramType = "System.Collections.Generic.Dictionary[[string],[$AdditionalPropertiesType]]"
                 }
@@ -812,7 +835,7 @@ function Get-ParamType
         # By applying the x-ms-client-flatten extension, you move the inner properties to the top level of your definition.
 
         $ReferenceParameterValue = $ParameterJsonObject.'$ref'
-        $ReferenceTypeName = $ReferenceParameterValue.Substring( $( $ReferenceParameterValue.LastIndexOf('/') ) + 1 )
+        $ReferenceTypeName = Get-CSharpModelName -Name $ReferenceParameterValue.Substring( $( $ReferenceParameterValue.LastIndexOf('/') ) + 1 )
         $ReferencedFunctionDetails = @{}
         if($DefinitionFunctionsDetails.ContainsKey($ReferenceTypeName))
         {
@@ -853,7 +876,7 @@ function Get-ParamType
             elseif($ReferenceParts[1] -eq 'Definitions')
             {
                 #/definitions/
-                $ReferenceTypeName = $ReferenceParts[2]
+                $ReferenceTypeName = Get-CSharpModelName -Name $ReferenceParts[2]
                 $paramType = $DefinitionTypeNamePrefix + $ReferenceTypeName
             }
         }
@@ -862,7 +885,7 @@ function Get-ParamType
             (Get-Member -InputObject $ParameterJsonObject.Schema -Name '$ref') -and ($ParameterJsonObject.Schema.'$ref') )
     {
         $ReferenceParameterValue = $ParameterJsonObject.Schema.'$ref'
-        $ReferenceTypeName = $ReferenceParameterValue.Substring( $( $ReferenceParameterValue.LastIndexOf('/') ) + 1 )
+        $ReferenceTypeName = Get-CSharpModelName -Name $ReferenceParameterValue.Substring( $( $ReferenceParameterValue.LastIndexOf('/') ) + 1 )
         $paramType = $DefinitionTypeNamePrefix + $ReferenceTypeName
     }
     else 
@@ -886,7 +909,7 @@ function Get-ParamType
             $ParameterJsonObject.'x-ms-enum' -and 
             ($ParameterJsonObject.'x-ms-enum'.modelAsString -eq $false))
         {
-            $paramType = $DefinitionTypeNamePrefix + $ParameterJsonObject.'x-ms-enum'.Name
+            $paramType = $DefinitionTypeNamePrefix + (Get-CSharpModelName -Name $ParameterJsonObject.'x-ms-enum'.Name)
         }
         else
         {
@@ -1258,7 +1281,7 @@ function Get-OutputType
         $ref = $schema.'$ref'
         if($ref.StartsWith("#/definitions"))
         {
-            $key = $ref.split("/")[-1]
+            $key = Get-CSharpModelName -Name $ref.split("/")[-1]
             if ($definitionList.ContainsKey($key))
             {
                 $definition = ($definitionList[$key]).Value
@@ -1284,10 +1307,9 @@ function Get-OutputType
                                 $defRef = $defValue.items.'$ref'
                                 if($ref.StartsWith("#/definitions")) 
                                 {
-                                    $defKey = $defRef.split("/")[-1]
+                                    $defKey = Get-CSharpModelName -Name $defRef.split("/")[-1]
                                     $fullPathDataType = "$ModelsNamespace.$defKey"
                                 }
-
                                 if(Get-member -InputObject $defValue -Name 'type') 
                                 {
                                     $defType = $defValue.type
@@ -1396,4 +1418,50 @@ function Get-Response
     $responseBody += $executionContext.InvokeCommand.ExpandString($responseBodySwitchCase)
     
     return $responseBody, $outputType
+}
+
+function Get-CSharpModelName
+{
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Name
+    )
+
+    if(-not $script:CSharpCodeNamer)
+    {
+        if(-not ('AutoRest.CSharp.CSharpCodeNamer' -as [Type])) {
+            Add-AutoRestTypes -AssemblyName 'AutoRest.CSharp.dll'
+        }
+
+        $script:CSharpCodeNamer = New-Object -TypeName 'AutoRest.CSharp.CSharpCodeNamer'
+    }
+
+    return $script:CSharpCodeNamer.GetTypeName($Name)
+}
+
+function Add-AutoRestTypes
+{
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]
+        $AssemblyName
+    )
+
+    $AutoRestToolsPath = Get-Command -Name 'AutoRest.exe' | 
+                            Select-Object -First 1 -ErrorAction Ignore | 
+                                ForEach-Object {Split-Path -LiteralPath $_.Source}
+
+    if (-not ($AutoRestToolsPath))
+    {
+        throw $LocalizedData.AutoRestNotInPath
+    }
+
+    $AssemblyFilePath = Join-Path -Path $AutoRestToolsPath -ChildPath $AssemblyName
+    if(-not $AssemblyFilePath -or -not (Test-Path -LiteralPath $AssemblyFilePath -PathType Leaf))
+    {
+        throw ($LocalizedData.PathNotFound -f $AssemblyFilePath)
+    }
+
+    Add-Type -LiteralPath $AssemblyFilePath
 }

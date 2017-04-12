@@ -241,6 +241,56 @@
                     }
                 }
             }
+        },
+        "/PathWithReservedKeywordTypes": {
+            "get": {
+                "summary": "List all cookies matching parameters",
+                "operationId": "PathWithReservedKeywordTypes_Get",
+                "description": "List all cookies matching parameters",
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/ApiVersionParameter"
+                    },
+                    {
+                        "$ref": "#/parameters/SubscriptionIdParameter"
+                    },
+                    {
+                        "name": "parameters",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/NamespaceList"
+                        },
+                        "description": "Group filtering parameters."
+                    },
+                    {
+                        "name": "parameterWithReservedKeywordType",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Namespace"
+                        },
+                        "description": "Group filtering parameters."
+                    }
+                ],
+                "tags": [
+                    "Cookies"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Namespace"
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -356,6 +406,52 @@
         "Object": {
             "type": "object",
             "properties": {}
+        },
+        "Namespace": {
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "readOnly": true,
+                    "description": "Resource name"
+                },
+                "provisioningState": {
+                    "type": "string",
+                    "readOnly": true,
+                    "x-nullable": false,
+                    "description": "The provisioned state of the resource",
+                    "enum": [
+                        "Invalid",
+                        "Creating",
+                        "Deleting",
+                        "Succeeded",
+                        "Failed",
+                        "Cancelled"
+                    ],
+                    "x-ms-enum": {
+                        "name": "enum",
+                        "modelAsString": false
+                    }
+                },
+                "createdTime": {
+                    "type": "string",
+                    "format": "date-time",
+                    "readOnly": true,
+                    "description": "Gets the created time."
+                }
+            },
+            "description": "Description of a namespace resource."
+        },
+        "NamespaceList": {
+            "properties": {
+                "value": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Namespace"
+                    },
+                    "description": "Result of the List Namespace operation."
+                }
+            },
+            "description": "The response of the List Namespace operation."
         }
     },
     "parameters": {
