@@ -299,6 +299,7 @@ function New-PSSwaggerModule
     }
     $swaggerDict = ConvertTo-SwaggerDictionary @ConvertToSwaggerDictionary_params
     $nameSpace = $swaggerDict['info'].NameSpace
+    $models = $swaggerDict['info'].Models
 
     if($PSVersionTable.PSVersion -lt '5.0.0') {
         if (-not $outputDirectory.EndsWith($Name, [System.StringComparison]::OrdinalIgnoreCase)) {
@@ -339,7 +340,8 @@ function New-PSSwaggerModule
             $jsonObject.Definitions.PSObject.Properties | ForEach-Object {
                 Get-SwaggerSpecDefinitionInfo -JsonDefinitionItemObject $_ `
                                             -Namespace $Namespace `
-                                            -DefinitionFunctionsDetails $DefinitionFunctionsDetails
+                                            -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
+                                            -Models $models
             }
         }
 
@@ -405,7 +407,8 @@ function New-PSSwaggerModule
 
     $FunctionsToExport += New-SwaggerDefinitionCommand -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
                                                        -SwaggerMetaDict $swaggerMetaDict `
-                                                       -NameSpace $nameSpace
+                                                       -NameSpace $nameSpace `
+                                                       -Models $models
 
     $RootModuleFilePath = Join-Path $outputDirectory "$Name.psm1"
     Out-File -FilePath $RootModuleFilePath `
