@@ -477,7 +477,7 @@ function ConvertTo-CsharpCode
     }
 
     $outputDirectory = $SwaggerMetaDict['outputDirectory']
-    $nameSpace = $SwaggerDict['info'].NameSpace
+    $nameSpace = $info.NameSpace
     $generatedCSharpPath = Join-Path -Path $outputDirectory -ChildPath "Generated.Csharp"
     $codeGenerator = "CSharp"
 
@@ -510,11 +510,43 @@ function ConvertTo-CsharpCode
         GeneratedCSharpPath = $generatedCSharpPath
     }
 
-    $null = & $autoRestExePath -AddCredentials -input $swaggerMetaDict['SwaggerSpecPath'] -CodeGenerator $codeGenerator -OutputDirectory $generatedCSharpPath -NameSpace $Namespace -Modeler $swaggerMetaDict['AutoRestModeler']
-    if ($LastExitCode)
-    {
-        throw $LocalizedData.AutoRestError
+    $tempCodeGenSettingsPath = ''
+    try {
+        if ($info.ContainsKey('CodeGenFileRequired') -and $info.CodeGenFileRequired) {
+            # Some settings need to be overwritten
+            # Write the following parameters: AddCredentials, CodeGenerator, Modeler
+            $tempCodeGenSettings = @{
+                AddCredentials = $true
+                CodeGenerator = $codeGenerator
+                Modeler = $swaggerMetaDict['AutoRestModeler']
+            }
+
+            $tempCodeGenSettingsPath = "$(Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath (Get-Random)).json"
+            $tempCodeGenSettings | ConvertTo-Json | Out-File -FilePath $tempCodeGenSettingsPath
+
+            $autoRestParams = @('-Input', $swaggerMetaDict['SwaggerSpecPath'], '-OutputDirectory', $generatedCSharpPath, '-Namespace', $NameSpace, '-CodeGenSettings', $tempCodeGenSettingsPath)
+        } else {
+            # None of the PSSwagger-required params are being overwritten, just call the CLI directly to avoid the extra disk op
+            $autoRestParams = @('-Input', $swaggerMetaDict['SwaggerSpecPath'], '-OutputDirectory', $generatedCSharpPath, '-Namespace', $NameSpace, '-AddCredentials', $true, '-CodeGenerator', $codeGenerator, '-Modeler', $swaggerMetaDict['AutoRestModeler'])
+        }
+
+        Write-Verbose -Message $LocalizedData.InvokingAutoRestWithParams
+        for ($i = 0; $i -lt $autoRestParams.Length; $i += 2) {
+            Write-Verbose -Message ($LocalizedData.AutoRestParam -f ($autoRestParams[$i], $autoRestParams[$i+1]))
+        }
+
+        $null = & $autoRestExePath $autoRestParams
+        if ($LastExitCode)
+        {
+            throw $LocalizedData.AutoRestError
+        }
     }
+    finally {
+        if ($tempCodeGenSettingsPath -and (Test-Path -Path $tempCodeGenSettingsPath)) {
+            $null = Remove-Item -Path $tempCodeGenSettingsPath -Force -ErrorAction Ignore
+        }
+    }
+    
 
     Write-Verbose -Message $LocalizedData.GenerateAssemblyFromCode
     if ($info.ContainsKey('CodeOutputDirectory') -and $info.CodeOutputDirectory) {

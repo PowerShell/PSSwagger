@@ -61,5 +61,8 @@ ConvertFrom-StringData @'
     DuplicateExpandedProperty=Duplicate expanded property name: '{0}'
     InvalidPathParameterType=Extracted an invalid parameter type '{0}' for parameter '{1}' in path operation.
     InvalidDefinitionParameterType=Extracted an invalid parameter type '{0}' for parameter '{1}' in definition '{2}'.
+    AutoRestParameterIgnored=The parameter '{0}' with value '{1}' specified in the Swagger specification will be overwritten by PSSwagger during code generation.
+    InvokingAutoRestWithParams=Invoking AutoRest.exe with the following parameters:
+    AutoRestParam=  {0} = {1}
 ###PSLOC
 '@
