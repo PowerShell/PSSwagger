@@ -64,5 +64,6 @@ ConvertFrom-StringData @'
     AutoRestParameterIgnored=The parameter '{0}' with value '{1}' specified in the Swagger specification will be overwritten by PSSwagger during code generation.
     InvokingAutoRestWithParams=Invoking AutoRest.exe with the following parameters:
     AutoRestParam=  {0} = {1}
+    OutputDirectoryMustBeEmpty=Code output directory '{0}' must not contain any .cs files in order for PSSwagger to correctly determine the files from which the SDK should be built.
 ###PSLOC
 '@

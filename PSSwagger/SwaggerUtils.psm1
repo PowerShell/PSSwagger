@@ -146,6 +146,9 @@ function Get-SwaggerInfo {
         if ($prop) {
             # When OutputDirectory is specified, we'll have to copy the code from here to the module directory later on
             $CodeOutputDirectory = $Info.'x-ms-code-generation-settings'.$prop
+            if ((Test-Path -Path $CodeOutputDirectory) -and (Get-ChildItem -Path (Join-Path -Path $CodeOutputDirectory -ChildPath "*.cs") -Recurse)) {
+                throw $LocalizedData.OutputDirectoryMustBeEmpty -f ($CodeOutputDirectory)
+            }
         }
 
         $prop = Test-PropertyWithAliases -InputObject $Info.'x-ms-code-generation-settings' -Aliases @('Namespace', 'n')
