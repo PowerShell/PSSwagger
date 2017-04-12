@@ -25,6 +25,9 @@ if(-not $script:IsCoreCLR)
     $script:PluralizationService = [System.Data.Entity.Design.PluralizationServices.PluralizationService]::CreateService([System.Globalization.CultureInfo]::CurrentCulture)
 }
 
+$script:IgnoredAutoRestParameters = @(@('Modeler', 'm'), @('AddCredentials'), @('CodeGenerator', 'g'))
+$script:PSSwaggerDefaultNamespace = "Microsoft.PowerShell"
+
 function ConvertTo-SwaggerDictionary {
     [CmdletBinding()]
     param(
@@ -54,7 +57,11 @@ function ConvertTo-SwaggerDictionary {
 
         [Parameter(Mandatory = $false)]
         [switch]
-        $AzureSpec
+        $AzureSpec,
+
+        [Parameter(Mandatory = $false)]
+        [switch]
+        $DisableVersionSuffix
     )
     
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -129,15 +136,53 @@ function Get-SwaggerInfo {
     }
 
     $infoTitle = $Info.title
-    
-    if((Get-Member -InputObject $Info -Name 'x-ms-code-generation-settings') -and 
-       (Get-Member -InputObject $Info.'x-ms-code-generation-settings' -Name 'Name') -and 
-       $Info.'x-ms-code-generation-settings'.Name)
-    { 
-        $infoName = $Info.'x-ms-code-generation-settings'.Name
+    $CodeOutputDirectory = ''
+    $infoName = ''
+    $NameSpace = ''
+    $codeGenFileRequired = $false
+    $modelsName = 'Models'
+    if(Get-Member -InputObject $Info -Name 'x-ms-code-generation-settings') {
+        $prop = Test-PropertyWithAliases -InputObject $Info.'x-ms-code-generation-settings' -Aliases @('ClientName', 'Name')
+        if ($prop) {
+            $infoName = $Info.'x-ms-code-generation-settings'.$prop
+        }
+
+        $prop = Test-PropertyWithAliases -InputObject $Info.'x-ms-code-generation-settings' -Aliases @('OutputDirectory', 'o', 'output')
+        if ($prop) {
+            # When OutputDirectory is specified, we'll have to copy the code from here to the module directory later on
+            $CodeOutputDirectory = $Info.'x-ms-code-generation-settings'.$prop
+            if ((Test-Path -Path $CodeOutputDirectory) -and (Get-ChildItem -Path (Join-Path -Path $CodeOutputDirectory -ChildPath "*.cs") -Recurse)) {
+                throw $LocalizedData.OutputDirectoryMustBeEmpty -f ($CodeOutputDirectory)
+            } else {
+                Write-Warning -Message ($LocalizedData.CodeDirectoryWillBeCreated -f $CodeOutputDirectory)
+            }
+        }
+
+        $prop = Test-PropertyWithAliases -InputObject $Info.'x-ms-code-generation-settings' -Aliases @('ModelsName', 'mname')
+        if ($prop) {
+            # When ModelsName is specified, this changes the subnamespace of the models from 'Models' to whatever is specified
+            $modelsName = $Info.'x-ms-code-generation-settings'.$prop
+        }
+
+        $prop = Test-PropertyWithAliases -InputObject $Info.'x-ms-code-generation-settings' -Aliases @('Namespace', 'n')
+        if ($prop) {
+            # When NameSpace is specified, this overrides our namespace
+            $NameSpace = $Info.'x-ms-code-generation-settings'.$prop
+            # Warn the user that custom namespaces are not recommended
+            Write-Warning -Message $LocalizedData.CustomNamespaceNotRecommended
+        }
+
+        # When the following values are specified, the property will be overwritten by PSSwagger using a CodeGenSettings file
+        foreach ($ignoredParameterAliases in $script:IgnoredAutoRestParameters) {
+            $prop = Test-PropertyWithAliases -InputObject $Info.'x-ms-code-generation-settings' -Aliases $ignoredParameterAliases
+            if ($prop) {
+                Write-Warning -Message ($LocalizedData.AutoRestParameterIgnored -f ($prop, $Info.'x-ms-code-generation-settings'.$prop))
+                $codeGenFileRequired = $true
+            }
+        }
     }
-    else
-    {
+
+    if (-not $infoName) {
         # Remove special characters as info name is used as client variable name in the generated commands.
         $infoName = ($infoTitle -replace '[^a-zA-Z0-9_]','')
     }
@@ -193,8 +238,11 @@ function Get-SwaggerInfo {
         }
     }
 
-    $NamespaceVersionSuffix = "v$("$ModuleVersion" -replace '\.','')"
-    $NameSpace = "Microsoft.PowerShell.$ModuleName.$NamespaceVersionSuffix"
+    if (-not $NameSpace) {
+        # Default namespace supports sxs
+        $NamespaceVersionSuffix = "v$("$ModuleVersion" -replace '\.','')"
+        $NameSpace = "$script:PSSwaggerDefaultNamespace.$ModuleName.$NamespaceVersionSuffix"
+    }
 
     # AutoRest generates client name with 'Client' appended to info title when a NameSpace part is same as the info name.
     if($NameSpace.Split('.', [System.StringSplitOptions]::RemoveEmptyEntries) -contains $infoName)
@@ -215,7 +263,31 @@ function Get-SwaggerInfo {
         ProjectUri = $ProjectUri
         LicenseUri = $LicenseUri
         LicenseName = $LicenseName
+        CodeOutputDirectory = $CodeOutputDirectory
+        CodeGenFileRequired = $codeGenFileRequired
+        Models = $modelsName
     }
+}
+
+function Test-PropertyWithAliases {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [PSCustomObject]
+        $InputObject,
+
+        [Parameter(Mandatory=$true)]
+        [string[]]
+        $Aliases
+    )
+
+    foreach ($alias in $Aliases) {
+        if ((Get-Member -InputObject $InputObject -Name $alias) -and $InputObject.$alias) {
+            return $alias
+        }
+    }
+
+    return $null
 }
 
 function Get-SwaggerParameters {
@@ -296,7 +368,7 @@ function Get-SwaggerParameters {
 
         $GetParamTypeParams = @{
             ParameterJsonObject = $GPJsonValueObject
-            NameSpace = $Info.NameSpace
+            ModelsNameSpace = "$($Info.NameSpace).$($Info.Models)"
             ParameterName = $parameterName
             DefinitionFunctionsDetails = $DefinitionFunctionsDetails
         }
@@ -430,7 +502,8 @@ function Get-ParameterDetails
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
 
     $NameSpace = $SwaggerDict['Info'].NameSpace
-    $DefinitionTypeNamePrefix = "$Namespace.Models."
+    $Models = $SwaggerDict['Info'].Models
+    $DefinitionTypeNamePrefix = "$Namespace.$Models."
     $parameterName = ''        
     if ((Get-Member -InputObject $ParameterJsonObject -Name 'x-ms-client-name') -and $ParameterJsonObject.'x-ms-client-name') {
         $parameterName = Get-PascalCasedString -Name $ParameterJsonObject.'x-ms-client-name'
@@ -441,11 +514,12 @@ function Get-ParameterDetails
    
     $GetParamTypeParameters = @{
         ParameterJsonObject = $ParameterJsonObject
-        NameSpace = $NameSpace
+        ModelsNamespace = "$NameSpace.$Models"
         ParameterName = $parameterName
         DefinitionFunctionsDetails = $DefinitionFunctionsDetails
         SwaggerDict = $SwaggerDict
     }
+
     $paramTypeObject = Get-ParamType @GetParamTypeParameters
 
     # Swagger Path Operations can be defined with reference to the global method based parameters.
@@ -648,7 +722,7 @@ function Get-ParamType
 
         [Parameter(Mandatory=$true)]
         [string]
-        $NameSpace,
+        $ModelsNamespace,
 
         [Parameter(Mandatory=$true)]
         [string]
@@ -666,7 +740,7 @@ function Get-ParamType
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
 
-    $DefinitionTypeNamePrefix = "$Namespace.Models."
+    $DefinitionTypeNamePrefix = "$ModelsNamespace."
     $paramType = ""
     $ValidateSetString = $null
     $isParameter = $true
@@ -1113,6 +1187,7 @@ function Get-PathFunctionBody
                                 responses = $Responses.PSObject.Properties
                                 namespace = $Namespace
                                 definitionList = $DefinitionList
+                                Models = $Info.Models
                             }
 
         $responseBody, $currentOutputTypeBlock = Get-Response @responseBodyParams
@@ -1170,7 +1245,7 @@ function Get-OutputType
 
         [Parameter(Mandatory=$true)]
         [string]
-        $NameSpace, 
+        $ModelsNamespace,
 
         [Parameter(Mandatory=$true)]
         [PSCustomObject]
@@ -1210,7 +1285,7 @@ function Get-OutputType
                                 if($ref.StartsWith("#/definitions")) 
                                 {
                                     $defKey = $defRef.split("/")[-1]
-                                    $fullPathDataType = $NameSpace + ".Models.$defKey"
+                                    $fullPathDataType = "$ModelsNamespace.$defKey"
                                 }
 
                                 if(Get-member -InputObject $defValue -Name 'type') 
@@ -1230,12 +1305,12 @@ function Get-OutputType
                             }
                             else
                             { # if this datatype has value, but no $ref and items
-                                $fullPathDataType = $NameSpace + ".Models.$key"
+                                $fullPathDataType = "$ModelsNamespace.$key"
                             }
                         }
                         else
                         { # if this datatype is not a collection of another $ref
-                            $fullPathDataType = $NameSpace + ".Models.$key"
+                            $fullPathDataType = "$ModelsNamespace.$key"
                         }
                     }
 
@@ -1264,6 +1339,10 @@ function Get-Response
         [string]
         $NameSpace, 
 
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Models, 
+
         [Parameter(Mandatory=$true)]        
         [hashtable]
         $DefinitionList
@@ -1287,7 +1366,7 @@ function Get-Response
                     # Add the [OutputType] for the function
                     $OutputTypeParams = @{
                         "schema"  = $value.schema
-                        "namespace" = $NameSpace 
+                        "ModelsNamespace" = "$NameSpace.$Models"
                         "definitionList" = $definitionList
                     }
 

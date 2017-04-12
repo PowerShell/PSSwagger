@@ -61,5 +61,11 @@ ConvertFrom-StringData @'
     DuplicateExpandedProperty=Duplicate expanded property name: '{0}'
     InvalidPathParameterType=Extracted an invalid parameter type '{0}' for parameter '{1}' in path operation.
     InvalidDefinitionParameterType=Extracted an invalid parameter type '{0}' for parameter '{1}' in definition '{2}'.
+    AutoRestParameterIgnored=The parameter '{0}' with value '{1}' specified in the Swagger specification will be overwritten by PSSwagger during code generation.
+    InvokingAutoRestWithParams=Invoking AutoRest.exe with the following parameters:
+    AutoRestParam=  {0} = {1}
+    OutputDirectoryMustBeEmpty=Code output directory '{0}' must not contain any .cs files in order for PSSwagger to correctly determine the files from which the SDK should be built.
+    CustomNamespaceNotRecommended=Custom namespaces are not recommended when using PSSwagger, as the generated modules may not support side-by-side.
+    CodeDirectoryWillBeCreated=Code output directory '{0}' will be created by AutoRest.exe and contain unused generated code. You may delete this directory after the module has finished generating if you wish.
 ###PSLOC
 '@
