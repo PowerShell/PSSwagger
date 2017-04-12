@@ -137,9 +137,8 @@ function Get-SwaggerSpecDefinitionInfo
         $GetDefinitionParameterType_params = @{
             ParameterJsonObject = $JsonDefinitionItemObject.value
             DefinitionName = $Name
-            Namespace = $NameSpace
+            ModelsNamespace = "$NameSpace.$Models"
             DefinitionFunctionsDetails = $DefinitionFunctionsDetails
-            Models = $Models
         }
         $DefinitionType = Get-DefinitionParameterType @GetDefinitionParameterType_params
     }
@@ -234,9 +233,8 @@ function Get-DefinitionParameters
                                                                  -DefinitionName $DefinitionName `
                                                                  -ParameterName $ParameterName `
                                                                  -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
-                                                                 -Namespace $NameSpace `
-                                                                 -ParametersTable $ParametersTable `
-                                                                 -Models $Models
+                                                                 -ModelsNamespace "$NameSpace.Models" `
+                                                                 -ParametersTable $ParametersTable
             
                     if ((Get-Member -InputObject $JsonDefinitionItemObject.Value -Name 'Required') -and 
                         $JsonDefinitionItemObject.Value.Required -and
@@ -300,11 +298,7 @@ function Get-DefinitionParameterType
 
         [Parameter(Mandatory=$true)]
         [string] 
-        $Namespace,
-
-        [Parameter(Mandatory=$true)]
-        [string] 
-        $Models,
+        $ModelsNamespace,
 
         [Parameter(Mandatory=$false)]
         [PSCustomObject] 
@@ -313,7 +307,7 @@ function Get-DefinitionParameterType
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
 
-    $DefinitionTypeNamePrefix = "$Namespace.$Models."
+    $DefinitionTypeNamePrefix = "$ModelsNamespace."
 
     $ParameterType = $null
 
@@ -563,8 +557,7 @@ function New-SwaggerDefinitionCommand
             if ($FunctionDetails.ContainsKey('GenerateDefinitionCmdlet') -and ($FunctionDetails['GenerateDefinitionCmdlet'] -eq $true)) {
                 $FunctionsToExport += New-SwaggerSpecDefinitionCommand -FunctionDetails $FunctionDetails `
                                                                     -GeneratedCommandsPath $SwaggerDefinitionCommandsPath `
-                                                                    -Namespace $Namespace `
-                                                                    -Models $Models
+                                                                    -ModelsNamespace "$Namespace.$Models"
             }
 
             New-SwaggerDefinitionFormatFile -FunctionDetails $FunctionDetails `
@@ -690,11 +683,7 @@ function New-SwaggerSpecDefinitionCommand
 
         [Parameter(Mandatory=$true)]
         [string] 
-        $Namespace,
-
-        [Parameter(Mandatory=$true)]
-        [string] 
-        $Models 
+        $ModelsNamespace
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -707,7 +696,7 @@ function New-SwaggerSpecDefinitionCommand
     [string]$paramHelp = ""
     $paramblock = ""
     $body = ""
-    $DefinitionTypeNamePrefix = "$Namespace.$Models."
+    $DefinitionTypeNamePrefix = "$ModelsNamespace."
     $ParameterSetPropertyString = ""
     $parameterDefaultValueOption = ""
 

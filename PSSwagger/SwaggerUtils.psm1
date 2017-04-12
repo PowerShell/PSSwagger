@@ -236,7 +236,7 @@ function Get-SwaggerInfo {
     {
         $infoName = $infoName + 'Client'
     }
-    
+
     return @{
         InfoVersion = $infoVersion
         InfoTitle = $infoTitle
@@ -355,10 +355,9 @@ function Get-SwaggerParameters {
 
         $GetParamTypeParams = @{
             ParameterJsonObject = $GPJsonValueObject
-            NameSpace = $Info.NameSpace
+            ModelsNameSpace = "$($Info.NameSpace).$($Info.Models)"
             ParameterName = $parameterName
             DefinitionFunctionsDetails = $DefinitionFunctionsDetails
-            Models = $Info.Models
         }
 
         $paramTypeObject = Get-ParamType @GetParamTypeParams
@@ -502,11 +501,10 @@ function Get-ParameterDetails
    
     $GetParamTypeParameters = @{
         ParameterJsonObject = $ParameterJsonObject
-        NameSpace = $NameSpace
+        ModelsNamespace = "$NameSpace.$Models"
         ParameterName = $parameterName
         DefinitionFunctionsDetails = $DefinitionFunctionsDetails
         SwaggerDict = $SwaggerDict
-        Models = $Models
     }
 
     $paramTypeObject = Get-ParamType @GetParamTypeParameters
@@ -711,11 +709,7 @@ function Get-ParamType
 
         [Parameter(Mandatory=$true)]
         [string]
-        $NameSpace,
-
-        [Parameter(Mandatory=$true)]
-        [string]
-        $Models,
+        $ModelsNamespace,
 
         [Parameter(Mandatory=$true)]
         [string]
@@ -733,7 +727,7 @@ function Get-ParamType
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
 
-    $DefinitionTypeNamePrefix = "$Namespace.$Models."
+    $DefinitionTypeNamePrefix = "$ModelsNamespace."
     $paramType = ""
     $ValidateSetString = $null
     $isParameter = $true
@@ -1238,11 +1232,7 @@ function Get-OutputType
 
         [Parameter(Mandatory=$true)]
         [string]
-        $NameSpace,
-        
-        [Parameter(Mandatory=$true)]
-        [string]
-        $Models, 
+        $ModelsNamespace,
 
         [Parameter(Mandatory=$true)]
         [PSCustomObject]
@@ -1282,7 +1272,7 @@ function Get-OutputType
                                 if($ref.StartsWith("#/definitions")) 
                                 {
                                     $defKey = $defRef.split("/")[-1]
-                                    $fullPathDataType = $NameSpace + ".$Models.$defKey"
+                                    $fullPathDataType = "$ModelsNamespace.$defKey"
                                 }
 
                                 if(Get-member -InputObject $defValue -Name 'type') 
@@ -1302,12 +1292,12 @@ function Get-OutputType
                             }
                             else
                             { # if this datatype has value, but no $ref and items
-                                $fullPathDataType = $NameSpace + ".$Models.$key"
+                                $fullPathDataType = "$ModelsNamespace.$key"
                             }
                         }
                         else
                         { # if this datatype is not a collection of another $ref
-                            $fullPathDataType = $NameSpace + ".$Models.$key"
+                            $fullPathDataType = "$ModelsNamespace.$key"
                         }
                     }
 
@@ -1363,9 +1353,8 @@ function Get-Response
                     # Add the [OutputType] for the function
                     $OutputTypeParams = @{
                         "schema"  = $value.schema
-                        "namespace" = $NameSpace 
+                        "ModelsNamespace" = "$NameSpace.$Models "
                         "definitionList" = $definitionList
-                        "Models" = $Models
                     }
 
                     $outputType = Get-OutputType @OutputTypeParams
