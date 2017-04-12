@@ -25,7 +25,8 @@ if(-not $script:IsCoreCLR)
     $script:PluralizationService = [System.Data.Entity.Design.PluralizationServices.PluralizationService]::CreateService([System.Globalization.CultureInfo]::CurrentCulture)
 }
 
-$script:IgnoredAutoRestParameters = @(@('Modeler', 'm'), @('AddCredentials'), @('CodeGenerator', 'g'), @('Namespace', 'n'))
+$script:IgnoredAutoRestParameters = @(@('Modeler', 'm'), @('AddCredentials'), @('CodeGenerator', 'g'))
+$script:PSSwaggerDefaultNamespace = "Microsoft.PowerShell"
 
 function ConvertTo-SwaggerDictionary {
     [CmdletBinding()]
@@ -56,7 +57,11 @@ function ConvertTo-SwaggerDictionary {
 
         [Parameter(Mandatory = $false)]
         [switch]
-        $AzureSpec
+        $AzureSpec,
+
+        [Parameter(Mandatory = $false)]
+        [switch]
+        $DisableVersionSuffix
     )
     
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -133,6 +138,7 @@ function Get-SwaggerInfo {
     $infoTitle = $Info.title
     $CodeOutputDirectory = ''
     $infoName = ''
+    $NameSpace = ''
     $codeGenFileRequired = $false
     $modelsName = 'Models'
     if(Get-Member -InputObject $Info -Name 'x-ms-code-generation-settings') {
@@ -154,6 +160,14 @@ function Get-SwaggerInfo {
         if ($prop) {
             # When ModelsName is specified, this changes the subnamespace of the models from 'Models' to whatever is specified
             $modelsName = $Info.'x-ms-code-generation-settings'.$prop
+        }
+
+        $prop = Test-PropertyWithAliases -InputObject $Info.'x-ms-code-generation-settings' -Aliases @('Namespace', 'n')
+        if ($prop) {
+            # When NameSpace is specified, this overrides our namespace
+            $NameSpace = $Info.'x-ms-code-generation-settings'.$prop
+            # Warn the user that custom namespaces are not recommended
+            Write-Warning -Message $LocalizedData.CustomNamespaceNotRecommended
         }
 
         # When the following values are specified, the property will be overwritten by PSSwagger using a CodeGenSettings file
@@ -222,8 +236,11 @@ function Get-SwaggerInfo {
         }
     }
 
-    $NamespaceVersionSuffix = "v$("$ModuleVersion" -replace '\.','')"
-    $NameSpace = "Microsoft.PowerShell.$ModuleName.$NamespaceVersionSuffix"
+    if (-not $NameSpace) {
+        # Default namespace supports sxs
+        $NamespaceVersionSuffix = "v$("$ModuleVersion" -replace '\.','')"
+        $NameSpace = "$script:PSSwaggerDefaultNamespace.$ModuleName.$NamespaceVersionSuffix"
+    }
 
     # AutoRest generates client name with 'Client' appended to info title when a NameSpace part is same as the info name.
     if($NameSpace.Split('.', [System.StringSplitOptions]::RemoveEmptyEntries) -contains $infoName)

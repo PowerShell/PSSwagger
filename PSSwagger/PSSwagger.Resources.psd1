@@ -65,5 +65,6 @@ ConvertFrom-StringData @'
     InvokingAutoRestWithParams=Invoking AutoRest.exe with the following parameters:
     AutoRestParam=  {0} = {1}
     OutputDirectoryMustBeEmpty=Code output directory '{0}' must not contain any .cs files in order for PSSwagger to correctly determine the files from which the SDK should be built.
+    CustomNamespaceNotRecommended=Custom namespaces are not recommended when using PSSwagger, as the generated modules may not support side-by-side.
 ###PSLOC
 '@

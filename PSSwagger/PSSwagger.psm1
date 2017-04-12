@@ -528,7 +528,7 @@ function ConvertTo-CsharpCode
             $tempCodeGenSettingsPath = "$(Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath (Get-Random)).json"
             $tempCodeGenSettings | ConvertTo-Json | Out-File -FilePath $tempCodeGenSettingsPath
 
-            $autoRestParams = @('-Input', $swaggerMetaDict['SwaggerSpecPath'], '-Namespace', $NameSpace, '-CodeGenSettings', $tempCodeGenSettingsPath)
+            $autoRestParams = @('-Input', $swaggerMetaDict['SwaggerSpecPath'], '-OutputDirectory', $generatedCSharpPath, '-Namespace', $NameSpace, '-CodeGenSettings', $tempCodeGenSettingsPath)
         } else {
             # None of the PSSwagger-required params are being overwritten, just call the CLI directly to avoid the extra disk op
             $autoRestParams = @('-Input', $swaggerMetaDict['SwaggerSpecPath'], '-OutputDirectory', $generatedCSharpPath, '-Namespace', $NameSpace, '-AddCredentials', $true, '-CodeGenerator', $codeGenerator, '-Modeler', $swaggerMetaDict['AutoRestModeler'])
