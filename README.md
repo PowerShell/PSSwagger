@@ -97,6 +97,15 @@ If the module's full CLR assembly is precompiled, the symbols folder will contai
 1. Generated.cs - The C# code used to generate the assembly
 2. *.pdb - The corresponding PDB file that defines Generated.cs as the source file
 
+# Paging
+When the "x-ms-pageable" extension is specified in the Swagger spec, paging is enabled in the generated module. This is true for both fragment URLs (when operationName is specified) and full URLs (when operationName is not specified).
+
+A cmdlet that supports paging will have two additional optional parameters:
+-Paging: A switch parameter that specifies the cmdlet should only return the first page. To access the items, use $returnValue.Page
+-Page: Takes as input the last page return value and outputs the next page return value (again, to access the items, use $returnValue.Page). If the return value is null, no additional pages exist.
+
+If -Paging is not specified and the cmdlet supports paging, the cmdlet will automatically unroll all pages. Assigning the result to a variable will result in all items being retrieved. Piping the cmdlet will result in pages being retrieved on-demand.
+
 ## Upcoming additions
 
 1. Enabe PowerShell Best practices
