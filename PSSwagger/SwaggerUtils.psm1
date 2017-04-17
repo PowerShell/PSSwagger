@@ -527,7 +527,8 @@ function Get-ParameterDetails
     $NameSpace = $SwaggerDict['Info'].NameSpace
     $Models = $SwaggerDict['Info'].Models
     $DefinitionTypeNamePrefix = "$Namespace.$Models."
-    $parameterName = ''        
+    $parameterName = ''
+    $x_ms_skip_url_encoding = $false
     if ((Get-Member -InputObject $ParameterJsonObject -Name 'x-ms-client-name') -and $ParameterJsonObject.'x-ms-client-name') {
         $parameterName = Get-PascalCasedString -Name $ParameterJsonObject.'x-ms-client-name'
     } elseif ((Get-Member -InputObject $ParameterJsonObject -Name 'Name') -and $ParameterJsonObject.Name)
@@ -1206,18 +1207,57 @@ function Get-PathFunctionBody
         $methodName = $parameterSetDetail.MethodName
         $operations = $parameterSetDetail.Operations
         $ParamList = $parameterSetDetail.ExpandedParamList
-        $responseBodyParams = @{
-                                responses = $Responses.PSObject.Properties
-                                namespace = $Namespace
-                                definitionList = $DefinitionList
-                                Models = $Info.Models
-                            }
+        $Cmdlet = ''
+        if ($parameterSetDetail.ContainsKey('Cmdlet') -and $parameterSetDetail.Cmdlet) {
+            $Cmdlet = $parameterSetDetail.Cmdlet
+        }
 
-        $responseBody, $currentOutputTypeBlock = Get-Response @responseBodyParams
+        $CmdletArgs = ''
+        if ($parameterSetDetail.ContainsKey('CmdletArgs') -and $parameterSetDetail.CmdletArgs) {
+            $CmdletArgs = $parameterSetDetail.CmdletArgs
+        }
 
-        # For now, use the first non-empty output type
-        if ((-not $outputTypeBlock) -and $currentOutputTypeBlock) {
-            $outputTypeBlock = $currentOutputTypeBlock
+        $CmdletParameter = ''
+        if ($parameterSetDetail.ContainsKey('CmdletParameter') -and $parameterSetDetail.CmdletParameter) {
+            $CmdletParameter = $parameterSetDetail.CmdletParameter
+        }
+
+        if ($Responses) {
+            $responseBodyParams = @{
+                                    responses = $Responses.PSObject.Properties
+                                    namespace = $Namespace
+                                    definitionList = $DefinitionList
+                                    Models = $Info.Models
+                                }
+
+            $responseBody, $currentOutputTypeBlock = Get-Response @responseBodyParams
+
+            # For now, use the first non-empty output type
+            if ((-not $outputTypeBlock) -and $currentOutputTypeBlock) {
+                $outputTypeBlock = $currentOutputTypeBlock
+            }
+        }
+
+        if ($methodName) {
+            $methodBlock = $executionContext.InvokeCommand.ExpandString($methodBlockFunctionCall)
+        } else {
+            $methodBlock = $executionContext.InvokeCommand.ExpandString($methodBlockCmdletCall)
+        }
+        $additionalConditionStart = ''
+        $additionalConditionEnd = ''
+        if ($parameterSetDetail.ContainsKey('AdditionalConditions') -and $parameterSetDetail.AdditionalConditions) {
+            if ($parameterSetDetail.AdditionalConditions.Count -eq 1) {
+                $additionalConditionStart = "      if ($($parameterSetDetail.AdditionalConditions[0])) {$([Environment]::NewLine)"
+                $additionalConditionEnd = "$([Environment]::NewLine)      } else { `$taskResult = `$null }"
+            } elseif ($parameterSetDetail.AdditionalConditions.Count -gt 1) {
+                $additionalConditionStart = "      if ("
+                foreach ($condition in $parameterSetDetail.AdditionalConditions) {
+                    $additionalConditionStart += "($condition) -and"
+                }
+                $additionalConditionStart = $additionalConditionStart.Substring(0, $additionalConditionStart.Length-5)
+                $additionalConditionStart = ") {$([Environment]::NewLine)"
+                $additionalConditionEnd = "$([Environment]::NewLine)      } else { `$taskResult = `$null }"
+            }
         }
 
         if ($parameterSetBasedMethodStr) {

@@ -21,8 +21,7 @@ $parameterAttributeString = '[Parameter(Mandatory = $isParamMandatory$ParameterS
 $parameterDefString = @'
     
         $AllParameterSetsString$ValidateSetDefinition
-        [$paramType]
-        $paramName$parameterDefaultValueOption,
+        $paramType$paramName$parameterDefaultValueOption,
 
 '@
 
@@ -178,33 +177,33 @@ $functionBodyStr = @'
 
 $parameterSetBasedMethodStrIfCase = @'
 if ('$operationId' -eq `$PsCmdlet.ParameterSetName) {
-        Write-Verbose -Message 'Performing operation $methodName on $clientName.'
-        `$taskResult = $clientName$operations.$methodName($ParamList)
+$additionalConditionStart$methodBlock$additionalConditionEnd
     }
 '@
 
 $parameterSetBasedMethodStrElseIfCase = @'
  elseif ('$operationId' -eq `$PsCmdlet.ParameterSetName ) {
-        Write-Verbose -Message 'Performing operation $methodName on $clientName.'
-        `$taskResult = $clientName$operations.$methodName($ParamList)
+$additionalConditionStart$methodBlock$additionalConditionEnd
     }
 '@
 
-$PathFunctionBodyAsJob = @'
-Write-Verbose -Message "Waiting for the operation to complete."
+$methodBlockFunctionCall = @'
+        Write-Verbose -Message 'Performing operation $methodName on $clientName.'
+        `$taskResult = $clientName$operations.$methodName($ParamList)
+'@
 
-    $PSSwaggerJobScriptBlock = {
-        [CmdletBinding()]
-        param(    
-            [Parameter(Mandatory = $true)]
-            [System.Threading.Tasks.Task]
-            $TaskResult
-        )
+$methodBlockCmdletCall = @'
+        Write-Verbose -Message 'Calling cmdlet $Cmdlet.'
+        $Cmdlet $CmdletArgs
+        `$taskResult = `$null
+'@
 
+$getTaskResultBlockWithPaging = @'
+$result = $null
         $ErrorActionPreference = 'Stop'
-        
-        $null = $TaskResult.AsyncWaitHandle.WaitOne()
-        
+                    
+        $null = $taskResult.AsyncWaitHandle.WaitOne()
+                    
         Write-Debug -Message "$($taskResult | Out-String)"
 
         if($taskResult.IsFaulted)
@@ -222,70 +221,115 @@ Write-Verbose -Message "Waiting for the operation to complete."
             Write-Verbose -Message 'Operation completed successfully.'
 
             if($taskResult.Result -and
-               (Get-Member -InputObject $taskResult.Result -Name 'Body') -and
-               $taskResult.Result.Body)
+                (Get-Member -InputObject $taskResult.Result -Name 'Body') -and
+                $taskResult.Result.Body)
+            {
+                $result = $taskResult.Result.Body
+                Write-Verbose -Message "$($result | Out-String)"
+                if ($Paging) { @{ Page = $result } } else { $result }
+            }
+        }
+'@
+
+$getTaskResultBlockNoPaging = @'
+$result = $null
+        $ErrorActionPreference = 'Stop'
+                    
+        $null = $taskResult.AsyncWaitHandle.WaitOne()
+                    
+        Write-Debug -Message "$($taskResult | Out-String)"
+
+        if($taskResult.IsFaulted)
+        {
+            Write-Verbose -Message 'Operation failed.'
+            Throw "$($taskResult.Exception.InnerExceptions | Out-String)"
+        } 
+        elseif ($taskResult.IsCanceled)
+        {
+            Write-Verbose -Message 'Operation got cancelled.'
+            Throw 'Operation got cancelled.'
+        }
+        else
+        {
+            Write-Verbose -Message 'Operation completed successfully.'
+
+            if($taskResult.Result -and
+                (Get-Member -InputObject $taskResult.Result -Name 'Body') -and
+                $taskResult.Result.Body)
             {
                 $result = $taskResult.Result.Body
                 Write-Verbose -Message "$($result | Out-String)"
                 $result
             }
         }
+'@
+
+$PathFunctionBodyAsJob = @'
+Write-Verbose -Message "Waiting for the operation to complete."
+
+    `$PSSwaggerJobScriptBlock = {
+        [CmdletBinding()]
+        param(    
+            [Parameter(Mandatory = `$true)]
+            [System.Threading.Tasks.Task]
+            `$TaskResult
+        )
+        if (`$TaskResult) {
+            $getTaskResult
+            $pagingBlock
+        }
     }
 
-    $PSCommonParameters = Get-PSCommonParameters -CallerPSBoundParameters $PSBoundParameters
+    `$PSCommonParameters = Get-PSCommonParameters -CallerPSBoundParameters `$PSBoundParameters
 
-    if($AsJob)
+    if(`$AsJob)
     {
-        $ScriptBlockParameters = New-Object -TypeName 'System.Collections.Generic.Dictionary[string,object]'
-        $ScriptBlockParameters['TaskResult'] = $TaskResult
-        $ScriptBlockParameters['AsJob'] = $AsJob
-        $PSCommonParameters.GetEnumerator() | ForEach-Object { $ScriptBlockParameters[$_.Name] = $_.Value }
+        `$ScriptBlockParameters = New-Object -TypeName 'System.Collections.Generic.Dictionary[string,object]'
+        `$ScriptBlockParameters['TaskResult'] = `$TaskResult
+        `$ScriptBlockParameters['AsJob'] = `$AsJob
+        `$PSCommonParameters.GetEnumerator() | ForEach-Object { `$ScriptBlockParameters[`$_.Name] = `$_.Value }
 
-        Invoke-SwaggerCommandUtility -ScriptBlock $PSSwaggerJobScriptBlock `
-                                     -CallerPSBoundParameters $ScriptBlockParameters `
-                                     -CallerPSCmdlet $PSCmdlet `
+        Invoke-SwaggerCommandUtility -ScriptBlock `$PSSwaggerJobScriptBlock ``
+                                     -CallerPSBoundParameters `$ScriptBlockParameters ``
+                                     -CallerPSCmdlet `$PSCmdlet ``
                                      @PSCommonParameters
     }
     else
     {
-        Invoke-Command -ScriptBlock $PSSwaggerJobScriptBlock `
-                       -ArgumentList $taskResult `
+        Invoke-Command -ScriptBlock `$PSSwaggerJobScriptBlock ``
+                       -ArgumentList `$taskResult ``
                        @PSCommonParameters
     }
 '@
 
 $PathFunctionBodySynch = @'
-Write-Verbose -Message "Waiting for the operation to complete."
-
-    $ErrorActionPreference = 'Stop'
-        
-    $null = $taskResult.AsyncWaitHandle.WaitOne()
-        
-    Write-Debug -Message "$($taskResult | Out-String)"
-
-    if($taskResult.IsFaulted)
-    {
-        Write-Verbose -Message 'Operation failed.'
-        Throw "$($taskResult.Exception.InnerExceptions | Out-String)"
-    } 
-    elseif ($taskResult.IsCanceled)
-    {
-        Write-Verbose -Message 'Operation got cancelled.'
-        Throw 'Operation got cancelled.'
+if (`$TaskResult) {
+        $getTaskResult
+        $pagingBlock
     }
-    else
-    {
-        Write-Verbose -Message 'Operation completed successfully.'
+'@
 
-        if($taskResult.Result -and
-            (Get-Member -InputObject $taskResult.Result -Name 'Body') -and
-            $taskResult.Result.Body)
-        {
-            $result = $taskResult.Result.Body
-            Write-Verbose -Message "$($result | Out-String)"
-            $result
+$PagingBlockStrFunctionCall = @'
+    
+        if (-not `$Paging) {
+            Write-Verbose -Message 'Flattening paged results.'
+            while (`$result -and `$result.NextPageLink) {
+                Write-Debug -Message "Retrieving next page: `$(`$result.NextPageLink)"
+                `$taskResult = $clientName$pagingOperations.$pagingOperationName(`$result.NextPageLink)
+                $getTaskResult
+            }
         }
-    }
+'@
+
+$PagingBlockStrCmdletCall = @'
+    
+        if (-not `$Paging) {
+            Write-Verbose -Message 'Flattening paged results.'
+            while (`$result -and `$result.NextPageLink) {
+                Write-Debug -Message "Retrieving next page: `$(`$result.NextPageLink)"
+                $Cmdlet $CmdletArgs
+            }
+        }
 '@
 
 $ValidateSetDefinitionString = @'
