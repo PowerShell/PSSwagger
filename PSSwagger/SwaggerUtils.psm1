@@ -528,7 +528,6 @@ function Get-ParameterDetails
     $Models = $SwaggerDict['Info'].Models
     $DefinitionTypeNamePrefix = "$Namespace.$Models."
     $parameterName = ''
-    $x_ms_skip_url_encoding = $false
     if ((Get-Member -InputObject $ParameterJsonObject -Name 'x-ms-client-name') -and $ParameterJsonObject.'x-ms-client-name') {
         $parameterName = Get-PascalCasedString -Name $ParameterJsonObject.'x-ms-client-name'
     } elseif ((Get-Member -InputObject $ParameterJsonObject -Name 'Name') -and $ParameterJsonObject.Name)
