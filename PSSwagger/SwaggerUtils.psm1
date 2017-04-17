@@ -1430,14 +1430,26 @@ function Get-CSharpModelName
 
     if(-not $script:CSharpCodeNamer)
     {
-        if(-not ('AutoRest.CSharp.CSharpCodeNamer' -as [Type])) {
-            Add-AutoRestTypes -AssemblyName 'AutoRest.CSharp.dll'
-        }
+        Add-AutoRestTypes -AssemblyName 'AutoRest.CSharp.dll'
 
-        $script:CSharpCodeNamer = New-Object -TypeName 'AutoRest.CSharp.CSharpCodeNamer'
+        if(('AutoRest.CSharp.CSharpCodeNamer' -as [Type]))
+        {
+            $script:CSharpCodeNamer = New-Object -TypeName 'AutoRest.CSharp.CSharpCodeNamer'
+        }
+        else
+        {
+            $script:CSharpCodeNamer = New-Object -TypeName 'AutoRest.CSharp.CodeNamerCs'
+        }
     }
 
-    return $script:CSharpCodeNamer.GetTypeName($Name)
+    if($script:CSharpCodeNamer)
+    {
+        return $script:CSharpCodeNamer.GetTypeName($Name)
+    }
+    else
+    {
+        return $Name
+    }
 }
 
 function Add-AutoRestTypes
@@ -1448,20 +1460,24 @@ function Add-AutoRestTypes
         $AssemblyName
     )
 
-    $AutoRestToolsPath = Get-Command -Name 'AutoRest.exe' | 
-                            Select-Object -First 1 -ErrorAction Ignore | 
-                                ForEach-Object {Split-Path -LiteralPath $_.Source}
-
-    if (-not ($AutoRestToolsPath))
+    $AutoRestAssembly = ([System.AppDomain]::CurrentDomain.GetAssemblies()).Modules | Where-Object {$_.Name -eq $AssemblyName}
+    if(-not $AutoRestAssembly)
     {
-        throw $LocalizedData.AutoRestNotInPath
-    }
+        $AutoRestToolsPath = Get-Command -Name 'AutoRest.exe' | 
+                                Select-Object -First 1 -ErrorAction Ignore | 
+                                    ForEach-Object {Split-Path -LiteralPath $_.Source}
 
-    $AssemblyFilePath = Join-Path -Path $AutoRestToolsPath -ChildPath $AssemblyName
-    if(-not $AssemblyFilePath -or -not (Test-Path -LiteralPath $AssemblyFilePath -PathType Leaf))
-    {
-        throw ($LocalizedData.PathNotFound -f $AssemblyFilePath)
-    }
+        if (-not ($AutoRestToolsPath))
+        {
+            throw $LocalizedData.AutoRestNotInPath
+        }
 
-    Add-Type -LiteralPath $AssemblyFilePath
+        $AssemblyFilePath = Join-Path -Path $AutoRestToolsPath -ChildPath $AssemblyName
+        if(-not $AssemblyFilePath -or -not (Test-Path -LiteralPath $AssemblyFilePath -PathType Leaf))
+        {
+            throw ($LocalizedData.PathNotFound -f $AssemblyFilePath)
+        }
+
+        Add-Type -LiteralPath $AssemblyFilePath
+    }
 }
