@@ -1448,7 +1448,7 @@ function Get-CSharpModelName
     }
     else
     {
-        return $Name
+        return $Name.Replace('[','').Replace(']','')
     }
 }
 
