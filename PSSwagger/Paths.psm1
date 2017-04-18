@@ -65,6 +65,22 @@ function Get-SwaggerSpecPathInfo
             $longRunningOperation = $true
         }
 
+        $x_ms_pageableObject = $null
+        if (((Get-Member -InputObject $_.Value -Name 'x-ms-pageable') -and $_.Value.'x-ms-pageable')) {
+            $x_ms_pageableObject = @{}
+            if (((Get-Member -InputObject $_.Value.'x-ms-pageable' -Name 'nextLinkName') -and $_.Value.'x-ms-pageable'.'nextLinkName')) {
+                $x_ms_pageableObject['nextLinkName'] = $_.Value.'x-ms-pageable'.'nextLinkName'
+            }
+
+            if (((Get-Member -InputObject $_.Value.'x-ms-pageable' -Name 'operationName') -and $_.Value.'x-ms-pageable'.'operationName')) {
+                $x_ms_pageableObject['operationName'] = $_.Value.'x-ms-pageable'.'operationName'
+            }
+
+            if (((Get-Member -InputObject $_.Value.'x-ms-pageable' -Name 'itemName') -and $_.Value.'x-ms-pageable'.'itemName')) {
+                $x_ms_pageableObject['itemName'] = $_.Value.'x-ms-pageable'.'itemName'
+            }
+        }
+
         if(Get-Member -InputObject $_.Value -Name 'OperationId')
         {
             $operationId = $_.Value.operationId
@@ -108,6 +124,7 @@ function Get-SwaggerSpecPathInfo
                 Responses = $responses
                 OperationId = $operationId
                 Priority = 100 # Default
+                'x-ms-pageable' = $x_ms_pageableObject
             }
 
             if ((Get-Member -InputObject $_.Value -Name 'x-ms-odata') -and $_.Value.'x-ms-odata') {
@@ -180,13 +197,39 @@ function New-SwaggerSpecPathCommand
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
 
     $FunctionsToExport = @()
+    Preprocess-PagingOperations -PathFunctionDetails $PathFunctionDetails
     $PathFunctionDetails.GetEnumerator() | ForEach-Object {
         $FunctionsToExport += New-SwaggerPath -FunctionDetails $_.Value `
                                               -SwaggerMetaDict $SwaggerMetaDict `
-                                              -SwaggerDict $SwaggerDict
+                                              -SwaggerDict $SwaggerDict `
+                                              -PathFunctionDetails $PathFunctionDetails
     }
 
     return $FunctionsToExport
+}
+
+<# Mark any operations as paging operations if they're the target of any operation's x-ms-pageable.operationName property.
+These operations will not generate -Page and -Paging, even though they're marked as pageable.
+These are single page operations and should never be unrolled (in the case of -not -Paging) or accept IPage parameters (in the case of -Page) #>
+function Preprocess-PagingOperations {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $PathFunctionDetails
+    )
+
+    $PathFunctionDetails.GetEnumerator() | ForEach-Object {
+        $_.Value.ParameterSetDetails | ForEach-Object {
+            $parameterSetDetail = $_
+            if ($parameterSetDetail.ContainsKey('x-ms-pageable') -and $parameterSetDetail.'x-ms-pageable') {
+                if ($parameterSetDetail.'x-ms-pageable'.ContainsKey('operationName')) {
+                    $matchingPath = $PathFunctionDetails.GetEnumerator() | Where-Object { $_.Value.ParameterSetDetails | Where-Object { $_.OperationId -eq $parameterSetDetail.'x-ms-pageable'.'operationName'} } | Select-Object -First 1
+                    $matchingPath.Value['IsNextPageOperation'] = $true
+                }
+            }
+        }
+    }
 }
 
 function Add-UniqueParameter {
@@ -252,7 +295,11 @@ function New-SwaggerPath
 
         [Parameter(Mandatory = $true)]
         [hashtable]
-        $SwaggerDict
+        $SwaggerDict,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]
+        $PathFunctionDetails
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -260,6 +307,12 @@ function New-SwaggerPath
     $commandName = $FunctionDetails.CommandName
     $parameterSetDetails = $FunctionDetails['ParameterSetDetails']
     $isLongRunningOperation = $FunctionDetails.ContainsKey('x-ms-long-running-operation') -and $FunctionDetails.'x-ms-long-running-operation'
+    $isNextPageOperation = $FunctionDetails.ContainsKey('IsNextPageOperation') -and $FunctionDetails.'IsNextPageOperation'
+    $info = $SwaggerDict['Info']
+    $namespace = $info['NameSpace']
+    $models = $info['Models']
+    $modulePostfix = $info['infoName']
+    $clientName = '$' + $modulePostfix
 
     $description = ''
     $paramBlock = ''
@@ -267,7 +320,67 @@ function New-SwaggerPath
     $parametersToAdd = @{}
     $parameterHitCount = @{}
     $globalParameterBlock = ''
+    $x_ms_pageableObject = $null
     foreach ($parameterSetDetail in $parameterSetDetails) {
+        if ($parameterSetDetail.ContainsKey('x-ms-pageable') -and $parameterSetDetail.'x-ms-pageable' -and (-not $isNextPageOperation)) {
+            if ($x_ms_pageableObject -and 
+                $x_ms_pageableObject.ContainsKey('ReturnType') -and 
+                ($x_ms_pageableObject.ReturnType -ne 'NONE') -and
+                ($x_ms_pageableObject.ReturnType -ne $parameterSetDetail.ReturnType)) {
+                Write-Warning -Message ($LocalizedData.MultiplePageReturnTypes -f ($commandName))
+                $x_ms_pageableObject.ReturnType = 'NONE'
+            } elseif (-not $x_ms_pageableObject) {
+                $x_ms_pageableObject = $parameterSetDetail.'x-ms-pageable'
+                $x_ms_pageableObject['ReturnType'] = $parameterSetDetail.ReturnType
+                if ($x_ms_pageableObject.Containskey('operationName')) {
+                    # Search for the cmdlet with a parameter set with the given operationName
+                    $pagingFunctionDetails = $PathFunctionDetails.GetEnumerator() | Where-Object { $_.Value.ParameterSetDetails | Where-Object { $_.OperationId -eq $x_ms_pageableObject.operationName }} | Select-Object -First 1
+                    if (-not $pagingFunctionDetails) {
+                        throw ($LocalizedData.FailedToFindPagingOperation -f ($($x_ms_pageableObject.OperationName), $commandName))
+                    }
+
+                    $pagingParameterSet = $pagingFunctionDetails.Value.ParameterSetDetails | Where-Object { $_.OperationId -eq $x_ms_pageableObject.operationName }
+                    $unmatchedParameters = @()
+                    # This list of parameters works for when -Page is called...
+                    $cmdletArgsPageParameterSet = ''
+                    # ...and this list of parameters works for when unrolling paged results (when -Paging is not used)
+                    $cmdletArgsNoPaging = ''
+                    foreach ($pagingParameterEntry in $pagingParameterSet.ParameterDetails.GetEnumerator()) {
+                        $pagingParameter = $pagingParameterEntry.Value
+                        # Ignore parameters that are readonly or have a constant value
+                        if ($pagingParameter.ContainsKey('ReadOnlyGlobalParameter') -and $pagingParameter.ReadOnlyGlobalParameter) {
+                            continue
+                        }
+
+                        if ($pagingParameter.ContainsKey('ConstantValue') -and $pagingParameter.ConstantValue) {
+                            continue
+                        }
+
+                        $matchingCurrentParameter = $parameterSetDetail.ParameterDetails.GetEnumerator() | Where-Object { $_.Value.Name -eq $pagingParameter.Name } | Select-Object -First 1
+                        if ($matchingCurrentParameter) {
+                            $cmdletArgsPageParameterSet += "-$($pagingParameter.Name) `$$($pagingParameter.Name) "
+                            $cmdletArgsNoPaging += "-$($pagingParameter.Name) `$$($pagingParameter.Name) "
+                        } else {
+                            $unmatchedParameters += $pagingParameter
+                            $cmdletArgsPageParameterSet += "-$($pagingParameter.Name) `$Page.NextPageLink "
+                            $cmdletArgsNoPaging += "-$($pagingParameter.Name) `$result.NextPageLink "
+                        }
+                    }
+
+                    if ($unmatchedParameters.Count -ne 1) {
+                        throw ($LocalizedData.InvalidPagingOperationSchema -f ($commandName, $pagingFunctionDetails.Value.CommandName))
+                    }
+
+                    $x_ms_pageableObject['Cmdlet'] = $pagingFunctionDetails.Value.CommandName
+                    $x_ms_pageableObject['CmdletArgsPage'] = $cmdletArgsPageParameterSet.Trim()
+                    $x_ms_pageableObject['CmdletArgsPaging'] = $cmdletArgsNoPaging.Trim()
+                } else {
+                    $x_ms_pageableObject['Operations'] = $parameterSetDetail.Operations
+                    $x_ms_pageableObject['MethodName'] = "$($parameterSetDetail.MethodName.Substring(0, $parameterSetDetail.MethodName.IndexOf('WithHttpMessagesAsync')))NextWithHttpMessagesAsync"
+                }
+            }
+        }
+
         $parameterSetDetail.ParameterDetails.GetEnumerator() | ForEach-Object {
             $parameterDetails = $_.Value
             $parameterRequiresAdding = $true
@@ -305,19 +418,137 @@ function New-SwaggerPath
         }
     }
 
+    $pagingParameterToAdd = $null
+    $pageParameterToAdd = $null
+    $candidatePageParameterSetName = 'AzPaging'
+    $pagingBlock = ''
+    $pagingOperationName = ''
+    $pagingOperations = ''
+    $Cmdlet = ''
+    $CmdletParameter = ''
+    $CmdletArgs = ''
+    $getTaskResult = $getTaskResultBlockNoPaging
+    if ($x_ms_pageableObject) {
+        $getTaskResult = $getTaskResultBlockWithPaging
+        if ($x_ms_pageableObject.ReturnType -eq 'NONE') {
+            $x_ms_pageableObject.ReturnType = ''
+        }
+
+        if ($x_ms_pageableObject.ContainsKey('Operations')) {
+            $pagingOperations = $x_ms_pageableObject.Operations
+            $pagingOperationName = $x_ms_pageableObject.MethodName
+            $pagingBlock = $executionContext.InvokeCommand.ExpandString($PagingBlockStrFunctionCall)
+        } else {
+            $Cmdlet = $x_ms_pageableObject.Cmdlet
+            $CmdletArgs = $x_ms_pageableObject.CmdletArgsPaging
+            $pagingBlock = $executionContext.InvokeCommand.ExpandString($PagingBlockStrCmdletCall)
+
+            # Set this for when we generate the -Page block below
+            $CmdletArgs = $x_ms_pageableObject.CmdletArgsPage
+        }
+
+        $pagingParameterToAdd = @{
+            Details = @{
+                Name = 'Paging'
+                Type = 'switch'
+                Mandatory = '$false'
+                Description = 'Switch to enable paging of return values.' # TODO: Constants/Resources
+                IsParameter = $true
+                ValidateSet = $null
+                ExtendedData = @{
+                    Type = 'switch'
+                    HasDefaultValue = $false
+                }
+            }
+            ParameterSetInfo = @{}
+        }
+
+        $pageParameterToAdd = @{
+            Details = @{
+                Name = 'Page'
+                Type = $x_ms_pageableObject.ReturnType
+                Mandatory = '$true'
+                Description = 'The last page of results.' # TODO: Constants/Resources
+                IsParameter = $true
+                ValidateSet = $null
+                ExtendedData = @{
+                    Type = $x_ms_pageableObject.ReturnType
+                    HasDefaultValue = $false
+                }
+            }
+            ParameterSetInfo = @{}
+        }
+    }
+
     $nonUniqueParameterSets = @()
     foreach ($parameterSetDetail in $parameterSetDetails) {
-        $isUnique = $false
+        # Add all parameter sets to -Paging if it exists
+        if ($pagingParameterToAdd) {
+            $pagingParameterToAdd.ParameterSetInfo[$parameterSetDetail.OperationId] = @{
+                Name = $parameterSetDetail.OperationId
+                Mandatory = '$false'
+            }
+        }
+
+        # Test for uniqueness of parameters
         $parameterSetDetail.ParameterDetails.GetEnumerator() | ForEach-Object {
             $parameterDetails = $_.Value
             if ($parameterHitCount[$parameterDetails.Name] -eq 1) {
-                $isUnique = $true
-                break
+                # contine here brings us back to the top of the foreach ($parameterSetDetail in $parameterSetDetails) loop
+                continue
             }
         }
-        if (-not $isUnique) {
-            # At this point none of the parameters in this set are unique
-            $nonUniqueParameterSets += $parameterSetDetail
+
+        # At this point none of the parameters in this set are unique
+        $nonUniqueParameterSets += $parameterSetDetail
+    }
+
+    if ($pagingParameterToAdd) {
+        $parametersToAdd[$pagingParameterToAdd.Details.Name] = $pagingParameterToAdd
+    }
+
+    # Find a unique name for -Page parameter set if it exists
+    if ($pageParameterToAdd) {
+        if ($parameterSetDetails | Where-Object { $_.OperationId -eq $candidatePageParameterSetName } | Select-Object -First 1) {
+            $index = 0
+            $tempCandidatePageParameterSetName = ''
+            $candidateValid = $false
+            do {
+                $index++
+                $tempCandidatePageParameterSetName = "$candidatePageParameterSetName$index"
+                $candidateValid = ($parameterSetDetails | Where-Object { $_.OperationId -eq $tempCandidatePageParameterSetName } | Select-Object -First 1) -eq $null
+            } while ($index -lt 2147483647 -and (-not $candidateValid));
+
+            if ($candidateValid) {
+                $candidatePageParameterSetName = $tempCandidatePageParameterSetName
+            } else {
+                throw $LocalizedData.NoAvailableParameterSetForPageParameter
+            }
+        }
+
+        $pageParameterToAdd.ParameterSetInfo[$candidatePageParameterSetName] = @{
+            Name = $candidatePageParameterSetName
+            Mandatory = '$false'
+        }
+
+        if ($pageParameterToAdd) {
+            $parametersToAdd[$pageParameterToAdd.Details.Name] = $pageParameterToAdd
+
+            # Add the page parameter set
+            $parameterSetDetails += @{
+                Responses = $null
+                operationId = $candidatePageParameterSetName
+                methodName = $pagingOperationName
+                operations = $pagingOperations
+                Cmdlet = $Cmdlet
+                CmdletArgs = $CmdletArgs
+                CmdletParameter = $CmdletParameter
+                ExpandedParamList = '$Page.NextPageLink'
+                Priority =  2147483647
+                AdditionalConditions = @(
+                    '$Page.NextPageLink'
+                )
+            }
         }
     }
 
@@ -335,7 +566,7 @@ function New-SwaggerPath
         $description = $nonUniqueParameterSets[0].Description
     } else {
         # Pick the highest priority set among all sets
-        $defaultParameterSet = $parameterSetDetails | Sort-Object -Property Priority | Select-Object -First 1
+        $defaultParameterSet = $parameterSetDetails | Sort-Object @{e = {$_.Priority -as [int] }} | Select-Object -First 1
         $DefaultParameterSetName = $defaultParameterSet.OperationId
         $description = $defaultParameterSet.Description
     }
@@ -373,8 +604,9 @@ function New-SwaggerPath
 
             $parameterDefaultValueOption = ""
             if ($parameterToAdd.Details.ContainsKey('ExtendedData')) {
+                $paramType = "$([Environment]::NewLine)        "
                 if ($parameterToAdd.Details.ExtendedData.ContainsKey('IsODataParameter') -and $parameterToAdd.Details.ExtendedData.IsODataParameter) {
-                    $paramType = "$($parameterToAdd.Details.Type)"
+                    $paramType = "[$($parameterToAdd.Details.Type)]$paramType"
                     $oDataExpression += "    if (`$$parameterName) { `$oDataQuery += `"&```$$parameterName=`$$parameterName`" }" + [Environment]::NewLine
                 } else {
                     # Assuming you can't group ODataQuery parameters
@@ -391,22 +623,24 @@ function New-SwaggerPath
                         $parameterGroupsExpression += [Environment]::NewLine + $executionContext.InvokeCommand.ExpandString($parameterGroupPropertyExpression)
                         $parameterGroupsExpressions[$groupName] = $parameterGroupsExpression
                     }
-
-                    $paramType = "$($parameterToAdd.Details.ExtendedData.Type)"
-                    if ($parameterToAdd.Details.ExtendedData.HasDefaultValue) {
-                        if ($parameterToAdd.Details.ExtendedData.DefaultValue) {
-                            if ([NullString]::Value -eq $parameterToAdd.Details.ExtendedData.DefaultValue) {
-                                $parameterDefaultValue = "[NullString]::Value"
-                            } elseif ("System.String" -eq $parameterToAdd.Details.ExtendedData.Type) {
-                                $parameterDefaultValue = "`"$($parameterToAdd.Details.ExtendedData.DefaultValue)`""
+                    
+                    if ($parameterToAdd.Details.ExtendedData.Type) {
+                        $paramType = "[$($parameterToAdd.Details.ExtendedData.Type)]$paramType"
+                        if ($parameterToAdd.Details.ExtendedData.HasDefaultValue) {
+                            if ($parameterToAdd.Details.ExtendedData.DefaultValue) {
+                                if ([NullString]::Value -eq $parameterToAdd.Details.ExtendedData.DefaultValue) {
+                                    $parameterDefaultValue = "[NullString]::Value"
+                                } elseif ("System.String" -eq $parameterToAdd.Details.ExtendedData.Type) {
+                                    $parameterDefaultValue = "`"$($parameterToAdd.Details.ExtendedData.DefaultValue)`""
+                                } else {
+                                    $parameterDefaultValue = "$($parameterToAdd.Details.ExtendedData.DefaultValue)"
+                                }
                             } else {
-                                $parameterDefaultValue = "$($parameterToAdd.Details.ExtendedData.DefaultValue)"
+                                $parameterDefaultValue = "`$null"
                             }
-                        } else {
-                            $parameterDefaultValue = "`$null"
-                        }
 
-                        $parameterDefaultValueOption = $executionContext.InvokeCommand.ExpandString($parameterDefaultValueString)
+                            $parameterDefaultValueOption = $executionContext.InvokeCommand.ExpandString($parameterDefaultValueString)
+                        }
                     }
                 }
 
@@ -437,14 +671,14 @@ function New-SwaggerPath
             $ParamBlockReplaceStr = $AsJobParameterString
         }
 
-        $PathFunctionBody = $PathFunctionBodyAsJob
+        $PathFunctionBody = $executionContext.InvokeCommand.ExpandString($PathFunctionBodyAsJob)
     } else {
         $ParamBlockReplaceStr = $paramBlock
-        $PathFunctionBody = $PathFunctionBodySynch
+        $PathFunctionBody = $executionContext.InvokeCommand.ExpandString($PathFunctionBodySynch)
     }
 
     $functionBodyParams = @{
-                                ParameterSetDetails = $FunctionDetails['ParameterSetDetails']
+                                ParameterSetDetails = $parameterSetDetails
                                 ODataExpressionBlock = $oDataExpressionBlock
                                 ParameterGroupsExpressionBlock = $parameterGroupsExpressionBlock
                                 GlobalParameterBlock = $GlobalParameterBlock
@@ -599,6 +833,19 @@ function Set-ExtendedCodeMetadata {
                 return
             }
 
+            # Process output type
+            $returnType = $methodInfo.ReturnType
+            if ($returnType.Name -eq 'Task`1') {
+                $returnType = $returnType.GenericTypeArguments[0]
+            }
+
+            if ($returnType.Name -eq 'AzureOperationResponse`1') {
+                $returnType = $returnType.GenericTypeArguments[0]
+            }
+
+            $returnTypeString = Convert-GenericTypeToString -Type $returnType
+            $parameterSetDetail['ReturnType'] = $returnTypeString
+
             $ParamList = @()
             $oDataQueryFound = $false
             $methodInfo.GetParameters() | Sort-Object -Property Position | ForEach-Object {
@@ -709,6 +956,25 @@ function Set-ExtendedCodeMetadata {
 
     $resultRecord.Result = $PathFunctionDetails
     Export-CliXml -InputObject $resultRecord -Path $CliXmlTmpPath
+}
+
+function Convert-GenericTypeToString {
+    param(
+        [Parameter(Mandatory=$true)]
+        [Type]$Type
+    )
+
+    if (-not $Type.IsGenericType) {
+        return $Type.FullName
+    }
+
+    $genericTypeStr = ''
+    foreach ($genericTypeArg in $Type.GenericTypeArguments) {
+        $genericTypeStr += "$(Convert-GenericTypeToString -Type $genericTypeArg),"
+    }
+
+    $genericTypeStr = $genericTypeStr.Substring(0, $genericTypeStr.Length - 1)
+    return "$($Type.FullName.Substring(0, $Type.FullName.IndexOf('`')))[$genericTypeStr]"
 }
 
 function Set-SingleParameterMetadata {

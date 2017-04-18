@@ -708,7 +708,7 @@ function New-SwaggerSpecDefinitionCommand
             $isParamMandatory = $ParameterDetails.Mandatory
             $parameterName = $ParameterDetails.Name
             $paramName = "`$$parameterName" 
-            $paramType = $ParameterDetails.Type
+            $paramType = "[$($ParameterDetails.Type)]$([Environment]::NewLine)        "
             $AllParameterSetsString = $executionContext.InvokeCommand.ExpandString($parameterAttributeString)
             $ValidateSetDefinition = $null
             if ($ParameterDetails.ValidateSet)

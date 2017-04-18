@@ -67,5 +67,9 @@ ConvertFrom-StringData @'
     OutputDirectoryMustBeEmpty=Code output directory '{0}' must not contain any .cs files in order for PSSwagger to correctly determine the files from which the SDK should be built.
     CustomNamespaceNotRecommended=Custom namespaces are not recommended when using PSSwagger, as the generated modules may not support side-by-side.
     CodeDirectoryWillBeCreated=Code output directory '{0}' will be created by AutoRest.exe and contain unused generated code. You may delete this directory after the module has finished generating if you wish.
+    MultiplePageReturnTypes=Multiple page return types found, unable to generate -Page parameter with a strong type for cmdlet '{0}'.
+    FailedToFindPagingOperation=Failed to find specified next page operation with operationId '{0}' for cmdlet '{1}'.
+    InvalidPagingOperationSchema=PSSwagger requires that the NextLink operation contains exactly one parameter different than the original operation, where the different parameter is used to pass the nextLink value to the NextLink operation. Current cmdlet: '{0}'. NextLink operation: '{1}'
+    NoAvailableParameterSetForPageParameter=Could not find an available parameter set name for the automatically added -Page parameter. The template PSSwagger uses is 'AzPaging{int32}'.
 ###PSLOC
 '@
