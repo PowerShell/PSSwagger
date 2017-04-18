@@ -150,7 +150,7 @@ function New-PSSwaggerModule
     {
         # Ensure that if the URI is coming from github, it is getting the raw content
         if($SwaggerSpecUri.Host -eq 'github.com'){
-            $SwaggerSpecUri = "https://raw.githubusercontent.com$($SwaggerSpecUri.AbsolutePath)"
+            $SwaggerSpecUri = "https://raw.githubusercontent.com$($SwaggerSpecUri.AbsolutePath.Replace('/blob/','/'))"
             $message = $LocalizedData.ConvertingSwaggerSpecToGithubContent -f ($SwaggerSpecUri)
             Write-Verbose -Message $message -Verbose
         }
