@@ -1,17 +1,18 @@
 function New-Trie {
-	return @{}
+    return @{}
 }
 
 function Add-WordToTrie {
-	param(
+    param(
         [Parameter(Mandatory=$true)]
-		[string]$Word,
+        [string]$Word,
         [Parameter(Mandatory=$true)]
-		[hashtable]$Trie
-	)
+        [hashtable]$Trie
+    )
 
-	$CurrentLevel = $Trie
-	$letter = $Word[0]
+    $CurrentLevel = $Trie
+    $Word = $Word.ToLower()
+    $letter = $Word[0]
 
     if (-not $CurrentLevel.ContainsKey($letter)) {
         $CurrentLevel[$letter] = @{}
@@ -34,6 +35,7 @@ function Test-Trie {
         [hashtable]$Trie
     )
 
+    $Letter = [char]::ToLower($Letter)
     if ($Trie.ContainsKey($Letter)) {
         return $Trie[$Letter]
     }

@@ -1010,12 +1010,10 @@ function Get-SingularizedValue
     
     if($script:PluralizationService)
     {
-        return $script:PluralizationService.Singularize($Name)
+        $Name = $script:PluralizationService.Singularize($Name)
     }
-    else
-    {
-        return $Name    
-    }
+
+    return Get-PascalCasedString -Name $Name
 }
 
 function Get-PathCommandName
@@ -1042,23 +1040,31 @@ function Get-PathCommandName
 
     if ($script:CmdVerbTrie -eq $null) {
         $script:CmdVerbTrie = New-Trie
-        foreach ($verb in $cmdVerbMap) {
-            $script:CmdVerbTrie = Add-WordToTrie -Word $verb -Trie $script:CmdVerbTrie
+        $cmdVerbMap.GetEnumerator() | ForEach-Object {
+            $script:CmdVerbTrie = Add-WordToTrie -Word $_.Name -Trie $script:CmdVerbTrie
         }
+
+        # Add approved verbs to Command Verb Trie
+        Get-Verb | ForEach-Object {
+            $script:CmdVerbTrie = Add-WordToTrie -Word $_.Verb -Trie $script:CmdVerbTrie
+        }        
     }
 
     $currentTriePtr = $script:CmdVerbTrie
     
     $opIdValues = $opId  -split "_",2
     
-    # OperationId can be specified without '_' (Underscore), return the OperationId as command name
-    if(-not $opIdValues -or ($opIdValues.Count -ne 2)) {
-        return (Get-SingularizedValue -Name $opId)
+    if($opIdValues -and ($opIdValues.Count -eq 2)) {
+        $cmdNoun = (Get-SingularizedValue -Name $opIdValues[0])
+        $cmdVerb = $opIdValues[1]
+    }
+    else {
+        # OperationId can be specified without '_' (Underscore), Verb will retrieved by the below logic for non-approved verbs.
+        $cmdNoun = ''
+        $cmdVerb = Get-SingularizedValue -Name $opId
     }
 
-    $cmdNoun = (Get-SingularizedValue -Name $opIdValues[0])
-    $cmdVerb = $opIdValues[1]
-    if (-not (get-verb $cmdVerb))
+    if (-not (Get-Verb -Verb $cmdVerb))
     {
         $UnapprovedVerb = $cmdVerb
         $message = $LocalizedData.UnapprovedVerb -f ($UnapprovedVerb)
@@ -1083,25 +1089,25 @@ function Get-PathCommandName
             $buildFirstWord = $false
             $firstWordEnd = -1
             $verbMatchEnd = -1
-            for($i = 0; $i -lt $opIdValues[1].Length; $i++) {
+            for($i = 0; $i -lt $UnapprovedVerb.Length; $i++) {
                 # Add the start condition of the first word so that the end condition is easier
-                if ((-not $firstWordStarted) -and ([int]$opIdValues[1][$i] -ge 65) -and ([int]$opIdValues[1][$i] -le 90)) {
+                if (-not $firstWordStarted) {
                     $firstWordStarted = $true
                     $buildFirstWord = $true
-                } elseif ($buildFirstWord -and ([int]$opIdValues[1][$i] -ge 65) -and ([int]$opIdValues[1][$i] -le 90)) {
+                } elseif ($buildFirstWord -and ([int]$UnapprovedVerb[$i] -ge 65) -and ([int]$UnapprovedVerb[$i] -le 90)) {
                     # Stop building the first word when we encounter another capital letter
                     $buildFirstWord = $false
                     $firstWordEnd = $i
                 }
 
                 if ($buildFirstWord) {
-                    $firstWord += $opIdValues[1][$i]
+                    $firstWord += $UnapprovedVerb[$i]
                 }
 
                 if ($currentTriePtr) {
                     # If we're still running along the trie just fine, keep checking the next letter
-                    $currentVerbCandidate += $opIdValues[1][$i]
-                    $currentTriePtr = Test-Trie -Trie $currentTriePtr -Letter $opIdValues[1][$i]
+                    $currentVerbCandidate += $UnapprovedVerb[$i]
+                    $currentTriePtr = Test-Trie -Trie $currentTriePtr -Letter $UnapprovedVerb[$i]
                     if ($currentTriePtr -and (Test-TrieLeaf -Trie $currentTriePtr)) {
                         # The latest verb match is also the longest verb match
                         $longestVerbMatch = $currentVerbCandidate
@@ -1124,21 +1130,29 @@ function Get-PathCommandName
 
             if (-1 -ne $beginningOfSuffix) {
                 # This is still empty when a verb match is found that is the entire string, but it might not be worth checking for that case and skipping the below operation
-                $cmdNounSuffix = $opIdValues[1].Substring($beginningOfSuffix)
-                # Add command noun suffix only when the current noun is not ending with the same suffix. 
-                if(-not $cmdNoun.EndsWith($cmdNounSuffix, [System.StringComparison]::OrdinalIgnoreCase)) {
-                    $cmdNoun = $cmdNoun + $opIdValues[1].Substring($firstWordEnd)
+                $cmdNounSuffix = $UnapprovedVerb.Substring($beginningOfSuffix)
+                # Add command noun suffix only when the current noun doesn't contain it or vice-versa. 
+                if(-not $cmdNoun -or (($cmdNoun -notmatch $cmdNounSuffix) -and ($cmdNounSuffix -notmatch $cmdNoun))) {
+                    $cmdNoun = $cmdNoun + (Get-PascalCasedString -Name $UnapprovedVerb.Substring($beginningOfSuffix))
                 }
             }
         }
     }
 
     # Singularize command noun
-    $cmdNoun = Get-SingularizedValue -Name $cmdNoun
+    if($cmdNoun) {
+        $cmdNoun = Get-SingularizedValue -Name $cmdNoun
+    }
 
     $cmdletNames = $cmdVerb | ForEach-Object {
-        "$_-$cmdNoun"
-        Write-Verbose -Message ($LocalizedData.UsingCmdletNameForSwaggerPathOperation -f ("$_-$cmdNoun", $OperationId))
+        $Verb = Get-PascalCasedString -Name $_
+        if($cmdNoun){
+            $CommandName = "$Verb-$cmdNoun"
+        } else {
+            $CommandName = Get-SingularizedValue -Name $Verb
+        }
+        $CommandName
+        Write-Verbose -Message ($LocalizedData.UsingCmdletNameForSwaggerPathOperation -f ($CommandName, $OperationId))
     }
 
     return $cmdletNames
