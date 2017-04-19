@@ -488,8 +488,6 @@ function New-SwaggerPath
     foreach ($parameterSetDetail in $parameterSetDetails) {
         # Add parameter sets to -Paging if the parameter set is pageable
         if ($pagingParameterToAdd -and $parameterSetDetail.ContainsKey('x-ms-pageable') -and $parameterSetDetail.'x-ms-pageable' -and (-not $isNextPageOperation)) {
-            Write-Host "$($parameterSetDetail.OperationId)" -BackgroundColor DarkRed
-            Write-Host "$($parameterSetDetail.'x-ms-pageable')" -BackgroundColor DarkRed
             $pagingParameterToAdd.ParameterSetInfo[$parameterSetDetail.OperationId] = @{
                 Name = $parameterSetDetail.OperationId
                 Mandatory = '$false'
