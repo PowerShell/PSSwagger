@@ -488,7 +488,7 @@ Describe "AzureExtensions" {
         }
 
         It "Test parameter group when operation ID has no hyphens" {
-            $results = GroupTestsNoHyphen -Parm "test"
+            $results = Group-TestsNoHyphen -Parm "test"
         }
 
         It "Test parameter group with flattened parameters" {
