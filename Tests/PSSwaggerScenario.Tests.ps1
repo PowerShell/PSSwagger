@@ -361,7 +361,7 @@ Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
         }
 
         It "Test global parameters" {
-            $results = Get-Cookie -TestGlobalParameter "test"
+            $results = Get-Dinosaur -TestGlobalParameter "test"
             $results.Length | should be 1
         }
 
@@ -532,11 +532,20 @@ Describe "Composite Swagger Tests" -Tag @('Composite','ScenarioTest') {
             $PsSwaggerPath = Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger"
             $Path = Join-Path -Path $PSScriptRoot -ChildPath 'Generated'
             $SwaggerSpecPath = Join-Path -Path $PSScriptRoot -ChildPath 'Data' | Join-Path -ChildPath 'CompositeSwaggerTest' | Join-Path -ChildPath 'composite-swagger.json'
-            # Module generation part needs to happen in full powershell
-            Write-Verbose "Generating $ModuleName module"
-            Import-Module $PsSwaggerPath -Force
-            New-PSSwaggerModule -SwaggerSpecPath $SwaggerSpecPath -Name $ModuleName -UseAzureCsharpGenerator -Path $Path -NoAssembly -Verbose
+            if (Test-Path (Join-Path $Path $ModuleName)) {
+                Remove-Item (Join-Path $Path $ModuleName) -Recurse -Force
+            }
 
+            Import-Module $PsSwaggerPath -Force
+            if((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
+                & "powershell.exe" -command "& {`$env:PSModulePath=`$env:PSModulePath_Backup;
+                    Import-Module (Join-Path `"$PsSwaggerPath`" `"PSSwagger.psd1`") -Force;
+                    New-PSSwaggerModule -SwaggerSpecPath $SwaggerSpecPath -Name $ModuleName -UseAzureCsharpGenerator -Path $Path -NoAssembly -Verbose;
+                }"
+            } else {
+                New-PSSwaggerModule -SwaggerSpecPath $SwaggerSpecPath -Name $ModuleName -UseAzureCsharpGenerator -Path $Path -NoAssembly -Verbose
+            }
+        
             $ModulePath = Join-Path -Path $Path -ChildPath $ModuleName
             Get-Module -ListAvailable -Name $ModulePath | Should BeOfType 'System.Management.Automation.PSModuleInfo'
 

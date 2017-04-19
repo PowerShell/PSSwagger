@@ -163,11 +163,11 @@
                 "x-ms-odata": "#/definitions/Cupcake"
             }
         },
-        "/cookies": {
+        "/dinosaurs": {
             "get": {
-                "summary": "List all cookies matching parameters",
-                "operationId": "Cookie_Get",
-                "description": "List all cookies matching parameters",
+                "summary": "List all dinosaurs matching parameters",
+                "operationId": "Dinosaur_Get",
+                "description": "List all dinosaurs matching parameters",
                 "parameters": [
                     {
                         "$ref": "#/parameters/ApiVersionParameter"
@@ -180,15 +180,15 @@
                     }
                 ],
                 "tags": [
-                    "Cookies"
+                    "Dinosaurs"
                 ],
                 "responses": {
                     "200": {
-                        "description": "All cookie entities",
+                        "description": "All dinosaur entities",
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/Cookie"
+                                "$ref": "#/definitions/Dinosaur"
                             }
                         }
                     },
@@ -203,9 +203,9 @@
         },
         "/cookiesPathWithDummyRef": {
             "get": {
-                "summary": "List all cookies matching parameters",
+                "summary": "List all dinosaurs matching parameters",
                 "operationId": "OpWithDummyRef_Get",
-                "description": "List all cookies matching parameters",
+                "description": "List all dinosaurs matching parameters",
                 "parameters": [
                     {
                         "$ref": "#/parameters/ApiVersionParameter"
@@ -224,7 +224,7 @@
                     }
                 ],
                 "tags": [
-                    "Cookies"
+                    "Dinosaurs"
                 ],
                 "responses": {
                     "200": {
@@ -244,9 +244,9 @@
         },
         "/PathWithReservedKeywordTypes": {
             "get": {
-                "summary": "List all cookies matching parameters",
+                "summary": "List all dinosaurs matching parameters",
                 "operationId": "PathWithReservedKeywordTypes_Get",
-                "description": "List all cookies matching parameters",
+                "description": "List all dinosaurs matching parameters",
                 "parameters": [
                     {
                         "$ref": "#/parameters/ApiVersionParameter"
@@ -274,7 +274,7 @@
                     }
                 ],
                 "tags": [
-                    "Cookies"
+                    "Dinosaurs"
                 ],
                 "responses": {
                     "200": {
@@ -357,7 +357,7 @@
                 }
             }
         },
-        "Cookie": {
+        "Dinosaur": {
             "type": "object",
             "properties": {
                 "id": {

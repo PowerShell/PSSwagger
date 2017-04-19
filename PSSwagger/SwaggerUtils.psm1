@@ -13,6 +13,7 @@ Import-Module (Join-Path -Path $PSScriptRoot -ChildPath Utilities.psm1)
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwagger.Resources.psd1
 $script:CmdVerbTrie = $null
 $script:CSharpCodeNamer = $null
+$script:CSharpCodeNamerLoadAttempted = $false
 
 $script:PluralizationService = $null
 # System.Data.Entity.Design.PluralizationServices.PluralizationService is not yet supported on coreclr.
@@ -1481,17 +1482,30 @@ function Get-CSharpModelName
         $Name
     )
 
-    if(-not $script:CSharpCodeNamer)
-    {
-        Add-AutoRestTypes -AssemblyName 'AutoRest.CSharp.dll'
+    if (-not $script:CSharpCodeNamerLoadAttempted) {
+        $script:CSharpCodeNamerLoadAttempted = $true
+        $script:CSharpCodeNamer = New-ObjectFromDependency -TypeNames @('AutoRest.CSharp.CodeNamerCs', 'AutoRest.CSharp.CSharpCodeNamer') -AssemblyName 'AutoRest.CSharp.dll' -AssemblyResolver {
+            param(
+                [string]
+                $AssemblyName
+            )
 
-        if(('AutoRest.CSharp.CSharpCodeNamer' -as [Type]))
-        {
-            $script:CSharpCodeNamer = New-Object -TypeName 'AutoRest.CSharp.CSharpCodeNamer'
-        }
-        else
-        {
-            $script:CSharpCodeNamer = New-Object -TypeName 'AutoRest.CSharp.CodeNamerCs'
+            $AutoRestToolsPath = Get-Command -Name 'AutoRest.exe' | 
+                                Select-Object -First 1 -ErrorAction Ignore | 
+                                    ForEach-Object {Split-Path -LiteralPath $_.Source}
+
+            if (-not ($AutoRestToolsPath))
+            {
+                throw $LocalizedData.AutoRestNotInPath
+            }
+
+            $AssemblyFilePath = Join-Path -Path $AutoRestToolsPath -ChildPath $AssemblyName
+            if(-not $AssemblyFilePath -or -not (Test-Path -LiteralPath $AssemblyFilePath -PathType Leaf))
+            {
+                throw ($LocalizedData.PathNotFound -f $AssemblyFilePath)
+            }
+
+            Add-Type -LiteralPath $AssemblyFilePath
         }
     }
 
@@ -1505,32 +1519,42 @@ function Get-CSharpModelName
     }
 }
 
-function Add-AutoRestTypes
-{
+<# Create an object from an external dependency with possible type name changes. Optionally resolve the external dependency using a delegate.
+Input to $AssemblyResolver is $AssemblyName.
+Doesn't support constructors with args currently. #>
+function New-ObjectFromDependency {
     param(
         [Parameter(Mandatory=$true)]
+        [string[]]
+        $TypeNames,
+
+        [Parameter(Mandatory=$true)]
         [string]
-        $AssemblyName
+        $AssemblyName,
+
+        [Parameter(Mandatory=$false)]
+        [System.Action[string]]
+        $AssemblyResolver
     )
 
-    $AutoRestAssembly = ([System.AppDomain]::CurrentDomain.GetAssemblies()).Modules | Where-Object {$_.Name -eq $AssemblyName}
-    if(-not $AutoRestAssembly)
-    {
-        $AutoRestToolsPath = Get-Command -Name 'AutoRest.exe' | 
-                                Select-Object -First 1 -ErrorAction Ignore | 
-                                    ForEach-Object {Split-Path -LiteralPath $_.Source}
+    if ($TypeNames.Count -gt 0) {
+        $assemblyLoadAttempted = $false
+        foreach ($typeName in $TypeNames) {
+            if (-not ($typeName -as [Type])) {
+                if (-not $assemblyLoadAttempted) {
+                    if ($AssemblyResolver -ne $null) {
+                        $AssemblyResolver.Invoke($AssemblyName)
+                    } else {
+                        $null = Add-Type -Path $AssemblyName
+                    }
 
-        if (-not ($AutoRestToolsPath))
-        {
-            throw $LocalizedData.AutoRestNotInPath
+                    $assemblyLoadAttempted = $true
+                }
+            } else {
+                return New-Object -TypeName $typeName
+            }
         }
-
-        $AssemblyFilePath = Join-Path -Path $AutoRestToolsPath -ChildPath $AssemblyName
-        if(-not $AssemblyFilePath -or -not (Test-Path -LiteralPath $AssemblyFilePath -PathType Leaf))
-        {
-            throw ($LocalizedData.PathNotFound -f $AssemblyFilePath)
-        }
-
-        Add-Type -LiteralPath $AssemblyFilePath
     }
+
+    return $null
 }
