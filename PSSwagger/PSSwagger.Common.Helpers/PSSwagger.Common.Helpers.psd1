@@ -10,7 +10,7 @@ FunctionsToExport = @('Invoke-SwaggerCommandUtility',
 					  'New-PSSwaggerClientTracing',
 					  'Register-PSSwaggerClientTracing',
 					  'Unregister-PSSwaggerClientTracing',
-                      'Get-SignedContent')
+                      'Get-SignedCodeContent')
 CmdletsToExport = @('Start-PSSwaggerJob')
 VariablesToExport = ''
 AliasesToExport = ''

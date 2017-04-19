@@ -582,7 +582,7 @@ function ConvertTo-CsharpCode
     $cliXmlTmpPath = Get-TemporaryCliXmlFilePath -FullModuleName $fullModuleName
     try {
         Export-CliXml -InputObject $PathFunctionDetails -Path $cliXmlTmpPath
-        $command = "Import-Module '$PSScriptRoot\PSSwagger.Common.Helpers\PSSwagger.Common.Helpers.psd1';
+        $command = "Import-Module '$PSScriptRoot\PSSwagger.Common.Helpers';
                     . '$PSScriptRoot\Utils.ps1'; 
                     Initialize-LocalToolsVariables;
                     Invoke-AssemblyCompilation  -OutputAssemblyName '$outAssembly' ``
@@ -653,7 +653,7 @@ function ConvertTo-CsharpCode
             $null = New-Item $clrPath -ItemType Directory
         }
 
-        $command = "Import-Module '$PSScriptRoot\PSSwagger.Common.Helpers\PSSwagger.Common.Helpers.psd1';
+        $command = "Import-Module '$PSScriptRoot\PSSwagger.Common.Helpers';
                     . '$PSScriptRoot\Utils.ps1'; 
                     Initialize-LocalToolsVariables;
                     Invoke-AssemblyCompilation -OutputAssemblyName '$outAssembly' ``

@@ -265,7 +265,7 @@ else
             throw 'Failed to validate PSSwaggerNetUtilities.Code.ps1''s signature'
         }
 
-        $PSSwaggerJobSourceString = Get-SignedContent -Path $PSSwaggerJobFilePath | Out-String
+        $PSSwaggerJobSourceString = Get-SignedCodeContent -Path $PSSwaggerJobFilePath | Out-String
 
         $RequiredAssemblies = @(
             [System.Management.Automation.PSCmdlet].Assembly.FullName,

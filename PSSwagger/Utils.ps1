@@ -75,7 +75,7 @@ function Invoke-AssemblyCompilation {
 
     # Append the content of each file into a single string
     $srcContent = @()
-    $srcContent += $CSharpFiles | ForEach-Object { "// File $($_.FullName)"; Get-SignedContent -Path $_.FullName }
+    $srcContent += $CSharpFiles | ForEach-Object { "// File $($_.FullName)"; Get-SignedCodeContent -Path $_.FullName }
     
     # Find the reference assemblies to use
     # System refs are expected to exist on the system
