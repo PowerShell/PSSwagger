@@ -24,9 +24,9 @@ FileList = @(
              'SwaggerUtils.psm1',
              'Utilities.psm1',
              'Utils.ps1',
-             "Trie.ps1",
-             'Generated.Azure.Common.Helpers\Generated.Azure.Common.Helpers.psd1',
-             'Generated.Azure.Common.Helpers\Generated.Azure.Common.Helpers.psm1'
+             'Trie.ps1',
+             'PSSwagger.Common.Helpers\PSSwagger.Common.Helpers.psd1',
+             'PSSwagger.Common.Helpers\PSSwagger.Common.Helpers.psm1'
             )
 
 PrivateData = @{
