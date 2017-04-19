@@ -86,7 +86,7 @@ function Initialize-Test {
     if((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ($script:CorePsEditionConstant -eq $PSEdition)) {
         & "powershell.exe" -command "& {`$env:PSModulePath=`$env:PSModulePath_Backup;
             Import-Module (Join-Path `"$PsSwaggerPath`" `"PSSwagger.psd1`") -Force;
-            New-PSSwaggerModule -SwaggerSpecPath (Join-Path -Path `"$testCaseDataLocation`" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Verbose -NoAssembly;
+            New-PSSwaggerModule -SwaggerSpecPath (Join-Path -Path `"$testCaseDataLocation`" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Verbose -NoAssembly -UseAzureCSharpGenerator:`$$UseAzureCSharpGenerator;
         }"
     } else {
         Import-Module (Join-Path "$PsSwaggerPath" "PSSwagger.psd1") -Force
@@ -134,12 +134,10 @@ function Start-JsonServer {
         $jsonServerProcess = Start-Process -FilePath "$PSScriptRoot\NodeModules\json-server.cmd" -ArgumentList $argList -PassThru -WindowStyle Hidden
     }
 
-    # Wait for local json-server to start on full CLR
-    if ('Core' -ne $PSEdition) {
-        while (-not (Test-NetConnection -ComputerName localhost -Port 3000)) {
-            Write-Verbose -Message "Waiting for server to start..." -Verbose
-            Start-Sleep -s 1
-        }
+    # Wait for local json-server to start 
+    while (-not (Test-Connection -ComputerName localhost -Port 3000)) {
+        Write-Verbose -Message "Waiting for server to start..." -Verbose
+        Start-Sleep -s 1
     }
 
     $nodeProcessToStop = Get-Process -Name "node" -ErrorAction SilentlyContinue | Where-Object {-not $nodeProcesses.Contains($_)}
@@ -153,6 +151,26 @@ function Start-JsonServer {
     }
 
     return New-Object -TypeName PSObject -Property $props
+}
+
+function Test-Connection {
+    [CmdletBinding()]
+    param(
+        [string]
+        $ComputerName,
+
+        [int]
+        $Port
+    )
+
+    if ('Core' -ne $PSEdition) {
+        return Test-NetConnection -ComputerName localhost -Port 3000
+    } else {
+        $conn = New-Object -TypeName System.Net.Sockets.TcpClient
+        $task = $conn.ConnectAsync($ComputerName, $Port)
+        $null = $task.AsyncWaitHandle.WaitOne()
+        return $conn.Connected
+    }
 }
 
 function Stop-JsonServer {
