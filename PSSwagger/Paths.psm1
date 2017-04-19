@@ -68,16 +68,20 @@ function Get-SwaggerSpecPathInfo
         $x_ms_pageableObject = $null
         if (((Get-Member -InputObject $_.Value -Name 'x-ms-pageable') -and $_.Value.'x-ms-pageable')) {
             $x_ms_pageableObject = @{}
-            if (((Get-Member -InputObject $_.Value.'x-ms-pageable' -Name 'nextLinkName') -and $_.Value.'x-ms-pageable'.'nextLinkName')) {
-                $x_ms_pageableObject['nextLinkName'] = $_.Value.'x-ms-pageable'.'nextLinkName'
-            }
-
             if (((Get-Member -InputObject $_.Value.'x-ms-pageable' -Name 'operationName') -and $_.Value.'x-ms-pageable'.'operationName')) {
                 $x_ms_pageableObject['operationName'] = $_.Value.'x-ms-pageable'.'operationName'
             }
 
             if (((Get-Member -InputObject $_.Value.'x-ms-pageable' -Name 'itemName') -and $_.Value.'x-ms-pageable'.'itemName')) {
                 $x_ms_pageableObject['itemName'] = $_.Value.'x-ms-pageable'.'itemName'
+            }
+
+            if ((Get-Member -InputObject $_.Value.'x-ms-pageable' -Name 'nextLinkName')) {
+                if ($_.Value.'x-ms-pageable'.'nextLinkName') {
+                    $x_ms_pageableObject['nextLinkName'] = $_.Value.'x-ms-pageable'.'nextLinkName'
+                } else {
+                    $x_ms_pageableObject = $null
+                }
             }
         }
 
