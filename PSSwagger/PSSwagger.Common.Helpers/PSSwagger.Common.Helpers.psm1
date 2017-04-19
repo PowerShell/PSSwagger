@@ -16,7 +16,7 @@ if ((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEditi
 .PARAMETER
   Path to the file whose contents should be read.
 #>
-function Get-SignedContent {
+function Get-SignedCodeContent {
     param(
         [Parameter(Mandatory=$true)]
         [string]$Path
