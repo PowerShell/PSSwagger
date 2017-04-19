@@ -15,7 +15,7 @@ $SubScripts = @(
 $SubScripts | ForEach-Object {. (Join-Path -Path $PSScriptRoot -ChildPath $_) -Force}
 
 $SubModules = @(
-    'Generated.Azure.Common.Helpers',
+    'PSSwagger.Common.Helpers',
     'SwaggerUtils.psm1',
     'Utilities.psm1',
     'Paths.psm1',
@@ -420,7 +420,8 @@ function New-PSSwaggerModule
 
     New-ModuleManifestUtility -Path $outputDirectory `
                               -FunctionsToExport $FunctionsToExport `
-                              -Info $swaggerDict['info']
+                              -Info $swaggerDict['info'] `
+                              -UseAzureCsharpGenerator:$UseAzureCsharpGenerator
 
     Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Generated.Resources.psd1") (Join-Path -Path "$outputDirectory" -ChildPath "$Name.Resources.psd1") -Force
 
@@ -581,7 +582,8 @@ function ConvertTo-CsharpCode
     $cliXmlTmpPath = Get-TemporaryCliXmlFilePath -FullModuleName $fullModuleName
     try {
         Export-CliXml -InputObject $PathFunctionDetails -Path $cliXmlTmpPath
-        $command = ". '$PSScriptRoot\Utils.ps1'; 
+        $command = "Import-Module '$PSScriptRoot\PSSwagger.Common.Helpers';
+                    . '$PSScriptRoot\Utils.ps1'; 
                     Initialize-LocalToolsVariables;
                     Invoke-AssemblyCompilation  -OutputAssemblyName '$outAssembly' ``
                                                 -ClrPath '$clrPath' ``
@@ -597,7 +599,7 @@ function ConvertTo-CsharpCode
                                                 -CliXmlTmpPath $cliXmlTmpPath"
 
         $success = & "powershell" -command "& {$command}"
-
+        
         $codeReflectionResult = Import-CliXml -Path $cliXmlTmpPath
         if ($codeReflectionResult.VerboseMessages -and ($codeReflectionResult.VerboseMessages.Count -gt 0)) {
             $verboseMessages = $codeReflectionResult.VerboseMessages -Join [Environment]::NewLine
@@ -651,7 +653,8 @@ function ConvertTo-CsharpCode
             $null = New-Item $clrPath -ItemType Directory
         }
 
-        $command = ". '$PSScriptRoot\Utils.ps1'; 
+        $command = "Import-Module '$PSScriptRoot\PSSwagger.Common.Helpers';
+                    . '$PSScriptRoot\Utils.ps1'; 
                     Initialize-LocalToolsVariables;
                     Invoke-AssemblyCompilation -OutputAssemblyName '$outAssembly' ``
                                                 -ClrPath '$clrPath' ``
@@ -696,7 +699,11 @@ function New-ModuleManifestUtility
 
         [Parameter(Mandatory=$true)]
         [hashtable]
-        $Info
+        $Info,
+
+        [Parameter()]
+        [switch]
+        $UseAzureCsharpGenerator
     )
 
     $FormatsToProcess = Get-ChildItem -Path "$Path\$GeneratedCommandsName\FormatFiles\*.ps1xml" `
@@ -709,11 +716,16 @@ function New-ModuleManifestUtility
         Description = $Info.Description
         CopyRight = $info.LicenseName
         Author = $info.ContactEmail
-        RequiredModules = @('Generated.Azure.Common.Helpers')
+        RequiredModules = @('PSSwagger.Common.Helpers')
         RootModule = "$($Info.ModuleName).psm1"
         FormatsToProcess = $FormatsToProcess
         FunctionsToExport = $FunctionsToExport
     }
+
+    if ($UseAzureCsharpGenerator) {
+        $NewModuleManifest_params.RequiredModules += 'PSSwagger.Azure.Helpers'
+    }
+
     if($Info.DefaultCommandPrefix)
     {
         $NewModuleManifest_params['DefaultCommandPrefix'] = $Info.DefaultCommandPrefix
