@@ -486,8 +486,10 @@ function New-SwaggerPath
 
     $nonUniqueParameterSets = @()
     foreach ($parameterSetDetail in $parameterSetDetails) {
-        # Add all parameter sets to -Paging if it exists
-        if ($pagingParameterToAdd) {
+        # Add parameter sets to -Paging if the parameter set is pageable
+        if ($pagingParameterToAdd -and $parameterSetDetail.ContainsKey('x-ms-pageable') -and $parameterSetDetail.'x-ms-pageable' -and (-not $isNextPageOperation)) {
+            Write-Host "$($parameterSetDetail.OperationId)" -BackgroundColor DarkRed
+            Write-Host "$($parameterSetDetail.'x-ms-pageable')" -BackgroundColor DarkRed
             $pagingParameterToAdd.ParameterSetInfo[$parameterSetDetail.OperationId] = @{
                 Name = $parameterSetDetail.OperationId
                 Mandatory = '$false'
