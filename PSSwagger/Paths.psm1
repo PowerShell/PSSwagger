@@ -1065,6 +1065,6 @@ function Get-TemporaryCliXmlFilePath {
     )
 
     $random = [Guid]::NewGuid().Guid
-    $filePath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "$FullModuleName.$random.xml"
+    $filePath = Join-Path -Path (Get-XDGDirectory -DirectoryType Cache) -ChildPath "$FullModuleName.$random.xml"
     return $filePath
 }

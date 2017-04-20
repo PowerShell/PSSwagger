@@ -272,6 +272,72 @@ function Get-OperatingSystemInfo {
     return $info
 }
 
+<#
+.DESCRIPTION
+  Gets the platform-specific directory for the given DirectoryType. Shared is a non-XDG concept for all-users access. Caller is expected to handle creation, deletion, and permissions.
+  Note that this does NOT mean that PSSwagger follows the XDG specification on non-Windows systems exactly.
+
+.PARAMETER  DirectoryType
+  Type of directory to resolve.
+#>
+function Get-XDGDirectory {
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('Config', 'Data', 'Cache', 'Shared')]
+        [string]
+        $DirectoryType
+    )
+
+    if ((Get-OperatingSystemInfo).IsWindows) {
+        # Windows filesystem is not included in the XDG specification
+        if ('Shared' -eq $DirectoryType) {
+            return Microsoft.PowerShell.Management\Join-Path -Path $env:ProgramData -ChildPath 'Microsoft' | Join-Path -ChildPath 'Windows' | Join-Path -ChildPath 'PowerShell'
+        } elseif ('Cache' -eq $DirectoryType) {
+            return ([System.IO.Path]::GetTempPath())
+        } else {
+            return Microsoft.PowerShell.Management\Join-Path -Path $env:LOCALAPPDATA -ChildPath 'Microsoft' | Join-Path -ChildPath 'Windows' | Join-Path -ChildPath 'PowerShell'
+        }
+    } else {
+        # The rest should follow: https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
+        $dirHome = $null
+        $dirDefault = $null
+        $homeVar = Get-EnvironmentVariable -Name "HOME"
+        if ('Config' -eq $DirectoryType) {
+            $dirHome = Get-EnvironmentVariable -Name "XDG_CONFIG_HOME"
+            $dirDefault = Join-Path -Path "$homeVar" -ChildPath ".config"
+        } elseif ('Data' -eq $DirectoryType) {
+            $dirHome = Get-EnvironmentVariable -Name "XDG_DATA_HOME"
+            $dirDefault = Join-Path -Path "$homeVar" -ChildPath ".local" | Join-Path -ChildPath "share"
+        } elseif ('Cache' -eq $DirectoryType) {
+            $dirHome = Get-EnvironmentVariable -Name "XDG_CACHE_HOME"
+            $dirDefault = Join-Path -Path "$homeVar" -ChildPath ".cache"
+        } else {
+             # As global access isn't part of the XDG Base Directory Specification, we use PowerShell Core's definition: /usr/local/share
+            return '/usr/local/share'
+        }
+
+        if (-not $dirHome) {
+            return $dirDefault
+        }
+
+        return $dirHome
+    }
+}
+
+<# .DESCRIPTION
+  Helper method to get an environment variable.
+#>
+function Get-EnvironmentVariable {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]
+        $Name
+    )
+
+    return [System.Environment]::GetEnvironmentVariable($Name)
+}
+
 $PSSwaggerJobAssemblyPath = $null
 
 if(('Microsoft.PowerShell.Commands.PSSwagger.PSSwaggerJob' -as [Type]) -and
@@ -314,7 +380,7 @@ else
 			$RequiredAssemblies += (Join-Path -Path "$($module.ModuleBase)" -ChildPath 'Microsoft.Rest.ClientRuntime.dll')
 		}
 		
-        $TempPath = [System.IO.Path]::GetTempPath() + [System.IO.Path]::GetRandomFileName()
+        $TempPath = (Get-XDGDirectory -DirectoryType Cache) + [System.IO.Path]::GetRandomFileName()
         $null = New-Item -Path $TempPath -ItemType Directory -Force
         $PSSwaggerJobAssemblyPath = Join-Path -Path $TempPath -ChildPath 'Microsoft.PowerShell.PSSwagger.Utility.dll'
 

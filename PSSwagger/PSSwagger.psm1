@@ -155,7 +155,7 @@ function New-PSSwaggerModule
             Write-Verbose -Message $message -Verbose
         }
 
-        $TempPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath (Get-Random)
+        $TempPath = Join-Path -Path (Get-XDGDirectory -DirectoryType Cache) -ChildPath (Get-Random)
         $null = New-Item -Path $TempPath -ItemType Directory -Force -Confirm:$false -WhatIf:$false
 
         $SwaggerFileName = Split-Path -Path $SwaggerSpecUri -Leaf
@@ -526,7 +526,7 @@ function ConvertTo-CsharpCode
                 Modeler = $swaggerMetaDict['AutoRestModeler']
             }
 
-            $tempCodeGenSettingsPath = "$(Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath (Get-Random)).json"
+            $tempCodeGenSettingsPath = "$(Join-Path -Path (Get-XDGDirectory -DirectoryType Cache) -ChildPath (Get-Random)).json"
             $tempCodeGenSettings | ConvertTo-Json | Out-File -FilePath $tempCodeGenSettingsPath
 
             $autoRestParams = @('-Input', $swaggerMetaDict['SwaggerSpecPath'], '-OutputDirectory', $generatedCSharpPath, '-Namespace', $NameSpace, '-CodeGenSettings', $tempCodeGenSettingsPath)

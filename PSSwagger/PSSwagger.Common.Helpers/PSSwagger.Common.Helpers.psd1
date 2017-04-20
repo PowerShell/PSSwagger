@@ -11,7 +11,8 @@ FunctionsToExport = @('Invoke-SwaggerCommandUtility',
 					  'Register-PSSwaggerClientTracing',
 					  'Unregister-PSSwaggerClientTracing',
                       'Get-SignedCodeContent',
-                      'Get-OperatingSystemInfo')
+                      'Get-OperatingSystemInfo',
+                      'Get-XDGDirectory')
 CmdletsToExport = @('Start-PSSwaggerJob')
 VariablesToExport = ''
 AliasesToExport = ''

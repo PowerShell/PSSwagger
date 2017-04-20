@@ -425,13 +425,8 @@ function Initialize-LocalToolsVariables {
     )
 
     if ($null -eq $script:AppLocalPath) {
-        if ((Get-OperatingSystemInfo).IsWindows) {
-            $script:ProgramDataPath = Microsoft.PowerShell.Management\Join-Path -Path $env:ProgramData -ChildPath 'Microsoft\Windows\PowerShell\PSSwagger\'
-            $script:AppLocalPath = Microsoft.PowerShell.Management\Join-Path -Path $env:LOCALAPPDATA -ChildPath 'Microsoft\Windows\PowerShell\PSSwagger\'
-        } else {
-            $script:ProgramDataPath = '/usr/local/share/.PSSwagger'
-            $script:AppLocalPath = Microsoft.PowerShell.Management\Join-Path -Path $home -ChildPath '.PSSwagger'
-        }
+        $script:ProgramDataPath = Microsoft.PowerShell.Management\Join-Path -Path (Get-XDGDirectory -DirectoryType Shared) -ChildPath 'PSSwagger'
+        $script:AppLocalPath = Microsoft.PowerShell.Management\Join-Path -Path (Get-XDGDirectory -DirectoryType Data) -ChildPath 'PSSwagger'
     }
 
     if ($AllUsers) {
