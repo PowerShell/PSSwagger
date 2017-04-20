@@ -6,11 +6,6 @@
 #
 #########################################################################################
 
-$script:IsWindows = (-not (Get-Variable -Name IsWindows -ErrorAction Ignore)) -or $IsWindows
-$script:IsLinux = (Get-Variable -Name IsLinux -ErrorAction Ignore) -and $IsLinux
-$script:IsOSX = (Get-Variable -Name IsOSX -ErrorAction Ignore) -and $IsOSX
-$script:IsCoreCLR = (Get-Variable -Name IsCoreCLR -ErrorAction Ignore) -and $IsCoreCLR
-
 $helpDescStr = @'
 .DESCRIPTION
     $description
@@ -33,7 +28,7 @@ Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename $Name.Resources.psd1
 . (Join-Path -Path "`$PSScriptRoot" -ChildPath "Utils.ps1")
 
-if ('Core' -eq (Get-PSEdition)) {
+if ((Get-OperatingSystemInfo).IsCore) {
     `$clr = 'coreclr'
 } else {
     `$clr = 'fullclr'
@@ -51,17 +46,18 @@ if (-not (Test-Path -Path `$dllFullName)) {
     }
 
     `$allCSharpFiles = Get-ChildItem -Path (Join-Path -Path `$generatedCSharpFilePath -ChildPath "*.Code.ps1") -Recurse -Exclude Program.cs,TemporaryGeneratedFile* -File | Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*'
-
-    `$allCSharpFiles | ForEach-Object {
-        `$sig = Get-AuthenticodeSignature -FilePath `$_.FullName 
-        if (('NotSigned' -ne `$sig.Status) -and ('Valid' -ne `$sig.Status)) {
-            throw `$LocalizedData.HashValidationFailed
+    if ((Get-OperatingSystemInfo).IsWindows) {
+        `$allCSharpFiles | ForEach-Object {
+            `$sig = Get-AuthenticodeSignature -FilePath `$_.FullName 
+            if (('NotSigned' -ne `$sig.Status) -and ('Valid' -ne `$sig.Status)) {
+                throw `$LocalizedData.HashValidationFailed
+            }
         }
+
+        `$message = `$LocalizedData.HashValidationSuccessful
+        Write-Verbose -Message `$message -Verbose
     }
-
-    `$message = `$LocalizedData.HashValidationSuccessful
-    Write-Verbose -Message `$message -Verbose
-
+    
     Initialize-LocalTools
     `$success = Invoke-AssemblyCompilation -CSharpFiles `$allCSharpFiles -CodeCreatedByAzureGenerator:`$isAzureCSharp $requiredVersionParameter -ClrPath `$clrPath
     if (-not `$success) {
@@ -75,7 +71,7 @@ if (-not (Test-Path -Path `$dllFullName)) {
 
 # Load extra refs
 Get-AzureRMDllReferences | ForEach-Object { Add-Type -Path `$_ -ErrorAction SilentlyContinue }
-if ('Core' -ne (Get-PSEdition)) {
+if ((Get-OperatingSystemInfo).IsCore) {
     Add-Type -Path (Get-MicrosoftRestAzureReference -Framework 'net45' -ClrPath (Join-Path -Path "`$PSScriptRoot" -ChildPath "ref" | Join-Path -ChildPath "`$clr"))
 }
 

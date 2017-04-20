@@ -11,7 +11,11 @@ Import-Module (Join-Path -Path $PSScriptRoot -ChildPath Utilities.psm1) -Disable
 Import-Module (Join-Path -Path $PSScriptRoot -ChildPath SwaggerUtils.psm1) -DisableNameChecking
 . "$PSScriptRoot\PSSwagger.Constants.ps1" -Force
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwagger.Resources.psd1
-$script:AppLocalPath = Microsoft.PowerShell.Management\Join-Path -Path $env:LOCALAPPDATA -ChildPath 'Microsoft\Windows\PowerShell\PSSwagger\'
+if ((Get-OperatingSystemInfo).IsWindows) {
+    $script:AppLocalPath = Microsoft.PowerShell.Management\Join-Path -Path $env:LOCALAPPDATA -ChildPath 'Microsoft\Windows\PowerShell\PSSwagger\'
+} else {
+    $script:AppLocalPath = Microsoft.PowerShell.Management\Join-Path -Path $home -ChildPath '.PSSwagger'
+}
 
 function Get-SwaggerSpecPathInfo
 {

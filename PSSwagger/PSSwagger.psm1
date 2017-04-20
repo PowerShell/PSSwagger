@@ -253,7 +253,7 @@ function New-PSSwaggerModule
 
     $userConsent = Initialize-LocalTools -AllUsers:$InstallToolsForAllUsers
     if ($IncludeCoreFxAssembly) {
-        if ((-not ('Core' -eq (Get-PSEdition))) -and (-not $PowerShellCorePath)) {
+        if ((-not (Get-OperatingSystemInfo).IsCore) -and (-not $PowerShellCorePath)) {
             $psCore = Get-Msi -Name "PowerShell*" -MaximumVersion "6.0.0.11" | Sort-Object -Property Version -Descending
             if ($null -ne $psCore) {
                 # PSCore exists via MSI, but the MSI provider doesn't seem to provide an install path

@@ -1,10 +1,9 @@
 ﻿Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 
-$script:CorePsEditionConstant = 'Core'
 # go fwlink for latest nuget.exe for win10 x86
 $script:NuGetClientSourceURL = 'https://go.microsoft.com/fwlink/?linkid=843467'
-$script:ProgramDataPath = Microsoft.PowerShell.Management\Join-Path -Path $env:ProgramData -ChildPath 'Microsoft\Windows\PowerShell\PSSwagger\'
-$script:AppLocalPath = Microsoft.PowerShell.Management\Join-Path -Path $env:LOCALAPPDATA -ChildPath 'Microsoft\Windows\PowerShell\PSSwagger\'
+$script:ProgramDataPath = $null
+$script:AppLocalPath = $null
 $script:LocalToolsPath = $null
 Microsoft.PowerShell.Utility\Import-LocalizedData  UtilsLocalizedData -filename Utils.Resources.psd1
 
@@ -84,7 +83,7 @@ function Invoke-AssemblyCompilation {
     $systemRefs = @()
     $extraRefs = @()
     $moduleRefs = Get-AzureRMDllReferences
-    if ($CorePsEditionConstant -eq (Get-PSEdition)) {
+    if ((Get-OperatingSystemInfo).IsCore) {
         # Base framework references
         $srcContent = ,'#define DNXCORE50' + ,'#define PORTABLE' + $srcContent
         $systemRefs = @('System.dll',
@@ -165,7 +164,7 @@ function Invoke-AssemblyCompilation {
         }
     }
 
-    if ($CorePsEditionConstant -ne (Get-PSEdition)) {
+    if (-not (Get-OperatingSystemInfo).IsCore) {
         $compilerParameters = New-Object -TypeName System.CodeDom.Compiler.CompilerParameters
         $compilerParameters.CompilerOptions = '/debug:full'
         if ($TestBuild) {
@@ -231,7 +230,7 @@ function Get-AzureRMDllReferences {
     param()
 
     $refs = @()
-    if ($script:CorePsEditionConstant -eq (Get-PSEdition)) {
+    if ((Get-OperatingSystemInfo).IsCore) {
         $module = Get-Module -Name AzureRM.Profile.NetCore.Preview -ListAvailable | 
                       Select-Object -First 1 -ErrorAction Ignore
                       
@@ -244,22 +243,6 @@ function Get-AzureRMDllReferences {
     $refs += @((Join-Path -Path "$($module.ModuleBase)" -ChildPath 'Microsoft.Rest.ClientRuntime.dll'),
         (Join-Path -Path "$($module.ModuleBase)" -ChildPath 'Newtonsoft.Json.dll'))
     return $refs
-}
-
-<#
-.DESCRIPTION
-  Retrieves the PSEdition string. One of 'Core' or 'Desktop'.
-#>
-function Get-PSEdition {
-    [CmdletBinding()]
-    param()
-
-    if((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ($script:CorePsEditionConstant -eq $PSEdition)) {
-        return $script:CorePsEditionConstant
-    }
-
-    # This sentinel isn't too important, since we only do checks for the Core string
-    return 'Desktop'
 }
 
 <#
@@ -440,6 +423,16 @@ function Initialize-LocalToolsVariables {
         [switch]
         $AllUsers
     )
+
+    if ($null -eq $script:AppLocalPath) {
+        if ((Get-OperatingSystemInfo).IsWindows) {
+            $script:ProgramDataPath = Microsoft.PowerShell.Management\Join-Path -Path $env:ProgramData -ChildPath 'Microsoft\Windows\PowerShell\PSSwagger\'
+            $script:AppLocalPath = Microsoft.PowerShell.Management\Join-Path -Path $env:LOCALAPPDATA -ChildPath 'Microsoft\Windows\PowerShell\PSSwagger\'
+        } else {
+            $script:ProgramDataPath = '/usr/local/share/.PSSwagger'
+            $script:AppLocalPath = Microsoft.PowerShell.Management\Join-Path -Path $home -ChildPath '.PSSwagger'
+        }
+    }
 
     if ($AllUsers) {
         $script:LocalToolsPath = $script:ProgramDataPath

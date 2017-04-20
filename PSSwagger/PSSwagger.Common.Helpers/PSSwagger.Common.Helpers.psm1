@@ -247,6 +247,31 @@ function Invoke-SwaggerCommandUtility
     }
 }
 
+<#
+.DESCRIPTION
+  Gets operating system information. Returns an object with the following boolean properties: IsCore, IsLinux, IsWindows, IsOSX
+#>
+function Get-OperatingSystemInfo {
+    $info = @{
+        IsCore = $false
+        IsLinux = $false
+        IsOSX = $false
+        IsWindows = $false
+    }
+
+    if ((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
+        $info.IsCore = $true
+        $info.IsLinux = $IsLinux
+        $info.IsOSX = $IsOSX
+        $info.IsWindows = $IsWindows
+    } else {
+        # Full CLR means Windows
+        $info.IsWindows = $true
+    }
+
+    return $info
+}
+
 $PSSwaggerJobAssemblyPath = $null
 
 if(('Microsoft.PowerShell.Commands.PSSwagger.PSSwaggerJob' -as [Type]) -and
@@ -260,9 +285,11 @@ else
     $PSSwaggerJobFilePath = Join-Path -Path $PSScriptRoot -ChildPath 'PSSwaggerNetUtilities.Code.ps1'
     if(Test-Path -Path $PSSwaggerJobFilePath -PathType Leaf)
     {
-        $sig = Get-AuthenticodeSignature -FilePath $PSSwaggerJobFilePath
-        if (('Valid' -ne $sig.Status) -and ('NotSigned' -ne $sig.Status)) {
-            throw 'Failed to validate PSSwaggerNetUtilities.Code.ps1''s signature'
+        if ((Get-OperatingSystemInfo).IsWindows) {
+            $sig = Get-AuthenticodeSignature -FilePath $PSSwaggerJobFilePath
+            if (('Valid' -ne $sig.Status) -and ('NotSigned' -ne $sig.Status)) {
+                throw 'Failed to validate PSSwaggerNetUtilities.Code.ps1''s signature'
+            }
         }
 
         $PSSwaggerJobSourceString = Get-SignedCodeContent -Path $PSSwaggerJobFilePath | Out-String
