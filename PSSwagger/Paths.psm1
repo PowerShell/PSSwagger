@@ -68,16 +68,20 @@ function Get-SwaggerSpecPathInfo
         $x_ms_pageableObject = $null
         if (((Get-Member -InputObject $_.Value -Name 'x-ms-pageable') -and $_.Value.'x-ms-pageable')) {
             $x_ms_pageableObject = @{}
-            if (((Get-Member -InputObject $_.Value.'x-ms-pageable' -Name 'nextLinkName') -and $_.Value.'x-ms-pageable'.'nextLinkName')) {
-                $x_ms_pageableObject['nextLinkName'] = $_.Value.'x-ms-pageable'.'nextLinkName'
-            }
-
             if (((Get-Member -InputObject $_.Value.'x-ms-pageable' -Name 'operationName') -and $_.Value.'x-ms-pageable'.'operationName')) {
                 $x_ms_pageableObject['operationName'] = $_.Value.'x-ms-pageable'.'operationName'
             }
 
             if (((Get-Member -InputObject $_.Value.'x-ms-pageable' -Name 'itemName') -and $_.Value.'x-ms-pageable'.'itemName')) {
                 $x_ms_pageableObject['itemName'] = $_.Value.'x-ms-pageable'.'itemName'
+            }
+
+            if ((Get-Member -InputObject $_.Value.'x-ms-pageable' -Name 'nextLinkName')) {
+                if ($_.Value.'x-ms-pageable'.'nextLinkName') {
+                    $x_ms_pageableObject['nextLinkName'] = $_.Value.'x-ms-pageable'.'nextLinkName'
+                } else {
+                    $x_ms_pageableObject = $null
+                }
             }
         }
 
@@ -482,8 +486,8 @@ function New-SwaggerPath
 
     $nonUniqueParameterSets = @()
     foreach ($parameterSetDetail in $parameterSetDetails) {
-        # Add all parameter sets to -Paging if it exists
-        if ($pagingParameterToAdd) {
+        # Add parameter sets to -Paging if the parameter set is pageable
+        if ($pagingParameterToAdd -and $parameterSetDetail.ContainsKey('x-ms-pageable') -and $parameterSetDetail.'x-ms-pageable' -and (-not $isNextPageOperation)) {
             $pagingParameterToAdd.ParameterSetInfo[$parameterSetDetail.OperationId] = @{
                 Name = $parameterSetDetail.OperationId
                 Mandatory = '$false'
