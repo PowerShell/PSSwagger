@@ -49,6 +49,10 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
             It "Get-PathCommandName should return proper command name for abcd operationid" {
                 Get-PathCommandName -OperationId abcd | Should BeExactly 'Abcd'
             }
+
+            It "Get-PathCommandName with NetworkInterfaces_ListVirtualMachineScaleSetVMNetworkInterfaces" {
+                Get-PathCommandName -OperationId NetworkInterfaces_ListVirtualMachineScaleSetVMNetworkInterfaces | Should BeExactly 'Get-VirtualMachineScaleSetVMNetworkInterface'
+            }
         }
     }
 }

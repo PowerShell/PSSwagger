@@ -1135,6 +1135,8 @@ function Get-PathCommandName
                 # Add command noun suffix only when the current noun doesn't contain it or vice-versa. 
                 if(-not $cmdNoun -or (($cmdNoun -notmatch $cmdNounSuffix) -and ($cmdNounSuffix -notmatch $cmdNoun))) {
                     $cmdNoun = $cmdNoun + (Get-PascalCasedString -Name $UnapprovedVerb.Substring($beginningOfSuffix))
+                } elseif($cmdNounSuffix -match $cmdNoun) {
+                    $cmdNoun = $cmdNounSuffix
                 }
             }
         }
