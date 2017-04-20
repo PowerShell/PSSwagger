@@ -11,11 +11,6 @@ Import-Module (Join-Path -Path $PSScriptRoot -ChildPath Utilities.psm1) -Disable
 Import-Module (Join-Path -Path $PSScriptRoot -ChildPath SwaggerUtils.psm1) -DisableNameChecking
 . "$PSScriptRoot\PSSwagger.Constants.ps1" -Force
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwagger.Resources.psd1
-if ((Get-OperatingSystemInfo).IsWindows) {
-    $script:AppLocalPath = Microsoft.PowerShell.Management\Join-Path -Path $env:LOCALAPPDATA -ChildPath 'Microsoft\Windows\PowerShell\PSSwagger\'
-} else {
-    $script:AppLocalPath = Microsoft.PowerShell.Management\Join-Path -Path $home -ChildPath '.PSSwagger'
-}
 
 function Get-SwaggerSpecPathInfo
 {
@@ -1069,11 +1064,7 @@ function Get-TemporaryCliXmlFilePath {
         $FullModuleName
     )
 
-    if (-not (Test-Path -Path $script:AppLocalPath -PathType Container)) {
-        $null = New-Item -Path $script:AppLocalPath -ItemType Directory
-    }
-    
     $random = [Guid]::NewGuid().Guid
-    $filePath = Join-Path -Path $script:AppLocalPath -ChildPath "$FullModuleName.$random.xml"
+    $filePath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "$FullModuleName.$random.xml"
     return $filePath
 }
