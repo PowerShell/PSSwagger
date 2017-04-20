@@ -155,7 +155,7 @@ function New-PSSwaggerModule
             Write-Verbose -Message $message -Verbose
         }
 
-        $TempPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath (Get-Random)
+        $TempPath = Join-Path -Path (Get-XDGDirectory -DirectoryType Cache) -ChildPath (Get-Random)
         $null = New-Item -Path $TempPath -ItemType Directory -Force -Confirm:$false -WhatIf:$false
 
         $SwaggerFileName = Split-Path -Path $SwaggerSpecUri -Leaf
@@ -253,7 +253,7 @@ function New-PSSwaggerModule
 
     $userConsent = Initialize-LocalTools -AllUsers:$InstallToolsForAllUsers
     if ($IncludeCoreFxAssembly) {
-        if ((-not ('Core' -eq (Get-PSEdition))) -and (-not $PowerShellCorePath)) {
+        if ((-not (Get-OperatingSystemInfo).IsCore) -and (-not $PowerShellCorePath)) {
             $psCore = Get-Msi -Name "PowerShell*" -MaximumVersion "6.0.0.11" | Sort-Object -Property Version -Descending
             if ($null -ne $psCore) {
                 # PSCore exists via MSI, but the MSI provider doesn't seem to provide an install path
@@ -526,7 +526,7 @@ function ConvertTo-CsharpCode
                 Modeler = $swaggerMetaDict['AutoRestModeler']
             }
 
-            $tempCodeGenSettingsPath = "$(Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath (Get-Random)).json"
+            $tempCodeGenSettingsPath = "$(Join-Path -Path (Get-XDGDirectory -DirectoryType Cache) -ChildPath (Get-Random)).json"
             $tempCodeGenSettings | ConvertTo-Json | Out-File -FilePath $tempCodeGenSettingsPath
 
             $autoRestParams = @('-Input', $swaggerMetaDict['SwaggerSpecPath'], '-OutputDirectory', $generatedCSharpPath, '-Namespace', $NameSpace, '-CodeGenSettings', $tempCodeGenSettingsPath)

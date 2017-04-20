@@ -247,6 +247,112 @@ function Invoke-SwaggerCommandUtility
     }
 }
 
+<#
+.DESCRIPTION
+  Gets operating system information. Returns an object with the following boolean properties: IsCore, IsLinux, IsWindows, IsOSX, IsNanoServer, IsIoT
+#>
+function Get-OperatingSystemInfo {
+    $info = @{
+        IsCore = $false
+        IsLinux = $false
+        IsOSX = $false
+        IsWindows = $false
+        IsNanoServer = $false
+        IsIoT = $false
+    }
+
+    if ('System.Management.Automation.Platform' -as [Type]) {
+        $info.IsCore = [System.Management.Automation.Platform]::IsCoreCLR
+        $info.IsLinux = [System.Management.Automation.Platform]::IsLinux
+        $info.IsOSX = [System.Management.Automation.Platform]::IsOSX
+        $info.IsWindows = [System.Management.Automation.Platform]::IsWindows
+        $info.IsNanoServer = [System.Management.Automation.Platform]::IsNanoServer
+        $info.IsIoT = [System.Management.Automation.Platform]::IsIoT
+    } else {
+        # If this type doesn't exist, this should be full CLR Windows
+        $info.IsWindows = $true
+    }
+
+    return $info
+}
+
+<#
+.DESCRIPTION
+  Gets the platform-specific directory for the given DirectoryType. Shared is a non-XDG concept for all-users access. Caller is expected to handle creation, deletion, and permissions.
+  Note that this does NOT mean that PSSwagger follows the XDG specification on non-Windows systems exactly.
+
+.PARAMETER  DirectoryType
+  Type of directory to resolve.
+#>
+function Get-XDGDirectory {
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('Config', 'Data', 'Cache', 'Shared')]
+        [string]
+        $DirectoryType
+    )
+
+    if ((Get-OperatingSystemInfo).IsWindows) {
+        # Windows filesystem is not included in the XDG specification
+        if ('Shared' -eq $DirectoryType) {
+            return Microsoft.PowerShell.Management\Join-Path -Path $env:ProgramData -ChildPath 'Microsoft' | Join-Path -ChildPath 'Windows' | Join-Path -ChildPath 'PowerShell'
+        } elseif ('Cache' -eq $DirectoryType) {
+            return ([System.IO.Path]::GetTempPath())
+        } else {
+            return Microsoft.PowerShell.Management\Join-Path -Path $env:LOCALAPPDATA -ChildPath 'Microsoft' | Join-Path -ChildPath 'Windows' | Join-Path -ChildPath 'PowerShell'
+        }
+    } else {
+        # The rest should follow: https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
+        $dirHome = $null
+        $dirDefault = $null
+        $homeVar = Get-EnvironmentVariable -Name "HOME"
+        if ('Config' -eq $DirectoryType) {
+            $dirHome = Get-EnvironmentVariable -Name "XDG_CONFIG_HOME"
+            $dirDefault = Join-Path -Path "$homeVar" -ChildPath ".config"
+        } elseif ('Data' -eq $DirectoryType) {
+            $dirHome = Get-EnvironmentVariable -Name "XDG_DATA_HOME"
+            $dirDefault = Join-Path -Path "$homeVar" -ChildPath ".local" | Join-Path -ChildPath "share"
+        } elseif ('Cache' -eq $DirectoryType) {
+            $dirHome = Get-EnvironmentVariable -Name "XDG_CACHE_HOME"
+            $dirDefault = Join-Path -Path "$homeVar" -ChildPath ".cache"
+        } else {
+             # As global access isn't part of the XDG Base Directory Specification, we use PowerShell Core's definition: /usr/local/share
+            return '/usr/local/share'
+        }
+
+        if (-not $dirHome) {
+            return $dirDefault
+        }
+
+        return $dirHome
+    }
+}
+
+<# .DESCRIPTION
+  Helper method to get an environment variable.
+#>
+function Get-EnvironmentVariable {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]
+        $Name
+    )
+
+    $value = [System.Environment]::GetEnvironmentVariable($Name)
+    if (-not $value) {
+        # If the variable doesn't exist as an environment variable, check if it exists locally
+        $variable = Get-Variable -Name $Name -ErrorAction Ignore
+        if ($variable) {
+            return $variable.Value
+        } else {
+            return $value
+        }
+    }
+
+    return $value
+}
+
 $PSSwaggerJobAssemblyPath = $null
 
 if(('Microsoft.PowerShell.Commands.PSSwagger.PSSwaggerJob' -as [Type]) -and
@@ -260,9 +366,11 @@ else
     $PSSwaggerJobFilePath = Join-Path -Path $PSScriptRoot -ChildPath 'PSSwaggerNetUtilities.Code.ps1'
     if(Test-Path -Path $PSSwaggerJobFilePath -PathType Leaf)
     {
-        $sig = Get-AuthenticodeSignature -FilePath $PSSwaggerJobFilePath
-        if (('Valid' -ne $sig.Status) -and ('NotSigned' -ne $sig.Status)) {
-            throw 'Failed to validate PSSwaggerNetUtilities.Code.ps1''s signature'
+        if ((Get-OperatingSystemInfo).IsWindows) {
+            $sig = Get-AuthenticodeSignature -FilePath $PSSwaggerJobFilePath
+            if (('Valid' -ne $sig.Status) -and ('NotSigned' -ne $sig.Status)) {
+                throw 'Failed to validate PSSwaggerNetUtilities.Code.ps1''s signature'
+            }
         }
 
         $PSSwaggerJobSourceString = Get-SignedCodeContent -Path $PSSwaggerJobFilePath | Out-String
@@ -287,7 +395,7 @@ else
 			$RequiredAssemblies += (Join-Path -Path "$($module.ModuleBase)" -ChildPath 'Microsoft.Rest.ClientRuntime.dll')
 		}
 		
-        $TempPath = [System.IO.Path]::GetTempPath() + [System.IO.Path]::GetRandomFileName()
+        $TempPath = Join-Path -Path (Get-XDGDirectory -DirectoryType Data) -ChildPath ([System.IO.Path]::GetRandomFileName())
         $null = New-Item -Path $TempPath -ItemType Directory -Force
         $PSSwaggerJobAssemblyPath = Join-Path -Path $TempPath -ChildPath 'Microsoft.PowerShell.PSSwagger.Utility.dll'
 

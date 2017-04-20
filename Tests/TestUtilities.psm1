@@ -44,7 +44,7 @@ function Compile-TestAssembly {
     if (-not (Test-Path $fullPath)) {
         Write-Verbose "Generating test assembly from file '$TestCSharpFilePath' using script '$CompilationUtilsPath'"
         . "$CompilationUtilsPath"
-        Invoke-AssemblyCompilation -CSharpFiles @($TestCSharpFilePath) -OutputAssemblyName $TestAssemblyName -CodeCreatedByAzureGenerator:$UseAzureCSharpGenerator -ClrPath $TestAssemblyPath -Verbose
+        $null = Invoke-AssemblyCompilation -CSharpFiles @($TestCSharpFilePath) -OutputAssemblyName $TestAssemblyName -CodeCreatedByAzureGenerator:$UseAzureCSharpGenerator -ClrPath $TestAssemblyPath -Verbose
     }
 }
 
@@ -83,7 +83,7 @@ function Initialize-Test {
 
     # Module generation part needs to happen in full powershell
     Write-Verbose "Generating module"
-    if((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ($script:CorePsEditionConstant -eq $PSEdition)) {
+    if((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
         & "powershell.exe" -command "& {`$env:PSModulePath=`$env:PSModulePath_Backup;
             Import-Module (Join-Path `"$PsSwaggerPath`" `"PSSwagger.psd1`") -Force;
             New-PSSwaggerModule -SwaggerSpecPath (Join-Path -Path `"$testCaseDataLocation`" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Verbose -NoAssembly -UseAzureCSharpGenerator:`$$UseAzureCSharpGenerator;

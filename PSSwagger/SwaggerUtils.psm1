@@ -8,6 +8,7 @@
 
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 Import-Module (Join-Path -Path $PSScriptRoot -ChildPath Utilities.psm1)
+Import-Module -Name (Join-Path -Path $PSScriptRoot -ChildPath 'PSSwagger.Common.Helpers')
 . "$PSScriptRoot\PSSwagger.Constants.ps1" -Force
 . "$PSScriptRoot\Trie.ps1" -Force
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwagger.Resources.psd1
@@ -17,7 +18,7 @@ $script:CSharpCodeNamerLoadAttempted = $false
 
 $script:PluralizationService = $null
 # System.Data.Entity.Design.PluralizationServices.PluralizationService is not yet supported on coreclr.
-if(-not $script:IsCoreCLR)
+if(-not (Get-OperatingSystemInfo).IsCore)
 {
     if(-not ('System.Data.Entity.Design.PluralizationServices.PluralizationService' -as [Type]))
     {

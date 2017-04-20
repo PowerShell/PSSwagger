@@ -11,7 +11,6 @@ Import-Module (Join-Path -Path $PSScriptRoot -ChildPath Utilities.psm1) -Disable
 Import-Module (Join-Path -Path $PSScriptRoot -ChildPath SwaggerUtils.psm1) -DisableNameChecking
 . "$PSScriptRoot\PSSwagger.Constants.ps1" -Force
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwagger.Resources.psd1
-$script:AppLocalPath = Microsoft.PowerShell.Management\Join-Path -Path $env:LOCALAPPDATA -ChildPath 'Microsoft\Windows\PowerShell\PSSwagger\'
 
 function Get-SwaggerSpecPathInfo
 {
@@ -456,7 +455,7 @@ function New-SwaggerPath
                 Name = 'Paging'
                 Type = 'switch'
                 Mandatory = '$false'
-                Description = 'Switch to enable paging of return values.' # TODO: Constants/Resources
+                Description = 'Switch to enable paging of return values.'
                 IsParameter = $true
                 ValidateSet = $null
                 ExtendedData = @{
@@ -472,7 +471,7 @@ function New-SwaggerPath
                 Name = 'Page'
                 Type = $x_ms_pageableObject.ReturnType
                 Mandatory = '$true'
-                Description = 'The last page of results.' # TODO: Constants/Resources
+                Description = 'The last page of results.'
                 IsParameter = $true
                 ValidateSet = $null
                 ExtendedData = @{
@@ -1065,11 +1064,7 @@ function Get-TemporaryCliXmlFilePath {
         $FullModuleName
     )
 
-    if (-not (Test-Path -Path $script:AppLocalPath -PathType Container)) {
-        $null = New-Item -Path $script:AppLocalPath -ItemType Directory
-    }
-    
     $random = [Guid]::NewGuid().Guid
-    $filePath = Join-Path -Path $script:AppLocalPath -ChildPath "$FullModuleName.$random.xml"
+    $filePath = Join-Path -Path (Get-XDGDirectory -DirectoryType Cache) -ChildPath "$FullModuleName.$random.xml"
     return $filePath
 }
