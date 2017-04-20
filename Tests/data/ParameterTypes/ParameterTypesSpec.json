@@ -115,9 +115,13 @@
                         "in": "query",
                         "required": false,
                         "type": "string",
-                        "enum": [ "resourceType eq 'Test.Namespace/ServiceNameA'", "resourceType eq 'Test.Namespace/ServiceNameZ'", "OtherValidValue" ],
+                        "enum": [
+                            "resourceType eq 'Test.Namespace/ServiceNameA'",
+                            "resourceType eq 'Test.Namespace/ServiceNameZ'",
+                            "OtherValidValue"
+                        ],
                         "description": "The filter to apply on the operation."
-					},
+                    },
                     {
                         "name": "$filter",
                         "in": "query",
@@ -402,7 +406,7 @@
                 }
             },
             "description": "The workflow properties."
-        },    
+        },
         "Object": {
             "type": "object",
             "properties": {}
@@ -437,9 +441,88 @@
                     "format": "date-time",
                     "readOnly": true,
                     "description": "Gets the created time."
+                },
+                "NamespaceNestedTypeParam": {
+                    "$ref": "#/definitions/NamespaceNestedType",
+                    "description": "Description of NamespaceNestedTypeParam."
+                },
+                "keyCredentials": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/KeyCredential"
+                    },
+                    "description": "Gets or sets the list of KeyCredential objects"
+                },
+                "fieldDefinitions": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/FieldDefinition"
+                    },
+                    "description": "Gets or sets the field definitions of the connection type."
                 }
             },
             "description": "Description of a namespace resource."
+        },
+        "FieldDefinition": {
+            "properties": {
+                "isEncrypted": {
+                    "type": "boolean",
+                    "description": "Gets or sets the isEncrypted flag of the connection field definition."
+                },
+                "isOptional": {
+                    "type": "boolean",
+                    "description": "Gets or sets the isOptional flag of the connection field definition."
+                },
+                "type": {
+                    "type": "string",
+                    "description": "Gets or sets the type of the connection field definition."
+                }
+            },
+            "required": [
+                "type"
+            ],
+            "description": "Definition of the connection fields."
+        },
+        "KeyCredential": {
+            "properties": {
+                "startDate": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Start date."
+                },
+                "endDate": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "End date."
+                },
+                "value": {
+                    "type": "string",
+                    "description": "Key value."
+                },
+                "keyId": {
+                    "type": "string",
+                    "description": "Key ID."
+                },
+                "usage": {
+                    "type": "string",
+                    "description": "Usage. Acceptable values are 'Verify' and 'Sign'."
+                },
+                "type": {
+                    "type": "string",
+                    "description": "Type. Acceptable values are 'AsymmetricX509Cert' and 'Symmetric'."
+                }
+            },
+            "description": "Active Directory Key Credential information."
+        },
+        "NamespaceNestedType": {
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "readOnly": true,
+                    "description": "Resource name"
+                }
+            },
+            "description": "Description of a NamespaceNestedType resource."
         },
         "NamespaceList": {
             "properties": {

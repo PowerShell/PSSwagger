@@ -794,8 +794,8 @@ function Get-ParamType
             }
             elseif((Get-Member -InputObject $ParameterJsonObject.Items -Name 'Type') -and $ParameterJsonObject.Items.Type)
             {
-                $ArrayItemType = Get-PSTypeFromSwaggerObject -JsonObject $ParameterJsonObject.Items
-                $paramType = "$($ArrayItemType)[]"
+                $ReferenceTypeName = Get-PSTypeFromSwaggerObject -JsonObject $ParameterJsonObject.Items
+                $paramType = "$($ReferenceTypeName)[]"
             }
         }
         elseif ((Get-Member -InputObject $ParameterJsonObject -Name 'AdditionalProperties') -and 
@@ -924,7 +924,7 @@ function Get-ParamType
         if($DefinitionFunctionsDetails.ContainsKey($ReferenceTypeName)) {
             $ReferencedDefinitionDetails = $DefinitionFunctionsDetails[$ReferenceTypeName]
         }
-        $ReferencedDefinitionDetails['GenerateDefinitionCmdlet'] = $true
+        $ReferencedDefinitionDetails['UsedAsPathOperationInputType'] = $true
     }
 
     if($paramType -and 

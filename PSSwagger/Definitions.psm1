@@ -346,8 +346,8 @@ function Get-DefinitionParameterType
             }
             elseif((Get-Member -InputObject $ParameterJsonObject.Items -Name 'Type') -and $ParameterJsonObject.Items.Type)
             {
-                $ArrayItemType = Get-PSTypeFromSwaggerObject -JsonObject $ParameterJsonObject.Items
-                $ParameterType = "$($ArrayItemType)[]"
+                $ReferenceTypeName = Get-PSTypeFromSwaggerObject -JsonObject $ParameterJsonObject.Items
+                $ParameterType = "$($ReferenceTypeName)[]"
             }
         }
         elseif ((Get-Member -InputObject $ParameterJsonObject -Name 'AdditionalProperties') -and 
@@ -550,7 +550,13 @@ function New-SwaggerDefinitionCommand
     Expand-NonModelDefinition -DefinitionFunctionsDetails $DefinitionFunctionsDetails -NameSpace $NameSpace -Models $Models
 
     $DefinitionFunctionsDetails.GetEnumerator() | ForEach-Object {
-        
+        $FunctionDetails = $_.Value
+        if ($FunctionDetails.ContainsKey('UsedAsPathOperationInputType') -and $FunctionDetails.UsedAsPathOperationInputType) {
+            Set-GenerateDefinitionCmdlet -DefinitionFunctionsDetails $DefinitionFunctionsDetails -FunctionDetails $FunctionDetails -ModelsNamespaceWithDot "$Namespace.$Models."
+        }
+    }
+
+    $DefinitionFunctionsDetails.GetEnumerator() | ForEach-Object {        
         $FunctionDetails = $_.Value
         # Denifitions defined as x_ms_client_flatten are not used as an object anywhere. 
         # Also AutoRest doesn't generate a Model class for the definitions declared as x_ms_client_flatten for other definitions.
@@ -570,6 +576,70 @@ function New-SwaggerDefinitionCommand
     }
 
     return $FunctionsToExport
+}
+
+function Set-GenerateDefinitionCmdlet
+{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]
+        $DefinitionFunctionsDetails,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]
+        $FunctionDetails,
+
+        [Parameter(Mandatory = $true)]
+        [string]
+        $ModelsNamespaceWithDot
+    )
+
+    if($FunctionDetails.ContainsKey('GenerateDefinitionCmdlet') -or -not $FunctionDetails.IsModel)
+    {
+        return
+    }
+    $FunctionDetails['GenerateDefinitionCmdlet'] = $true
+    
+    if($FunctionDetails.ContainsKey('ParametersTable') -and (Get-HashtableKeyCount -Hashtable $FunctionDetails.ParametersTable)) {
+        $FunctionDetails.ParametersTable.GetEnumerator() | ForEach-Object {
+            Set-GenerateDefinitionCmdletUtility -ParameterType $_.Value.Type -DefinitionFunctionsDetails $DefinitionFunctionsDetails -ModelsNamespaceWithDot $ModelsNamespaceWithDot
+        }
+    } elseif ($FunctionDetails.ContainsKey('Type') -and $FunctionDetails.Type) {
+        Set-GenerateDefinitionCmdletUtility -ParameterType $FunctionDetails.Type -DefinitionFunctionsDetails $DefinitionFunctionsDetails -ModelsNamespaceWithDot $ModelsNamespaceWithDot
+    }
+}
+
+function Set-GenerateDefinitionCmdletUtility
+{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]
+        $DefinitionFunctionsDetails,
+
+        [Parameter(Mandatory = $true)]
+        [string]
+        $ParameterType,
+
+        [Parameter(Mandatory = $true)]
+        [string]
+        $ModelsNamespaceWithDot
+    )
+
+    $RefDefName = $null
+    if ($ParameterType.StartsWith($ModelsNamespaceWithDot, [System.StringComparison]::OrdinalIgnoreCase)) {
+        $RefDefName = $ParameterType.Replace($ModelsNamespaceWithDot, '').Replace('[]','')
+    } elseif ($ParameterType.StartsWith("System.Collections.Generic.Dictionary[[string],[$ModelsNamespaceWithDot", [System.StringComparison]::OrdinalIgnoreCase)) {
+        $RefDefName = $ParameterType.Replace("System.Collections.Generic.Dictionary[[string],[$ModelsNamespaceWithDot", '').Replace(']]','')
+    }
+
+    if($RefDefName -and $DefinitionFunctionsDetails.ContainsKey($RefDefName)) {
+        $RefDefFunctionDetails = $DefinitionFunctionsDetails[$RefDefName]
+        if($RefDefFunctionDetails) {
+            Set-GenerateDefinitionCmdlet -FunctionDetails $RefDefFunctionDetails -DefinitionFunctionsDetails $DefinitionFunctionsDetails -ModelsNamespaceWithDot $ModelsNamespaceWithDot
+        }
+    }
 }
 
 function Copy-FunctionDetailsParameters {
