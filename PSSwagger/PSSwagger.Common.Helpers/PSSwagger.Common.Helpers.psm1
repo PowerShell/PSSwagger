@@ -384,7 +384,7 @@ else
 			$RequiredAssemblies += (Join-Path -Path "$($module.ModuleBase)" -ChildPath 'Microsoft.Rest.ClientRuntime.dll')
 		}
 		
-        $TempPath = (Get-XDGDirectory -DirectoryType Cache) + [System.IO.Path]::GetRandomFileName()
+        $TempPath = Join-Path -Path (Get-XDGDirectory -DirectoryType Cache) -ChildPath ([System.IO.Path]::GetRandomFileName())
         $null = New-Item -Path $TempPath -ItemType Directory -Force
         $PSSwaggerJobAssemblyPath = Join-Path -Path $TempPath -ChildPath 'Microsoft.PowerShell.PSSwagger.Utility.dll'
 
