@@ -249,7 +249,7 @@ function Invoke-SwaggerCommandUtility
 
 <#
 .DESCRIPTION
-  Gets operating system information. Returns an object with the following boolean properties: IsCore, IsLinux, IsWindows, IsOSX
+  Gets operating system information. Returns an object with the following boolean properties: IsCore, IsLinux, IsWindows, IsOSX, IsNanoServer, IsIoT
 #>
 function Get-OperatingSystemInfo {
     $info = @{
@@ -257,15 +257,19 @@ function Get-OperatingSystemInfo {
         IsLinux = $false
         IsOSX = $false
         IsWindows = $false
+        IsNanoServer = $false
+        IsIoT = $false
     }
 
-    if ((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
-        $info.IsCore = $true
-        $info.IsLinux = $IsLinux
-        $info.IsOSX = $IsOSX
-        $info.IsWindows = $IsWindows
+    if ('System.Management.Automation.Platform' -as [Type]) {
+        $info.IsCore = [System.Management.Automation.Platform]::IsCoreCLR
+        $info.IsLinux = [System.Management.Automation.Platform]::IsLinux
+        $info.IsOSX = [System.Management.Automation.Platform]::IsOSX
+        $info.IsWindows = [System.Management.Automation.Platform]::IsWindows
+        $info.IsNanoServer = [System.Management.Automation.Platform]::IsNanoServer
+        $info.IsIoT = [System.Management.Automation.Platform]::IsIoT
     } else {
-        # Full CLR means Windows
+        # If this type doesn't exist, this should be full CLR Windows
         $info.IsWindows = $true
     }
 
