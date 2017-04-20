@@ -339,7 +339,18 @@ function Get-EnvironmentVariable {
         $Name
     )
 
-    return [System.Environment]::GetEnvironmentVariable($Name)
+    $value = [System.Environment]::GetEnvironmentVariable($Name)
+    if (-not $value) {
+        # If the variable doesn't exist as an environment variable, check if it exists locally
+        $variable = Get-Variable -Name $Name -ErrorAction Ignore
+        if ($variable) {
+            return $variable.Value
+        } else {
+            return $value
+        }
+    }
+
+    return $value
 }
 
 $PSSwaggerJobAssemblyPath = $null
