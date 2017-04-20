@@ -434,6 +434,20 @@ Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
             $command3.Parameters.ContainsKey('Value') | Should Be $True
             $command3.Parameters.Value.ParameterType.Name | Should be 'NamespaceModel[]'
         }
+
+        It "Test Definition commands 'New-<NestedDefinition>Object' for nested definitions" {
+            $ModuleName = 'Generated.ParamTypes.Module'
+            $ev = $null
+            $CommandList = Get-Command -Module $ModuleName -ErrorVariable ev
+            $ev | Should BeNullOrEmpty
+            
+            $CommandNames = @('New-FieldDefinitionObject',
+                              'New-NamespaceNestedTypeObject',
+                              'New-KeyCredentialObject')
+            $CommandNames | ForEach-Object {
+                $CommandList.Name -CContains $_ | Should be $True
+            }
+        }
     }
 
     AfterAll {
