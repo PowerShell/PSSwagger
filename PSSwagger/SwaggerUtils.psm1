@@ -852,19 +852,19 @@ function Get-ParamType
     elseif ( (Get-Member -InputObject $ParameterJsonObject -Name '$ref') -and ($ParameterJsonObject.'$ref') )
     {
         <#
-            Currently supported reference parameter types:
-                #/parameters/<PARAMNAME>
-                #/parameters/<DEFINITIONNAME>
+            Currently supported parameter references:
+                #/parameters/<PARAMETERNAME> or #../../<Parameters>.Json/parameters/<PARAMETERNAME>
+                #/definitions/<DEFINITIONNAME> or #../../<Definitions>.Json/definitions/<DEFINITIONNAME>
         #>
         $ReferenceParameterValue = $ParameterJsonObject.'$ref'
         $ReferenceParts = $ReferenceParameterValue -split '/' | ForEach-Object { if($_.Trim()){ $_.Trim() } }
-        if($ReferenceParts.Count -eq 3)
-        {                
-            if($ReferenceParts[1] -eq 'Parameters')
+        if($ReferenceParts.Count -ge 3)
+        {
+            if($ReferenceParts[-2] -eq 'Parameters')
             {
-                #/parameters/
+                #  #<...>/parameters/<PARAMETERNAME>
                 $GlobalParameters = $SwaggerDict['Parameters']
-                $GlobalParamDetails = $GlobalParameters[$ReferenceParts[2]]
+                $GlobalParamDetails = $GlobalParameters[$ReferenceParts[-1]]
 
                 # Valid values for this extension are: "client", "method".
                 $GlobalParameterDetails = $GlobalParamDetails
@@ -875,10 +875,10 @@ function Get-ParamType
                     $isParameter = $false
                 }
             }
-            elseif($ReferenceParts[1] -eq 'Definitions')
+            elseif($ReferenceParts[-2] -eq 'Definitions')
             {
-                #/definitions/
-                $ReferenceTypeName = Get-CSharpModelName -Name $ReferenceParts[2]
+                #  #<...>/definitions/<DEFINITIONNAME>
+                $ReferenceTypeName = Get-CSharpModelName -Name $ReferenceParts[-1]
                 $paramType = $DefinitionTypeNamePrefix + $ReferenceTypeName
             }
         }
@@ -1336,9 +1336,10 @@ function Get-OutputType
     if(Get-member -inputobject $schema -name '$ref')
     {
         $ref = $schema.'$ref'
-        if($ref.StartsWith("#/definitions"))
+        $RefParts = $ref -split '/' | ForEach-Object { if($_.Trim()){ $_.Trim() } }
+        if(($RefParts.Count -ge 3) -and ($RefParts[-2] -eq 'definitions'))
         {
-            $key = Get-CSharpModelName -Name $ref.split("/")[-1]
+            $key = Get-CSharpModelName -Name $RefParts[-1]
             if ($definitionList.ContainsKey($key))
             {
                 $definition = ($definitionList[$key]).Value
@@ -1362,9 +1363,10 @@ function Get-OutputType
                                 (Get-Member -InputObject $defValue.items -Name '$ref'))
                             {
                                 $defRef = $defValue.items.'$ref'
-                                if($ref.StartsWith("#/definitions")) 
+                                $DefRefParts = $defRef -split '/' | ForEach-Object { if($_.Trim()){ $_.Trim() } }
+                                if(($DefRefParts.Count -ge 3) -and ($DefRefParts[-2] -eq 'definitions'))
                                 {
-                                    $defKey = Get-CSharpModelName -Name $defRef.split("/")[-1]
+                                    $defKey = Get-CSharpModelName -Name $DefRefParts[-1]
                                     $fullPathDataType = "$ModelsNamespace.$defKey"
                                 }
                                 if(Get-member -InputObject $defValue -Name 'type') 
