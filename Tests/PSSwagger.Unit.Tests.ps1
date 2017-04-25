@@ -3,7 +3,7 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
 
     BeforeAll {
         $PSSwaggerModulePath = Split-Path -Path $PSScriptRoot -Parent | Join-Path -ChildPath 'PSSwagger'
-        Import-Module -Name $PSSwaggerModulePath -Force
+        Import-Module -Name $PSSwaggerModulePath -Force -ArgumentList $true
     }
 
     InModuleScope PSSwagger {

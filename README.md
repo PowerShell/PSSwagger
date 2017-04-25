@@ -4,10 +4,10 @@ Tool to generate PowerShell Cmdlets using Swagger based specifications
 
 ## Syntax
 ```powershell
-New-PSSwaggerModule -SwaggerSpecPath <string> -Path <string> -Name <string> [-Version <version>] [-UseAzureCsharpGenerator] [-NoAssembly] [-PowerShellCorePath <string>] [-IncludeCoreFxAssembly] [-DefaultCommandPrefix <string>] [-IncludeCoreFxAssembly <string>] [-TestBuild <string>] [-SymbolPath <string>] [<CommonParameters>]
+New-PSSwaggerModule -SwaggerSpecPath <string> -Path <string> -Name <string> [-Version <version>] [-UseAzureCsharpGenerator] [-NoAssembly] [-PowerShellCorePath <string>] [-IncludeCoreFxAssembly] [-DefaultCommandPrefix <string>] [-IncludeCoreFxAssembly <string>] [-TestBuild <string>] [-SymbolPath <string>] [-ConfirmBootstrap] [<CommonParameters>]
 ```
 ```powershell
-New-PSSwaggerModule -SwaggerSpecUri <uri> -Path <string> -Name <string> [-Version <version>] [-UseAzureCsharpGenerator] [-NoAssembly] [-PowerShellCorePath <string>] [-IncludeCoreFxAssembly] [-DefaultCommandPrefix <string>] [-IncludeCoreFxAssembly <string>] [-TestBuild <string>] [-SymbolPath <string>] [<CommonParameters>]
+New-PSSwaggerModule -SwaggerSpecUri <uri> -Path <string> -Name <string> [-Version <version>] [-UseAzureCsharpGenerator] [-NoAssembly] [-PowerShellCorePath <string>] [-IncludeCoreFxAssembly] [-DefaultCommandPrefix <string>] [-IncludeCoreFxAssembly <string>] [-TestBuild <string>] [-SymbolPath <string>] [-ConfirmBootstrap] [<CommonParameters>]
 ```
 
 | Parameter       | Description                           |
@@ -23,6 +23,7 @@ New-PSSwaggerModule -SwaggerSpecUri <uri> -Path <string> -Name <string> [-Versio
 | IncludeCoreFxAssembly      | Switch to additionally compile the module's binary component for core CLR |
 | TestBuild      | Switch to enable debug compilation of full CLR binary component. Effects: disables compiler optimization |
 | SymbolPath     | Path that will contain the generated module's generated code and corresponding PDB file. Defaults to $Path\symbols if not specified. |
+| ConfirmBootstrap     | Automatically consent to downloading nuget.exe or NuGet packages as required. |
 
 ## Supported Platforms
 | Usage | Platforms |
@@ -66,10 +67,11 @@ New-PSSwaggerModule -SwaggerSpecUri <uri> -Path <string> -Name <string> [-Versio
 
 After step 5, the module will be in `C:\Temp\GeneratedModule\Generated.AzureRM.BatchManagement ($param.Path)` folder.
 
-Before importing that module and using it, you need to import `Generated.Azure.Common.Helpers` module which is under PSSwagger folder.
+Before importing that module and using it, you need to import `PSSwagger.Common.Helpers` module which is under PSSwagger folder. If the module is built on Azure, import the `PSSwagger.Azure.Helpers` module as well.
     
 ```powershell
-Import-Module .\PSSwagger\Generated.Azure.Common.Helpers
+Import-Module .\PSSwagger\PSSwagger.Common.Helpers
+Import-Module .\PSSwagger\PSSwagger.Azure.Helpers
 Import-Module "$($param.Path)\$($param.Name)"
 Get-Command -Module $param.Name
 ```

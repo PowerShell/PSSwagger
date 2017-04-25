@@ -35,7 +35,7 @@ function Compile-TestAssembly {
         [string]$TestAssemblyName,
         [string]$TestAssemblyPath,
         [string]$TestCSharpFilePath,
-        [string]$CompilationUtilsPath,
+        [string]$CommonHelpersModulePath,
         [bool]$UseAzureCSharpGenerator
     )
 
@@ -43,8 +43,9 @@ function Compile-TestAssembly {
     Write-Verbose "Checking for test assembly '$fullPath'"
     if (-not (Test-Path $fullPath)) {
         Write-Verbose "Generating test assembly from file '$TestCSharpFilePath' using script '$CompilationUtilsPath'"
-        . "$CompilationUtilsPath"
-        $null = Invoke-AssemblyCompilation -CSharpFiles @($TestCSharpFilePath) -OutputAssemblyName $TestAssemblyName -CodeCreatedByAzureGenerator:$UseAzureCSharpGenerator -ClrPath $TestAssemblyPath -Verbose
+        Import-Module $CommonHelpersModulePath -ArgumentList $true -Force
+        Initialize-PSSwaggerLocalTools -Framework @('net4', 'netstandard1') -AcceptBootstrap -Azure:$UseAzureCSharpGenerator
+        $null = Invoke-PSSwaggerAssemblyCompilation -CSharpFiles @($TestCSharpFilePath) -OutputAssemblyName $TestAssemblyName -CodeCreatedByAzureGenerator:$UseAzureCSharpGenerator -ClrPath $TestAssemblyPath -Verbose
     }
 }
 
@@ -64,7 +65,7 @@ function Initialize-Test {
     Compile-TestAssembly -TestAssemblyName "$global:testRunGuid.dll" `
                          -TestAssemblyPath (Join-Path "$TestRootPath" "PSSwagger.TestUtilities") `
                          -TestCSharpFilePath (Join-Path "$TestRootPath" "PSSwagger.TestUtilities" | Join-Path -ChildPath "TestCredentials.cs") `
-                         -CompilationUtilsPath (Join-Path $PsSwaggerPath "Utils.ps1") -UseAzureCSharpGenerator $UseAzureCSharpGenerator -Verbose
+                         -CommonHelpersModulePath (Join-Path $PsSwaggerPath "PSSwagger.Common.Helpers") -UseAzureCSharpGenerator $UseAzureCSharpGenerator -Verbose
 
     
 
@@ -85,12 +86,12 @@ function Initialize-Test {
     Write-Verbose "Generating module"
     if((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
         & "powershell.exe" -command "& {`$env:PSModulePath=`$env:PSModulePath_Backup;
-            Import-Module (Join-Path `"$PsSwaggerPath`" `"PSSwagger.psd1`") -Force;
-            New-PSSwaggerModule -SwaggerSpecPath (Join-Path -Path `"$testCaseDataLocation`" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Verbose -NoAssembly -UseAzureCSharpGenerator:`$$UseAzureCSharpGenerator;
+            Import-Module (Join-Path `"$PsSwaggerPath`" `"PSSwagger.psd1`") -Force -ArgumentList `$true;
+            New-PSSwaggerModule -SwaggerSpecPath (Join-Path -Path `"$testCaseDataLocation`" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Verbose -NoAssembly -UseAzureCSharpGenerator:`$$UseAzureCSharpGenerator -ConfirmBootstrap;
         }"
     } else {
-        Import-Module (Join-Path "$PsSwaggerPath" "PSSwagger.psd1") -Force
-        New-PSSwaggerModule -SwaggerSpecPath (Join-Path -Path "$testCaseDataLocation" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Verbose -NoAssembly -UseAzureCSharpGenerator:$UseAzureCSharpGenerator
+        Import-Module (Join-Path "$PsSwaggerPath" "PSSwagger.psd1") -Force -ArgumentList $true
+        New-PSSwaggerModule -SwaggerSpecPath (Join-Path -Path "$testCaseDataLocation" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Verbose -NoAssembly -UseAzureCSharpGenerator:$UseAzureCSharpGenerator -ConfirmBootstrap
     }
     
     if ($TestDataFileName) {

@@ -5,22 +5,31 @@
 # PSSwagger Module
 #
 #########################################################################################
+<#
+.PARAMETER AcceptBootstrap
+  Automatically consent to downloading nuget.exe or NuGet packages as required.
+#>
+param(
+	[switch]
+	$AcceptBootstrap
+)
 
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 
 $SubScripts = @(
-    'PSSwagger.Constants.ps1',
-    'Utils.ps1'
+    'PSSwagger.Constants.ps1'
 )
 $SubScripts | ForEach-Object {. (Join-Path -Path $PSScriptRoot -ChildPath $_) -Force}
-
+$BootstrappableSubModules = @(
+    'PSSwagger.Common.Helpers'
+)
 $SubModules = @(
-    'PSSwagger.Common.Helpers',
     'SwaggerUtils.psm1',
     'Utilities.psm1',
     'Paths.psm1',
     'Definitions.psm1'
 )
+$BootstrappableSubModules | ForEach-Object {Import-Module -Name (Join-Path -Path $PSScriptRoot -ChildPath $_) -Force -Scope Local -DisableNameChecking -ArgumentList $AcceptBootstrap}
 $SubModules | ForEach-Object {Import-Module -Name (Join-Path -Path $PSScriptRoot -ChildPath $_) -Force -Scope Local -DisableNameChecking}
 
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwagger.Resources.psd1
@@ -61,6 +70,9 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwa
 
 .PARAMETER  SymbolPath
   Path to save generated C# code and PDB file. Defaults to $Path\symbols
+
+.PARAMETER  ConfirmBootstrap
+  Automatically consent to downloading nuget.exe or NuGet packages as required.
 #>
 function New-PSSwaggerModule
 {
@@ -116,7 +128,11 @@ function New-PSSwaggerModule
 
         [Parameter()]
         [string]
-        $SymbolPath
+        $SymbolPath,
+
+        [Parameter()]
+        [switch]
+        $ConfirmBootstrap
     )
 
     if ($NoAssembly -and $IncludeCoreFxAssembly) {
@@ -145,7 +161,7 @@ function New-PSSwaggerModule
     
     $SwaggerSpecFilePaths = @()
     $AutoRestModeler = 'Swagger'
-
+    
     if ($PSCmdlet.ParameterSetName -eq 'SwaggerURI')
     {
         # Ensure that if the URI is coming from github, it is getting the raw content
@@ -251,10 +267,10 @@ function New-PSSwaggerModule
         }
     }
 
-    $userConsent = Initialize-LocalTools -AllUsers:$InstallToolsForAllUsers
+    $frameworksToCheckDependencies = @('net4')
     if ($IncludeCoreFxAssembly) {
         if ((-not (Get-OperatingSystemInfo).IsCore) -and (-not $PowerShellCorePath)) {
-            $psCore = Get-Msi -Name "PowerShell*" -MaximumVersion "6.0.0.11" | Sort-Object -Property Version -Descending
+            $psCore = Get-PSSwaggerMsi -Name "PowerShell*" -MaximumVersion "6.0.0.11" | Sort-Object -Property Version -Descending
             if ($null -ne $psCore) {
                 # PSCore exists via MSI, but the MSI provider doesn't seem to provide an install path
                 # First check the default path (for now, just Windows)
@@ -283,7 +299,12 @@ function New-PSSwaggerModule
             $message = $LocalizedData.PsCorePathNotFound -f ($PowerShellCorePath)
             throw $message
         }
+
+        $frameworksToCheckDependencies += 'netstandard1'
     }
+
+    $userAcceptedBootstrap = $AcceptBootstrap -or $ConfirmBootstrap
+    $userConsent = Initialize-PSSwaggerLocalTools -AllUsers:$InstallToolsForAllUsers -Azure:$UseAzureCsharpGenerator -Framework $frameworksToCheckDependencies -AcceptBootstrap:$userAcceptedBootstrap
 
     $DefinitionFunctionsDetails = @{}
 
@@ -382,23 +403,6 @@ function New-PSSwaggerModule
 
     $PathFunctionDetails = $codePhaseResult.PathFunctionDetails
     $generatedCSharpFilePath = $codePhaseResult.GeneratedCSharpPath
-        
-
-    # Prepare dynamic compilation
-    Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Utils.ps1") (Join-Path -Path $outputDirectory -ChildPath "Utils.ps1")
-    Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Utils.Resources.psd1") (Join-Path -Path $outputDirectory -ChildPath "Utils.Resources.psd1")
-
-    # If we precompiled the assemblies, we need to require a specific version of the dependent NuGet packages
-    # For now, there's only one required package (Microsoft.Rest.ClientRuntime.Azure)
-    $requiredVersionParameter = ''
-    # Compilation would have already installed this package, so this will just retrieve the package info
-    # As of 3/2/2017, there's a version mismatch between the latest Microsoft.Rest.ClientRuntime.Azure package and the latest AzureRM.Profile package
-    # So we have to hardcode Microsoft.Rest.ClientRuntime.Azure to at most version 3.3.4
-    $package = Install-MicrosoftRestAzurePackage -RequiredVersion 3.3.4 -AllUsers:$InstallToolsForAllUsers -BootstrapConsent:$userConsent
-    if($package)
-    {
-        $requiredVersionParameter = "-RequiredAzureRestVersion $($package.Version)"
-    }
 
     $FunctionsToExport = @()
     $FunctionsToExport += New-SwaggerSpecPathCommand -PathFunctionDetails $PathFunctionDetails `
@@ -582,14 +586,16 @@ function ConvertTo-CsharpCode
     $cliXmlTmpPath = Get-TemporaryCliXmlFilePath -FullModuleName $fullModuleName
     try {
         Export-CliXml -InputObject $PathFunctionDetails -Path $cliXmlTmpPath
+        $dependencies = Get-PSSwaggerExternalDependencies -Azure:$codeCreatedByAzureGenerator -Framework 'net4'
+        $microsoftRestClientRuntimeAzureRequiredVersion = if ($dependencies.ContainsKey('Microsoft.Rest.ClientRuntime.Azure')) { $dependencies['Microsoft.Rest.ClientRuntime.Azure'].RequiredVersion } else { '' }
         $command = "Import-Module '$PSScriptRoot\PSSwagger.Common.Helpers';
-                    . '$PSScriptRoot\Utils.ps1'; 
-                    Initialize-LocalToolsVariables;
-                    Invoke-AssemblyCompilation  -OutputAssemblyName '$outAssembly' ``
+                    Invoke-PSSwaggerAssemblyCompilation  -OutputAssemblyName '$outAssembly' ``
                                                 -ClrPath '$clrPath' ``
                                                 -CSharpFiles $allCSharpFilesArrayString ``
                                                 -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator ``
-                                                -RequiredAzureRestVersion 3.3.4 ``
+                                                -MicrosoftRestClientRuntimeAzureRequiredVersion '$microsoftRestClientRuntimeAzureRequiredVersion' ``
+                                                -MicrosoftRestClientRuntimeRequiredVersion '$($dependencies['Microsoft.Rest.ClientRuntime'].RequiredVersion)' ``
+                                                -NewtonsoftJsonRequiredVersion '$($dependencies['Newtonsoft.Json'].RequiredVersion)' ``
                                                 -AllUsers:`$$InstallToolsForAllUsers ``
                                                 -BootstrapConsent:`$$UserConsent ``
                                                 -TestBuild:`$$TestBuild ``
@@ -601,12 +607,12 @@ function ConvertTo-CsharpCode
         $success = & "powershell" -command "& {$command}"
         
         $codeReflectionResult = Import-CliXml -Path $cliXmlTmpPath
-        if ($codeReflectionResult.VerboseMessages -and ($codeReflectionResult.VerboseMessages.Count -gt 0)) {
+        if ($codeReflectionResult.ContainsKey('VerboseMessages') -and $codeReflectionResult.VerboseMessages -and ($codeReflectionResult.VerboseMessages.Count -gt 0)) {
             $verboseMessages = $codeReflectionResult.VerboseMessages -Join [Environment]::NewLine
             Write-Verbose -Message $verboseMessages
         }
 
-        if ($codeReflectionResult.WarningMessages -and ($codeReflectionResult.WarningMessages.Count -gt 0)) {
+        if ($codeReflectionResult.ContainsKey('WarningMessages') -and $codeReflectionResult.WarningMessages -and ($codeReflectionResult.WarningMessages.Count -gt 0)) {
             $warningMessages = $codeReflectionResult.WarningMessages -Join [Environment]::NewLine
             Write-Warning -Message $warningMessages
         }
@@ -652,14 +658,17 @@ function ConvertTo-CsharpCode
         if (-not (Test-Path -Path $clrPath)) {
             $null = New-Item $clrPath -ItemType Directory
         }
-
+        $dependencies = Get-PSSwaggerExternalDependencies -Azure:$codeCreatedByAzureGenerator -Framework 'netstandard1'
+        $microsoftRestClientRuntimeAzureRequiredVersion = if ($dependencies.ContainsKey('Microsoft.Rest.ClientRuntime.Azure')) { $dependencies['Microsoft.Rest.ClientRuntime.Azure'].RequiredVersion } else { '' }
         $command = "Import-Module '$PSScriptRoot\PSSwagger.Common.Helpers';
-                    . '$PSScriptRoot\Utils.ps1'; 
-                    Initialize-LocalToolsVariables;
-                    Invoke-AssemblyCompilation -OutputAssemblyName '$outAssembly' ``
-                                                -ClrPath '$clrPath' ``
-                                                -CSharpFiles $allCSharpFilesArrayString ``
-                                                -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator"
+                    Invoke-PSSwaggerAssemblyCompilation -OutputAssemblyName '$outAssembly' ``
+                                               -ClrPath '$clrPath' ``
+                                               -CSharpFiles $allCSharpFilesArrayString ``
+                                               -MicrosoftRestClientRuntimeAzureRequiredVersion '$microsoftRestClientRuntimeAzureRequiredVersion' ``
+                                               -MicrosoftRestClientRuntimeRequiredVersion '$($dependencies['Microsoft.Rest.ClientRuntime'].RequiredVersion)' ``
+                                               -NewtonsoftJsonRequiredVersion '$($dependencies['Newtonsoft.Json'].RequiredVersion)' ``
+                                               -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator ``
+                                               -BootstrapConsent:`$$UserConsent"
 
         $success = & "$PowerShellCorePath" -command "& {$command}"
         if ((Test-AssemblyCompilationSuccess -Output ($success | Out-String))) {
