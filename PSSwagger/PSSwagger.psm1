@@ -233,7 +233,7 @@ function New-PSSwaggerModule
                 $FileName = Split-Path -Path $document -Leaf
                 if(Test-Path -Path $document -PathType Leaf)
                 {
-                    $SwaggerSpecFilePaths += $SwaggerDocumentPath
+                    $SwaggerSpecFilePaths += $document
                 }
                 elseif(Test-Path -Path (Join-Path -Path $SwaggerBaseDir -ChildPath $document) -PathType Leaf)
                 {
