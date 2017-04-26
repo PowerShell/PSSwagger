@@ -15,15 +15,6 @@ function Get-PascalCasedString
         $startIndex = 0
         $subStringLength = 1
 
-        # Convert the two letter abbreviations to upper case.
-        # Example: vmName --> VMName
-        if($Name.Length -gt 2) {
-            $thirdCharString = $Name.substring(2, 1)
-            if($thirdCharString.ToUpper() -ceq $thirdCharString) {
-                $subStringLength = 2
-            }
-        }
-
         return $($Name.substring($startIndex, $subStringLength)).ToUpper() + $Name.substring($subStringLength)
     }
 
