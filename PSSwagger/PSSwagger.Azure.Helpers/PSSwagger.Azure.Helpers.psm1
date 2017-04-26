@@ -98,3 +98,28 @@ function Remove-AzSRmEnvironment
 
     & "$moduleName\Remove-AzureRmEnvironment" @PSBoundParameters
 }
+
+<#
+.DESCRIPTION
+  Manually initialize PSSwagger's external dependencies. Use this function with -AcceptBootstrap for silent execution scenarios.
+
+.PARAMETER  AllUsers
+  Install dependencies in PSSwagger's global package cache.
+
+.PARAMETER  AcceptBootstrap
+  Automatically consent to downloading missing packages. If not specified, an interactive prompt will be appear.
+#>
+function Initialize-PSSwaggerDependencies {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $AllUsers,
+
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $AcceptBootstrap
+    )
+
+    PSSwagger.Common.Helpers\Initialize-PSSwaggerDependencies -Azure @PSBoundParameters
+}

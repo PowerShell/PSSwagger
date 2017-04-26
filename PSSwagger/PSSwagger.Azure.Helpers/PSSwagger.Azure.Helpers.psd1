@@ -12,7 +12,8 @@ FunctionsToExport = @('Get-AzDelegatingHandler',
                       'Get-AzSubscriptionId',
                       'Get-AzResourceManagerUrl',
                       'Add-AzSRmEnvironment',
-                      'Remove-AzSRmEnvironment')
+                      'Remove-AzSRmEnvironment',
+                      'Initialize-PSSwaggerDependencies')
 CmdletsToExport = ''
 VariablesToExport = ''
 AliasesToExport = ''

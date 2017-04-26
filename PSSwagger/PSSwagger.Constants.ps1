@@ -26,17 +26,19 @@ $RootModuleContents = @'
 `$script:ServiceClientTracer = `$null
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename $Name.Resources.psd1
-. (Join-Path -Path "`$PSScriptRoot" -ChildPath "Utils.ps1")
 
 if ((Get-OperatingSystemInfo).IsCore) {
     `$clr = 'coreclr'
+    `$framework = 'netstandard1'
 } else {
     `$clr = 'fullclr'
+    `$framework = 'net4'
 }
 
 `$clrPath = Join-Path -Path `$PSScriptRoot -ChildPath 'ref' | Join-Path -ChildPath `$clr
 `$dllFullName = Join-Path -Path `$clrPath -ChildPath '$Namespace.dll'
 `$isAzureCSharp = `$$UseAzureCSharpGenerator
+`$consent = `$false
 if (-not (Test-Path -Path `$dllFullName)) {
     `$message = `$LocalizedData.CompilingBinaryComponent -f (`$dllFullName)
     Write-Verbose -Message `$message
@@ -57,9 +59,18 @@ if (-not (Test-Path -Path `$dllFullName)) {
         `$message = `$LocalizedData.HashValidationSuccessful
         Write-Verbose -Message `$message -Verbose
     }
+
+    `$dependencies = Get-PSSwaggerExternalDependencies -Azure:`$isAzureCSharp -Framework `$framework
+    `$consent = Initialize-PSSwaggerLocalTools -Azure:`$isAzureCSharp -Framework `$framework
+    `$microsoftRestClientRuntimeAzureRequiredVersion = ''
+    if (`$dependencies.ContainsKey('Microsoft.Rest.ClientRuntime.Azure')) {
+        `$microsoftRestClientRuntimeAzureRequiredVersion = `$dependencies['Microsoft.Rest.ClientRuntime.Azure'].RequiredVersion
+    }
     
-    Initialize-LocalTools
-    `$success = Invoke-AssemblyCompilation -CSharpFiles `$allCSharpFiles -CodeCreatedByAzureGenerator:`$isAzureCSharp $requiredVersionParameter -ClrPath `$clrPath
+    `$microsoftRestClientRuntimeRequiredVersion = `$dependencies['Microsoft.Rest.ClientRuntime'].RequiredVersion
+    `$newtonsoftJsonRequiredVersion = `$dependencies['Newtonsoft.Json'].RequiredVersion
+
+    `$success = Invoke-PSSwaggerAssemblyCompilation -CSharpFiles `$allCSharpFiles -NewtonsoftJsonRequiredVersion `$newtonsoftJsonRequiredVersion -MicrosoftRestClientRuntimeRequiredVersion `$microsoftRestClientRuntimeRequiredVersion -MicrosoftRestClientRuntimeAzureRequiredVersion "`$microsoftRestClientRuntimeAzureRequiredVersion" -ClrPath `$clrPath -BootstrapConsent:`$consent -CodeCreatedByAzureGenerator:`$isAzureCSharp
     if (-not `$success) {
         `$message = `$LocalizedData.CompilationFailed -f (`$dllFullName)
         throw `$message
@@ -69,26 +80,11 @@ if (-not (Test-Path -Path `$dllFullName)) {
     Write-Verbose -Message `$message
 }
 
-# Load extra refs
-Get-AzureRMDllReferences | ForEach-Object { Add-Type -Path `$_ -ErrorAction SilentlyContinue }
-if ((Get-OperatingSystemInfo).IsCore) {
-    Add-Type -Path (Get-MicrosoftRestAzureReference -Framework 'net45' -ClrPath (Join-Path -Path "`$PSScriptRoot" -ChildPath "ref" | Join-Path -ChildPath "`$clr"))
-}
+
 
 Get-ChildItem -Path (Join-Path -Path "`$PSScriptRoot" -ChildPath "ref" | Join-Path -ChildPath "`$clr" | Join-Path -ChildPath "*.dll") -File | ForEach-Object { Add-Type -Path `$_.FullName -ErrorAction SilentlyContinue }
 
 Get-ChildItem -Path "`$PSScriptRoot\$GeneratedCommandsName\*.ps1" -Recurse -File | ForEach-Object { . `$_.FullName}
-
-if(`$PSVersionTable.PSVersion -ge '5.0.0' -and (-not `$script:ServiceClientTracer)) {
-    # Load and enable service client tracer
-    `$script:ServiceClientTracer = New-PSSwaggerClientTracing
-    Register-PSSwaggerClientTracing -TracerObject `$script:ServiceClientTracer
-    `$PSModule = `$ExecutionContext.SessionState.Module
-    `$PSModule.OnRemove = { 
-        Unregister-PSSwaggerClientTracing -TracerObject `$script:ServiceClientTracer
-        `$script:ServiceClientTracer = `$null
-    }
-}
 '@
 
 $advFnSignatureForDefintion = @'
@@ -122,9 +118,17 @@ function $commandName
     $outputTypeBlock[CmdletBinding(DefaultParameterSetName='$DefaultParameterSetName')]
     param($ParamBlockReplaceStr
     )
+
+    Begin 
+    {
+	    $helperModule\Initialize-PSSwaggerDependencies
+	}
+
+    Process {
     $body
 
     $PathFunctionBody
+    }
 }
 '@
 
