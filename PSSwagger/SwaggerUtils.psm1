@@ -11,6 +11,7 @@ Import-Module (Join-Path -Path $PSScriptRoot -ChildPath Utilities.psm1)
 Import-Module -Name (Join-Path -Path $PSScriptRoot -ChildPath 'PSSwagger.Common.Helpers')
 . "$PSScriptRoot\PSSwagger.Constants.ps1" -Force
 . "$PSScriptRoot\Trie.ps1" -Force
+. "$PSScriptRoot\PSCommandVerbMap.ps1" -Force
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwagger.Resources.psd1
 $script:CmdVerbTrie = $null
 $script:CSharpCodeNamer = $null
@@ -1031,18 +1032,10 @@ function Get-PathCommandName
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
 
     $opId = $OperationId
-    
-    $cmdVerbMap = @{
-                        Create = 'New'
-                        Activate = 'Enable'
-                        Delete = 'Remove'
-                        List   = 'Get'
-                        CreateOrUpdate = 'New,Set'
-                   }
 
     if ($script:CmdVerbTrie -eq $null) {
         $script:CmdVerbTrie = New-Trie
-        $cmdVerbMap.GetEnumerator() | ForEach-Object {
+        $script:PSCommandVerbMap.GetEnumerator() | ForEach-Object {
             $script:CmdVerbTrie = Add-WordToTrie -Word $_.Name -Trie $script:CmdVerbTrie
         }
 
@@ -1072,10 +1065,10 @@ function Get-PathCommandName
         $message = $LocalizedData.UnapprovedVerb -f ($UnapprovedVerb)
         Write-Verbose $message
         
-        if ($cmdVerbMap.ContainsKey($cmdVerb))
+        if ($script:PSCommandVerbMap.ContainsKey($cmdVerb))
         {
             # This condition happens when there aren't any suffixes
-            $cmdVerb = $cmdVerbMap[$cmdVerb] -Split ',' | ForEach-Object { if($_.Trim()){ $_.Trim() } }
+            $cmdVerb = $script:PSCommandVerbMap[$cmdVerb] -Split ',' | ForEach-Object { if($_.Trim()){ $_.Trim() } }
             $cmdVerb | ForEach-Object {
                 $message = $LocalizedData.ReplacedVerb -f ($_, $UnapprovedVerb)
                 Write-Verbose -Message $message
@@ -1126,8 +1119,8 @@ function Get-PathCommandName
                 $cmdVerb = $firstWord
             }
 
-            if ($cmdVerbMap.ContainsKey($cmdVerb)) { 
-                $cmdVerb = $cmdVerbMap[$cmdVerb] -Split ',' | ForEach-Object { if($_.Trim()){ $_.Trim() } }
+            if ($script:PSCommandVerbMap.ContainsKey($cmdVerb)) { 
+                $cmdVerb = $script:PSCommandVerbMap[$cmdVerb] -Split ',' | ForEach-Object { if($_.Trim()){ $_.Trim() } }
             }
 
             if (-1 -ne $beginningOfSuffix) {

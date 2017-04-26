@@ -21,11 +21,11 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
             }
 
             It "Get-PathCommandName should return command name with proper verb for VM_createOrWithNounSuffix operationid" {
-                Get-PathCommandName -OperationId VM_createOrWithNounSuffix | Should BeExactly 'New-VMORWithNounSuffix'
+                Get-PathCommandName -OperationId VM_createOrWithNounSuffix | Should BeExactly 'New-VMOrWithNounSuffix'
             }
 
             It "Get-PathCommandName should return command name with proper verb for VM_migrateWithNounSuffix operationid" {
-                Get-PathCommandName -OperationId VM_migrateWithNounSuffix | Should BeExactly 'Migrate-VMWithNounSuffix'
+                Get-PathCommandName -OperationId VM_migrateWithNounSuffix | Should BeExactly 'Move-VMWithNounSuffix'
             }
 
             It "Get-PathCommandName should return command name with proper verb for CreateFooResource operationid" {
