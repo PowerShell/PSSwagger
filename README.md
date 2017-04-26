@@ -125,7 +125,15 @@ A cmdlet that supports paging will have two additional optional parameters:
 If -Paging is not specified and the cmdlet supports paging, the cmdlet will automatically unroll all pages. Assigning the result to a variable will result in all items being retrieved. Piping the cmdlet will result in pages being retrieved on-demand.
 
 # Silent execution when missing dependency packages
-When 
+When dependency packages are expected to be missing, silent execution (bypassing the missing packages prompt) can be achieved by calling:
+```powershell
+PSSwagger.Azure.Helpers\Initialize-PSSwaggerDependencies -AcceptBootstrap
+```
+For Microsoft Azure modules, or:
+```powershell
+PSSwagger.Common.Helpers\Initialize-PSSwaggerDependencies -AcceptBootstrap
+```
+For all other modules.
 
 ## Upcoming additions
 
