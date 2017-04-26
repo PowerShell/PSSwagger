@@ -586,12 +586,6 @@ function Invoke-PSSwaggerAssemblyCompilation {
 .PARAMETER  AllUsers
   Install dependencies in PSSwagger's global package cache.
 
-.PARAMETER  PowerShellCore
-  Additionally install dependencies for PowerShell Core execution. Only useful when running in full PowerShell context.
-
-.PARAMETER  PowerShellFull
-  Additionally install dependencies for PowerShell execution. Only useful when running in PowerShell Core context.
-
 .PARAMETER  Azure
   Additionally install dependencies for Microsoft Azure modules.
 
@@ -607,14 +601,6 @@ function Initialize-PSSwaggerDependencies {
 
         [Parameter(Mandatory=$false)]
         [switch]
-        $PowerShellCore,
-
-        [Parameter(Mandatory=$false)]
-        [switch]
-        $PowerShellFull,
-
-        [Parameter(Mandatory=$false)]
-        [switch]
         $Azure,
 
         [Parameter(Mandatory=$false)]
@@ -622,19 +608,7 @@ function Initialize-PSSwaggerDependencies {
         $AcceptBootstrap
     )
 
-    if ((Get-OperatingSystemInfo).IsCore) {
-        $Frameworks = @('netstandard1')
-        if ($PowerShellFull) {
-            $Frameworks += 'net4'
-        }
-    } else {
-        $Frameworks = @('net4')
-        if ($PowerShellCore) {
-            $Frameworks += 'netstandard1'
-        }
-    }
-
-    $null = Initialize-PSSwaggerLocalTools -AllUsers:$AllUsers -Azure:$Azure -Framework $Frameworks -AcceptBootstrap:$AcceptBootstrap
+    $null = Initialize-PSSwaggerLocalTools -AllUsers:$AllUsers -Azure:$Azure -Framework @('net4', 'netstandard1') -AcceptBootstrap:$AcceptBootstrap
     $null = Initialize-PSSwaggerUtilities
 }
 

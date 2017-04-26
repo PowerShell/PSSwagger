@@ -106,12 +106,6 @@ function Remove-AzSRmEnvironment
 .PARAMETER  AllUsers
   Install dependencies in PSSwagger's global package cache.
 
-.PARAMETER  PowerShellCore
-  Additionally install dependencies for PowerShell Core execution. Only useful when running in full PowerShell context.
-
-.PARAMETER  PowerShellFull
-  Additionally install dependencies for PowerShell execution. Only useful when running in PowerShell Core context.
-
 .PARAMETER  AcceptBootstrap
   Automatically consent to downloading missing packages. If not specified, an interactive prompt will be appear.
 #>
@@ -121,14 +115,6 @@ function Initialize-PSSwaggerDependencies {
         [Parameter(Mandatory=$false)]
         [switch]
         $AllUsers,
-
-        [Parameter(Mandatory=$false)]
-        [switch]
-        $PowerShellCore,
-
-        [Parameter(Mandatory=$false)]
-        [switch]
-        $PowerShellFull,
 
         [Parameter(Mandatory=$false)]
         [switch]
