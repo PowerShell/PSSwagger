@@ -34,6 +34,14 @@ New-PSSwaggerModule -SwaggerSpecUri <uri> -Path <string> -Name <string> [-Versio
 
 **Testing note**: While any full PowerShell version is fine for development, we recommend using PowerShell 5.1+ to enable testing our implementation of Get-FileHash.
 
+## Dependencies
+| Dependency       | Version   | Description              |             
+| ----------------| ----------- | -------------------------- |
+| AutoRest | 0.17.3 | Tool to generate C# SDK from Swagger spec |
+| Newtonsoft.Json | Full CLR: 6.0.8, Core CLR: 9.0.1 | NuGet package containing Newtonsoft.Json assembly, required for all modules |
+| Microsoft.Rest.ClientRuntime | 2.3.4 | NuGet package containing Microsoft.Rest.ClientRuntime assembly, required for all modules |
+| Microsoft.Rest.ClientRuntime.Azure | 3.3.4 | NuGet package containing Microsoft.Rest.ClientRuntime.Azure assembly, required for Microsoft Azure modules |
+
 ## Usage
 
 1. Git clone this repository.
@@ -41,14 +49,14 @@ New-PSSwaggerModule -SwaggerSpecUri <uri> -Path <string> -Name <string> [-Versio
   git clone https://github.com/PowerShell/PSSwagger.git
   ```
 
-2. Ensure you AutoRest version 0.16.0 installed
+2. Ensure you AutoRest version 0.17.3 installed
   ```powershell
-  Install-Package -Name AutoRest -Source https://www.nuget.org/api/v2 -RequiredVersion 0.16.0 -Scope CurrentUser
+  Install-Package -Name AutoRest -Source https://www.nuget.org/api/v2 -RequiredVersion 0.17.3 -Scope CurrentUser
   ```   
 
 3. Ensure AutoRest.exe is in $env:Path
   ```powershell
-  $env:path += ";$env:localappdata\PackageManagement\NuGet\Packages\AutoRest.0.16.0\tools"
+  $env:path += ";$env:localappdata\PackageManagement\NuGet\Packages\AutoRest.0.17.3\tools"
   ```
 
 4. If you plan on precompiling the generated assembly, ensure you have the module AzureRM.Profile or AzureRM.NetCore.Preview available to PackageManagement if you are on PowerShell or PowerShell Core, respectively.
@@ -85,7 +93,15 @@ If the generated module is not signed, the catalog file's signing will not be ch
 Because of the dynamic compilation feature, it is highly recommended that publishers of a generated module Authenticode sign the module and strong name sign both precompiled assemblies (full CLR and core CLR).
 
 ## Microsoft.Rest.ServiceClientTracing support
-Service client tracing is built-in when the module is imported to PowerShell 5.0+. To see these messages, you must set $VerbosePreference, as passing in the -Verbose flag to the cmdlet won't carry over to the tracing client.
+To enable Microsoft.Rest.ServiceClientTracing support, you must:
+1. Register a tracer (one is included in the PSSwagger.Common.Helpers module for PowerShell 5.0 and above)
+2. Enable tracing
+
+To register the PowerShell tracer included in the PSSwagger.Common.Helpers module, run:
+```powershell
+Register-PSSwaggerClientTracing -TracerObject (New-PSSwaggerClientTracing)
+```
+The included PowerShell tracer uses Write-Verbose to write tracing messages. To see these messages, you must set $VerbosePreference, as passing in the -Verbose flag to the cmdlet won't carry over to the tracing client.
 
 When the module is imported to older version of PowerShell, the following steps will need to be taken:
 1. Implement either Microsoft.PowerShell.Commands.PSSwagger.PSSwaggerClientTracing or Microsoft.Rest.IServiceClientTracingInterceptor
@@ -107,6 +123,9 @@ A cmdlet that supports paging will have two additional optional parameters:
 -Page: Takes as input the last page return value and outputs the next page return value (again, to access the items, use $returnValue.Page). If the return value is null, no additional pages exist.
 
 If -Paging is not specified and the cmdlet supports paging, the cmdlet will automatically unroll all pages. Assigning the result to a variable will result in all items being retrieved. Piping the cmdlet will result in pages being retrieved on-demand.
+
+# Silent execution when missing dependency packages
+When 
 
 ## Upcoming additions
 

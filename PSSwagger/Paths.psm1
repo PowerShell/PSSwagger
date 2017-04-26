@@ -316,6 +316,7 @@ function New-SwaggerPath
     $models = $info['Models']
     $modulePostfix = $info['infoName']
     $clientName = '$' + $modulePostfix
+    $UseAzureCsharpGenerator = $SwaggerMetaDict['UseAzureCsharpGenerator']
 
     $description = ''
     $paramBlock = ''
@@ -695,6 +696,12 @@ function New-SwaggerPath
     $body = $bodyObject.Body
     $outputTypeBlock = $bodyObject.OutputTypeBlock
 
+    if ($UseAzureCsharpGenerator) {
+        $helperModule = "PSSwagger.Azure.Helpers"
+    } else {
+        $helperModule = "PSSwagger.Common.Helpers"
+    }
+    
     $CommandString = $executionContext.InvokeCommand.ExpandString($advFnSignatureForPath)
     $GeneratedCommandsPath = Join-Path -Path (Join-Path -Path $SwaggerMetaDict['outputDirectory'] -ChildPath $GeneratedCommandsName) `
                                        -ChildPath 'SwaggerPathCommands'

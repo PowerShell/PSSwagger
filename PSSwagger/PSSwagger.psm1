@@ -5,31 +5,21 @@
 # PSSwagger Module
 #
 #########################################################################################
-<#
-.PARAMETER AcceptBootstrap
-  Automatically consent to downloading nuget.exe or NuGet packages as required.
-#>
-param(
-	[switch]
-	$AcceptBootstrap
-)
-
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 
 $SubScripts = @(
     'PSSwagger.Constants.ps1'
 )
 $SubScripts | ForEach-Object {. (Join-Path -Path $PSScriptRoot -ChildPath $_) -Force}
-$BootstrappableSubModules = @(
-    'PSSwagger.Common.Helpers'
-)
+
 $SubModules = @(
+    'PSSwagger.Common.Helpers',
     'SwaggerUtils.psm1',
     'Utilities.psm1',
     'Paths.psm1',
     'Definitions.psm1'
 )
-$BootstrappableSubModules | ForEach-Object {Import-Module -Name (Join-Path -Path $PSScriptRoot -ChildPath $_) -Force -Scope Local -DisableNameChecking -ArgumentList $AcceptBootstrap}
+
 $SubModules | ForEach-Object {Import-Module -Name (Join-Path -Path $PSScriptRoot -ChildPath $_) -Force -Scope Local -DisableNameChecking}
 
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwagger.Resources.psd1
@@ -303,8 +293,7 @@ function New-PSSwaggerModule
         $frameworksToCheckDependencies += 'netstandard1'
     }
 
-    $userAcceptedBootstrap = $AcceptBootstrap -or $ConfirmBootstrap
-    $userConsent = Initialize-PSSwaggerLocalTools -AllUsers:$InstallToolsForAllUsers -Azure:$UseAzureCsharpGenerator -Framework $frameworksToCheckDependencies -AcceptBootstrap:$userAcceptedBootstrap
+    $userConsent = Initialize-PSSwaggerLocalTools -AllUsers:$InstallToolsForAllUsers -Azure:$UseAzureCsharpGenerator -Framework $frameworksToCheckDependencies -AcceptBootstrap:$ConfirmBootstrap
 
     $DefinitionFunctionsDetails = @{}
 

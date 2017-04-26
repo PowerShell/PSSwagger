@@ -43,8 +43,8 @@ function Compile-TestAssembly {
     Write-Verbose "Checking for test assembly '$fullPath'"
     if (-not (Test-Path $fullPath)) {
         Write-Verbose "Generating test assembly from file '$TestCSharpFilePath' using script '$CompilationUtilsPath'"
-        Import-Module $CommonHelpersModulePath -ArgumentList $true -Force
-        Initialize-PSSwaggerLocalTools -Framework @('net4', 'netstandard1') -AcceptBootstrap -Azure:$UseAzureCSharpGenerator
+        Import-Module $CommonHelpersModulePath -Force
+        PSSwagger.Common.Helpers\Initialize-PSSwaggerDependencies -Azure -PowerShellCore -AcceptBootstrap
         $null = Invoke-PSSwaggerAssemblyCompilation -CSharpFiles @($TestCSharpFilePath) -OutputAssemblyName $TestAssemblyName -CodeCreatedByAzureGenerator:$UseAzureCSharpGenerator -ClrPath $TestAssemblyPath -Verbose
     }
 }

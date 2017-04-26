@@ -23,11 +23,6 @@ $parameterDefString = @'
 $parameterDefaultValueString = ' = $parameterDefaultValue'
 
 $RootModuleContents = @'
-param(
-	[switch]
-	`$AcceptBootstrap
-)
-
 `$script:ServiceClientTracer = `$null
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename $Name.Resources.psd1
@@ -66,7 +61,7 @@ if (-not (Test-Path -Path `$dllFullName)) {
     }
 
     `$dependencies = Get-PSSwaggerExternalDependencies -Azure:`$isAzureCSharp -Framework `$framework
-    `$consent = Initialize-PSSwaggerLocalTools -Azure:`$isAzureCSharp -Framework `$framework -AcceptBootstrap:`$AcceptBootstrap
+    `$consent = Initialize-PSSwaggerLocalTools -Azure:`$isAzureCSharp -Framework `$framework
     `$microsoftRestClientRuntimeAzureRequiredVersion = ''
     if (`$dependencies.ContainsKey('Microsoft.Rest.ClientRuntime.Azure')) {
         `$microsoftRestClientRuntimeAzureRequiredVersion = `$dependencies['Microsoft.Rest.ClientRuntime.Azure'].RequiredVersion
@@ -90,17 +85,6 @@ if (-not (Test-Path -Path `$dllFullName)) {
 Get-ChildItem -Path (Join-Path -Path "`$PSScriptRoot" -ChildPath "ref" | Join-Path -ChildPath "`$clr" | Join-Path -ChildPath "*.dll") -File | ForEach-Object { Add-Type -Path `$_.FullName -ErrorAction SilentlyContinue }
 
 Get-ChildItem -Path "`$PSScriptRoot\$GeneratedCommandsName\*.ps1" -Recurse -File | ForEach-Object { . `$_.FullName}
-
-if(`$PSVersionTable.PSVersion -ge '5.0.0' -and (-not `$script:ServiceClientTracer)) {
-    # Load and enable service client tracer
-    `$script:ServiceClientTracer = New-PSSwaggerClientTracing
-    Register-PSSwaggerClientTracing -TracerObject `$script:ServiceClientTracer
-    `$PSModule = `$ExecutionContext.SessionState.Module
-    `$PSModule.OnRemove = { 
-        Unregister-PSSwaggerClientTracing -TracerObject `$script:ServiceClientTracer
-        `$script:ServiceClientTracer = `$null
-    }
-}
 '@
 
 $advFnSignatureForDefintion = @'
@@ -134,9 +118,17 @@ function $commandName
     $outputTypeBlock[CmdletBinding(DefaultParameterSetName='$DefaultParameterSetName')]
     param($ParamBlockReplaceStr
     )
+
+    Begin 
+    {
+	    $helperModule\Initialize-PSSwaggerDependencies
+	}
+
+    Process {
     $body
 
     $PathFunctionBody
+    }
 }
 '@
 

@@ -1,14 +1,4 @@
-﻿<#
-.PARAMETER AcceptBootstrap
-  Automatically consent to downloading nuget.exe or NuGet packages as required.
-#>
-param(
-    [Parameter(Mandatory=$false)]
-	[switch]
-	$AcceptBootstrap
-)
-
-Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
+﻿Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwagger.Common.Helpers.Resources.psd1
 
 <#
@@ -456,10 +446,8 @@ function Invoke-PSSwaggerAssemblyCompilation {
     # Find the reference assemblies to use
     # System refs are expected to exist on the system
     # Extra refs are shipped by PSSwagger
-    # Module refs are shipped by AzureRM
     $systemRefs = @()
     $extraRefs = @()
-    #$moduleRefs = Get-AzureRMDllReferences
     $externalReferencesFramework = ''
     if ((Get-OperatingSystemInfo).IsCore) {
         # Base framework references
@@ -487,28 +475,6 @@ function Invoke-PSSwaggerAssemblyCompilation {
                         'System.Runtime.Serialization.dll',
                         'System.Xml.dll')
         $externalReferencesFramework = 'net4'
-        # Microsoft.Rest.ClientRuntime.Azure.dll isn't packaged with AzureRM.Profile, but is required by AutoRest generated code
-        # If the extra assembly already exists, use it
-        <#$Params = @{
-            Framework = 'net45'
-            ClrPath = $clrPath
-            AllUsers = $AllUsers
-            BootstrapConsent = $BootstrapConsent
-        }
-
-        if($RequiredAzureRestVersion)
-        {
-            $Params['RequiredVersion'] = $RequiredAzureRestVersion
-        }
-
-        $azureRestAssemblyPath = Get-MicrosoftRestAzureReference @Params
-
-        if($azureRestAssemblyPath)
-        {
-            $extraRefs += $azureRestAssemblyPath
-        } else {
-            return $false
-        }#>
     }
 
     $externalReferences = Get-PSSwaggerExternalDependencies -Framework $externalReferencesFramework -Azure:$CodeCreatedByAzureGenerator -RequiredVersionMap @{
@@ -615,7 +581,66 @@ function Invoke-PSSwaggerAssemblyCompilation {
 
 <#
 .DESCRIPTION
-  Initialize script variables pointing to local tools, prompting for download and downloading if not present.
+  Manually initialize PSSwagger's external dependencies. Use this function with -AcceptBootstrap for silent execution scenarios.
+
+.PARAMETER  AllUsers
+  Install dependencies in PSSwagger's global package cache.
+
+.PARAMETER  PowerShellCore
+  Additionally install dependencies for PowerShell Core execution. Only useful when running in full PowerShell context.
+
+.PARAMETER  PowerShellFull
+  Additionally install dependencies for PowerShell execution. Only useful when running in PowerShell Core context.
+
+.PARAMETER  Azure
+  Additionally install dependencies for Microsoft Azure modules.
+
+.PARAMETER  AcceptBootstrap
+  Automatically consent to downloading missing packages. If not specified, an interactive prompt will be appear.
+#>
+function Initialize-PSSwaggerDependencies {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $AllUsers,
+
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $PowerShellCore,
+
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $PowerShellFull,
+
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $Azure,
+
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $AcceptBootstrap
+    )
+
+    if ((Get-OperatingSystemInfo).IsCore) {
+        $Frameworks = @('netstandard1')
+        if ($PowerShellFull) {
+            $Frameworks += 'net4'
+        }
+    } else {
+        $Frameworks = @('net4')
+        if ($PowerShellCore) {
+            $Frameworks += 'netstandard1'
+        }
+    }
+
+    $null = Initialize-PSSwaggerLocalTools -AllUsers:$AllUsers -Azure:$Azure -Framework $Frameworks -AcceptBootstrap:$AcceptBootstrap
+    $null = Initialize-PSSwaggerUtilities
+}
+
+<#
+.DESCRIPTION
+  Initialize local tools for specific framework, prompting for download and downloading if not present.
 
 .PARAMETER  AllUsers
   User wants to install local tools for all users.
@@ -1405,112 +1430,122 @@ function Get-MsiWithPackageManagement {
 }
 #endregion
 
-$PSSwaggerJobAssemblyPath = $null
+<#
+.DESCRIPTION
+  Initialize the PSSwagger utilities assembly, compiling if it isn't already found.
+#>
+function Initialize-PSSwaggerUtilities {
+    if (Get-Command Start-PSSwaggerJob -ErrorAction Ignore) {
+        return;
+    }
 
-if(('Microsoft.PowerShell.Commands.PSSwagger.PSSwaggerJob' -as [Type]) -and
-   (Test-Path -Path [Microsoft.PowerShell.Commands.PSSwagger.PSSwaggerJob].Assembly.Location -PathType Leaf))
-{
-    # This is for re-import scenario.
-    $PSSwaggerJobAssemblyPath = [Microsoft.PowerShell.Commands.PSSwagger.PSSwaggerJob].Assembly.Location
-}
-else
-{
-    $codeFileName = 'PSSwaggerNetUtilities.Code.ps1'
-    $PSSwaggerJobFilePath = Join-Path -Path $PSScriptRoot -ChildPath $codeFileName
-    if(Test-Path -Path $PSSwaggerJobFilePath -PathType Leaf)
+    $PSSwaggerJobAssemblyPath = $null
+
+    if(('Microsoft.PowerShell.Commands.PSSwagger.PSSwaggerJob' -as [Type]) -and
+    (Test-Path -Path [Microsoft.PowerShell.Commands.PSSwagger.PSSwaggerJob].Assembly.Location -PathType Leaf))
     {
-        if ((Get-OperatingSystemInfo).IsWindows) {
-            $sig = Get-AuthenticodeSignature -FilePath $PSSwaggerJobFilePath
-            if (('Valid' -ne $sig.Status) -and ('NotSigned' -ne $sig.Status)) {
-                throw ($LocalizedData.CodeFileSignatureValidationFailed -f ($codeFileName))
-            }
-        }
-
-        $PSSwaggerJobSourceString = Get-SignedCodeContent -Path $PSSwaggerJobFilePath | Out-String
-        Add-Type -AssemblyName System.Net.Http
-        $RequiredAssemblies = @(
-            [System.Management.Automation.PSCmdlet].Assembly.FullName,
-            [System.ComponentModel.AsyncCompletedEventArgs].Assembly.FullName,
-            [System.Linq.Enumerable].Assembly.FullName,
-            [System.Collections.StructuralComparisons].Assembly.FullName,
-			[System.Net.Http.HttpRequestMessage].Assembly.FullName
-        )
-
-        if ((Get-OperatingSystemInfo).IsCore) {
-            $externalReferencesFramework = 'netstandard1.'
-            $clr = 'coreclr'
-        } else {
-            $externalReferencesFramework = 'net4'
-            $clr = 'fullclr'
-        }
-
-        $externalReferences = Get-PSSwaggerExternalDependencies -Framework $externalReferencesFramework
-        foreach ($entry in ($externalReferences.GetEnumerator() | Sort-Object { $_.Value.LoadOrder })) {
-            $reference = $entry.Value
-            $getDependency = $false
-            foreach ($ref in $reference.References) {
-                $path = (Join-Path -Path "$PSScriptRoot" -ChildPath "ref" | Join-Path -ChildPath $clr | Join-Path -ChildPath $ref)
-                if (Test-Path -Path $path) {
-                    Add-Type -Path $path
-                    $RequiredAssemblies += $path
-                } else {
-                    $getDependency = $true
-                    break
+        # This is for re-import scenario.
+        $PSSwaggerJobAssemblyPath = [Microsoft.PowerShell.Commands.PSSwagger.PSSwaggerJob].Assembly.Location
+    }
+    else
+    {
+        $codeFileName = 'PSSwaggerNetUtilities.Code.ps1'
+        $PSSwaggerJobFilePath = Join-Path -Path $PSScriptRoot -ChildPath $codeFileName
+        if(Test-Path -Path $PSSwaggerJobFilePath -PathType Leaf)
+        {
+            if ((Get-OperatingSystemInfo).IsWindows) {
+                $sig = Get-AuthenticodeSignature -FilePath $PSSwaggerJobFilePath
+                if (('Valid' -ne $sig.Status) -and ('NotSigned' -ne $sig.Status)) {
+                    throw ($LocalizedData.CodeFileSignatureValidationFailed -f ($codeFileName))
                 }
             }
 
-            if ($getDependency) {
-                $userConsent = Initialize-PSSwaggerLocalTools -Framework @($externalReferencesFramework) -AcceptBootstrap:$AcceptBootstrap
-                $extraRefs = Get-PSSwaggerDependency -PackageName $reference.PackageName `
-                                                     -References $reference.References `
-                                                     -Framework $reference.Framework `
-                                                     -RequiredVersion $reference.RequiredVersion `
-                                                     -Install -BootstrapConsent:$userConsent
-                if ($extraRefs) {
-                    foreach ($ref in $extraRefs) {
-                        $RequiredAssemblies += $ref
+            $PSSwaggerJobSourceString = Get-SignedCodeContent -Path $PSSwaggerJobFilePath | Out-String
+            Add-Type -AssemblyName System.Net.Http
+            $RequiredAssemblies = @(
+                [System.Management.Automation.PSCmdlet].Assembly.FullName,
+                [System.ComponentModel.AsyncCompletedEventArgs].Assembly.FullName,
+                [System.Linq.Enumerable].Assembly.FullName,
+                [System.Collections.StructuralComparisons].Assembly.FullName,
+                [System.Net.Http.HttpRequestMessage].Assembly.FullName
+            )
+
+            if ((Get-OperatingSystemInfo).IsCore) {
+                $externalReferencesFramework = 'netstandard1.'
+                $clr = 'coreclr'
+            } else {
+                $externalReferencesFramework = 'net4'
+                $clr = 'fullclr'
+            }
+
+            $externalReferences = Get-PSSwaggerExternalDependencies -Framework $externalReferencesFramework
+            foreach ($entry in ($externalReferences.GetEnumerator() | Sort-Object { $_.Value.LoadOrder })) {
+                $reference = $entry.Value
+                $getDependency = $false
+                foreach ($ref in $reference.References) {
+                    $path = (Join-Path -Path "$PSScriptRoot" -ChildPath "ref" | Join-Path -ChildPath $clr | Join-Path -ChildPath $ref)
+                    if (Test-Path -Path $path) {
+                        Add-Type -Path $path
+                        $RequiredAssemblies += $path
+                    } else {
+                        $getDependency = $true
+                        break
                     }
+                }
+
+                if ($getDependency) {
+                    $userConsent = Initialize-PSSwaggerLocalTools -Framework @($externalReferencesFramework)
+                    $extraRefs = Get-PSSwaggerDependency -PackageName $reference.PackageName `
+                                                        -References $reference.References `
+                                                        -Framework $reference.Framework `
+                                                        -RequiredVersion $reference.RequiredVersion `
+                                                        -Install -BootstrapConsent:$userConsent
+                    if ($extraRefs) {
+                        foreach ($ref in $extraRefs) {
+                            $RequiredAssemblies += $ref
+                        }
+                    }
+                }
+            }
+            
+            $TempPath = Join-Path -Path (Get-XDGDirectory -DirectoryType Data) -ChildPath ([System.IO.Path]::GetRandomFileName())
+            $null = New-Item -Path $TempPath -ItemType Directory -Force
+            $PSSwaggerJobAssemblyPath = Join-Path -Path $TempPath -ChildPath 'Microsoft.PowerShell.PSSwagger.Utility.dll'
+
+            Add-Type -ReferencedAssemblies $RequiredAssemblies `
+                    -TypeDefinition $PSSwaggerJobSourceString `
+                    -OutputAssembly $PSSwaggerJobAssemblyPath `
+                    -Language CSharp `
+                    -WarningAction Ignore `
+                    -IgnoreWarnings
+        } 
+    }
+
+    if(Test-Path -LiteralPath $PSSwaggerJobAssemblyPath -PathType Leaf)
+    {
+        $externalReferences = Get-PSSwaggerExternalDependencies -Framework $externalReferencesFramework
+        foreach ($entry in ($externalReferences.GetEnumerator() | Sort-Object { $_.Value.LoadOrder })) {
+            $reference = $entry.Value
+            $extraRefs = Get-PSSwaggerDependency -PackageName $reference.PackageName `
+                                                        -References $reference.References `
+                                                        -Framework $reference.Framework `
+                                                        -RequiredVersion $reference.RequiredVersion
+            if ($extraRefs) {
+                foreach ($extraRef in $extraRefs) {
+                    Add-Type -Path $extraRef
                 }
             }
         }
         
-        $TempPath = Join-Path -Path (Get-XDGDirectory -DirectoryType Data) -ChildPath ([System.IO.Path]::GetRandomFileName())
-        $null = New-Item -Path $TempPath -ItemType Directory -Force
-        $PSSwaggerJobAssemblyPath = Join-Path -Path $TempPath -ChildPath 'Microsoft.PowerShell.PSSwagger.Utility.dll'
-
-        Add-Type -ReferencedAssemblies $RequiredAssemblies `
-                 -TypeDefinition $PSSwaggerJobSourceString `
-                 -OutputAssembly $PSSwaggerJobAssemblyPath `
-                 -Language CSharp `
-                 -WarningAction Ignore `
-                 -IgnoreWarnings
-    } 
-}
-
-if(Test-Path -LiteralPath $PSSwaggerJobAssemblyPath -PathType Leaf)
-{
-    $externalReferences = Get-PSSwaggerExternalDependencies -Framework $externalReferencesFramework
-    foreach ($entry in ($externalReferences.GetEnumerator() | Sort-Object { $_.Value.LoadOrder })) {
-        $reference = $entry.Value
-        $extraRefs = Get-PSSwaggerDependency -PackageName $reference.PackageName `
-                                                     -References $reference.References `
-                                                     -Framework $reference.Framework `
-                                                     -RequiredVersion $reference.RequiredVersion
-        if ($extraRefs) {
-            foreach ($extraRef in $extraRefs) {
-                Add-Type -Path $extraRef
-            }
-        }
+        # It is required to import the generated assembly into the module scope 
+        # to register the PSSwaggerJobSourceAdapter with the PowerShell Job infrastructure.
+        Import-Module -Name $PSSwaggerJobAssemblyPath
     }
-    
-    # It is required to import the generated assembly into the module scope 
-    # to register the PSSwaggerJobSourceAdapter with the PowerShell Job infrastructure.
-    Import-Module -Name $PSSwaggerJobAssemblyPath
-}
 
-if(-not ('Microsoft.PowerShell.Commands.PSSwagger.PSSwaggerJob' -as [Type]))
-{
-    Write-Error -Message ($LocalizedData.FailedToAddType -f ('PSSwaggerJob'))
-}
+    if(-not ('Microsoft.PowerShell.Commands.PSSwagger.PSSwaggerJob' -as [Type]))
+    {
+        Write-Error -Message ($LocalizedData.FailedToAddType -f ('PSSwaggerJob'))
+    }
 
-Import-Module -Name (Join-Path -Path "$PSScriptRoot" -ChildPath "PSSwaggerClientTracing.psm1")
+    Import-Module -Name (Join-Path -Path "$PSScriptRoot" -ChildPath "PSSwaggerClientTracing.psm1")
+}
