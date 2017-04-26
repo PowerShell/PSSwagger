@@ -135,5 +135,5 @@ function Initialize-PSSwaggerDependencies {
         $AcceptBootstrap
     )
 
-    PSSwagger.Common.Helpers\Initialize-PSSwaggerDependencies -AllUsers:$AllUsers -Azure -PowerShellCore:$PowerShellCore -PowerShellFull:$PowerShellFull -AcceptBootstrap:$AcceptBootstrap
+    PSSwagger.Common.Helpers\Initialize-PSSwaggerDependencies -Azure @PSBoundParameters
 }
