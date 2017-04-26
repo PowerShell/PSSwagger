@@ -22,5 +22,6 @@ ConvertFrom-StringData @'
     CodeFileSignatureValidationFailed=Failed to validate the signature of file '{0}'.
     FailedToAddType=Unable to add '{0}' type.
     NuGetMissing=NuGet.exe missing. This usually means the user did not consent to download NuGet.exe when prompted.
+    NuGetFailedToInstall=NuGet.exe failed to install to path '{0}'.
 ###PSLOC
 '@

@@ -696,6 +696,9 @@ function Initialize-PSSwaggerLocalTools {
                                 Write-Verbose -Message ($LocalizedData.NugetBootstrapDownload -f ($script:NuGetClientSourceURL, $nugetExePath))
                                 $null = Invoke-WebRequest -Uri $script:NuGetClientSourceURL `
                                                         -OutFile $nugetExePath
+                                if (-not (Test-Path -Path $nugetExePath)) {
+                                    throw ($LocalizedData.NuGetFailedToInstall -f ($nugetExePath))
+                                }
                         }
                     }
 
@@ -708,8 +711,11 @@ function Initialize-PSSwaggerLocalTools {
                         param()
                         foreach ($dep in $dependenciesToDownload) {
                             Write-Verbose -Message ($LocalizedData.DownloadingNuGetPackage -f ($dep.PackageName))
-                            $null = Get-PSSwaggerDependency -PackageName $dep.PackageName -References $dep.References -Framework $dep.Framework `
+                            $assemblyPaths = Get-PSSwaggerDependency -PackageName $dep.PackageName -References $dep.References -Framework $dep.Framework `
                                                             -RequiredVersion $dep.RequiredVersion -Install -BootstrapConsent -AllUsers:$AllUsers
+                            if (-not $assemblyPaths) {
+                                throw ($LocalizedData.FailedToInstallNuGetPackage -f ($dep.PackageName))
+                            }
                         }
                     }
                 }
