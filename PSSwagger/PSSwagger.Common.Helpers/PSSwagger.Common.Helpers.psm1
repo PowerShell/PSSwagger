@@ -1529,3 +1529,31 @@ function Initialize-PSSwaggerUtilities {
 
     Import-Module -Name (Join-Path -Path "$PSScriptRoot" -ChildPath "PSSwaggerClientTracing.psm1")
 }
+
+function New-PSSwaggerClientTracing {
+	[CmdletBinding()]
+	param()
+	
+    Initialize-PSSwaggerDependencies
+	return New-PSSwaggerClientTracingInternal
+}
+
+function Register-PSSwaggerClientTracing {
+	[CmdletBinding()]
+	param(
+		[object]$TracerObject
+	)
+	
+    Initialize-PSSwaggerDependencies
+	Register-PSSwaggerClientTracingInternal -TracerObject $TracerObject
+}
+
+function Unregister-PSSwaggerClientTracing {
+	[CmdletBinding()]
+	param(
+		[object]$TracerObject
+	)
+	
+	Initialize-PSSwaggerDependencies
+    Unregister-PSSwaggerClientTracingInternal -TracerObject $TracerObject
+}

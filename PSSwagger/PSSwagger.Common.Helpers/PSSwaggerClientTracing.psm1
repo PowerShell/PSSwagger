@@ -4,14 +4,14 @@ class PSSwaggerClientTracing : Microsoft.PowerShell.Commands.PSSwagger.PSSwagger
 	}
 }
 
-function New-PSSwaggerClientTracing {
+function New-PSSwaggerClientTracingInternal {
 	[CmdletBinding()]
 	param()
 	
 	return New-Object -TypeName PSSwaggerClientTracing
 }
 
-function Register-PSSwaggerClientTracing {
+function Register-PSSwaggerClientTracingInternal {
 	[CmdletBinding()]
 	param(
 		[PSSwaggerClientTracing]$TracerObject
@@ -20,7 +20,7 @@ function Register-PSSwaggerClientTracing {
 	[Microsoft.Rest.ServiceClientTracing]::AddTracingInterceptor($TracerObject)
 }
 
-function Unregister-PSSwaggerClientTracing {
+function Unregister-PSSwaggerClientTracingInternal {
 	[CmdletBinding()]
 	param(
 		[PSSwaggerClientTracing]$TracerObject
