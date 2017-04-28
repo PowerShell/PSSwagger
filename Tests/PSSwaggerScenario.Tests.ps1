@@ -556,6 +556,18 @@ Describe "AzureExtensions" {
             $results = Get-CupcakeByFlavor -Flavor 'vanilla'
             $results.Count | should be 1
         }
+
+        It "Test x-ms-client-name for definition parameters" {
+            $cmdInfo = Get-Command New-VirtualMachineObject -ErrorVariable ev
+            $ev | Should BeNullOrEmpty
+            $cmdInfo.Parameters.ContainsKey('ClientNameForSku') | should be $true
+        }
+
+        It "'New-<Definition>Object' should not be generated for definitions used as x-ms-client-flatten" {
+            $cmdInfo = Get-Command New-CheckNameAvailabilityInputObject -ErrorVariable ev -ErrorAction SilentlyContinue
+            $cmdInfo = Should BeNullOrEmpty
+            $ev.FullyQualifiedErrorId | Should Be 'CommandNotFoundException,Microsoft.PowerShell.Commands.GetCommandCommand'
+        }
     }
 
     AfterAll {

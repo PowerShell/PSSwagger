@@ -1519,7 +1519,7 @@ function Initialize-PSSwaggerUtilities {
         
         # It is required to import the generated assembly into the module scope 
         # to register the PSSwaggerJobSourceAdapter with the PowerShell Job infrastructure.
-        Import-Module -Name $PSSwaggerJobAssemblyPath
+        Import-Module -Name $PSSwaggerJobAssemblyPath -Verbose:$false
     }
 
     if(-not ('Microsoft.PowerShell.Commands.PSSwagger.PSSwaggerJob' -as [Type]))
@@ -1527,7 +1527,7 @@ function Initialize-PSSwaggerUtilities {
         Write-Error -Message ($LocalizedData.FailedToAddType -f ('PSSwaggerJob'))
     }
 
-    Import-Module -Name (Join-Path -Path "$PSScriptRoot" -ChildPath "PSSwaggerClientTracing.psm1")
+    Import-Module -Name (Join-Path -Path "$PSScriptRoot" -ChildPath 'PSSwaggerClientTracing.psm1') -Verbose:$false
 }
 
 function New-PSSwaggerClientTracing {

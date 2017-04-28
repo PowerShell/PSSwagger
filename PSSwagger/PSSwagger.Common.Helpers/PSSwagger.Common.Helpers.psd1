@@ -7,12 +7,13 @@ CompanyName = 'Microsoft Corporation'
 Copyright = '(c) Microsoft Corporation. All rights reserved.'
 Description = 'PowerShell module with PSSwagger common helper functions'
 FunctionsToExport = @('Invoke-SwaggerCommandUtility',
-					  'New-PSSwaggerClientTracing',
-					  'Register-PSSwaggerClientTracing',
-					  'Unregister-PSSwaggerClientTracing',
+                      'New-PSSwaggerClientTracing',
+                      'Register-PSSwaggerClientTracing',
+                      'Unregister-PSSwaggerClientTracing',
                       'Get-SignedCodeContent',
                       'Get-OperatingSystemInfo',
                       'Get-XDGDirectory',
+                      'Get-PSCommonParameters',
                       'Invoke-PSSwaggerAssemblyCompilation'
                       'Get-PSSwaggerMsi',
                       'Get-PSSwaggerDependencyPackage',

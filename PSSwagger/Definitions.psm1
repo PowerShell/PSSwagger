@@ -208,7 +208,11 @@ function Get-DefinitionParameters
             if((Get-Member -InputObject $_ -Name 'Name') -and $_.Name)
             {
                 $ParameterJsonObject = $_.Value
-                $ParameterName = Get-PascalCasedString -Name $_.Name
+                if ((Get-Member -InputObject $ParameterJsonObject -Name 'x-ms-client-name') -and $ParameterJsonObject.'x-ms-client-name') {
+                    $parameterName = Get-PascalCasedString -Name $ParameterJsonObject.'x-ms-client-name'
+                } else {
+                    $ParameterName = Get-PascalCasedString -Name $_.Name
+                }
 
                 if(($ParameterName -eq 'Properties') -and
                    (Get-Member -InputObject $ParameterJsonObject -Name 'x-ms-client-flatten') -and
@@ -393,16 +397,7 @@ function Get-DefinitionParameterType
 
         $x_ms_Client_flatten_DefinitionNames = @($ReferenceDefinitionName)
 
-        $ReferencedFunctionDetails = @{}
-        if($DefinitionFunctionsDetails.ContainsKey($ReferenceDefinitionName))
-        {
-            $ReferencedFunctionDetails = $DefinitionFunctionsDetails[$ReferenceDefinitionName]
-        }
-
-        $ReferencedFunctionDetails['Name'] = $ReferenceDefinitionName
-        $ReferencedFunctionDetails['IsUsedAs_x_ms_client_flatten'] = $true
-
-        $DefinitionFunctionsDetails[$ReferenceDefinitionName] = $ReferencedFunctionDetails
+        Set-TypeUsedAsClientFlatten -ReferenceTypeName $ReferenceDefinitionName -DefinitionFunctionsDetails $DefinitionFunctionsDetails
 
         # Add/Update FunctionDetails to $DefinitionFunctionsDetails
         $FunctionDetails = @{}
