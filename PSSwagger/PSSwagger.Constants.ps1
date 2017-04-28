@@ -227,11 +227,17 @@ $getTaskResultBlock = @'
             {
                 `$result = `$taskResult.Result.Body
                 Write-Verbose -Message "`$(`$result | Out-String)"
-                if (`$result -is [$pageType]) {
+                $resultBlockStr
+            }
+        }
+'@
+
+$resultBlockWithSkipAndTop = @'
+if (`$result -is [$pageType]) {
                     foreach (`$item in `$result) {
                         if (`$skippedCount++ -lt `$Skip) {
                         } else {
-                            if ((`$First -eq -1) -or (`$returnedCount++ -lt `$First)) {
+                            if ((`$Top -eq -1) -or (`$returnedCount++ -lt `$Top)) {
                                 `$item
                             } else {
                                 break
@@ -241,8 +247,37 @@ $getTaskResultBlock = @'
                 } else {
                     `$result
                 }
-            }
-        }
+'@
+
+$resultBlockWithTop = @'
+if (`$result -is [$pageType]) {
+                    foreach (`$item in `$result) {
+                        if ((`$Top -eq -1) -or (`$returnedCount++ -lt `$Top)) {
+                            `$item
+                        } else {
+                            break
+                        }
+                    }
+                } else {
+                    `$result
+                }
+'@
+
+$resultBlockWithSkip = @'
+if (`$result -is [$pageType]) {
+                    foreach (`$item in `$result) {
+                        if (`$skippedCount++ -lt `$Skip) {
+                        } else {
+                            `$item
+                        }
+                    }
+                } else {
+                    `$result
+                }
+'@
+
+$resultBlockNoPaging = @'
+$result
 '@
 
 $PathFunctionBodyAsJob = @'
@@ -290,22 +325,42 @@ if (`$TaskResult) {
     }
 '@
 
-$PagingBlockStrFunctionCall = @'
+$PagingBlockStrFunctionCallWithTop = @'
     
         Write-Verbose -Message 'Flattening paged results.'
         # Get the next page iff 1) there is a next page and 2) any result in the next page would be returned
-        while (`$result -and `$result.NextPageLink -and ((`$First -eq -1) -or (`$returnedCount -lt `$First))) {
+        while (`$result -and `$result.NextPageLink -and ((`$Top -eq -1) -or (`$returnedCount -lt `$Top))) {
             Write-Debug -Message "Retrieving next page: `$(`$result.NextPageLink)"
             `$taskResult = $clientName$pagingOperations.$pagingOperationName(`$result.NextPageLink)
              $getTaskResult
         }
 '@
 
-$PagingBlockStrCmdletCall = @'
+$PagingBlockStrFunctionCall = @'
+    
+        Write-Verbose -Message 'Flattening paged results.'
+        while (`$result -and `$result.NextPageLink) {
+            Write-Debug -Message "Retrieving next page: `$(`$result.NextPageLink)"
+            `$taskResult = $clientName$pagingOperations.$pagingOperationName(`$result.NextPageLink)
+             $getTaskResult
+        }
+'@
+
+
+$PagingBlockStrCmdletCallWithTop = @'
     
         Write-Verbose -Message 'Flattening paged results.'
         # Get the next page iff 1) there is a next page and 2) any result in the next page would be returned
-        while (`$result -and `$result.NextPageLink -and ((`$First -eq -1) -or (`$returnedCount -lt `$First))) {
+        while (`$result -and `$result.NextPageLink -and ((`$Top -eq -1) -or (`$returnedCount -lt `$Top))) {
+            Write-Debug -Message "Retrieving next page: `$(`$result.NextPageLink)"
+            $Cmdlet $CmdletArgs
+        }
+'@
+
+$PagingBlockStrCmdletCall = @'
+    
+        Write-Verbose -Message 'Flattening paged results.'
+        while (`$result -and `$result.NextPageLink) {
             Write-Debug -Message "Retrieving next page: `$(`$result.NextPageLink)"
             $Cmdlet $CmdletArgs
         }
