@@ -168,6 +168,8 @@ $functionBodyStr = @'
     $clientName.BaseUri = `$ResourceManagerUrl$oDataExpressionBlock
     $parameterGroupsExpressionBlock
 
+    `$skippedCount = 0
+    `$returnedCount = 0
     $parameterSetBasedMethodStr else {
         Write-Verbose -Message 'Failed to map parameter set to operation method.'
         throw 'Module failed to find operation to execute.'
@@ -197,20 +199,20 @@ $methodBlockCmdletCall = @'
         `$taskResult = `$null
 '@
 
-$getTaskResultBlockWithPaging = @'
-$result = $null
-        $ErrorActionPreference = 'Stop'
+$getTaskResultBlock = @'
+`$result = `$null
+        `$ErrorActionPreference = 'Stop'
                     
-        $null = $taskResult.AsyncWaitHandle.WaitOne()
+        `$null = `$taskResult.AsyncWaitHandle.WaitOne()
                     
-        Write-Debug -Message "$($taskResult | Out-String)"
+        Write-Debug -Message "`$(`$taskResult | Out-String)"
 
-        if($taskResult.IsFaulted)
+        if(`$taskResult.IsFaulted)
         {
             Write-Verbose -Message 'Operation failed.'
-            Throw "$($taskResult.Exception.InnerExceptions | Out-String)"
+            Throw "`$(`$taskResult.Exception.InnerExceptions | Out-String)"
         } 
-        elseif ($taskResult.IsCanceled)
+        elseif (`$taskResult.IsCanceled)
         {
             Write-Verbose -Message 'Operation got cancelled.'
             Throw 'Operation got cancelled.'
@@ -219,46 +221,26 @@ $result = $null
         {
             Write-Verbose -Message 'Operation completed successfully.'
 
-            if($taskResult.Result -and
-                (Get-Member -InputObject $taskResult.Result -Name 'Body') -and
-                $taskResult.Result.Body)
+            if(`$taskResult.Result -and
+                (Get-Member -InputObject `$taskResult.Result -Name 'Body') -and
+                `$taskResult.Result.Body)
             {
-                $result = $taskResult.Result.Body
-                Write-Verbose -Message "$($result | Out-String)"
-                if ($Paging) { @{ Page = $result } } else { $result }
-            }
-        }
-'@
-
-$getTaskResultBlockNoPaging = @'
-$result = $null
-        $ErrorActionPreference = 'Stop'
-                    
-        $null = $taskResult.AsyncWaitHandle.WaitOne()
-                    
-        Write-Debug -Message "$($taskResult | Out-String)"
-
-        if($taskResult.IsFaulted)
-        {
-            Write-Verbose -Message 'Operation failed.'
-            Throw "$($taskResult.Exception.InnerExceptions | Out-String)"
-        } 
-        elseif ($taskResult.IsCanceled)
-        {
-            Write-Verbose -Message 'Operation got cancelled.'
-            Throw 'Operation got cancelled.'
-        }
-        else
-        {
-            Write-Verbose -Message 'Operation completed successfully.'
-
-            if($taskResult.Result -and
-                (Get-Member -InputObject $taskResult.Result -Name 'Body') -and
-                $taskResult.Result.Body)
-            {
-                $result = $taskResult.Result.Body
-                Write-Verbose -Message "$($result | Out-String)"
-                $result
+                `$result = `$taskResult.Result.Body
+                Write-Verbose -Message "`$(`$result | Out-String)"
+                if (`$result -is [$pageType]) {
+                    foreach (`$item in `$result) {
+                        if (`$skippedCount++ -lt `$Skip) {
+                        } else {
+                            if ((`$First -eq -1) -or (`$returnedCount++ -lt `$First)) {
+                                `$item
+                            } else {
+                                break
+                            }
+                        }
+                    }
+                } else {
+                    `$result
+                }
             }
         }
 '@
@@ -310,24 +292,22 @@ if (`$TaskResult) {
 
 $PagingBlockStrFunctionCall = @'
     
-        if (-not `$Paging) {
-            Write-Verbose -Message 'Flattening paged results.'
-            while (`$result -and `$result.NextPageLink) {
-                Write-Debug -Message "Retrieving next page: `$(`$result.NextPageLink)"
-                `$taskResult = $clientName$pagingOperations.$pagingOperationName(`$result.NextPageLink)
-                $getTaskResult
-            }
+        Write-Verbose -Message 'Flattening paged results.'
+        # Get the next page iff 1) there is a next page and 2) any result in the next page would be returned
+        while (`$result -and `$result.NextPageLink -and ((`$First -eq -1) -or (`$returnedCount -lt `$First))) {
+            Write-Debug -Message "Retrieving next page: `$(`$result.NextPageLink)"
+            `$taskResult = $clientName$pagingOperations.$pagingOperationName(`$result.NextPageLink)
+             $getTaskResult
         }
 '@
 
 $PagingBlockStrCmdletCall = @'
     
-        if (-not `$Paging) {
-            Write-Verbose -Message 'Flattening paged results.'
-            while (`$result -and `$result.NextPageLink) {
-                Write-Debug -Message "Retrieving next page: `$(`$result.NextPageLink)"
-                $Cmdlet $CmdletArgs
-            }
+        Write-Verbose -Message 'Flattening paged results.'
+        # Get the next page iff 1) there is a next page and 2) any result in the next page would be returned
+        while (`$result -and `$result.NextPageLink -and ((`$First -eq -1) -or (`$returnedCount -lt `$First))) {
+            Write-Debug -Message "Retrieving next page: `$(`$result.NextPageLink)"
+            $Cmdlet $CmdletArgs
         }
 '@
 
