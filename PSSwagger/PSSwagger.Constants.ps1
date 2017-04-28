@@ -23,7 +23,6 @@ $parameterDefString = @'
 $parameterDefaultValueString = ' = $parameterDefaultValue'
 
 $RootModuleContents = @'
-`$script:ServiceClientTracer = `$null
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename $Name.Resources.psd1
 
@@ -372,7 +371,10 @@ $createObjectStr = @'
     `$Object = New-Object -TypeName $DefinitionTypeName
 
     `$PSBoundParameters.GetEnumerator() | ForEach-Object { 
-        `$Object.`$(`$_.Key) = `$_.Value
+        if(Get-Member -InputObject `$Object -Name `$_.Key -MemberType Property)
+        {
+            `$Object.`$(`$_.Key) = `$_.Value
+        }
     }
 
     if(Get-Member -InputObject `$Object -Name Validate -MemberType Method)

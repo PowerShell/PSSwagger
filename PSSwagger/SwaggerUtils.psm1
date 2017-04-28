@@ -838,17 +838,8 @@ function Get-ParamType
         # By applying the x-ms-client-flatten extension, you move the inner properties to the top level of your definition.
 
         $ReferenceParameterValue = $ParameterJsonObject.'$ref'
-        $ReferenceTypeName = Get-CSharpModelName -Name $ReferenceParameterValue.Substring( $( $ReferenceParameterValue.LastIndexOf('/') ) + 1 )
-        $ReferencedFunctionDetails = @{}
-        if($DefinitionFunctionsDetails.ContainsKey($ReferenceTypeName))
-        {
-            $ReferencedFunctionDetails = $DefinitionFunctionsDetails[$ReferenceTypeName]
-        }
-
-        $ReferencedFunctionDetails['Name'] = $ReferenceTypeName
-        $ReferencedFunctionDetails['IsUsedAs_x_ms_client_flatten'] = $true
-
-        $DefinitionFunctionsDetails[$ReferenceTypeName] = $ReferencedFunctionDetails
+        $x_ms_client_flatten_ReferenceTypeName = Get-CSharpModelName -Name $ReferenceParameterValue.Substring( $( $ReferenceParameterValue.LastIndexOf('/') ) + 1 )
+        Set-TypeUsedAsClientFlatten -ReferenceTypeName $x_ms_client_flatten_ReferenceTypeName -DefinitionFunctionsDetails $DefinitionFunctionsDetails
     }
     elseif ( (Get-Member -InputObject $ParameterJsonObject -Name '$ref') -and ($ParameterJsonObject.'$ref') )
     {
@@ -890,6 +881,15 @@ function Get-ParamType
         $ReferenceParameterValue = $ParameterJsonObject.Schema.'$ref'
         $ReferenceTypeName = Get-CSharpModelName -Name $ReferenceParameterValue.Substring( $( $ReferenceParameterValue.LastIndexOf('/') ) + 1 )
         $paramType = $DefinitionTypeNamePrefix + $ReferenceTypeName
+
+        if((Get-Member -InputObject $ParameterJsonObject -Name 'x-ms-client-flatten') -and
+           ($ParameterJsonObject.'x-ms-client-flatten'))
+        {
+            Set-TypeUsedAsClientFlatten -ReferenceTypeName $ReferenceTypeName -DefinitionFunctionsDetails $DefinitionFunctionsDetails
+            
+            # Assigning $null to $ReferenceTypeName so that this referenced definition is not set as UsedAsPathOperationInputType
+            $ReferenceTypeName = $null
+        }
     }
     else 
     {
@@ -942,6 +942,35 @@ function Get-ParamType
         IsParameter = $isParameter
         GlobalParameterDetails = $GlobalParameterDetails
     }
+}
+
+function Set-TypeUsedAsClientFlatten
+{
+    [CmdletBinding()]
+	param
+	(
+        [Parameter(Mandatory=$true)]
+        [string]
+        $ReferenceTypeName,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $DefinitionFunctionsDetails
+	)
+
+    $ReferencedFunctionDetails = @{}
+    if($DefinitionFunctionsDetails.ContainsKey($ReferenceTypeName))
+    {
+        $ReferencedFunctionDetails = $DefinitionFunctionsDetails[$ReferenceTypeName]
+    }
+    else
+    {
+        $ReferencedFunctionDetails['Name'] = $ReferenceTypeName 
+    }
+
+    $ReferencedFunctionDetails['IsUsedAs_x_ms_client_flatten'] = $true
+
+    $DefinitionFunctionsDetails[$ReferenceTypeName] = $ReferencedFunctionDetails
 }
 
 function Get-PSTypeFromSwaggerObject
