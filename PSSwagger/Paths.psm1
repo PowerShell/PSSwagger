@@ -432,13 +432,10 @@ function New-SwaggerPath
     $pageType = 'Array'
     $getTaskResult = $executionContext.InvokeCommand.ExpandString($getTaskResultBlock)
     if ($x_ms_pageableObject) {
-        if ($x_ms_pageableObject.ReturnType -eq 'NONE') {
-            $x_ms_pageableObject.ReturnType = ''
-        } else {
+        if ($x_ms_pageableObject.ReturnType -ne 'NONE') {
             $pageType = $x_ms_pageableObject.ReturnType
+            $getTaskResult = $executionContext.InvokeCommand.ExpandString($getTaskResultBlock)
         }
-        $getTaskResult = $executionContext.InvokeCommand.ExpandString($getTaskResultBlock)
-        Write-Host "Array type: $($x_ms_pageableObject.ReturnType)" -BackgroundColor DarkCyan
         
         if ($x_ms_pageableObject.ContainsKey('Operations')) {
             $pagingOperations = $x_ms_pageableObject.Operations
