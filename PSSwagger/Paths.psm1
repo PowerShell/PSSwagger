@@ -421,63 +421,58 @@ function New-SwaggerPath
             }
         }
     }
-
-    $pagingParameterToAdd = $null
-    $pageParameterToAdd = $null
-    $candidatePageParameterSetName = 'AzPaging'
+    $topParameterToAdd = $null
+    $skipParameterToAdd = $null
     $pagingBlock = ''
     $pagingOperationName = ''
     $pagingOperations = ''
     $Cmdlet = ''
     $CmdletParameter = ''
     $CmdletArgs = ''
-    $getTaskResult = $getTaskResultBlockNoPaging
+    $pageType = 'Array'
+    $resultBlockStr = $resultBlockNoPaging
     if ($x_ms_pageableObject) {
-        $getTaskResult = $getTaskResultBlockWithPaging
-        if ($x_ms_pageableObject.ReturnType -eq 'NONE') {
-            $x_ms_pageableObject.ReturnType = ''
+        if ($x_ms_pageableObject.ReturnType -ne 'NONE') {
+            $pageType = $x_ms_pageableObject.ReturnType
         }
 
         if ($x_ms_pageableObject.ContainsKey('Operations')) {
             $pagingOperations = $x_ms_pageableObject.Operations
             $pagingOperationName = $x_ms_pageableObject.MethodName
-            $pagingBlock = $executionContext.InvokeCommand.ExpandString($PagingBlockStrFunctionCall)
         } else {
             $Cmdlet = $x_ms_pageableObject.Cmdlet
             $CmdletArgs = $x_ms_pageableObject.CmdletArgsPaging
-            $pagingBlock = $executionContext.InvokeCommand.ExpandString($PagingBlockStrCmdletCall)
-
-            # Set this for when we generate the -Page block below
-            $CmdletArgs = $x_ms_pageableObject.CmdletArgsPage
         }
 
-        $pagingParameterToAdd = @{
+        $topParameterToAdd = @{
             Details = @{
-                Name = 'Paging'
-                Type = 'switch'
+                Name = 'Top'
+                Type = 'int'
                 Mandatory = '$false'
-                Description = 'Switch to enable paging of return values.'
+                Description = 'Return the top N items as specified by the parameter value. Applies after the -Skip parameter.'
                 IsParameter = $true
                 ValidateSet = $null
                 ExtendedData = @{
-                    Type = 'switch'
-                    HasDefaultValue = $false
+                    Type = 'int'
+                    HasDefaultValue = $true
+                    DefaultValue = -1
                 }
             }
             ParameterSetInfo = @{}
         }
 
-        $pageParameterToAdd = @{
+        $skipParameterToAdd = @{
             Details = @{
-                Name = 'Page'
-                Type = $x_ms_pageableObject.ReturnType
-                Mandatory = '$true'
-                Description = 'The last page of results.'
+                Name = 'Skip'
+                Type = 'int'
+                Mandatory = '$false'
+                Description = 'Skip the first N items as specified by the parameter value.'
                 IsParameter = $true
                 ValidateSet = $null
                 ExtendedData = @{
-                    Type = $x_ms_pageableObject.ReturnType
-                    HasDefaultValue = $false
+                    Type = 'int'
+                    HasDefaultValue = $true
+                    DefaultValue = -1
                 }
             }
             ParameterSetInfo = @{}
@@ -486,9 +481,16 @@ function New-SwaggerPath
 
     $nonUniqueParameterSets = @()
     foreach ($parameterSetDetail in $parameterSetDetails) {
-        # Add parameter sets to -Paging if the parameter set is pageable
-        if ($pagingParameterToAdd -and $parameterSetDetail.ContainsKey('x-ms-pageable') -and $parameterSetDetail.'x-ms-pageable' -and (-not $isNextPageOperation)) {
-            $pagingParameterToAdd.ParameterSetInfo[$parameterSetDetail.OperationId] = @{
+        # Add parameter sets to paging parameter sets
+        if ($topParameterToAdd -and $parameterSetDetail.ContainsKey('x-ms-pageable') -and $parameterSetDetail.'x-ms-pageable' -and (-not $isNextPageOperation)) {
+            $topParameterToAdd.ParameterSetInfo[$parameterSetDetail.OperationId] = @{
+                Name = $parameterSetDetail.OperationId
+                Mandatory = '$false'
+            }
+        }
+
+        if ($skipParameterToAdd -and $parameterSetDetail.ContainsKey('x-ms-pageable') -and $parameterSetDetail.'x-ms-pageable' -and (-not $isNextPageOperation)) {
+            $skipParameterToAdd.ParameterSetInfo[$parameterSetDetail.OperationId] = @{
                 Name = $parameterSetDetail.OperationId
                 Mandatory = '$false'
             }
@@ -497,8 +499,26 @@ function New-SwaggerPath
         # Test for uniqueness of parameters
         $parameterSetDetail.ParameterDetails.GetEnumerator() | ForEach-Object {
             $parameterDetails = $_.Value
+            # Check if the paging parameters are conflicting
+            # Note that this has to be moved elsewhere to be more generic, but this is temporarily located here to solve this scenario for paging at least
+            if ($topParameterToAdd -and $parameterDetails.Name -eq 'Top') {
+                $topParameterToAdd = $null
+                # If the parameter is not OData, full paging support isn't possible.
+                if (-not $parameterDetails.ExtendedData.ContainsKey('IsODataParameter') -or -not $parameterDetails.ExtendedData.IsODataParameter) {
+                    Write-Warning -Message ($LocalizedData.ParameterConflictAndResult -f ('Top', $commandName, $parameterSetDetail.OperationId, $LocalizedData.PagingNotFullySupported))
+                }
+            }
+
+            if ($skipParameterToAdd -and $parameterDetails.Name -eq 'Skip') {
+                $skipParameterToAdd = $null
+                # If the parameter is not OData, full paging support isn't possible.
+                if (-not $parameterDetails.ExtendedData.ContainsKey('IsODataParameter') -or -not $parameterDetails.ExtendedData.IsODataParameter) {
+                    Write-Warning -Message ($LocalizedData.ParameterConflictAndResult -f ('Skip', $commandName, $parameterSetDetail.OperationId, $LocalizedData.PagingNotFullySupported))
+                }
+            }
+            
             if ($parameterHitCount[$parameterDetails.Name] -eq 1) {
-                # contine here brings us back to the top of the foreach ($parameterSetDetail in $parameterSetDetails) loop
+                # continue here brings us back to the top of the $parameterSetDetail.ParameterDetails.GetEnumerator() | ForEach-Object loop
                 continue
             }
         }
@@ -507,52 +527,35 @@ function New-SwaggerPath
         $nonUniqueParameterSets += $parameterSetDetail
     }
 
-    if ($pagingParameterToAdd) {
-        $parametersToAdd[$pagingParameterToAdd.Details.Name] = $pagingParameterToAdd
+    if ($topParameterToAdd) {
+        $parametersToAdd[$topParameterToAdd.Details.Name] = $topParameterToAdd
     }
 
-    # Find a unique name for -Page parameter set if it exists
-    if ($pageParameterToAdd) {
-        if ($parameterSetDetails | Where-Object { $_.OperationId -eq $candidatePageParameterSetName } | Select-Object -First 1) {
-            $index = 0
-            $tempCandidatePageParameterSetName = ''
-            $candidateValid = $false
-            do {
-                $index++
-                $tempCandidatePageParameterSetName = "$candidatePageParameterSetName$index"
-                $candidateValid = ($parameterSetDetails | Where-Object { $_.OperationId -eq $tempCandidatePageParameterSetName } | Select-Object -First 1) -eq $null
-            } while ($index -lt 2147483647 -and (-not $candidateValid));
+    if ($skipParameterToAdd) {
+        $parametersToAdd[$skipParameterToAdd.Details.Name] = $skipParameterToAdd
+    }
 
-            if ($candidateValid) {
-                $candidatePageParameterSetName = $tempCandidatePageParameterSetName
-            } else {
-                throw $LocalizedData.NoAvailableParameterSetForPageParameter
-            }
+    if ($topParameterToAdd -and $skipParameterToAdd) {
+        $resultBlockStr = $executionContext.InvokeCommand.ExpandString($resultBlockWithSkipAndTop)
+    } elseif ($topParameterToAdd -and -not $skipParameterToAdd) {
+        $resultBlockStr = $executionContext.InvokeCommand.ExpandString($resultBlockWithTop)
+    } elseif (-not $topParameterToAdd -and $skipParameterToAdd) {
+        $resultBlockStr = $executionContext.InvokeCommand.ExpandString($resultBlockWithSkip)
+    }
+
+    $getTaskResult = $executionContext.InvokeCommand.ExpandString($getTaskResultBlock)
+
+    if ($pagingOperations) {
+        if ($topParameterToAdd) {
+            $pagingBlock = $executionContext.InvokeCommand.ExpandString($PagingBlockStrFunctionCallWithTop)
+        } else {
+            $pagingBlock = $executionContext.InvokeCommand.ExpandString($PagingBlockStrFunctionCall)
         }
-
-        $pageParameterToAdd.ParameterSetInfo[$candidatePageParameterSetName] = @{
-            Name = $candidatePageParameterSetName
-            Mandatory = '$false'
-        }
-
-        if ($pageParameterToAdd) {
-            $parametersToAdd[$pageParameterToAdd.Details.Name] = $pageParameterToAdd
-
-            # Add the page parameter set
-            $parameterSetDetails += @{
-                Responses = $null
-                operationId = $candidatePageParameterSetName
-                methodName = $pagingOperationName
-                operations = $pagingOperations
-                Cmdlet = $Cmdlet
-                CmdletArgs = $CmdletArgs
-                CmdletParameter = $CmdletParameter
-                ExpandedParamList = '$Page.NextPageLink'
-                Priority =  2147483647
-                AdditionalConditions = @(
-                    '$Page.NextPageLink'
-                )
-            }
+    } elseif ($Cmdlet) {
+        if ($topParameterToAdd) {
+            $pagingBlock = $executionContext.InvokeCommand.ExpandString($PagingBlockStrCmdletCallWithTop)
+        } else {
+            $pagingBlock = $executionContext.InvokeCommand.ExpandString($PagingBlockStrCmdletCall)
         }
     }
 
