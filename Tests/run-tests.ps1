@@ -120,7 +120,7 @@ $executeTestsCommand | Out-File pesterCommand.ps1
 
 if ($TestFramework -eq "netstandard1.7") {
     try {
-        $null = Get-WmiObject Win32_OperatingSystem
+        $null = Get-CimInstance Win32_OperatingSystem
         Write-Verbose -Message "Invoking PowerShell Core at: $powershellFolder"
         & "$powershellFolder\powershell" -command .\pesterCommand.ps1
     } catch {

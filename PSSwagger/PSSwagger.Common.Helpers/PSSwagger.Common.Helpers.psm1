@@ -1321,7 +1321,7 @@ function Get-PSSwaggerMsi {
     )
 
     if (Test-Downlevel) {
-        return Get-MsiWithWmi -Name $Name -MaximumVersion $MaximumVersion
+        return Get-MsiWithCim -Name $Name -MaximumVersion $MaximumVersion
     } else {
         return Get-MsiWithPackageManagement -Name $Name -MaximumVersion $MaximumVersion
     }
@@ -1337,7 +1337,7 @@ function Get-PSSwaggerMsi {
 .PARAMETER  MaximumVersion
   Maximum version of MSIs to find.
 #>
-function Get-MsiWithWmi {
+function Get-MsiWithCim {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory=$true)]
@@ -1355,7 +1355,7 @@ function Get-MsiWithWmi {
         $filter += " AND Version <= '$MaximumVersion'"
     }
 
-    $products = Get-WmiObject -Class Win32_Product -Filter $filter
+    $products = Get-CimInstance -ClassName Win32_Product -Filter $filter
     $returnObjects = @()
     $products | ForEach-Object {
         $objectProps = @{
