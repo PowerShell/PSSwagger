@@ -157,15 +157,12 @@ $parameterGroupPropertyExpression = @'
 $functionBodyStr = @'
 
     `$ErrorActionPreference = 'Stop'
-    `$serviceCredentials = Get-AzServiceCredential
-    `$subscriptionId = Get-AzSubscriptionId
-    `$ResourceManagerUrl = Get-AzResourceManagerUrl
-    `$delegatingHandler = Get-AzDelegatingHandler
+    $securityBlock
 
     $clientName = New-Object -TypeName $fullModuleName -ArgumentList `$serviceCredentials,`$delegatingHandler$apiVersion
 
     $GlobalParameterBlock
-    $clientName.BaseUri = `$ResourceManagerUrl$oDataExpressionBlock
+    $oDataExpressionBlock
     $parameterGroupsExpressionBlock
 
     `$skippedCount = 0
@@ -174,6 +171,13 @@ $functionBodyStr = @'
         Write-Verbose -Message 'Failed to map parameter set to operation method.'
         throw 'Module failed to find operation to execute.'
     }
+'@
+
+$securityBlockStr = @'
+`$serviceCredentials = $authFunctionCall
+    $azSubscriptionIdBlock
+    $overrideBaseUriBlock
+    `$delegatingHandler = New-Object -TypeName System.Net.Http.DelegatingHandler[] 0
 '@
 
 $parameterSetBasedMethodStrIfCase = @'

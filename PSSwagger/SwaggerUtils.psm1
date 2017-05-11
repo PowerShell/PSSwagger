@@ -65,7 +65,10 @@ function ConvertTo-SwaggerDictionary {
 
         [Parameter(Mandatory = $false)]
         [switch]
-        $DisableVersionSuffix
+        $DisableVersionSuffix,
+
+        [PSCustomObject]
+        $ExtendedTempMetadata
     )
     
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -76,6 +79,22 @@ function ConvertTo-SwaggerDictionary {
     if(-not (Get-Member -InputObject $swaggerDocObject -Name 'info')) {
         Throw $LocalizedData.InvalidSwaggerSpecification
     }
+
+    if ((Get-Member -InputObject $swaggerDocObject -Name 'securityDefinitions')) {
+        $swaggerDict['SecurityDefinitions'] = $swaggerDocObject.securityDefinitions
+        if ((Get-Member -InputObject $swaggerDocObject.securityDefinitions -Name 'azure_auth')) {
+            if ($ExtendedTempMetadata) {
+                Add-Member -InputObject $ExtendedTempMetadata -MemberType NoteProperty -Name 'Scheme' -Value 'azure'
+            } else {
+                $ExtendedTempMetadata = [PSCustomObject]@{ Scheme = 'azure' }
+            }
+        }
+    }
+
+    if ((Get-Member -InputObject $swaggerDocObject -Name 'security')) {
+        $swaggerDict['Security'] = $swaggerDocObject.security
+    }
+
     $swaggerDict['Info'] = Get-SwaggerInfo -Info $swaggerDocObject.info -ModuleName $ModuleName -ModuleVersion $ModuleVersion
     $swaggerDict['Info']['DefaultCommandPrefix'] = $DefaultCommandPrefix
 
@@ -1214,7 +1233,11 @@ function Get-PathFunctionBody
 
         [Parameter(Mandatory=$true)]
         [PSCustomObject]
-        $SwaggerMetaDict
+        $SwaggerMetaDict,
+
+        [Parameter(Mandatory=$true)]
+        [string]
+        $SecurityBlock
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState

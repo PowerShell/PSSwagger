@@ -1420,15 +1420,21 @@ function Initialize-PSSwaggerUtilities {
     }
 
     $PSSwaggerJobAssemblyPath = $null
-
+    $PSSwaggerJobAssemblyUnsafePath = $null
     if(('Microsoft.PowerShell.Commands.PSSwagger.PSSwaggerJob' -as [Type]) -and
     (Test-Path -Path [Microsoft.PowerShell.Commands.PSSwagger.PSSwaggerJob].Assembly.Location -PathType Leaf))
     {
         # This is for re-import scenario.
         $PSSwaggerJobAssemblyPath = [Microsoft.PowerShell.Commands.PSSwagger.PSSwaggerJob].Assembly.Location
+        if(('Microsoft.PowerShell.Commands.PSSwagger.PSBasicAuthenticationEx' -as [Type]) -and
+        (Test-Path -Path [Microsoft.PowerShell.Commands.PSSwagger.PSBasicAuthenticationEx].Assembly.Location -PathType Leaf))
+        {
+            $PSSwaggerJobAssemblyUnsafePath = [Microsoft.PowerShell.Commands.PSSwagger.PSBasicAuthenticationEx].Assembly.Location
+        }
     }
     else
     {
+        # Compile the regular utilities
         $codeFileName = 'PSSwaggerNetUtilities.Code.ps1'
         $PSSwaggerJobFilePath = Join-Path -Path $PSScriptRoot -ChildPath $codeFileName
         if(Test-Path -Path $PSSwaggerJobFilePath -PathType Leaf)
@@ -1453,6 +1459,9 @@ function Initialize-PSSwaggerUtilities {
             if ((Get-OperatingSystemInfo).IsCore) {
                 $externalReferencesFramework = 'netstandard1.'
                 $clr = 'coreclr'
+                # On core CLR, these "additional" assemblies are required due to type redirection
+                $RequiredAssemblies += 'System.Threading.Tasks'
+                $RequiredAssemblies += 'System.Private.Uri'
             } else {
                 $externalReferencesFramework = 'net4'
                 $clr = 'fullclr'
@@ -1490,6 +1499,8 @@ function Initialize-PSSwaggerUtilities {
             
             $TempPath = Join-Path -Path (Get-XDGDirectory -DirectoryType Data) -ChildPath ([System.IO.Path]::GetRandomFileName())
             $null = New-Item -Path $TempPath -ItemType Directory -Force
+			
+			# Compile the main utility assembly
             $PSSwaggerJobAssemblyPath = Join-Path -Path $TempPath -ChildPath 'Microsoft.PowerShell.PSSwagger.Utility.dll'
 
             Add-Type -ReferencedAssemblies $RequiredAssemblies `
@@ -1498,7 +1509,84 @@ function Initialize-PSSwaggerUtilities {
                     -Language CSharp `
                     -WarningAction Ignore `
                     -IgnoreWarnings
-        } 
+        }
+    }
+
+    if(('Microsoft.PowerShell.Commands.PSSwagger.PSBasicAuthenticationEx' -as [Type]) -and
+    (Test-Path -Path [Microsoft.PowerShell.Commands.PSSwagger.PSBasicAuthenticationEx].Assembly.Location -PathType Leaf))
+    {
+        # This is for re-import scenario.
+        $PSSwaggerJobAssemblyUnsafePath = [Microsoft.PowerShell.Commands.PSSwagger.PSBasicAuthenticationEx].Assembly.Location
+    }
+    elseif (-not (Get-OperatingSystemInfo).IsCore)
+    {
+        # Compile the utilities requiring the /unsafe flag (only for Full CLR because of no Core CLR CompilerParameters support)
+        # If we move to dotnet CLI, we can remove this restriction
+        $codeFileName = 'PSSwaggerNetUtilities.Unsafe.Code.ps1'
+        $PSSwaggerJobFilePath = Join-Path -Path $PSScriptRoot -ChildPath $codeFileName
+        if(Test-Path -Path $PSSwaggerJobFilePath -PathType Leaf) {
+            if ((Get-OperatingSystemInfo).IsWindows) {
+                $sig = Get-AuthenticodeSignature -FilePath $PSSwaggerJobFilePath
+                if (('Valid' -ne $sig.Status) -and ('NotSigned' -ne $sig.Status)) {
+                    throw ($LocalizedData.CodeFileSignatureValidationFailed -f ($codeFileName))
+                }
+            }
+
+            $PSSwaggerJobSourceString = Get-SignedCodeContent -Path $PSSwaggerJobFilePath | Out-String
+            Add-Type -AssemblyName System.Net.Http
+            $compilerParameters = New-Object -TypeName System.CodeDom.Compiler.CompilerParameters
+            $compilerParameters.CompilerOptions = '/debug:full /optimize+ /unsafe'
+
+            $compilerParameters.ReferencedAssemblies.Add([System.ComponentModel.AsyncCompletedEventArgs].Assembly.Location)
+            $compilerParameters.ReferencedAssemblies.Add([System.Linq.Enumerable].Assembly.Location)
+            $compilerParameters.ReferencedAssemblies.Add([System.Collections.StructuralComparisons].Assembly.Location)
+            $compilerParameters.ReferencedAssemblies.Add([System.Net.Http.HttpRequestMessage].Assembly.Location)
+
+            $externalReferencesFramework = 'net4'
+            $clr = 'fullclr'
+
+            $externalReferences = Get-PSSwaggerExternalDependencies -Framework $externalReferencesFramework
+            foreach ($entry in ($externalReferences.GetEnumerator() | Sort-Object { $_.Value.LoadOrder })) {
+                $reference = $entry.Value
+                $getDependency = $false
+                foreach ($ref in $reference.References) {
+                    $path = (Join-Path -Path "$PSScriptRoot" -ChildPath "ref" | Join-Path -ChildPath $clr | Join-Path -ChildPath $ref)
+                    if (Test-Path -Path $path) {
+                        Add-Type -Path $path
+                        $compilerParameters.ReferencedAssemblies.Add($ref)
+                    } else {
+                        $getDependency = $true
+                        break
+                    }
+                }
+
+                if ($getDependency) {
+                    $userConsent = Initialize-PSSwaggerLocalTools -Framework @($externalReferencesFramework)
+                    $extraRefs = Get-PSSwaggerDependency -PackageName $reference.PackageName `
+                                                            -References $reference.References `
+                                                            -Framework $reference.Framework `
+                                                            -RequiredVersion $reference.RequiredVersion `
+                                                            -Install -BootstrapConsent:$userConsent
+                    if ($extraRefs) {
+                        foreach ($ref in $extraRefs) {
+                            Add-Type -Path $ref
+                            $compilerParameters.ReferencedAssemblies.Add($ref)
+                        }
+                    }
+                }
+            }
+                
+            $TempPath = Join-Path -Path (Get-XDGDirectory -DirectoryType Data) -ChildPath ([System.IO.Path]::GetRandomFileName())
+            $null = New-Item -Path $TempPath -ItemType Directory -Force
+                
+            # Compile the main utility assembly
+            $PSSwaggerJobAssemblyUnsafePath = Join-Path -Path $TempPath -ChildPath 'Microsoft.PowerShell.PSSwagger.Utility.Unsafe.dll'
+            $compilerParameters.OutputAssembly = $PSSwaggerJobAssemblyUnsafePath
+            
+            Add-Type -TypeDefinition $PSSwaggerJobSourceString `
+                     -WarningAction Ignore `
+                     -CompilerParameters $compilerParameters
+        }
     }
 
     if(Test-Path -LiteralPath $PSSwaggerJobAssemblyPath -PathType Leaf)
@@ -1522,12 +1610,39 @@ function Initialize-PSSwaggerUtilities {
         Import-Module -Name $PSSwaggerJobAssemblyPath -Verbose:$false
     }
 
+    if (-not (Get-OperatingSystemInfo).IsCore) {
+        $externalReferences = Get-PSSwaggerExternalDependencies -Framework $externalReferencesFramework
+        foreach ($entry in ($externalReferences.GetEnumerator() | Sort-Object { $_.Value.LoadOrder })) {
+            $reference = $entry.Value
+            $extraRefs = Get-PSSwaggerDependency -PackageName $reference.PackageName `
+                                                        -References $reference.References `
+                                                        -Framework $reference.Framework `
+                                                        -RequiredVersion $reference.RequiredVersion
+            if ($extraRefs) {
+                foreach ($extraRef in $extraRefs) {
+                    Add-Type -Path $extraRef
+                }
+            }
+        }
+
+        if(Test-Path -LiteralPath $PSSwaggerJobAssemblyUnsafePath -PathType Leaf)
+        {
+            Add-Type -Path $PSSwaggerJobAssemblyUnsafePath
+        }
+    }
+
     if(-not ('Microsoft.PowerShell.Commands.PSSwagger.PSSwaggerJob' -as [Type]))
     {
         Write-Error -Message ($LocalizedData.FailedToAddType -f ('PSSwaggerJob'))
     }
 
+    if((-not (Get-OperatingSystemInfo).IsCore) -and (-not ('Microsoft.PowerShell.Commands.PSSwagger.PSBasicAuthenticationEx' -as [Type])))
+    {
+        Write-Error -Message ($LocalizedData.FailedToAddType -f ('PSBasicAuthenticationEx'))
+    }
+
     Import-Module -Name (Join-Path -Path "$PSScriptRoot" -ChildPath 'PSSwaggerClientTracing.psm1') -Verbose:$false
+    Import-Module -Name (Join-Path -Path "$PSScriptRoot" -ChildPath 'PSSwaggerServiceCredentialsHelpers.psm1') -Verbose:$false
 }
 
 function New-PSSwaggerClientTracing {
@@ -1556,4 +1671,41 @@ function Unregister-PSSwaggerClientTracing {
 	
 	Initialize-PSSwaggerDependencies
     Unregister-PSSwaggerClientTracingInternal -TracerObject $TracerObject
+}
+
+function Get-BasicAuthCredentials {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$false)]
+        [PSCredential]
+        $Credential
+    )
+
+    Get-BasicAuthCredentialsInternal -Credential $Credential
+}
+
+function Get-ApiKeyCredentials {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]
+        $APIKey,
+
+        [Parameter(Mandatory=$false)]
+        [string]
+        $In,
+
+        [Parameter(Mandatory=$false)]
+        [string]
+        $Name
+    )
+
+    Get-ApiKeyCredentialsInternal -APIKey $APIKey -In $In -Name $Name
+}
+
+function Get-EmptyAuthCredentials {
+    [CmdletBinding()]
+    param()
+
+    Get-EmptyAuthCredentialsInternal
 }

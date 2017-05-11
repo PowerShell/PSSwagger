@@ -5,7 +5,7 @@ Describe "Basic API" -Tag ScenarioTest {
                        Join-Path -ChildPath "PSSwagger.Common.Helpers.psd1") -Force
         Initialize-Test -GeneratedModuleName "Generated.Basic.Module" -GeneratedModuleVersion "0.0.1" -TestApiName "PsSwaggerTestBasic" `
                         -TestSpecFileName "PsSwaggerTestBasicSpec.json" -TestDataFileName "PsSwaggerTestBasicData.json" `
-                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot -UseAzureCSharpGenerator
+                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
 
         # Import generated module
         Write-Verbose "Importing modules"
@@ -16,30 +16,10 @@ Describe "Basic API" -Tag ScenarioTest {
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
                        Join-Path -ChildPath "Generated.Basic.Module")
         
-        # Load the test assembly after the generated module, since the generated module is kind enough to load the required dlls for us
-        try {
-            $null = Add-Type -Path (Join-Path "$PSScriptRoot" "PSSwagger.TestUtilities" | Join-Path -ChildPath "$global:testRunGuid.dll") -PassThru
-        } catch {
-            throw "$($_.Exception.LoaderExceptions)"
-        }
-
         $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "PsSwaggerTestBasic" -TestRoutesFileName "PsSwaggerTestBasicRoutes.json"
     }
 
     Context "Basic API tests" {
-        # Mocks
-        Mock Get-AzServiceCredential -ModuleName Generated.Basic.Module {
-            return New-Object -TypeName PSSwagger.TestUtilities.TestCredentials
-        }
-
-        Mock Get-AzSubscriptionId -ModuleName Generated.Basic.Module {
-            return "Test"
-        }
-
-        Mock Get-AzResourceManagerUrl -ModuleName Generated.Basic.Module {
-            return "$($global:testDataSpec.schemes[0])://$($global:testDataSpec.host)"
-        }
-
         It "Basic test" {
             Get-Cupcake -Flavor "chocolate"
             New-Cupcake -Flavor "vanilla"
@@ -70,7 +50,7 @@ Describe "All Operations: Basic" -Tag ScenarioTest {
                        Join-Path -ChildPath "PSSwagger.Common.Helpers.psd1") -Force
         Initialize-Test -GeneratedModuleName "Generated.TypesTest.Module" -GeneratedModuleVersion "0.0.1" -TestApiName "OperationTypes" `
                         -TestSpecFileName "OperationTypesSpec.json" -TestDataFileName "OperationTypesData.json" `
-                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot -UseAzureCSharpGenerator
+                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
 
         # Import generated module
         Write-Verbose "Importing modules"
@@ -81,30 +61,10 @@ Describe "All Operations: Basic" -Tag ScenarioTest {
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
                        Join-Path -ChildPath "Generated.TypesTest.Module")
         
-        # Load the test assembly after the generated module, since the generated module is kind enough to load the required dlls for us
-        try {
-            $null = Add-Type -Path (Join-Path "$PSScriptRoot" "PSSwagger.TestUtilities" | Join-Path -ChildPath "$global:testRunGuid.dll") -PassThru
-        } catch {
-            throw "$($_.Exception.LoaderExceptions)"
-        }
-
         $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "OperationTypes" -TestMiddlewareFileNames "OperationTypesMiddleware.js" -TestRoutesFileName "OperationTypesRoutes.json"
     }
 
     Context "All Operations: Basic tests" {
-        # Mocks
-        Mock Get-AzServiceCredential -ModuleName Generated.TypesTest.Module {
-            return New-Object -TypeName PSSwagger.TestUtilities.TestCredentials
-        }
-
-        Mock Get-AzSubscriptionId -ModuleName Generated.TypesTest.Module {
-            return "Test"
-        }
-
-        Mock Get-AzResourceManagerUrl -ModuleName Generated.TypesTest.Module {
-            return "$($global:testDataSpec.schemes[0])://$($global:testDataSpec.host)"
-        }
-
         It "Verify create operation" {
             $id = [guid]::NewGuid().Guid | out-string
             $flavor = 'strawberry'
@@ -164,7 +124,7 @@ Describe "Get/List tests" -Tag ScenarioTest {
                        Join-Path -ChildPath "PSSwagger.Common.Helpers.psd1") -Force
         Initialize-Test -GeneratedModuleName "Generated.GetList.Module" -GeneratedModuleVersion "0.0.1" -TestApiName "GetListTests" `
                         -TestSpecFileName "GetListTestsSpec.json" -TestDataFileName "GetListTestsData.json" `
-                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot -UseAzureCSharpGenerator
+                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
 
         # Import generated module
         Write-Verbose "Importing modules"
@@ -174,31 +134,11 @@ Describe "Get/List tests" -Tag ScenarioTest {
                        Join-Path -ChildPath "PSSwagger.Azure.Helpers.psd1") -Force
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
                        Join-Path -ChildPath "Generated.GetList.Module")
-        
-        # Load the test assembly after the generated module, since the generated module is kind enough to load the required dlls for us
-        try {
-            $null = Add-Type -Path (Join-Path "$PSScriptRoot" "PSSwagger.TestUtilities" | Join-Path -ChildPath "$global:testRunGuid.dll") -PassThru
-        } catch {
-            throw "$($_.Exception.LoaderExceptions)"
-        }
 
         $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "GetListTests" -TestRoutesFileName "GetListTestsRoutes.json"
     }
 
     Context "Get/List tests" {
-        # Mocks
-        Mock Get-AzServiceCredential -ModuleName Generated.GetList.Module {
-            return New-Object -TypeName PSSwagger.TestUtilities.TestCredentials
-        }
-
-        Mock Get-AzSubscriptionId -ModuleName Generated.GetList.Module {
-            return "Test"
-        }
-
-        Mock Get-AzResourceManagerUrl -ModuleName Generated.GetList.Module {
-            return "$($global:testDataSpec.schemes[0])://$($global:testDataSpec.host)"
-        }
-
         It "Get has subset of List parameters, Get should be default" {
             (Get-Command Get-Cat).DefaultParameterSet | should be 'Cat_Get'
         }
@@ -224,7 +164,7 @@ Describe "Optional parameter tests" -Tag ScenarioTest {
                        Join-Path -ChildPath "PSSwagger.Common.Helpers.psd1") -Force
         Initialize-Test -GeneratedModuleName "Generated.Optional.Module" -GeneratedModuleVersion "0.0.2" -TestApiName "OptionalParametersTests" `
                         -TestSpecFileName "OptionalParametersTestsSpec.json" -TestDataFileName "OptionalParametersTestsData.json" `
-                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot -UseAzureCSharpGenerator
+                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
 
         # Import generated module
         Write-Verbose "Importing modules"
@@ -235,30 +175,10 @@ Describe "Optional parameter tests" -Tag ScenarioTest {
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
                        Join-Path -ChildPath "Generated.Optional.Module")
         
-        # Load the test assembly after the generated module, since the generated module is kind enough to load the required dlls for us
-        try {
-            $null = Add-Type -Path (Join-Path "$PSScriptRoot" "PSSwagger.TestUtilities" | Join-Path -ChildPath "$global:testRunGuid.dll") -PassThru
-        } catch {
-            throw "$($_.Exception.LoaderExceptions)"
-        }
-
         $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "OptionalParametersTests" -TestRoutesFileName "OptionalParametersTestsRoutes.json"
     }
 
     Context "Optional parameter tests" {
-        # Mocks
-        Mock Get-AzServiceCredential -ModuleName Generated.Optional.Module {
-            return New-Object -TypeName PSSwagger.TestUtilities.TestCredentials
-        }
-
-        Mock Get-AzSubscriptionId -ModuleName Generated.Optional.Module {
-            return "Test"
-        }
-
-        Mock Get-AzResourceManagerUrl -ModuleName Generated.Optional.Module {
-            return "$($global:testDataSpec.schemes[0])://$($global:testDataSpec.host)"
-        }
-
         It "Generates cmdlet using optional query parameters (flavor only)" {
             $results = Get-Cupcake -Flavor "chocolate"
             $results.Length | should be 2
@@ -295,7 +215,7 @@ Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
                        Join-Path -ChildPath "PSSwagger.Common.Helpers.psd1") -Force
         Initialize-Test -GeneratedModuleName "Generated.ParamTypes.Module" -GeneratedModuleVersion "0.0.2" -TestApiName "ParameterTypes" `
                         -TestSpecFileName "ParameterTypesSpec.json" -TestDataFileName "ParameterTypesData.json" `
-                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot -UseAzureCSharpGenerator
+                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
 
         # Import generated module
         Write-Verbose "Importing modules"
@@ -305,31 +225,11 @@ Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
                        Join-Path -ChildPath "PSSwagger.Azure.Helpers.psd1") -Force
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
                        Join-Path -ChildPath "Generated.ParamTypes.Module")
-        
-        # Load the test assembly after the generated module, since the generated module is kind enough to load the required dlls for us
-        try {
-            $null = Add-Type -Path (Join-Path "$PSScriptRoot" "PSSwagger.TestUtilities" | Join-Path -ChildPath "$global:testRunGuid.dll") -PassThru
-        } catch {
-            throw "$($_.Exception.LoaderExceptions)"
-        }
 
         $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "ParameterTypes"
     }
 
     Context "ParameterTypes tests" {
-        # Mocks
-        Mock Get-AzServiceCredential -ModuleName Generated.ParamTypes.Module {
-            return New-Object -TypeName PSSwagger.TestUtilities.TestCredentials
-        }
-
-        Mock Get-AzSubscriptionId -ModuleName Generated.ParamTypes.Module {
-            return "Test"
-        }
-
-        Mock Get-AzResourceManagerUrl -ModuleName Generated.ParamTypes.Module {
-            return "$($global:testDataSpec.schemes[0])://$($global:testDataSpec.host)"
-        }
-
         It "Test expected parameter types" {
             $commandInfo = Get-Command Get-Cupcake
             $commandParameters = $commandInfo.Parameters
@@ -381,7 +281,7 @@ Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
         }
 
         It "Test global parameters" {
-            $results = Get-Dinosaur -TestGlobalParameter "test"
+            $results = Get-Dinosaur -TestGlobalParameter "test" -SubscriptionId "test" -ApiVersion "test"
             $results.Length | should be 1
         }
 
@@ -472,30 +372,10 @@ Describe "AzureExtensions" {
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
                        Join-Path -ChildPath "Generated.AzExt.Module")
         
-        # Load the test assembly after the generated module, since the generated module is kind enough to load the required dlls for us
-        try {
-            $null = Add-Type -Path (Join-Path "$PSScriptRoot" "PSSwagger.TestUtilities" | Join-Path -ChildPath "$global:testRunGuid.dll") -PassThru
-        } catch {
-            throw "$($_.Exception.LoaderExceptions)"
-        }
-
         $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "AzureExtensions" -TestRoutesFileName "AzureExtensionsRoutes.json"
     }
 
     Context "AzureExtensions" {
-        # Mocks
-        Mock Get-AzServiceCredential -ModuleName Generated.AzExt.Module {
-            return New-Object -TypeName PSSwagger.TestUtilities.TestCredentials
-        }
-
-        Mock Get-AzSubscriptionId -ModuleName Generated.AzExt.Module {
-            return "Test"
-        }
-
-        Mock Get-AzResourceManagerUrl -ModuleName Generated.AzExt.Module {
-            return "$($global:testDataSpec.schemes[0])://$($global:testDataSpec.host)"
-        }
-
         It "Test flattened parameters" {
             New-Cupcake -Id "3" -Flavor "strawberry"
             $results = Get-Cupcake
@@ -655,6 +535,137 @@ Describe "AllOfDefinition" -Tag @('AllOf','ScenarioTest')  {
             Get-Member -InputObject $guitar -Name 'NumberOfStrings' | should be $true
             $guitar.ISTuned | should be $true
             $guitar.NumberOfStrings | should be $null
+        }
+    }
+}
+
+Describe "AuthTests" -Tag @('Auth','ScenarioTest') {
+    BeforeAll {
+        # Generate all auth modules
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwagger.Common.Helpers" | `
+                       Join-Path -ChildPath "PSSwagger.Common.Helpers.psd1") -Force
+        Initialize-Test -GeneratedModuleName "Generated.BasicAuthTest.Module" -GeneratedModuleVersion "0.0.1" -TestApiName "AuthTests" `
+                        -TestSpecFileName "BasicAuthSpec.json" -TestDataFileName "AuthTestData.json" `
+                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+        Initialize-Test -GeneratedModuleName "Generated.ApiKeyHeaderTest.Module" -GeneratedModuleVersion "0.0.1" -TestApiName "AuthTests" `
+                        -TestSpecFileName "ApiKeyHeaderSpec.json" -TestDataFileName "AuthTestData.json" `
+                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+        Initialize-Test -GeneratedModuleName "Generated.ApiKeyQueryTest.Module" -GeneratedModuleVersion "0.0.1" -TestApiName "AuthTests" `
+                        -TestSpecFileName "ApiKeyQuerySpec.json" -TestDataFileName "AuthTestData.json" `
+                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+
+        # Import generated modules
+        Write-Verbose "Importing modules"
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwagger.Common.Helpers" | `
+                       Join-Path -ChildPath "PSSwagger.Common.Helpers.psd1") -Force
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
+                       Join-Path -ChildPath "Generated.BasicAuthTest.Module")
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
+                       Join-Path -ChildPath "Generated.ApiKeyHeaderTest.Module") -Prefix "ApiKeyHeader"
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
+                       Join-Path -ChildPath "Generated.ApiKeyQueryTest.Module") -Prefix "ApiKeyQuery"
+
+        
+    }
+
+    Context "Basic Authentication" {
+        It "Succeeds with correct credentials" {
+            # Generate credential
+            $username = "username"
+            $password = ConvertTo-SecureString "password" -AsPlainText -Force
+            $creds = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $username,$password
+
+            # Run test
+            try {
+                $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "AuthTests" -TestMiddlewareFileNames 'AuthTestMiddleware.js' `
+                                              -CustomServerParameters "--auth .\BasicAuth.js" # Contains function to verify a hardcoded basic auth header
+                Get-Response -Credential $creds -Property "test"
+            }
+            finally {
+                Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
+            }
+        }
+
+        It "Fails with incorrect username" {
+            # Generate credential
+            $username = "username1"
+            $password = ConvertTo-SecureString "password" -AsPlainText -Force
+            $creds = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $username,$password
+
+            # Run test
+            try {
+                $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "AuthTests" -TestMiddlewareFileNames 'AuthTestMiddleware.js' `
+                                              -CustomServerParameters "--auth .\BasicAuth.js" # Contains function to verify a hardcoded basic auth header
+                { Get-Response -Credential $creds -Property "test" } | should throw 'Unauthorized'
+            }
+            finally {
+                Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
+            }
+        }
+
+        It "Fails with incorrect password" {
+            # Generate credential
+            $username = "username"
+            $password = ConvertTo-SecureString "password1" -AsPlainText -Force
+            $creds = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $username,$password
+
+            # Run test
+            try {
+                $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "AuthTests" -TestMiddlewareFileNames 'AuthTestMiddleware.js' `
+                                              -CustomServerParameters "--auth .\BasicAuth.js" # Contains function to verify a hardcoded basic auth header
+                { Get-Response -Credential $creds -Property "test" } | should throw 'Unauthorized'
+            }
+            finally {
+                Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
+            }
+        }
+    }
+
+    Context "API key with header" {
+        It "Succeeds with key" {
+            try {
+                $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "AuthTests" -TestMiddlewareFileNames 'AuthTestMiddleware.js' `
+                                              -CustomServerParameters "--auth .\ApiKeyWithHeader.js" # Contains function to verify a hardcoded API key in the header
+                Get-ApiKeyHeaderResponse -APIKey "abc123" -Property "test"
+            }
+            finally {
+                Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
+            }
+        }
+
+        It "Fails with incorrect key" {
+            try {
+                $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "AuthTests" -TestMiddlewareFileNames 'AuthTestMiddleware.js' `
+                                              -CustomServerParameters "--auth .\ApiKeyWithHeader.js" # Contains function to verify a hardcoded API key in the header
+                { Get-ApiKeyHeaderResponse -APIKey "abc12345" -Property "test" } | should throw 'Unauthorized'
+            }
+            finally {
+                Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
+            }
+        }
+    }
+
+    Context "API key with query" {
+        It "Succeeds with key" {
+            try {
+                $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "AuthTests" -TestMiddlewareFileNames 'AuthTestMiddleware.js' `
+                                              -CustomServerParameters "--auth .\ApiKeyWithQuery.js" # Contains function to verify a hardcoded API key in the query
+                Get-ApiKeyQueryResponse -APIKey "abc123" -Property "test"
+            }
+            finally {
+                Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
+            }
+        }
+
+        It "Fails with incorrect key" {
+            try {
+                $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "AuthTests" -TestMiddlewareFileNames 'AuthTestMiddleware.js' `
+                                              -CustomServerParameters "--auth .\ApiKeyWithQuery.js" # Contains function to verify a hardcoded API key in the query
+                { Get-ApiKeyQueryResponse -APIKey "abc12345" -Property "test" } | should throw 'Unauthorized'
+            }
+            finally {
+                Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
+            }
         }
     }
 }

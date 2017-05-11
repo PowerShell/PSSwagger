@@ -479,6 +479,143 @@ function New-SwaggerPath
         }
     }
 
+    # Process security section
+    $azSubscriptionIdBlock = ""
+    $authFunctionCall = ""
+    $overrideBaseUriBlock = ""
+    $securityParametersToAdd = @()
+    if ($SwaggerMetaDict.ContainsKey('ExtendedTempMetadata') -and $SwaggerMetaDict.ExtendedTempMetadata) {
+        if ((Get-Member -InputObject $SwaggerMetaDict.ExtendedTempMetadata -Name 'Scheme')) {
+            if ($SwaggerMetaDict.ExtendedTempMetadata.Scheme -eq "azure") {
+                if ((Get-Member -InputObject $SwaggerMetaDict.ExtendedTempMetadata -Name 'CustomAuthFunction')) {
+                    if (-not $SwaggerMetaDict.ExtendedTempMetadata.CustomAuthFunction) {
+                        $SwaggerMetaDict.ExtendedTempMetadata.CustomAuthFunction = 'PSSwagger.Azure.Helpers\Get-AzServiceCredential'
+                    }
+                } else {
+                    Add-Member -InputObject $SwaggerMetaDict.ExtendedTempMetadata -MemberType NoteProperty -Name 'CustomAuthFunction' -Value 'PSSwagger.Azure.Helpers\Get-AzServiceCredential'
+                }
+
+                $azSubscriptionIdBlock = "`$subscriptionId = Get-AzSubscriptionId"
+            } elseif ($SwaggerMetaDict.ExtendedTempMetadata.Scheme -eq "azurestack") {
+                if ((Get-Member -InputObject $SwaggerMetaDict.ExtendedTempMetadata -Name 'CustomAuthFunction')) {
+                    if (-not $SwaggerMetaDict.ExtendedTempMetadata.CustomAuthFunction) {
+                        $SwaggerMetaDict.ExtendedTempMetadata.CustomAuthFunction = 'PSSwagger.Azure.Helpers\Get-AzServiceCredential'
+                    }
+                } else {
+                    Add-Member -InputObject $SwaggerMetaDict.ExtendedTempMetadata -MemberType NoteProperty -Name 'CustomAuthFunction' -Value 'PSSwagger.Azure.Helpers\Get-AzServiceCredential'
+                }
+
+                if ((Get-Member -InputObject $SwaggerMetaDict.ExtendedTempMetadata -Name 'OverrideBaseUriFunction')) {
+                    if (-not $SwaggerMetaDict.ExtendedTempMetadata.OverrideBaseUriFunction) {
+                        $SwaggerMetaDict.ExtendedTempMetadata.CustomAuthFunction = 'PSSwagger.Azure.Helpers\Get-AzResourceManagerUrl'
+                    }
+                } else {
+                    Add-Member -InputObject $SwaggerMetaDict.ExtendedTempMetadata -MemberType NoteProperty -Name 'OverrideBaseUriFunction' -Value 'PSSwagger.Azure.Helpers\Get-AzResourceManagerUrl'
+                }
+
+                $azSubscriptionIdBlock = "`$subscriptionId = Get-AzSubscriptionId"
+            }
+        }
+
+        if ((Get-Member -InputObject $SwaggerMetaDict.ExtendedTempMetadata -Name 'CustomAuthFunction') -and $SwaggerMetaDict.ExtendedTempMetadata.CustomAuthFunction) {
+            $authFunctionCall = $SwaggerMetaDict.ExtendedTempMetadata.CustomAuthFunction
+        }
+
+        if ((Get-Member -InputObject $SwaggerMetaDict.ExtendedTempMetadata -Name 'OverrideBaseUriFunction') -and $SwaggerMetaDict.ExtendedTempMetadata.OverrideBaseUriFunction) {
+            $overrideBaseUriBlock = "`$ResourceManagerUrl = $($SwaggerMetaDict.ExtendedTempMetadata.OverrideBaseUriFunction)`n    `$clientName.BaseUri = `$ResourceManagerUrl"
+        }
+
+        # If the auth function hasn't been set by metadata, try to discover it from the security and securityDefinition objects in the spec
+        if (-not $authFunctionCall) {
+            if ($swaggerDict.ContainsKey('Security')) {
+                # For now, just take the first security object
+                $firstSecurityObject = Get-Member -InputObject $swaggerDict.Security[0] -MemberType NoteProperty
+                # If there's no security object, we don't care about the security definition object
+                if ($firstSecurityObject) {
+                    # If there is one, we need to know the definition
+                    if (-not $swaggerDict.ContainsKey("SecurityDefinitions")) {
+                        throw $LocalizedData.SecurityDefinitionsObjectMissing
+                    }
+
+                    $securityDefinitions = $swaggerDict.SecurityDefinitions
+                    $securityDefinition = $securityDefinitions.$($firstSecurityObject.Name)
+                    if (-not $securityDefinition) {
+                        throw ($LocalizedData.SecurityDefinitionsObjectMissing -f ($firstSecurityObject.Name))
+                    }
+
+                    if (-not (Get-Member -InputObject $securityDefinition -Name "type")) {
+                        throw ($LocalizedData.SecurityDefinitionMissingType -f ($firstSecurityObject.Name))
+                    }
+
+                    $type = $securityDefinition.type
+                    if ($type -eq 'basic') {
+                        # For Basic Authentication, allow the user to pass in a PSCredential object.
+                        $credentialParameter = @{
+                            Details = @{
+                                Name = 'Credential'
+                                Type = 'PSCredential'
+                                Mandatory = '$false'
+                                Description = 'User credentials.'
+                                IsParameter = $true
+                                ValidateSet = $null
+                                ExtendedData = @{
+                                    Type = 'PSCredential'
+                                    HasDefaultValue = $false
+                                }
+                            }
+                            ParameterSetInfo = @{}
+                        }
+                        $securityParametersToAdd += @{
+                            Parameter = $credentialParameter
+                            Add = $true
+                        }
+                        $authFunctionCall = 'PSSwagger.Common.Helpers\Get-BasicAuthCredentials -Credential $Credential'
+                    } elseif ($type -eq 'apiKey') {
+                        if (-not (Get-Member -InputObject $securityDefinition -Name "name")) {
+                            throw ($LocalizedData.SecurityDefinitionMissingName -f ($firstSecurityObject.Name))
+                        }
+
+                        if (-not (Get-Member -InputObject $securityDefinition -Name "in")) {
+                            throw ($LocalizedData.SecurityDefinitionMissingIn -f ($firstSecurityObject.Name))
+                        }
+
+                        $name = $securityDefinition.name
+                        $in = $securityDefinition.in
+                        # For API key authentication, the user should supply the API key, but the in location and the name are generated from the spec
+                        # In addition, we'd be unable to authenticate without the API key, so make it mandatory
+                        $credentialParameter = @{
+                            Details = @{
+                                Name = 'APIKey'
+                                Type = 'string'
+                                Mandatory = '$true'
+                                Description = 'API key given by service owner.'
+                                IsParameter = $true
+                                ValidateSet = $null
+                                ExtendedData = @{
+                                    Type = 'string'
+                                    HasDefaultValue = $false
+                                }
+                            }
+                            ParameterSetInfo = @{}
+                        }
+                        $securityParametersToAdd += @{
+                            Parameter = $credentialParameter
+                            Add = $true
+                        }
+                        $authFunctionCall = "PSSwagger.Common.Helpers\Get-ApiKeyCredentials -APIKey `$APIKey -In '$in' -Name '$name'"
+                    } else {
+                        Write-Warning -Message ($LocalizedData.UnsupportedAuthenticationType -f ($type))
+                    }
+                }
+            }
+        }
+    }
+
+    if (-not $authFunctionCall) {
+        # At this point, there was no supported security object or overridden auth function, so assume no auth
+        $authFunctionCall = 'PSSwagger.Common.Helpers\Get-EmptyAuthCredentials'
+    }
+
     $nonUniqueParameterSets = @()
     foreach ($parameterSetDetail in $parameterSetDetails) {
         # Add parameter sets to paging parameter sets
@@ -516,6 +653,13 @@ function New-SwaggerPath
                     Write-Warning -Message ($LocalizedData.ParameterConflictAndResult -f ('Skip', $commandName, $parameterSetDetail.OperationId, $LocalizedData.PagingNotFullySupported))
                 }
             }
+
+            foreach ($additionalParameter in $securityParametersToAdd) {
+                if ($parameterDetails.Name -eq $additionalParameter.Parameter.Details.Name) {
+                    $additionalParameter.Add = $false
+                    Write-Warning -Message ($LocalizedData.ParameterConflictAndResult -f ($additionalParameter.Parameter.Details.Name, $commandName, $parameterSetDetail.OperationId, $LocalizedData.CredentialParameterNotSupported))
+                }
+            }
             
             if ($parameterHitCount[$parameterDetails.Name] -eq 1) {
                 # continue here brings us back to the top of the $parameterSetDetail.ParameterDetails.GetEnumerator() | ForEach-Object loop
@@ -535,6 +679,12 @@ function New-SwaggerPath
         $parametersToAdd[$skipParameterToAdd.Details.Name] = $skipParameterToAdd
     }
 
+    foreach ($additionalParameter in $securityParametersToAdd) {
+        if ($additionalParameter.Add) {
+            $parametersToAdd[$additionalParameter.Parameter.Details.Name] = $additionalParameter.Parameter
+        }
+    }
+    
     if ($topParameterToAdd -and $skipParameterToAdd) {
         $resultBlockStr = $executionContext.InvokeCommand.ExpandString($resultBlockWithSkipAndTop)
     } elseif ($topParameterToAdd -and -not $skipParameterToAdd) {
@@ -599,6 +749,12 @@ function New-SwaggerPath
                 } else {
                     $AllParameterSetsString = $executionContext.InvokeCommand.ExpandString($parameterAttributeString)
                 }
+            }
+
+            if (-not $AllParameterSetsString) {
+                $isParamMandatory = $parameterToAdd.Details.Mandatory
+                $ParameterSetPropertyString = ""
+                $AllParameterSetsString = $executionContext.InvokeCommand.ExpandString($parameterAttributeString)
             }
 
             $paramName = "`$$parameterName" 
@@ -691,6 +847,7 @@ function New-SwaggerPath
                                 GlobalParameterBlock = $GlobalParameterBlock
                                 SwaggerDict = $SwaggerDict
                                 SwaggerMetaDict = $SwaggerMetaDict
+                                SecurityBlock = $executionContext.InvokeCommand.ExpandString($securityBlockStr)
                            }
 
     $pathGenerationPhaseResult = Get-PathFunctionBody @functionBodyParams

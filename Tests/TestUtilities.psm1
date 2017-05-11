@@ -29,26 +29,6 @@ function Test-Package {
     $package
 }
 
-function Compile-TestAssembly {
-    [CmdletBinding()]
-    param(
-        [string]$TestAssemblyName,
-        [string]$TestAssemblyPath,
-        [string]$TestCSharpFilePath,
-        [string]$CommonHelpersModulePath,
-        [bool]$UseAzureCSharpGenerator
-    )
-
-    $fullPath = Join-Path -Path $TestAssemblyPath -ChildPath $TestAssemblyName
-    Write-Verbose "Checking for test assembly '$fullPath'"
-    if (-not (Test-Path $fullPath)) {
-        Write-Verbose "Generating test assembly from file '$TestCSharpFilePath' using script '$CompilationUtilsPath'"
-        Import-Module $CommonHelpersModulePath -Force
-        PSSwagger.Common.Helpers\Initialize-PSSwaggerDependencies -Azure -AcceptBootstrap
-        $null = Invoke-PSSwaggerAssemblyCompilation -CSharpFiles @($TestCSharpFilePath) -OutputAssemblyName $TestAssemblyName -CodeCreatedByAzureGenerator:$UseAzureCSharpGenerator -ClrPath $TestAssemblyPath -Verbose
-    }
-}
-
 function Initialize-Test {
     [CmdletBinding()]
     param(
@@ -61,13 +41,6 @@ function Initialize-Test {
         [string]$GeneratedModuleVersion,
         [switch]$UseAzureCSharpGenerator
     )
-
-    Compile-TestAssembly -TestAssemblyName "$global:testRunGuid.dll" `
-                         -TestAssemblyPath (Join-Path "$TestRootPath" "PSSwagger.TestUtilities") `
-                         -TestCSharpFilePath (Join-Path "$TestRootPath" "PSSwagger.TestUtilities" | Join-Path -ChildPath "TestCredentials.cs") `
-                         -CommonHelpersModulePath (Join-Path $PsSwaggerPath "PSSwagger.Common.Helpers") -UseAzureCSharpGenerator $UseAzureCSharpGenerator -Verbose
-
-    
 
     # TODO: Pass all these locations dynamically - See issues/17
     $generatedModulesPath = Join-Path -Path "$TestRootPath" -ChildPath "Generated"
@@ -106,7 +79,8 @@ function Start-JsonServer {
         [string]$TestRootPath,
         [string]$TestApiName,
         [string]$TestRoutesFileName,
-        [string[]]$TestMiddlewareFileNames
+        [string[]]$TestMiddlewareFileNames,
+        [string]$CustomServerParameters
     )
 
     $testCaseDataLocation = Join-Path -Path "$TestRootPath" -ChildPath "Data" | Join-Path -ChildPath "$TestApiName"
@@ -126,6 +100,10 @@ function Start-JsonServer {
     if ($TestMiddlewareFileNames) {
         $middlewares = $TestMiddlewareFileNames | ForEach-Object { "`"$testCaseDataLocation\$_`"" }
         $argList += " --middlewares $($middlewares -join ' ')"
+    }
+
+    if ($CustomServerParameters) {
+        $argList += " $CustomServerParameters"
     }
 
     Write-Verbose "Starting json-server: $PSScriptRoot\NodeModules\json-server.cmd $argList"
@@ -180,9 +158,12 @@ function Stop-JsonServer {
         [System.Diagnostics.Process]$JsonServerProcess,
         [System.Diagnostics.Process]$NodeProcess
     )
-
-    Write-Verbose "Stopping process: $($JsonServerProcess.ID)"
-    $JsonServerProcess | Stop-Process
-    Write-Verbose "Stopping process: $($NodeProcess.ID)"
-    $NodeProcess | Stop-Process
+    if ($JsonServerProcess) {
+        Write-Verbose "Stopping process: $($JsonServerProcess.ID)"
+        $JsonServerProcess | Stop-Process
+    }
+    if ($NodeProcess) {
+        Write-Verbose "Stopping process: $($NodeProcess.ID)"
+        $NodeProcess | Stop-Process
+    }
 }

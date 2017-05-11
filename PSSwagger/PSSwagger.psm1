@@ -122,8 +122,18 @@ function New-PSSwaggerModule
 
         [Parameter()]
         [switch]
-        $ConfirmBootstrap
+        $ConfirmBootstrap,
+
+        [Parameter()]
+        [string]
+        $TempMetadataFile
     )
+
+    $tempMetadata = [PSCustomObject]@{}
+    if ($TempMetadataFile -and (Test-Path -Path $TempMetadataFile)) {
+        Write-Verbose -Message "Using temporary implementation of metadata file."
+        $tempMetadata = Get-Content -Path $TempMetadataFile | ConvertFrom-Json
+    }
 
     if ($NoAssembly -and $IncludeCoreFxAssembly) {
         $message = $LocalizedData.ParameterSetNotAllowed -f ('IncludeCoreFxAssembly', 'NoAssembly')
@@ -307,10 +317,10 @@ function New-PSSwaggerModule
         DefinitionFunctionsDetails = $DefinitionFunctionsDetails
         AzureSpec = $UseAzureCsharpGenerator
     }
-    $swaggerDict = ConvertTo-SwaggerDictionary @ConvertToSwaggerDictionary_params
+    
+    $swaggerDict = ConvertTo-SwaggerDictionary -ExtendedTempMetadata ($tempMetadata) @ConvertToSwaggerDictionary_params
     $nameSpace = $swaggerDict['info'].NameSpace
     $models = $swaggerDict['info'].Models
-
     if($PSVersionTable.PSVersion -lt '5.0.0') {
         if (-not $outputDirectory.EndsWith($Name, [System.StringComparison]::OrdinalIgnoreCase)) {
             $outputDirectory = Join-Path -Path $outputDirectory -ChildPath $Name
@@ -337,6 +347,7 @@ function New-PSSwaggerModule
         SwaggerSpecPath = $SwaggerSpecPath
         SwaggerSpecFilePaths = $SwaggerSpecFilePaths
         AutoRestModeler = $AutoRestModeler
+        ExtendedTempMetadata = $tempMetadata
     }
 
     $ParameterGroupCache = @{}
