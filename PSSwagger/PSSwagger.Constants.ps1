@@ -160,7 +160,7 @@ $functionBodyStr = @'
     $securityBlock
 
     $clientName = New-Object -TypeName $fullModuleName -ArgumentList `$serviceCredentials,`$delegatingHandler$apiVersion
-
+    $overrideBaseUriBlock
     $GlobalParameterBlock
     $oDataExpressionBlock
     $parameterGroupsExpressionBlock
@@ -176,7 +176,6 @@ $functionBodyStr = @'
 $securityBlockStr = @'
 `$serviceCredentials = $authFunctionCall
     $azSubscriptionIdBlock
-    $overrideBaseUriBlock
     `$delegatingHandler = New-Object -TypeName System.Net.Http.DelegatingHandler[] 0
 '@
 

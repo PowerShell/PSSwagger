@@ -306,6 +306,20 @@ function New-PSSwaggerModule
     $userConsent = Initialize-PSSwaggerLocalTools -AllUsers:$InstallToolsForAllUsers -Azure:$UseAzureCsharpGenerator -Framework $frameworksToCheckDependencies -AcceptBootstrap:$ConfirmBootstrap
 
     $DefinitionFunctionsDetails = @{}
+    $PowerShellCodeGen = @{
+        CodeGenerator = ""
+        Path = ""
+        NoAssembly = ""
+        PowerShellCorePath = ""
+        IncludeCoreFxAssembly = ""
+        TestBuild = ""
+        SymbolPath = ""
+        ConfirmBootstrap = ""
+        AdditionalFilesPath = ""
+        Partner = ""
+        CustomAuthCommand = ""
+        HostOverrideCommand = ""
+    }
 
     # Parse the JSON and populate the dictionary
     $ConvertToSwaggerDictionary_params = @{
@@ -316,9 +330,25 @@ function New-PSSwaggerModule
         SwaggerSpecFilePaths = $SwaggerSpecFilePaths
         DefinitionFunctionsDetails = $DefinitionFunctionsDetails
         AzureSpec = $UseAzureCsharpGenerator
+        PowerShellCodeGen = $PowerShellCodeGen
+    }
+    $swaggerDict = ConvertTo-SwaggerDictionary @ConvertToSwaggerDictionary_params
+
+    Get-PowerShellCodeGenSettings -SwaggerSpecFilePath $SwaggerSpecPath -CodeGenSettings $PowerShellCodeGen
+    foreach ($additionalSwaggerSpecPath in $SwaggerSpecFilePaths) {
+        Get-PowerShellCodeGenSettings -SwaggerSpecFilePath $additionalSwaggerSpecPath -CodeGenSettings $PowerShellCodeGen
+    }
+
+    # Expand partner metadata
+    if ($PowerShellCodeGen['Partner']) {
+        $partnerFilePath = Join-Path -Path $PSScriptRoot -ChildPath "Partners" | Join-Path -ChildPath "$($PowerShellCodeGen['Partner'].ToLowerInvariant()).PSMeta.json"
+        if (-not (Test-Path -Path $partnerFilePath)) {
+            Write-Warning -Message "Partner metadata file doesn't exist: $partnerFilePath"
+        } else {
+            Get-PowerShellCodeGenSettings -SwaggerSpecFilePath $partnerFilePath -CodeGenSettings $PowerShellCodeGen
+        }
     }
     
-    $swaggerDict = ConvertTo-SwaggerDictionary -ExtendedTempMetadata ($tempMetadata) @ConvertToSwaggerDictionary_params
     $nameSpace = $swaggerDict['info'].NameSpace
     $models = $swaggerDict['info'].Models
     if($PSVersionTable.PSVersion -lt '5.0.0') {
@@ -347,7 +377,7 @@ function New-PSSwaggerModule
         SwaggerSpecPath = $SwaggerSpecPath
         SwaggerSpecFilePaths = $SwaggerSpecFilePaths
         AutoRestModeler = $AutoRestModeler
-        ExtendedTempMetadata = $tempMetadata
+        PowerShellCodeGen = $PowerShellCodeGen
     }
 
     $ParameterGroupCache = @{}

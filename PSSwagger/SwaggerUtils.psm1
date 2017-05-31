@@ -67,8 +67,9 @@ function ConvertTo-SwaggerDictionary {
         [switch]
         $DisableVersionSuffix,
 
-        [PSCustomObject]
-        $ExtendedTempMetadata
+        [Parameter(Mandatory = $false)]
+        [hashtable]
+        $PowerShellCodeGen
     )
     
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -83,11 +84,7 @@ function ConvertTo-SwaggerDictionary {
     if ((Get-Member -InputObject $swaggerDocObject -Name 'securityDefinitions')) {
         $swaggerDict['SecurityDefinitions'] = $swaggerDocObject.securityDefinitions
         if ((Get-Member -InputObject $swaggerDocObject.securityDefinitions -Name 'azure_auth')) {
-            if ($ExtendedTempMetadata) {
-                Add-Member -InputObject $ExtendedTempMetadata -MemberType NoteProperty -Name 'Scheme' -Value 'azure'
-            } else {
-                $ExtendedTempMetadata = [PSCustomObject]@{ Scheme = 'azure' }
-            }
+            $PowerShellCodeGen['Partner'] = 'azure'
         }
     }
 
@@ -1237,7 +1234,11 @@ function Get-PathFunctionBody
 
         [Parameter(Mandatory=$true)]
         [string]
-        $SecurityBlock
+        $SecurityBlock,
+
+        [Parameter(Mandatory=$true)]
+        [string]
+        $OverrideBaseUriBlock
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -1607,4 +1608,24 @@ function New-ObjectFromDependency {
     }
 
     return $null
+}
+
+function Get-PowerShellCodeGenSettings {
+    [CmdletBinding()]
+    param(
+        [string]$SwaggerSpecFilePath,
+        [hashtable]$CodeGenSettings
+    )
+
+    $swaggerObject = ConvertFrom-Json ((Get-Content $SwaggerSpecFilePath) -join [Environment]::NewLine) -ErrorAction Stop
+    if ((Get-Member -InputObject $swaggerObject -Name 'info') -and (Get-Member -InputObject $swaggerObject.'info' -Name 'x-ps-code-generation-settings')) {
+        $props = Get-Member -InputObject $swaggerObject.'info'.'x-ps-code-generation-settings' -MemberType NoteProperty
+        foreach ($prop in $props) {
+            if (-not $CodeGenSettings.ContainsKey($prop.Name)) {
+                Write-Warning -Message "Unknown x-ps-code-generation-settings property: $($prop.Name)"
+            } else {
+                $CodeGenSettings[$prop.Name] = $swaggerObject.'info'.'x-ps-code-generation-settings'.$($prop.Name)
+            }
+        }
+    }
 }
