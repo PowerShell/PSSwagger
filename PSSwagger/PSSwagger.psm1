@@ -122,18 +122,8 @@ function New-PSSwaggerModule
 
         [Parameter()]
         [switch]
-        $ConfirmBootstrap,
-
-        [Parameter()]
-        [string]
-        $TempMetadataFile
+        $ConfirmBootstrap
     )
-
-    $tempMetadata = [PSCustomObject]@{}
-    if ($TempMetadataFile -and (Test-Path -Path $TempMetadataFile)) {
-        Write-Verbose -Message "Using temporary implementation of metadata file."
-        $tempMetadata = Get-Content -Path $TempMetadataFile | ConvertFrom-Json
-    }
 
     if ($NoAssembly -and $IncludeCoreFxAssembly) {
         $message = $LocalizedData.ParameterSetNotAllowed -f ('IncludeCoreFxAssembly', 'NoAssembly')
