@@ -1238,6 +1238,7 @@ function Get-PathFunctionBody
 
         [Parameter(Mandatory=$true)]
         [string]
+        [AllowEmptyString()]
         $OverrideBaseUriBlock
     )
 

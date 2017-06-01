@@ -84,6 +84,16 @@ function Get-SwaggerSpecPathInfo
             }
         }
 
+        $operationSecurityObject = $null
+        if ($swaggerDict.ContainsKey('Security')) {
+            $operationSecurityObject = $swaggerDict['Security']
+        }
+
+        if(Get-Member -InputObject $_.Value -Name 'security')
+        {
+            $operationSecurityObject = $_.Value.'security'
+        }
+
         if(Get-Member -InputObject $_.Value -Name 'OperationId')
         {
             $operationId = $_.Value.operationId
@@ -159,6 +169,10 @@ function Get-SwaggerSpecPathInfo
                 } else {
                     $FunctionDetails['CommandName'] = $_
                     $FunctionDetails['x-ms-long-running-operation'] = $longRunningOperation
+                }
+
+                if ($operationSecurityObject) {
+                    $FunctionDetails['Security'] = $operationSecurityObject
                 }
 
                 $ParameterSetDetails = @()
@@ -496,9 +510,9 @@ function New-SwaggerPath
     }
     # If the auth function hasn't been set by metadata, try to discover it from the security and securityDefinition objects in the spec
     if (-not $authFunctionCall) {
-        if ($swaggerDict.ContainsKey('Security')) {
+        if ($FunctionDetails.ContainsKey('Security')) {
             # For now, just take the first security object
-            $firstSecurityObject = Get-Member -InputObject $swaggerDict.Security[0] -MemberType NoteProperty
+            $firstSecurityObject = Get-Member -InputObject $FunctionDetails.Security[0] -MemberType NoteProperty
             # If there's no security object, we don't care about the security definition object
             if ($firstSecurityObject) {
                 # If there is one, we need to know the definition

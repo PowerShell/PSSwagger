@@ -619,6 +619,27 @@ Describe "AuthTests" -Tag @('Auth','ScenarioTest') {
                 Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
             }
         }
+
+        It "Allows overriding security requirement at operation level" {
+            try {
+                $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "AuthTests" -TestMiddlewareFileNames 'AuthTestMiddleware.js' `
+                                              -CustomServerParameters "--auth .\ApiKeyWithQuery.js" # Contains function to verify a hardcoded API key in the query
+                Get-ResponseWithApiKey -APIKey "abc123" -Property "test"
+            }
+            finally {
+                Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
+            }
+        }
+
+        It "Allows clearing security requirement at operation level" {
+            try {
+                $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "AuthTests" -TestMiddlewareFileNames 'AuthTestMiddleware.js'
+                Get-ResponseNoAuth -Property "test"
+            }
+            finally {
+                Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
+            }
+        }
     }
 
     Context "API key with header" {

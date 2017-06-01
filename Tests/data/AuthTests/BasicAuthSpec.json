@@ -18,6 +18,12 @@
 		"auth": {
 			"type": "basic",
 			"description": "Test"
+		},
+		"apikey": {
+			"type": "apikey",
+			"description": "Test",
+			"in": "query",
+			"name": "x-ms-api-key"
 		}
 	},
 	"security": [
@@ -63,6 +69,71 @@
             }
         }
     },
+	"x-ms-paths": {
+		"/Responses?withApiKey": {
+			"get": {
+                "summary": "Get a response",
+                "operationId": "Response_GetWithApiKey",
+                "description": "Gets responses",
+                "parameters": [
+                    {
+                        "name": "Property",
+                        "in": "query",
+                        "description": "Test query parameter",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "tags": [
+                    "Responses"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A response entity",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/definitions/Response"
+                        }
+                    }
+                },
+				"security": [
+					{
+						"apikey": []
+					}
+				]
+            }
+		},
+		"/Responses?withNoAuth": {
+			"get": {
+                "summary": "Get a response",
+                "operationId": "Response_GetNoAuth",
+                "description": "Gets responses",
+                "parameters": [
+                    {
+                        "name": "Property",
+                        "in": "query",
+                        "description": "Test query parameter",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "tags": [
+                    "Responses"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A response entity",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/definitions/Response"
+                        }
+                    }
+                },
+				"security": [
+				]
+            }
+		}
+	},
     "definitions": {
         "Response": {
             "type": "object",
