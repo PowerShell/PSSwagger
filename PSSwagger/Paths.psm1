@@ -498,7 +498,7 @@ function New-SwaggerPath
     $overrideBaseUriBlock = ""
     $securityParametersToAdd = @()
     $PowerShellCodeGen = $SwaggerMetaDict['PowerShellCodeGen']
-    if (($PowerShellCodeGen['Partner'] -eq 'azure') -or ($PowerShellCodeGen['Partner'] -eq 'azure_stack')) {
+    if (($PowerShellCodeGen['ServiceType'] -eq 'azure') -or ($PowerShellCodeGen['ServiceType'] -eq 'azure_stack')) {
         $azSubscriptionIdBlock = "`$subscriptionId = Get-AzSubscriptionId"
     }
     if ($PowerShellCodeGen['CustomAuthCommand']) {

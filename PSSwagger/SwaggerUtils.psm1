@@ -84,7 +84,7 @@ function ConvertTo-SwaggerDictionary {
     if ((Get-Member -InputObject $swaggerDocObject -Name 'securityDefinitions')) {
         $swaggerDict['SecurityDefinitions'] = $swaggerDocObject.securityDefinitions
         if ((Get-Member -InputObject $swaggerDocObject.securityDefinitions -Name 'azure_auth')) {
-            $PowerShellCodeGen['Partner'] = 'azure'
+            $PowerShellCodeGen['ServiceType'] = 'azure'
         }
     }
 
