@@ -75,9 +75,7 @@ ConvertFrom-StringData @'
     CredentialParameterNotSupported=As a result, the -Credential parameter of type PSCredential will not added, and the specification-specified parameter will be used instead.
     SecurityDefinitionsObjectMissing=Security object was specified in the Swagger specification, but the Security Definition object was not.
     SpecificSecurityDefinitionMissing=Security definition with name '{0}' is missing.
-    SecurityDefinitionMissingType=Security definition '{0}' is missing the 'type' property.
-    SecurityDefinitionMissingName=API key security definition '{0}' is missing the 'name' property.
-    SecurityDefinitionMissingIn=API key security definition '{0}' is missing the 'in' property.
+    SecurityDefinitionMissingProperty=API key security definition '{0}' is missing the '{1}' property.
     UnsupportedAuthenticationType=Authentication type '{0}' is not supported by PSSwagger. The generated module will default to no authentication unless overridden.
 ###PSLOC
 '@

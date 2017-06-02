@@ -84,14 +84,13 @@ function Get-SwaggerSpecPathInfo
             }
         }
 
-        $operationSecurityObject = $null
-        if ($swaggerDict.ContainsKey('Security')) {
-            $operationSecurityObject = $swaggerDict['Security']
-        }
-
         if(Get-Member -InputObject $_.Value -Name 'security')
         {
             $operationSecurityObject = $_.Value.'security'
+        } elseif ($swaggerDict.ContainsKey('Security')) {
+            $operationSecurityObject = $swaggerDict['Security']
+        } else {
+            $operationSecurityObject = $null
         }
 
         if(Get-Member -InputObject $_.Value -Name 'OperationId')
@@ -506,7 +505,8 @@ function New-SwaggerPath
         $authFunctionCall = $PowerShellCodeGen['CustomAuthCommand']
     }
     if ($PowerShellCodeGen['HostOverrideCommand']) {
-        $overrideBaseUriBlock = "`$ResourceManagerUrl = $($PowerShellCodeGen['HostOverrideCommand'])`n    $clientName.BaseUri = `$ResourceManagerUrl"
+        $hostOverrideCommand = $PowerShellCodeGen['HostOverrideCommand']
+        $overrideBaseUriBlock = $executionContext.InvokeCommand.ExpandString($HostOverrideBlock)
     }
     # If the auth function hasn't been set by metadata, try to discover it from the security and securityDefinition objects in the spec
     if (-not $authFunctionCall) {
@@ -523,11 +523,11 @@ function New-SwaggerPath
                 $securityDefinitions = $swaggerDict.SecurityDefinitions
                 $securityDefinition = $securityDefinitions.$($firstSecurityObject.Name)
                 if (-not $securityDefinition) {
-                    throw ($LocalizedData.SecurityDefinitionsObjectMissing -f ($firstSecurityObject.Name))
+                    throw ($LocalizedData.SpecificSecurityDefinitionMissing -f ($firstSecurityObject.Name))
                 }
 
-                if (-not (Get-Member -InputObject $securityDefinition -Name "type")) {
-                    throw ($LocalizedData.SecurityDefinitionMissingType -f ($firstSecurityObject.Name))
+                if (-not (Get-Member -InputObject $securityDefinition -Name 'type')) {
+                    throw ($LocalizedData.SecurityDefinitionMissingProperty -f ($firstSecurityObject.Name, 'type'))
                 }
 
                 $type = $securityDefinition.type
@@ -537,7 +537,7 @@ function New-SwaggerPath
                         Details = @{
                             Name = 'Credential'
                             Type = 'PSCredential'
-                            Mandatory = '$false'
+                            Mandatory = '$true'
                             Description = 'User credentials.'
                             IsParameter = $true
                             ValidateSet = $null
@@ -554,12 +554,12 @@ function New-SwaggerPath
                     }
                     $authFunctionCall = 'PSSwagger.Common.Helpers\Get-BasicAuthCredentials -Credential $Credential'
                 } elseif ($type -eq 'apiKey') {
-                    if (-not (Get-Member -InputObject $securityDefinition -Name "name")) {
-                        throw ($LocalizedData.SecurityDefinitionMissingName -f ($firstSecurityObject.Name))
+                    if (-not (Get-Member -InputObject $securityDefinition -Name 'name')) {
+                        throw ($LocalizedData.SecurityDefinitionMissingProperty -f ($firstSecurityObject.Name, 'name'))
                     }
 
-                    if (-not (Get-Member -InputObject $securityDefinition -Name "in")) {
-                        throw ($LocalizedData.SecurityDefinitionMissingIn -f ($firstSecurityObject.Name))
+                    if (-not (Get-Member -InputObject $securityDefinition -Name 'in')) {
+                        throw ($LocalizedData.SecurityDefinitionMissingProperty -f ($firstSecurityObject.Name, 'in'))
                     }
 
                     $name = $securityDefinition.name

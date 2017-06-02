@@ -1,14 +1,10 @@
 function Get-BasicAuthCredentialsInternal {
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$true)]
         [PSCredential]
         $Credential
     )
-
-    if (-not $Credential) {
-        $Credential = Get-Credential
-    }
 
     if(('Microsoft.PowerShell.Commands.PSSwagger.PSBasicAuthenticationEx' -as [Type]))
     {

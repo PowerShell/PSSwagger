@@ -438,6 +438,8 @@ $GlobalParameterBlockStr = @'
     }
 '@
 
+$HostOverrideBlock = '`$ResourceManagerUrl = $hostOverrideCommand`n    $clientName.BaseUri = `$ResourceManagerUrl'
+
 $GeneratedCommandsName = 'Generated.PowerShell.Commands'
 
 $FormatViewDefinitionStr = @'

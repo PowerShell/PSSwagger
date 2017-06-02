@@ -1676,7 +1676,7 @@ function Unregister-PSSwaggerClientTracing {
 function Get-BasicAuthCredentials {
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$true)]
         [PSCredential]
         $Credential
     )
