@@ -324,9 +324,9 @@ function New-PSSwaggerModule
     }
     $swaggerDict = ConvertTo-SwaggerDictionary @ConvertToSwaggerDictionary_params
 
-    Get-PowerShellCodeGenSettings -SwaggerSpecFilePath $SwaggerSpecPath -CodeGenSettings $PowerShellCodeGen
+    Get-PowerShellCodeGenSettings -Path $SwaggerSpecPath -CodeGenSettings $PowerShellCodeGen
     foreach ($additionalSwaggerSpecPath in $SwaggerSpecFilePaths) {
-        Get-PowerShellCodeGenSettings -SwaggerSpecFilePath $additionalSwaggerSpecPath -CodeGenSettings $PowerShellCodeGen
+        Get-PowerShellCodeGenSettings -Path $additionalSwaggerSpecPath -CodeGenSettings $PowerShellCodeGen
     }
 
     # Expand partner metadata
@@ -335,7 +335,7 @@ function New-PSSwaggerModule
         if (-not (Test-Path -Path $partnerFilePath)) {
             Write-Warning -Message "Partner metadata file doesn't exist: $partnerFilePath"
         } else {
-            Get-PowerShellCodeGenSettings -SwaggerSpecFilePath $partnerFilePath -CodeGenSettings $PowerShellCodeGen
+            Get-PowerShellCodeGenSettings -Path $partnerFilePath -CodeGenSettings $PowerShellCodeGen
         }
     }
     

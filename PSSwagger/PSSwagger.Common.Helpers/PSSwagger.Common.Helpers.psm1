@@ -1673,7 +1673,7 @@ function Unregister-PSSwaggerClientTracing {
     Unregister-PSSwaggerClientTracingInternal -TracerObject $TracerObject
 }
 
-function Get-BasicAuthCredentials {
+function Get-BasicAuthCredential {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory=$true)]
@@ -1681,10 +1681,10 @@ function Get-BasicAuthCredentials {
         $Credential
     )
 
-    Get-BasicAuthCredentialsInternal -Credential $Credential
+    Get-BasicAuthCredentialInternal -Credential $Credential
 }
 
-function Get-ApiKeyCredentials {
+function Get-ApiKeyCredential {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory=$true)]
@@ -1700,12 +1700,12 @@ function Get-ApiKeyCredentials {
         $Name
     )
 
-    Get-ApiKeyCredentialsInternal -APIKey $APIKey -In $In -Name $Name
+    Get-ApiKeyCredentialInternal -APIKey $APIKey -In $In -Name $Name
 }
 
-function Get-EmptyAuthCredentials {
+function Get-EmptyAuthCredential {
     [CmdletBinding()]
     param()
 
-    Get-EmptyAuthCredentialsInternal
+    Get-EmptyAuthCredentialInternal
 }

@@ -1614,11 +1614,11 @@ function New-ObjectFromDependency {
 function Get-PowerShellCodeGenSettings {
     [CmdletBinding()]
     param(
-        [string]$SwaggerSpecFilePath,
+        [string]$Path,
         [hashtable]$CodeGenSettings
     )
 
-    $swaggerObject = ConvertFrom-Json ((Get-Content $SwaggerSpecFilePath) -join [Environment]::NewLine) -ErrorAction Stop
+    $swaggerObject = ConvertFrom-Json ((Get-Content $Path) -join [Environment]::NewLine) -ErrorAction Stop
     if ((Get-Member -InputObject $swaggerObject -Name 'info') -and (Get-Member -InputObject $swaggerObject.'info' -Name 'x-ps-code-generation-settings')) {
         $props = Get-Member -InputObject $swaggerObject.'info'.'x-ps-code-generation-settings' -MemberType NoteProperty
         foreach ($prop in $props) {

@@ -1,4 +1,4 @@
-function Get-BasicAuthCredentialsInternal {
+function Get-BasicAuthCredentialInternal {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory=$true)]
@@ -16,7 +16,7 @@ function Get-BasicAuthCredentialsInternal {
     }
 }
 
-function Get-ApiKeyCredentialsInternal {
+function Get-ApiKeyCredentialInternal {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory=$true)]
@@ -35,7 +35,7 @@ function Get-ApiKeyCredentialsInternal {
     New-Object -TypeName 'Microsoft.PowerShell.Commands.PSSwagger.PSApiKeyAuthentication' -ArgumentList $APIKey,$In,$Name
 }
 
-function Get-EmptyAuthCredentialsInternal {
+function Get-EmptyAuthCredentialInternal {
     [CmdletBinding()]
     param()
 
