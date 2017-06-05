@@ -83,13 +83,13 @@ $executeTestsCommand += ";`$env:Path+=`";$autoRestInstallPath\tools`""
 
 $powershellFolder = $null
 if ("netstandard1.7" -eq $TestFramework) {
-    # Note: Core build doesn't work on powershell alpha12+, so to work around this we'll require 6.0.0.11 exactly for now
-    $powershellCore = Get-Package PowerShell* -RequiredVersion 6.0.0.11 -ProviderName msi
+    # beta > alpha
+    $powershellCore = Get-Package PowerShell* -ProviderName msi | Sort-Object -Property Name -Descending | Select-Object -First 1
     if ($null -eq $powershellCore) {
-        throw "PowerShellCore 6.0.0.11 not found on this machine. Run: tools\Get-PowerShellCore -RequiredPSVersion 6.0.0.11"
+        throw "PowerShellCore not found on this machine. Run: tools\Get-PowerShellCore"
     }
-
-    $powershellFolder = "$Env:ProgramFiles\PowerShell\$($powershellCore.Version)"
+    $psVersion = $powershellCore.Name.Substring(11)
+    $powershellFolder = "$Env:ProgramFiles\PowerShell\$($psVersion)"
     $executeTestsCommand += ";`$env:PSModulePath_Backup=`"$env:PSModulePath`""
 }
 

@@ -1461,7 +1461,7 @@ function Initialize-PSSwaggerUtilities {
                 $clr = 'coreclr'
                 # On core CLR, these "additional" assemblies are required due to type redirection
                 $RequiredAssemblies += 'System.Threading.Tasks'
-                $RequiredAssemblies += 'System.Private.Uri'
+                $RequiredAssemblies += 'System.Threading'
             } else {
                 $externalReferencesFramework = 'net4'
                 $clr = 'fullclr'
