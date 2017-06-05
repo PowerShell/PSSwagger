@@ -1,7 +1,6 @@
 ﻿Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwagger.Common.Helpers.Resources.psd1
 
-$script:httpClientHandler = $null
 <#
 .DESCRIPTION
   Gets the content of a file. Removes the signature block, if it exists.
@@ -1718,7 +1717,7 @@ function Get-HttpClientHandler {
         [PSCredential]
         $Credential
     )
-    
+
     Add-Type -AssemblyName System.Net.Http
     $httpClientHandler = New-Object -TypeName System.Net.Http.HttpClientHandler
     $httpClientHandler.PreAuthenticate = $true

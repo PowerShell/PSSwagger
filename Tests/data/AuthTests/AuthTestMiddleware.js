@@ -20,7 +20,7 @@ module.exports = function (req, res, next) {
         if (auth.auth(req)) {
             next();
         } else {
-			res.set('WWW-Authenticate', 'Basic');
+            res.set('WWW-Authenticate', 'Basic');
             res.sendStatus(401);
         }
     }
