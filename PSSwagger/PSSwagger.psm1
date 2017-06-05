@@ -296,6 +296,21 @@ function New-PSSwaggerModule
     $userConsent = Initialize-PSSwaggerLocalTools -AllUsers:$InstallToolsForAllUsers -Azure:$UseAzureCsharpGenerator -Framework $frameworksToCheckDependencies -AcceptBootstrap:$ConfirmBootstrap
 
     $DefinitionFunctionsDetails = @{}
+    $PowerShellCodeGen = @{
+        CodeGenerator = ""
+        Path = ""
+        NoAssembly = ""
+        PowerShellCorePath = ""
+        IncludeCoreFxAssembly = ""
+        TestBuild = ""
+        SymbolPath = ""
+        ConfirmBootstrap = ""
+        AdditionalFilesPath = ""
+        ServiceType = ""
+        CustomAuthCommand = ""
+        HostOverrideCommand = ""
+        NoAuthChallenge = $false
+    }
 
     # Parse the JSON and populate the dictionary
     $ConvertToSwaggerDictionary_params = @{
@@ -306,11 +321,27 @@ function New-PSSwaggerModule
         SwaggerSpecFilePaths = $SwaggerSpecFilePaths
         DefinitionFunctionsDetails = $DefinitionFunctionsDetails
         AzureSpec = $UseAzureCsharpGenerator
+        PowerShellCodeGen = $PowerShellCodeGen
     }
     $swaggerDict = ConvertTo-SwaggerDictionary @ConvertToSwaggerDictionary_params
+
+    Get-PowerShellCodeGenSettings -Path $SwaggerSpecPath -CodeGenSettings $PowerShellCodeGen
+    foreach ($additionalSwaggerSpecPath in $SwaggerSpecFilePaths) {
+        Get-PowerShellCodeGenSettings -Path $additionalSwaggerSpecPath -CodeGenSettings $PowerShellCodeGen
+    }
+
+    # Expand partner metadata
+    if ($PowerShellCodeGen['ServiceType']) {
+        $partnerFilePath = Join-Path -Path $PSScriptRoot -ChildPath "ServiceTypes" | Join-Path -ChildPath "$($PowerShellCodeGen['ServiceType'].ToLowerInvariant()).PSMeta.json"
+        if (-not (Test-Path -Path $partnerFilePath)) {
+            Write-Warning -Message "Service type metadata file doesn't exist: $partnerFilePath"
+        } else {
+            Get-PowerShellCodeGenSettings -Path $partnerFilePath -CodeGenSettings $PowerShellCodeGen
+        }
+    }
+    
     $nameSpace = $swaggerDict['info'].NameSpace
     $models = $swaggerDict['info'].Models
-
     if($PSVersionTable.PSVersion -lt '5.0.0') {
         if (-not $outputDirectory.EndsWith($Name, [System.StringComparison]::OrdinalIgnoreCase)) {
             $outputDirectory = Join-Path -Path $outputDirectory -ChildPath $Name
@@ -337,6 +368,7 @@ function New-PSSwaggerModule
         SwaggerSpecPath = $SwaggerSpecPath
         SwaggerSpecFilePaths = $SwaggerSpecFilePaths
         AutoRestModeler = $AutoRestModeler
+        PowerShellCodeGen = $PowerShellCodeGen
     }
 
     $ParameterGroupCache = @{}

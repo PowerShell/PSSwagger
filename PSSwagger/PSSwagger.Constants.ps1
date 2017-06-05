@@ -157,15 +157,12 @@ $parameterGroupPropertyExpression = @'
 $functionBodyStr = @'
 
     `$ErrorActionPreference = 'Stop'
-    `$serviceCredentials = Get-AzServiceCredential
-    `$subscriptionId = Get-AzSubscriptionId
-    `$ResourceManagerUrl = Get-AzResourceManagerUrl
-    `$delegatingHandler = Get-AzDelegatingHandler
+    $securityBlock
 
-    $clientName = New-Object -TypeName $fullModuleName -ArgumentList `$serviceCredentials,`$delegatingHandler$apiVersion
-
+    $clientName = New-Object -TypeName $fullModuleName -ArgumentList $clientArgumentList$apiVersion
+    $overrideBaseUriBlock
     $GlobalParameterBlock
-    $clientName.BaseUri = `$ResourceManagerUrl$oDataExpressionBlock
+    $oDataExpressionBlock
     $parameterGroupsExpressionBlock
 
     `$skippedCount = 0
@@ -174,6 +171,16 @@ $functionBodyStr = @'
         Write-Verbose -Message 'Failed to map parameter set to operation method.'
         throw 'Module failed to find operation to execute.'
     }
+'@
+
+$clientArgumentListNoHandler = "`$serviceCredentials,`$delegatingHandler"
+$clientArgumentListHttpClientHandler = "`$serviceCredentials,`$httpClientHandler,`$delegatingHandler"
+
+$securityBlockStr = @'
+`$serviceCredentials = $authFunctionCall
+    $azSubscriptionIdBlock
+    $httpClientHandlerCall
+    `$delegatingHandler = New-Object -TypeName System.Net.Http.DelegatingHandler[] 0
 '@
 
 $parameterSetBasedMethodStrIfCase = @'
@@ -434,6 +441,8 @@ $GlobalParameterBlockStr = @'
         `$clientName.$globalParameterName = $globalParameterValue
     }
 '@
+
+$HostOverrideBlock = '`$ResourceManagerUrl = $hostOverrideCommand`n    $clientName.BaseUri = `$ResourceManagerUrl'
 
 $GeneratedCommandsName = 'Generated.PowerShell.Commands'
 

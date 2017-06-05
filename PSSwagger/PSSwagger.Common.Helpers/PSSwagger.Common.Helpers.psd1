@@ -20,7 +20,11 @@ FunctionsToExport = @('Invoke-SwaggerCommandUtility',
                       'Get-PSSwaggerDependency',
                       'Get-PSSwaggerExternalDependencies',
                       'Initialize-PSSwaggerLocalTools',
-                      'Initialize-PSSwaggerDependencies')
+                      'Initialize-PSSwaggerDependencies',
+                      'Get-BasicAuthCredential',
+                      'Get-ApiKeyCredential',
+                      'Get-EmptyAuthCredential',
+                      'Get-HttpClientHandler')
 CmdletsToExport = @('Start-PSSwaggerJob')
 VariablesToExport = ''
 AliasesToExport = ''

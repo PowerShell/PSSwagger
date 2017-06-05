@@ -1,0 +1,7 @@
+{
+  "info": {
+    "x-ps-code-generation-settings": {
+		"customAuthCommand": "PSSwagger.Azure.Helpers\\Get-AzServiceCredential"
+	}
+  }
+}
