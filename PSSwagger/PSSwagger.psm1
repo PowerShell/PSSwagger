@@ -306,9 +306,10 @@ function New-PSSwaggerModule
         SymbolPath = ""
         ConfirmBootstrap = ""
         AdditionalFilesPath = ""
-        Partner = ""
+        ServiceType = ""
         CustomAuthCommand = ""
         HostOverrideCommand = ""
+        NoAuthChallenge = $false
     }
 
     # Parse the JSON and populate the dictionary
@@ -330,10 +331,10 @@ function New-PSSwaggerModule
     }
 
     # Expand partner metadata
-    if ($PowerShellCodeGen['Partner']) {
-        $partnerFilePath = Join-Path -Path $PSScriptRoot -ChildPath "Partners" | Join-Path -ChildPath "$($PowerShellCodeGen['Partner'].ToLowerInvariant()).PSMeta.json"
+    if ($PowerShellCodeGen['ServiceType']) {
+        $partnerFilePath = Join-Path -Path $PSScriptRoot -ChildPath "ServiceTypes" | Join-Path -ChildPath "$($PowerShellCodeGen['ServiceType'].ToLowerInvariant()).PSMeta.json"
         if (-not (Test-Path -Path $partnerFilePath)) {
-            Write-Warning -Message "Partner metadata file doesn't exist: $partnerFilePath"
+            Write-Warning -Message "Service type metadata file doesn't exist: $partnerFilePath"
         } else {
             Get-PowerShellCodeGenSettings -Path $partnerFilePath -CodeGenSettings $PowerShellCodeGen
         }

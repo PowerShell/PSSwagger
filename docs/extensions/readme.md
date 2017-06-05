@@ -32,6 +32,10 @@ testBuild | `bool` | Boolean to enable debug compilation of full CLR binary comp
 symbolPath | `string` | Path that will contain the generated module's generated code and corresponding PDB file. Defaults to $Path\symbols if not specified. MUST be a valid path either absolute or relative.
 confirmBootstrap | `bool` | Specify true to automatically consent to downloading NuGet.exe or NuGet packages as required.
 additionalFilesPath | `string` | Location of custom files path. MUST be a valid path either absolute or relative.
+serviceType | `string` | One of 'azure' or 'azure_stack', if this service is an Azure or AzureStack service, respectively. Specifying this value customizes the resulting module for these services.
+customAuthCommand | `string` | Specify a PowerShell cmdlet that should return a Microsoft.Rest.ServiceClientCredentials object that implements custom authentication logic.
+hostOverrideCommand | `string` | Specify a PowerShell cmdlet that should return a custom hostname string. Overrides the default host in the specification.
+noAuthChallenge | `bool` | Specify true to indicate that the service will not offer an authentication challenge, such as adding the WWW-Authenticate header to a 401 response. Default is false.
 
 **Note**: These field names are taken from New-PSSwaggerModule cmdlet parameters. These field names will be renamed as per the cmdlet review updates for New-PSSwaggerModule cmdlet.
 

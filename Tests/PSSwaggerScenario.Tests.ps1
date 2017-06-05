@@ -547,19 +547,24 @@ Describe "AuthTests" -Tag @('Auth','ScenarioTest') {
         Initialize-Test -GeneratedModuleName "Generated.BasicAuthTest.Module" -GeneratedModuleVersion "0.0.1" -TestApiName "AuthTests" `
                         -TestSpecFileName "BasicAuthSpec.json" -TestDataFileName "AuthTestData.json" `
                         -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+         Initialize-Test -GeneratedModuleName "Generated.BasicAuthTestNoChallenge.Module" -GeneratedModuleVersion "0.0.1" -TestApiName "AuthTests" `
+                        -TestSpecFileName "BasicAuthSpecNoChallenge.json" -TestDataFileName "AuthTestData.json" `
+                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
         Initialize-Test -GeneratedModuleName "Generated.ApiKeyHeaderTest.Module" -GeneratedModuleVersion "0.0.1" -TestApiName "AuthTests" `
                         -TestSpecFileName "ApiKeyHeaderSpec.json" -TestDataFileName "AuthTestData.json" `
                         -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
         Initialize-Test -GeneratedModuleName "Generated.ApiKeyQueryTest.Module" -GeneratedModuleVersion "0.0.1" -TestApiName "AuthTests" `
                         -TestSpecFileName "ApiKeyQuerySpec.json" -TestDataFileName "AuthTestData.json" `
                         -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
-
+        
         # Import generated modules
         Write-Verbose "Importing modules"
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwagger.Common.Helpers" | `
                        Join-Path -ChildPath "PSSwagger.Common.Helpers.psd1") -Force
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
                        Join-Path -ChildPath "Generated.BasicAuthTest.Module")
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
+                       Join-Path -ChildPath "Generated.BasicAuthTestNoChallenge.Module")
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
                        Join-Path -ChildPath "Generated.ApiKeyHeaderTest.Module") -Prefix "ApiKeyHeader"
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
@@ -580,6 +585,23 @@ Describe "AuthTests" -Tag @('Auth','ScenarioTest') {
                 $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "AuthTests" -TestMiddlewareFileNames 'AuthTestMiddleware.js' `
                                               -CustomServerParameters "--auth .\BasicAuth.js" # Contains function to verify a hardcoded basic auth header
                 Get-Response -Credential $creds -Property "test"
+            }
+            finally {
+                Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
+            }
+        }
+
+        It "Succeeds with correct credentials and no challenge" {
+            # Generate credential
+            $username = "username"
+            $password = ConvertTo-SecureString "passwordAlt" -AsPlainText -Force
+            $creds = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $username,$password
+
+            # Run test
+            try {
+                $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "AuthTests" -TestMiddlewareFileNames 'AuthTestMiddlewareNoChallenge.js' `
+                                              -CustomServerParameters "--auth .\BasicAuthAltCreds.js" # Contains function to verify a hardcoded basic auth header
+                Get-ResponseUnchallenged -Credential $creds -Property "test"
             }
             finally {
                 Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess

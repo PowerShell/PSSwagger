@@ -496,6 +496,7 @@ function New-SwaggerPath
     $azSubscriptionIdBlock = ""
     $authFunctionCall = ""
     $overrideBaseUriBlock = ""
+    $httpClientHandlerCall = ""
     $securityParametersToAdd = @()
     $PowerShellCodeGen = $SwaggerMetaDict['PowerShellCodeGen']
     if (($PowerShellCodeGen['ServiceType'] -eq 'azure') -or ($PowerShellCodeGen['ServiceType'] -eq 'azure_stack')) {
@@ -552,7 +553,14 @@ function New-SwaggerPath
                         Parameter = $credentialParameter
                         IsConflictingWithOperationParameter = $false
                     }
-                    $authFunctionCall = 'PSSwagger.Common.Helpers\Get-BasicAuthCredential -Credential $Credential'
+                    # If the service is specified to not issue authentication challenges, we can't rely on HttpClientHandler
+                    if ($PowerShellCodeGen['NoAuthChallenge'] -and ($PowerShellCodeGen['NoAuthChallenge'] -eq $true)) {
+                        $authFunctionCall = 'PSSwagger.Common.Helpers\Get-BasicAuthCredential -Credential $Credential'
+                    } else {
+                        # Use an empty service client credentials object because we're using HttpClientHandler instead
+                        $authFunctionCall = 'PSSwagger.Common.Helpers\Get-EmptyAuthCredential'
+                        $httpClientHandlerCall = '$httpClientHandler = PSSwagger.Common.Helpers\Get-HttpClientHandler -Credential $Credential'
+                    }
                 } elseif ($type -eq 'apiKey') {
                     if (-not (Get-Member -InputObject $securityDefinition -Name 'name')) {
                         throw ($LocalizedData.SecurityDefinitionMissingProperty -f ($firstSecurityObject.Name, 'name'))
@@ -596,6 +604,11 @@ function New-SwaggerPath
     if (-not $authFunctionCall) {
         # At this point, there was no supported security object or overridden auth function, so assume no auth
         $authFunctionCall = 'PSSwagger.Common.Helpers\Get-EmptyAuthCredential'
+    }
+
+    $clientArgumentList = $clientArgumentListNoHandler
+    if ($httpClientHandlerCall) {
+        $clientArgumentList = $clientArgumentListHttpClientHandler
     }
 
     $nonUniqueParameterSets = @()
@@ -831,6 +844,7 @@ function New-SwaggerPath
                                 SwaggerMetaDict = $SwaggerMetaDict
                                 SecurityBlock = $executionContext.InvokeCommand.ExpandString($securityBlockStr)
                                 OverrideBaseUriBlock = $overrideBaseUriBlock
+                                ClientArgumentList = $clientArgumentList
                            }
 
     $pathGenerationPhaseResult = Get-PathFunctionBody @functionBodyParams

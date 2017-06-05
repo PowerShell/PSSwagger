@@ -159,7 +159,7 @@ $functionBodyStr = @'
     `$ErrorActionPreference = 'Stop'
     $securityBlock
 
-    $clientName = New-Object -TypeName $fullModuleName -ArgumentList `$serviceCredentials,`$delegatingHandler$apiVersion
+    $clientName = New-Object -TypeName $fullModuleName -ArgumentList $clientArgumentList$apiVersion
     $overrideBaseUriBlock
     $GlobalParameterBlock
     $oDataExpressionBlock
@@ -173,9 +173,13 @@ $functionBodyStr = @'
     }
 '@
 
+$clientArgumentListNoHandler = "`$serviceCredentials,`$delegatingHandler"
+$clientArgumentListHttpClientHandler = "`$serviceCredentials,`$httpClientHandler,`$delegatingHandler"
+
 $securityBlockStr = @'
 `$serviceCredentials = $authFunctionCall
     $azSubscriptionIdBlock
+    $httpClientHandlerCall
     `$delegatingHandler = New-Object -TypeName System.Net.Http.DelegatingHandler[] 0
 '@
 
