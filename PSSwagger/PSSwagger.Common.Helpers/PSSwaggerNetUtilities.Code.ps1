@@ -739,10 +739,15 @@
                     {
                         // Global + Unicode
                         valuePtr = (IntPtr)method.Invoke(this.Password, new object[] { true, true });
-                        pwd = Marshal.PtrToStringUni(valuePtr);
                     }
                 }
-                
+
+                if (valuePtr == IntPtr.Zero)
+                {
+                    valuePtr = Marshal.SecureStringToGlobalAllocUnicode(this.Password);
+                }
+
+                pwd = Marshal.PtrToStringUni(valuePtr);
             }
             finally
             {
