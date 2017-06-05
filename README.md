@@ -28,7 +28,7 @@ New-PSSwaggerModule -SwaggerSpecUri <uri> -Path <string> -Name <string> [-Versio
 ## Supported Platforms
 | Usage | Platforms |
 | ----------------| ------------------------------------- |
-| Developer       | Windows, Any full PowerShell version, PowerShell Core Alpha11 or older for Core CLR compilation |
+| Developer       | Windows, Any full PowerShell version, PowerShell Core (NOTE: AzureRM.Profile is currently broken on beta.1, but a new module should be released soon) |
 | Module Publisher| Any full PowerShell version |
 | Module Consumer | Any full PowerShell version, PowerShell Core Alpha11 or older  |
 
