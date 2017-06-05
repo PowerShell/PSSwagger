@@ -513,6 +513,9 @@ function New-SwaggerPath
     if (-not $authFunctionCall) {
         if ($FunctionDetails.ContainsKey('Security')) {
             # For now, just take the first security object
+            if ($FunctionDetails.Security.Count -gt 1) {
+                Write-Warning ($LocalizedData.MultipleSecurityTypesNotSupported -f $commandName)
+            }
             $firstSecurityObject = Get-Member -InputObject $FunctionDetails.Security[0] -MemberType NoteProperty
             # If there's no security object, we don't care about the security definition object
             if ($firstSecurityObject) {

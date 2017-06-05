@@ -77,5 +77,6 @@ ConvertFrom-StringData @'
     SpecificSecurityDefinitionMissing=Security definition with name '{0}' is missing.
     SecurityDefinitionMissingProperty=API key security definition '{0}' is missing the '{1}' property.
     UnsupportedAuthenticationType=Authentication type '{0}' is not supported by PSSwagger. The generated module will default to no authentication unless overridden.
+    MultipleSecurityTypesNotSupported=Multiple security requirements are currently unsupported. Only the first security requirement is being considered for command '{0}'.
 ###PSLOC
 '@
