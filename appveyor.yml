@@ -1,0 +1,15 @@
+version: 1.0.{build}
+os:
+    - Visual Studio 2017
+configuration: Release
+platform: Any CPU
+install: 
+    - cinst -y pester
+build: off
+test_script:
+ - ps: |
+        Push-Location  c:\projects\psswagger\Tests
+        .\run-tests.ps1
+        Pop-Location	 
+init:
+  - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))

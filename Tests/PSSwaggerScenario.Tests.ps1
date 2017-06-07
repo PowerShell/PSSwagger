@@ -15,8 +15,7 @@ Describe "Basic API" -Tag ScenarioTest {
                        Join-Path -ChildPath "PSSwagger.Azure.Helpers.psd1") -Force
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
                        Join-Path -ChildPath "Generated.Basic.Module")
-        
-        $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "PsSwaggerTestBasic" -TestRoutesFileName "PsSwaggerTestBasicRoutes.json"
+        $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "PsSwaggerTestBasic" -TestRoutesFileName "PsSwaggerTestBasicRoutes.json" -Verbose
     }
 
     Context "Basic API tests" {
