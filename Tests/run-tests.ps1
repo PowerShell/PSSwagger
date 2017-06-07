@@ -80,7 +80,7 @@ if ($TestSuite.Contains("All") -or $TestSuite.Contains("ScenarioTest")) {
 }
 
 # Set up AutoRest
-$autoRestModule = Test-Package -packageName "AutoRest" -packageSourceName $nugetPackageSource.Name
+$autoRestModule = Test-Package -packageName "AutoRest" -packageSourceName $nugetPackageSource.Name -requiredVersion 0.17.3
 $autoRestInstallPath = Split-Path -Path $autoRestModule.Source
 $executeTestsCommand += ";`$env:Path+=`";$autoRestInstallPath\tools`""
 
