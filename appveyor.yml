@@ -3,7 +3,7 @@ os:
 - WMF 5
 configuration: Release
 platform: Any CPU
-
+build: off
 test_script:
  - ps: >-
      & "c:\projects\psswagger\Tests\run-tests.ps1"
