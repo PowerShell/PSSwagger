@@ -616,12 +616,11 @@ function Initialize-PSSwaggerDependencies {
     )
 
     if ($AllFrameworks) {
-        $frameworks = @('netstandard1', 'net4')
+        $framework = @('netstandard1', 'net4')
     } else {
         $framework = if ((Get-OperatingSystemInfo).IsCore) { 'netstandard1' } else { 'net4' }
-        $frameworks = @($framework)
     }
-    $null = Initialize-PSSwaggerLocalTools -AllUsers:$AllUsers -Azure:$Azure -Framework $frameworks -AcceptBootstrap:$AcceptBootstrap
+    $null = Initialize-PSSwaggerLocalTools -AllUsers:$AllUsers -Azure:$Azure -Framework $framework -AcceptBootstrap:$AcceptBootstrap
     $null = Initialize-PSSwaggerUtilities
 }
 
