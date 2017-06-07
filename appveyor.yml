@@ -3,6 +3,8 @@ os:
 - WMF 5
 configuration: Release
 platform: Any CPU
+install: 
+    - cinst -y pester
 build: off
 test_script:
  - ps: >-
