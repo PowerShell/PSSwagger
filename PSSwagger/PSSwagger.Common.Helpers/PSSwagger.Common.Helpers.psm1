@@ -581,7 +581,7 @@ function Invoke-PSSwaggerAssemblyCompilation {
 
 <#
 .DESCRIPTION
-  Manually initialize PSSwagger's external dependencies. Use this function with -AcceptBootstrap for silent execution scenarios.
+  Manually initialize PSSwagger's external dependencies. By default, initializes dependencies only for the current CLR. Use this function with -AcceptBootstrap for silent execution scenarios.
 
 .PARAMETER  AllUsers
   Install dependencies in PSSwagger's global package cache.
@@ -591,6 +591,9 @@ function Invoke-PSSwaggerAssemblyCompilation {
 
 .PARAMETER  AcceptBootstrap
   Automatically consent to downloading missing packages. If not specified, an interactive prompt will be appear.
+
+.PARAMETER  AllFrameworks
+  Initialize dependencies for all frameworks.
 #>
 function Initialize-PSSwaggerDependencies {
     [CmdletBinding()]
@@ -605,10 +608,19 @@ function Initialize-PSSwaggerDependencies {
 
         [Parameter(Mandatory=$false)]
         [switch]
-        $AcceptBootstrap
+        $AcceptBootstrap,
+
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $AllFrameworks
     )
 
-    $null = Initialize-PSSwaggerLocalTools -AllUsers:$AllUsers -Azure:$Azure -Framework @('net4', 'netstandard1') -AcceptBootstrap:$AcceptBootstrap
+    if ($AllFrameworks) {
+        $framework = @('netstandard1', 'net4')
+    } else {
+        $framework = if ((Get-OperatingSystemInfo).IsCore) { 'netstandard1' } else { 'net4' }
+    }
+    $null = Initialize-PSSwaggerLocalTools -AllUsers:$AllUsers -Azure:$Azure -Framework $framework -AcceptBootstrap:$AcceptBootstrap
     $null = Initialize-PSSwaggerUtilities
 }
 
