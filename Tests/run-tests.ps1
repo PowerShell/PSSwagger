@@ -70,6 +70,9 @@ if ($TestSuite.Contains("All") -or $TestSuite.Contains("ScenarioTest")) {
 
     # Set up the common generated modules location
     $generatedModulesPath = Join-Path -Path "$PSScriptRoot" -ChildPath "Generated"
+    if (-not (Test-Path $generatedModulesPath)) {
+        $null = New-Item -Path $generatedModulesPath -ItemType Directory
+    }
     if (-not (Test-Path $nodeExePath)) {
         Write-Verbose "Copying node.exe from NuGet package to $nodeExePath"
         Copy-Item -Path (Join-Path -Path $nodejsInstallPath -ChildPath "node.exe") -Destination $nodeExePath
