@@ -592,7 +592,7 @@ function Invoke-PSSwaggerAssemblyCompilation {
 .PARAMETER  AcceptBootstrap
   Automatically consent to downloading missing packages. If not specified, an interactive prompt will be appear.
 
-.PARAMETER  All
+.PARAMETER  AllFrameworks
   Initialize dependencies for all frameworks.
 #>
 function Initialize-PSSwaggerDependencies {
@@ -612,10 +612,10 @@ function Initialize-PSSwaggerDependencies {
 
         [Parameter(Mandatory=$false)]
         [switch]
-        $All
+        $AllFrameworks
     )
 
-    if ($All) {
+    if ($AllFrameworks) {
         $frameworks = @('netstandard1', 'net4')
     } else {
         $framework = if ((Get-OperatingSystemInfo).IsCore) { 'netstandard1' } else { 'net4' }
