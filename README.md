@@ -1,3 +1,12 @@
+| Discord | AppVeyor (Windows) |
+|--------------------------|--------------------------|
+| [![dis-image][]][dis-site] | [![av-image][]][av-site] |
+
+[av-image]: https://ci.appveyor.com/api/projects/status/lx8ibbw9wjlpsu8u
+[av-site]: https://ci.appveyor.com/project/PowerShell/psswagger
+[dis-image]: https://discordapp.com/api/guilds/321835695897575424/embed.png
+[dis-site]: https://discord.gg/Z6qPgGp
+
 # PSSwagger
 
 Tool to generate PowerShell Cmdlets using Swagger based specifications

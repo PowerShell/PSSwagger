@@ -1,0 +1,9 @@
+version: 1.0.{build}
+os:
+- WMF 5
+configuration: Release
+platform: Any CPU
+
+test_script:
+ - ps: >-
+     & "c:\projects\psswagger\Tests\run-tests.ps1"
