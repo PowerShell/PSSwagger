@@ -17,23 +17,23 @@ function Test-Package {
         [string]$packageName,
         [string]$packageSourceName,
         [string]$providerName = "NuGet",
-		[string]
-		[AllowEmptyString()]
-		$requiredVersion = ""
+        [string]
+        [AllowEmptyString()]
+        $requiredVersion = ""
     )
 
     $package = Get-Package $packageName -ProviderName $providerName -ErrorAction Ignore | Select-Object -First 1
     if ($package -eq $null) {
         Write-Verbose "Trying to install missing package $packageName from source $packageSourceName"
-		$installParams = @{
-			Name = $packageName
-			ProviderName = $providerName
-			Source = $packageSourceName
-			Force = $true
-		}
-		if ($requiredVersion) {
-			$installParams['RequiredVersion'] = $requiredVersion
-		}
+        $installParams = @{
+            Name = $packageName
+            ProviderName = $providerName
+            Source = $packageSourceName
+            Force = $true
+        }
+        if ($requiredVersion) {
+            $installParams['RequiredVersion'] = $requiredVersion
+        }
 		
         $null = Install-Package @installParams
         $package = Get-Package $packageName -ProviderName $providerName
