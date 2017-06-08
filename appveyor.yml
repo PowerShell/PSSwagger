@@ -15,6 +15,6 @@ init:
   - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
 on_finish:
   - ps: |
-    Get-ChildItem -Path .\Tests\ -Filter '*TestResults.xml' -File | ForEach-Object {
-      (New-Object 'System.Net.WebClient').UploadFile("https://ci.appveyor.com/api/testresults/nunit/$($env:APPVEYOR_JOB_ID)", "$($_.FullName)")
-    }
+        Get-ChildItem -Path .\Tests\ -Filter '*TestResults.xml' -File | ForEach-Object {
+          (New-Object 'System.Net.WebClient').UploadFile("https://ci.appveyor.com/api/testresults/nunit/$($env:APPVEYOR_JOB_ID)", "$($_.FullName)")
+        }
