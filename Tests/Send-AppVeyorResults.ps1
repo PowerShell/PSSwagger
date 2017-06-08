@@ -8,9 +8,13 @@ param(
     [string]
     $testResultRootDir,
 
+    [Parameter(Mandatory=$true)]
+    [string]
+    $testResultFilePattern,
+
     [Parameter(Mandatory=$false)]
     [string]
-    $testResultFilePattern = "*TestResults.xml"
+    $_garbage
 )
 
 Write-Host "Uploading test results to AppVeyor: $appVeyorUrl"
