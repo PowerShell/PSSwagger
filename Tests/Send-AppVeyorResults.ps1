@@ -8,7 +8,7 @@ param(
     [string]
     $testResultRootDir,
 
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory=$false)]
     [string]
     $testResultFilePattern = "*TestResults.xml"
 )
