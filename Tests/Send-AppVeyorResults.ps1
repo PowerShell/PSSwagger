@@ -14,7 +14,10 @@ param(
 )
 
 Write-Host "Uploading test results to AppVeyor: $appVeyorUrl"
-Get-ChildItem -Path $testResultRootDir -Filter $testResultFilePattern -File -Recurse | ForEach-Object {
+Write-Host "Searching path recursively for results: $testResultRootDir"
+Write-Host "Test result pattern: $testResultFilePattern"
+$webClient = New-Object 'System.Net.WebClient'
+Get-ChildItem -Path "$testResultRootDir" -Filter $testResultFilePattern -File -Recurse | ForEach-Object {
     Write-Host "Uploading file: $($_.FullName)"
-    (New-Object 'System.Net.WebClient').UploadFile($appVeyorUrl, "$($_.FullName)")
+    $webClient.UploadFile($appVeyorUrl, "$($_.FullName)")
 }
