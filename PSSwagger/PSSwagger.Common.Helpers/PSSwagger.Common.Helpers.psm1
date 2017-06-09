@@ -655,7 +655,11 @@ function Initialize-PSSwaggerLocalTools {
 
         [Parameter(Mandatory=$false)]
         [switch]
-        $AcceptBootstrap
+        $AcceptBootstrap,
+		
+        [Parameter(Mandatory=$false)]
+        [hashtable]
+        $Dependencies
     )
 
     $bootstrapActions = @()
@@ -665,8 +669,11 @@ function Initialize-PSSwaggerLocalTools {
     $dependenciesToDownload = @()
     $packageActionAdded = $false
     foreach ($f in $Framework) {
-        $dependencies = Get-PSSwaggerExternalDependencies -Framework $f -Azure:$Azure -RequiredVersionMap $RequiredVersionMap
-        foreach ($entry in $dependencies.GetEnumerator()) {
+        if (-not $Dependencies) {
+            $Dependencies = Get-PSSwaggerExternalDependencies -Framework $f -Azure:$Azure -RequiredVersionMap $RequiredVersionMap
+        }
+        
+        foreach ($entry in $Dependencies.GetEnumerator()) {
             $dependency = $entry.Value
             
             $assemblyPaths = Get-PSSwaggerDependency -PackageName $dependency.PackageName -References $dependency.References -Framework $dependency.Framework -RequiredVersion $dependency.RequiredVersion -AllUsers:$AllUsers
