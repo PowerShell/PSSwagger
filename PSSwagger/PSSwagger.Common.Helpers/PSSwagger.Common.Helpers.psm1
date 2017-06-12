@@ -439,19 +439,26 @@ function Invoke-PSSwaggerAssemblyCompilation {
         $SymbolPath
     )
 
-    # Append the content of each file into a single string
-    $srcContent = @()
-    $srcContent += $CSharpFiles | ForEach-Object { "// File $($_.FullName)"; Get-SignedCodeContent -Path $_.FullName }
-    
+    # Remake the required version map
+    $requiredVersionMap = @{}
+    if ($NewtonsoftJsonRequiredVersion) {
+        $requiredVersionMap['Newtonsoft.Json'] = $NewtonsoftJsonRequiredVersion
+    }
+    if ($MicrosoftRestClientRuntimeRequiredVersion) {
+        $requiredVersionMap['Microsoft.Rest.ClientRuntime'] = $MicrosoftRestClientRuntimeRequiredVersion
+    }
+    if ($MicrosoftRestClientRuntimeAzureRequiredVersion) {
+        $requiredVersionMap['Microsoft.Rest.ClientRuntime.Azure'] = $MicrosoftRestClientRuntimeAzureRequiredVersion
+    }
+
     # Find the reference assemblies to use
     # System refs are expected to exist on the system
     # Extra refs are shipped by PSSwagger
     $systemRefs = @()
-    $extraRefs = @()
-    $externalReferencesFramework = ''
+    $preprocessorDirectives = @()
     if ((Get-OperatingSystemInfo).IsCore) {
         # Base framework references
-        $srcContent = ,'#define DNXCORE50' + ,'#define PORTABLE' + $srcContent
+        $preprocessorDirectives = @('#define DNXCORE50','#define PORTABLE')
         $systemRefs = @('System.dll',
                         'System.Core.dll',
                         'System.Net.Http.dll',
@@ -465,7 +472,7 @@ function Invoke-PSSwaggerAssemblyCompilation {
                         'System.Text.Encoding.dll',
                         'System.Linq.dll',
                         'System.Runtime.Serialization.Primitives.dll')
-        $externalReferencesFramework = 'netstandard1.'
+        $externalReferencesFramework = 'netstandard1'
     } else {
         # Base framework references
         $systemRefs = @('System.dll',
@@ -477,45 +484,151 @@ function Invoke-PSSwaggerAssemblyCompilation {
         $externalReferencesFramework = 'net4'
     }
 
-    $externalReferences = Get-PSSwaggerExternalDependencies -Framework $externalReferencesFramework -Azure:$CodeCreatedByAzureGenerator -RequiredVersionMap @{
-                                                                                                                                                                'Newtonsoft.Json' = $NewtonsoftJsonRequiredVersion
-                                                                                                                                                                'Microsoft.Rest.ClientRuntime' = $MicrosoftRestClientRuntimeRequiredVersion
-                                                                                                                                                                'Microsoft.Rest.ClientRuntime.Azure' = $MicrosoftRestClientRuntimeAzureRequiredVersion
-                                                                                                                                                             }
-    foreach ($entry in ($externalReferences.GetEnumerator() | Sort-Object { $_.Value.LoadOrder })) {
-        $reference = $entry.Value
-        $extraRefs += Get-PSSwaggerDependency -PackageName $reference.PackageName `
-                                              -RequiredVersion $reference.RequiredVersion `
-                                              -References $reference.References `
-                                              -Framework $reference.Framework `
-                                              -AllUsers:$AllUsers -Install -BootstrapConsent:$BootstrapConsent           
-    }
+    # Get dependencies for AutoRest SDK
+    $externalReferences = Get-PSSwaggerExternalDependencies -Framework $externalReferencesFramework -Azure:$CodeCreatedByAzureGenerator -RequiredVersionMap $requiredVersionMap
 
+    # Ensure output directory exists
     if (-not (Test-Path -Path $clrPath -PathType Container)) {
         $null = New-Item -Path $clrPath -ItemType Directory -Force
     }
 
-    # Copy extra refs
-    foreach ($extraRef in $extraRefs) {
-        $null = Copy-Item -Path $extraRef -Destination (Join-Path -Path $ClrPath -ChildPath (Split-Path -Path $extraRef -Leaf)) -Force
+    $addTypeParamsResult = Get-PSSwaggerAddTypeParameters -Path ($CSharpFiles | Select-Object -Property FullName) -ClrPath $clrPath -OutputAssemblyName $OutputAssemblyName -RequiredVersionMap $requiredVersionMap `
+                                                          -AllUsers:$AllUsers -BootstrapConsent:$BootstrapConsent -TestBuild:$TestBuild -SymbolPath $SymbolPath -PackageDependencies $externalReferences `
+                                                          -FileReferences $systemRefs -PreprocessorDirectives $preprocessorDirectives
+    
+    if ($addTypeParamsResult['ResolvedPackageReferences']) {
+        # Copy package references when precompiling
+        foreach ($extraRef in $addTypeParamsResult['ResolvedPackageReferences']) {
+            $null = Copy-Item -Path $extraRef -Destination (Join-Path -Path $ClrPath -ChildPath (Split-Path -Path $extraRef -Leaf)) -Force
+            Add-Type -Path $extraRef -ErrorAction Ignore
+        }
     }
 
-    # Compile
+    if ($addTypeParamsResult['SourceFileName']) {
+        # A source code file is expected to exist
+        # Emit the created source code
+        $addTypeParamsResult['SourceCode'] | Out-File -FilePath $addTypeParamsResult['SourceFileName']
+    }
+
+    # Execute Add-Type
+    $addTypeParams = $addTypeParamsResult['Params']
+    Add-Type @addTypeParams
+
+    # Copy the PDB to the symbol path if specified
+    if ($addTypeParamsResult['OutputAssemblyPath']) {
+        # Verify result of Add-Type
+        if ((-not (Test-Path -Path $addTypeParamsResult['OutputAssemblyPath'])) -or ((Get-Item -Path $addTypeParamsResult['OutputAssemblyPath']).Length -eq 0kb)) {
+            return $false
+        }
+
+        $outputAssemblyItem = Get-Item -Path $addTypeParamsResult['OutputAssemblyPath']
+        $OutputPdbName = "$($outputAssemblyItem.BaseName).pdb"
+        if ($SymbolPath -and (Test-Path -Path (Join-Path -Path $ClrPath -ChildPath $OutputPdbName))) {
+            $null = Copy-Item -Path (Join-Path -Path $ClrPath -ChildPath $OutputPdbName) -Destination (Join-Path -Path $SymbolPath -ChildPath $OutputPdbName)
+        }
+    }
+
+    return $true
+}
+
+function Get-PSSwaggerAddTypeParameters {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$false)]
+        [string[]]
+		$Path,
+
+        [Parameter(Mandatory=$true)]
+        [AllowEmptyString()]
+        [string]
+        $ClrPath,
+
+        [Parameter(Mandatory=$false)]
+        [AllowEmptyString()]
+        [string]
+        $OutputAssemblyName,
+
+        [Parameter(Mandatory=$false)]
+        [hashtable]
+        $RequiredVersionMap,
+
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $AllUsers,
+
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $BootstrapConsent,
+
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $TestBuild,
+
+        [Parameter(Mandatory=$false)]
+        [string]
+        $SymbolPath,
+		
+		[Parameter(Mandatory=$false)]
+		[hashtable]
+		$PackageDependencies,
+		
+		[Parameter(Mandatory=$false)]
+        [string[]]
+		$FileReferences,
+
+        [Parameter(Mandatory=$false)]
+        [string[]]
+        $PreprocessorDirectives
+    )
+	
+    $resultObj = @{
+        # The add type parameters to use
+        Params = $null
+        # Full path to resolved package reference assemblies
+        ResolvedPackageReferences = @()
+        # The expected output assembly full path
+        OutputAssemblyPath = $null
+        # The actual source to be emitted
+        SourceCode = $null
+        # The file name the returned params expect to exist, if required
+        SourceFileName = $null
+    }
+
+    # Resolve package dependencies
+	$extraRefs = @()
+    foreach ($entry in ($PackageDependencies.GetEnumerator() | Sort-Object { $_.Value.LoadOrder })) {
+        $reference = $entry.Value
+        $resolvedRef = Get-PSSwaggerDependency -PackageName $reference.PackageName `
+                                              -RequiredVersion $reference.RequiredVersion `
+                                              -References $reference.References `
+                                              -Framework $reference.Framework `
+                                              -AllUsers:$AllUsers -Install -BootstrapConsent:$BootstrapConsent
+        $extraRefs += $resolvedRef
+        $resultObj['ResolvedPackageReferences'] += $resolvedRef
+    }
+
+    # Combine the possibly authenticode-signed *.Code.ps1 files into a single file, adding preprocessor directives to the beginning if specified
+    $srcContent = @()
+    $srcContent += $CSharpFiles | ForEach-Object { "// File $($_.FullName)"; Get-SignedCodeContent -Path $_.FullName }
+    if ($PreprocessorDirectives -and ($PreprocessorDirectives.Length -gt 0)) {
+        foreach ($preprocessorDirective in $PreprocessorDirectives) {
+            $srcContent = ,$preprocessorDirective + $srcContent
+        }
+    }
+
     $oneSrc = $srcContent -join "`n"
+    $resultObj['SourceCode'] = $oneSrc
     if ($SymbolPath) {
         if ($OutputAssemblyName) {
             $OutputAssemblyBaseName = [System.IO.Path]::GetFileNameWithoutExtension("$OutputAssemblyName")
-            $oneSrc | Out-File -FilePath (Join-Path -Path $SymbolPath -ChildPath "Generated.$OutputAssemblyBaseName.cs")
-            $addTypeParams = @{
-                Path = (Join-Path -Path $SymbolPath -ChildPath "Generated.$OutputAssemblyBaseName.cs")
-                WarningAction = 'Ignore'
-            }
+            $resultObj['SourceFileName'] = Join-Path -Path $SymbolPath -ChildPath "Generated.$OutputAssemblyBaseName.cs"
         } else {
-            $oneSrc | Out-File -FilePath (Join-Path -Path $SymbolPath -ChildPath "Generated.cs")
-            $addTypeParams = @{
-                Path = (Join-Path -Path $SymbolPath -ChildPath "Generated.cs")
-                WarningAction = 'Ignore'
-            }
+            $resultObj['SourceFileName'] = Join-Path -Path $SymbolPath -ChildPath "Generated.cs"
+        }
+
+        $addTypeParams = @{
+            Path = $resultObj['SourceFileName']
+            WarningAction = 'Ignore'
         }
     } else {
         $addTypeParams = @{
@@ -535,48 +648,31 @@ function Invoke-PSSwaggerAssemblyCompilation {
         }
     
         $compilerParameters.WarningLevel = 3
-        foreach ($ref in ($systemRefs + $extraRefs)) {
+        foreach ($ref in ($FileReferences + $extraRefs)) {
             $null = $compilerParameters.ReferencedAssemblies.Add($ref)
         }
         $addTypeParams['CompilerParameters'] = $compilerParameters
     } else {
-        $addTypeParams['ReferencedAssemblies'] = ($systemRefs + $extraRefs)
+        $addTypeParams['ReferencedAssemblies'] = ($FileReferences + $extraRefs)
     }
 
     $OutputPdbName = ''
     if ($OutputAssemblyName) {
         $OutputAssembly = Join-Path -Path $clrPath -ChildPath $OutputAssemblyName
-        
+        $addTypeParams['OutputAssemblyPath'] = $OutputAssembly
         if ($addTypeParams.ContainsKey('CompilerParameters')) {
             $addTypeParams['CompilerParameters'].OutputAssembly = $OutputAssembly
         } else {
             $addTypeParams['OutputAssembly'] = $OutputAssembly
         }
-
-        $extraRefs | ForEach-Object { Add-Type -Path $_ -ErrorAction Ignore }
-        Add-Type @addTypeParams
-
-        if ((-not (Test-Path -Path $OutputAssembly)) -or ((Get-Item -Path $OutputAssembly).Length -eq 0kb)) {
-            return $false
-        }
-
-        $outputAssemblyItem = Get-Item -Path $OutputAssembly
-        $OutputPdbName = "$($outputAssemblyItem.BaseName).pdb"
     } else {
         if ($addTypeParams.ContainsKey('CompilerParameters')) {
             $addTypeParams['CompilerParameters'].GenerateInMemory = $true
         }
-
-        $extraRefs | ForEach-Object { Add-Type -Path $_ -ErrorAction Ignore }
-        
-        Add-Type @addTypeParams 
     }
-
-    if ($SymbolPath -and $OutputPdbName -and (Test-Path -Path (Join-Path -Path $ClrPath -ChildPath $OutputPdbName))) {
-        $null = Copy-Item -Path (Join-Path -Path $ClrPath -ChildPath $OutputPdbName) -Destination (Join-Path -Path $SymbolPath -ChildPath $OutputPdbName)
-    }
-        
-    return $true
+    
+    $resultObj['Params'] = $addTypeParams
+    return $resultObj
 }
 
 <#
