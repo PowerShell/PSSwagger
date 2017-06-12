@@ -72,11 +72,13 @@ function Initialize-Test {
     Write-Verbose "Generating module"
     if((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
         & "powershell.exe" -command "& {`$env:PSModulePath=`$env:PSModulePath_Backup;
-            Import-Module (Join-Path `"$PsSwaggerPath`" `"PSSwagger.psd1`") -Force -ArgumentList `$true;
+            Import-Module (Join-Path `"$PsSwaggerPath`" `"PSSwagger.psd1`") -Force;
+            Import-Module (Join-Path `"$PsSwaggerPath`" `"PSSwagger.Common.Helpers`") -Force;
+            Initialize-PSSwaggerDependencies -AllFrameworks -AcceptBootstrap -Azure:`$$UseAzureCSharpGenerator;
             New-PSSwaggerModule -SwaggerSpecPath (Join-Path -Path `"$testCaseDataLocation`" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Verbose -NoAssembly -UseAzureCSharpGenerator:`$$UseAzureCSharpGenerator -ConfirmBootstrap;
         }"
     } else {
-        Import-Module (Join-Path "$PsSwaggerPath" "PSSwagger.psd1") -Force -ArgumentList $true
+        Import-Module (Join-Path "$PsSwaggerPath" "PSSwagger.psd1") -Force
         New-PSSwaggerModule -SwaggerSpecPath (Join-Path -Path "$testCaseDataLocation" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Verbose -NoAssembly -UseAzureCSharpGenerator:$UseAzureCSharpGenerator -ConfirmBootstrap
     }
     
