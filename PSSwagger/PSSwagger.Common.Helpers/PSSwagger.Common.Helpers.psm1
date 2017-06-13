@@ -492,7 +492,7 @@ function Invoke-PSSwaggerAssemblyCompilation {
         $null = New-Item -Path $clrPath -ItemType Directory -Force
     }
 
-    $addTypeParamsResult = Get-PSSwaggerAddTypeParameters -Path ($CSharpFiles | Select-Object -Property FullName) -OutputDirectory $clrPath -OutputAssemblyName $OutputAssemblyName `
+    $addTypeParamsResult = Get-PSSwaggerAddTypeParameters -Path ($CSharpFiles | ForEach-Object { $_.FullName }) -OutputDirectory $clrPath -OutputAssemblyName $OutputAssemblyName `
                                                           -AllUsers:$AllUsers -BootstrapConsent:$BootstrapConsent -TestBuild:$TestBuild -SymbolPath $SymbolPath -PackageDependencies $externalReferences `
                                                           -FileReferences $systemRefs -PreprocessorDirectives $preprocessorDirectives
     
@@ -639,7 +639,7 @@ function Get-PSSwaggerAddTypeParameters {
 
     # Combine the possibly authenticode-signed *.Code.ps1 files into a single file, adding preprocessor directives to the beginning if specified
     $srcContent = @()
-    $srcContent += $Path | ForEach-Object { "// File $($_.FullName)"; Get-SignedCodeContent -Path $_.FullName }
+    $srcContent += $Path | ForEach-Object { "// File $_"; Get-SignedCodeContent -Path $_ }
     if ($PreprocessorDirectives -and ($PreprocessorDirectives.Length -gt 0)) {
         foreach ($preprocessorDirective in $PreprocessorDirectives) {
             $srcContent = ,$preprocessorDirective + $srcContent
