@@ -688,7 +688,7 @@ function Get-PSSwaggerAddTypeParameters {
 
     $OutputPdbName = ''
     if ($OutputAssemblyName) {
-        $OutputAssembly = Join-Path -Path $clrPath -ChildPath $OutputAssemblyName
+        $OutputAssembly = Join-Path -Path $OutputDirectory -ChildPath $OutputAssemblyName
         $resultObj['OutputAssemblyPath'] = $OutputAssembly
         if ($addTypeParams.ContainsKey('CompilerParameters')) {
             $addTypeParams['CompilerParameters'].OutputAssembly = $OutputAssembly
