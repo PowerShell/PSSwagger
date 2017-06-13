@@ -573,7 +573,7 @@ function Get-PSSwaggerAddTypeParameters {
     param(
         [Parameter(Mandatory=$false)]
         [string[]]
-		$Path,
+        $Path,
 
         [Parameter(Mandatory=$true)]
         [AllowEmptyString()]
@@ -605,13 +605,13 @@ function Get-PSSwaggerAddTypeParameters {
         [string]
         $SymbolPath,
 		
-		[Parameter(Mandatory=$false)]
-		[hashtable]
-		$PackageDependencies,
+        [Parameter(Mandatory=$false)]
+        [hashtable]
+        $PackageDependencies,
 		
-		[Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false)]
         [string[]]
-		$FileReferences,
+        $FileReferences,
 
         [Parameter(Mandatory=$false)]
         [string[]]
