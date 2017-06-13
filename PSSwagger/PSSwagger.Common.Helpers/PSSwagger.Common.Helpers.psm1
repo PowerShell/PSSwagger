@@ -492,7 +492,7 @@ function Invoke-PSSwaggerAssemblyCompilation {
         $null = New-Item -Path $clrPath -ItemType Directory -Force
     }
 
-    $addTypeParamsResult = Get-PSSwaggerAddTypeParameters -Path ($CSharpFiles | Select-Object -Property FullName) -ClrPath $clrPath -OutputAssemblyName $OutputAssemblyName -RequiredVersionMap $requiredVersionMap `
+    $addTypeParamsResult = Get-PSSwaggerAddTypeParameters -Path ($CSharpFiles | Select-Object -Property FullName) -OutputDirectory $clrPath -OutputAssemblyName $OutputAssemblyName -RequiredVersionMap $requiredVersionMap `
                                                           -AllUsers:$AllUsers -BootstrapConsent:$BootstrapConsent -TestBuild:$TestBuild -SymbolPath $SymbolPath -PackageDependencies $externalReferences `
                                                           -FileReferences $systemRefs -PreprocessorDirectives $preprocessorDirectives
     
@@ -531,6 +531,43 @@ function Invoke-PSSwaggerAssemblyCompilation {
     return $true
 }
 
+<#
+.DESCRIPTION
+  Compiles AutoRest generated C# code using the framework of the current PowerShell process.
+
+.PARAMETER  Path
+  All *.Code.ps1 C# files to compile.
+
+.PARAMETER  OutputDirectory
+  Full Path to output directory.
+
+.PARAMETER  OutputAssemblyName
+  Optional assembly file name.
+
+.PARAMETER  RequiredVersionMap
+  Optional map containing required versions of package dependencies.
+
+.PARAMETER  AllUsers
+  User has specified to install package dependencies to global location.
+
+.PARAMETER  BootstrapConsent
+  User has consented to bootstrap dependencies.
+
+.PARAMETER  TestBuild
+  Build binaries for testing (disable compiler optimizations, enable full debug information).
+
+.PARAMETER  SymbolPath
+  Path to store PDB file and matching source file.
+
+.PARAMETER  PackageDependencies
+  Map of package dependencies to add as referenced assemblies but don't exist on disk.
+
+.PARAMETER  FileReferences
+  Compilation references that exist on disk.
+
+.PARAMETER  PreprocessorDirectives
+  Preprocessor directives to add to the top of the combined source code file.
+#>
 function Get-PSSwaggerAddTypeParameters {
     [CmdletBinding()]
     param(
@@ -541,7 +578,7 @@ function Get-PSSwaggerAddTypeParameters {
         [Parameter(Mandatory=$true)]
         [AllowEmptyString()]
         [string]
-        $ClrPath,
+        $OutputDirectory,
 
         [Parameter(Mandatory=$false)]
         [AllowEmptyString()]
