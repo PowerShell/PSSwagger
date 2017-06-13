@@ -639,7 +639,7 @@ function Get-PSSwaggerAddTypeParameters {
 
     # Combine the possibly authenticode-signed *.Code.ps1 files into a single file, adding preprocessor directives to the beginning if specified
     $srcContent = @()
-    $srcContent += $CSharpFiles | ForEach-Object { "// File $($_.FullName)"; Get-SignedCodeContent -Path $_.FullName }
+    $srcContent += $Path | ForEach-Object { "// File $($_.FullName)"; Get-SignedCodeContent -Path $_.FullName }
     if ($PreprocessorDirectives -and ($PreprocessorDirectives.Length -gt 0)) {
         foreach ($preprocessorDirective in $PreprocessorDirectives) {
             $srcContent = ,$preprocessorDirective + $srcContent
