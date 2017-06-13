@@ -517,11 +517,11 @@ function Invoke-PSSwaggerAssemblyCompilation {
     # Copy the PDB to the symbol path if specified
     if ($addTypeParamsResult['OutputAssemblyPath']) {
         # Verify result of Add-Type
-        if ((-not (Test-Path -Path $addTypeParamsResult['OutputAssemblyPath'])) -or ((Get-Item -Path $addTypeParamsResult['OutputAssemblyPath']).Length -eq 0kb)) {
+        $outputAssemblyItem = Get-Item -Path $addTypeParamsResult['OutputAssemblyPath']
+        if ((-not (Test-Path -Path $addTypeParamsResult['OutputAssemblyPath'])) -or ($outputAssemblyItem.Length -eq 0kb)) {
             return $false
         }
 
-        $outputAssemblyItem = Get-Item -Path $addTypeParamsResult['OutputAssemblyPath']
         $OutputPdbName = "$($outputAssemblyItem.BaseName).pdb"
         if ($SymbolPath -and (Test-Path -Path (Join-Path -Path $ClrPath -ChildPath $OutputPdbName))) {
             $null = Copy-Item -Path (Join-Path -Path $ClrPath -ChildPath $OutputPdbName) -Destination (Join-Path -Path $SymbolPath -ChildPath $OutputPdbName)
@@ -572,7 +572,7 @@ function Get-PSSwaggerAddTypeParameters {
         [string[]]
         $Path,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$false)]
         [AllowEmptyString()]
         [string]
         $OutputDirectory,
@@ -625,22 +625,24 @@ function Get-PSSwaggerAddTypeParameters {
     }
 
     # Resolve package dependencies
-	$extraRefs = @()
-    foreach ($entry in ($PackageDependencies.GetEnumerator() | Sort-Object { $_.Value.LoadOrder })) {
-        $reference = $entry.Value
-        $resolvedRef = Get-PSSwaggerDependency -PackageName $reference.PackageName `
-                                              -RequiredVersion $reference.RequiredVersion `
-                                              -References $reference.References `
-                                              -Framework $reference.Framework `
-                                              -AllUsers:$AllUsers -Install -BootstrapConsent:$BootstrapConsent
-        $extraRefs += $resolvedRef
-        $resultObj['ResolvedPackageReferences'] += $resolvedRef
+    $extraRefs = @()
+    if ($PackageDependencies) {
+        foreach ($entry in ($PackageDependencies.GetEnumerator() | Sort-Object { $_.Value.LoadOrder })) {
+            $reference = $entry.Value
+            $resolvedRef = Get-PSSwaggerDependency -PackageName $reference.PackageName `
+                                                -RequiredVersion $reference.RequiredVersion `
+                                                -References $reference.References `
+                                                -Framework $reference.Framework `
+                                                -AllUsers:$AllUsers -Install -BootstrapConsent:$BootstrapConsent
+            $extraRefs += $resolvedRef
+            $resultObj['ResolvedPackageReferences'] += $resolvedRef
+        }
     }
 
     # Combine the possibly authenticode-signed *.Code.ps1 files into a single file, adding preprocessor directives to the beginning if specified
     $srcContent = @()
     $srcContent += $Path | ForEach-Object { "// File $_"; Get-SignedCodeContent -Path $_ }
-    if ($PreprocessorDirectives -and ($PreprocessorDirectives.Length -gt 0)) {
+    if ($PreprocessorDirectives) {
         foreach ($preprocessorDirective in $PreprocessorDirectives) {
             $srcContent = ,$preprocessorDirective + $srcContent
         }
