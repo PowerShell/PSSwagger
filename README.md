@@ -1,3 +1,12 @@
+| Gitter | AppVeyor (Windows) |
+|--------------------------|--------------------------|
+| [![gitter-image][]][gitter-site] | [![av-image][]][av-site] |
+
+[av-image]: https://ci.appveyor.com/api/projects/status/lx8ibbw9wjlpsu8u
+[av-site]: https://ci.appveyor.com/project/PowerShell/psswagger
+[gitter-image]: https://badges.gitter.im/PowerShell/PSSwagger.svg
+[gitter-site]: https://gitter.im/PowerShell/PSSwagger
+
 # PSSwagger
 
 Tool to generate PowerShell Cmdlets using Swagger based specifications

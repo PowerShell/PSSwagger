@@ -16,13 +16,26 @@ function Test-Package {
     param(
         [string]$packageName,
         [string]$packageSourceName,
-        [string]$providerName = "NuGet"
+        [string]$providerName = "NuGet",
+        [string]
+        [AllowEmptyString()]
+        $requiredVersion = ""
     )
 
     $package = Get-Package $packageName -ProviderName $providerName -ErrorAction Ignore | Select-Object -First 1
     if ($package -eq $null) {
         Write-Verbose "Trying to install missing package $packageName from source $packageSourceName"
-        $null = Install-Package $packageName -ProviderName $providerName -Source $packageSourceName -Force
+        $installParams = @{
+            Name = $packageName
+            ProviderName = $providerName
+            Source = $packageSourceName
+            Force = $true
+        }
+        if ($requiredVersion) {
+            $installParams['RequiredVersion'] = $requiredVersion
+        }
+		
+        $null = Install-Package @installParams
         $package = Get-Package $packageName -ProviderName $providerName
     }
 
@@ -59,11 +72,13 @@ function Initialize-Test {
     Write-Verbose "Generating module"
     if((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
         & "powershell.exe" -command "& {`$env:PSModulePath=`$env:PSModulePath_Backup;
-            Import-Module (Join-Path `"$PsSwaggerPath`" `"PSSwagger.psd1`") -Force -ArgumentList `$true;
+            Import-Module (Join-Path `"$PsSwaggerPath`" `"PSSwagger.psd1`") -Force;
+            Import-Module (Join-Path `"$PsSwaggerPath`" `"PSSwagger.Common.Helpers`") -Force;
+            Initialize-PSSwaggerDependencies -AllFrameworks -AcceptBootstrap -Azure:`$$UseAzureCSharpGenerator;
             New-PSSwaggerModule -SwaggerSpecPath (Join-Path -Path `"$testCaseDataLocation`" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Verbose -NoAssembly -UseAzureCSharpGenerator:`$$UseAzureCSharpGenerator -ConfirmBootstrap;
         }"
     } else {
-        Import-Module (Join-Path "$PsSwaggerPath" "PSSwagger.psd1") -Force -ArgumentList $true
+        Import-Module (Join-Path "$PsSwaggerPath" "PSSwagger.psd1") -Force
         New-PSSwaggerModule -SwaggerSpecPath (Join-Path -Path "$testCaseDataLocation" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Verbose -NoAssembly -UseAzureCSharpGenerator:$UseAzureCSharpGenerator -ConfirmBootstrap
     }
     
