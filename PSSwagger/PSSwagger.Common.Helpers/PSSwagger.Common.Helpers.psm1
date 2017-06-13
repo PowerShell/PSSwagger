@@ -492,7 +492,7 @@ function Invoke-PSSwaggerAssemblyCompilation {
         $null = New-Item -Path $clrPath -ItemType Directory -Force
     }
 
-    $addTypeParamsResult = Get-PSSwaggerAddTypeParameters -Path ($CSharpFiles | Select-Object -Property FullName) -OutputDirectory $clrPath -OutputAssemblyName $OutputAssemblyName -RequiredVersionMap $requiredVersionMap `
+    $addTypeParamsResult = Get-PSSwaggerAddTypeParameters -Path ($CSharpFiles | Select-Object -Property FullName) -OutputDirectory $clrPath -OutputAssemblyName $OutputAssemblyName `
                                                           -AllUsers:$AllUsers -BootstrapConsent:$BootstrapConsent -TestBuild:$TestBuild -SymbolPath $SymbolPath -PackageDependencies $externalReferences `
                                                           -FileReferences $systemRefs -PreprocessorDirectives $preprocessorDirectives
     
@@ -544,9 +544,6 @@ function Invoke-PSSwaggerAssemblyCompilation {
 .PARAMETER  OutputAssemblyName
   Optional assembly file name.
 
-.PARAMETER  RequiredVersionMap
-  Optional map containing required versions of package dependencies.
-
 .PARAMETER  AllUsers
   User has specified to install package dependencies to global location.
 
@@ -584,10 +581,6 @@ function Get-PSSwaggerAddTypeParameters {
         [AllowEmptyString()]
         [string]
         $OutputAssemblyName,
-
-        [Parameter(Mandatory=$false)]
-        [hashtable]
-        $RequiredVersionMap,
 
         [Parameter(Mandatory=$false)]
         [switch]
