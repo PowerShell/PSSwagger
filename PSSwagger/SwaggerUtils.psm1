@@ -47,13 +47,13 @@ function ConvertTo-SwaggerDictionary {
         [hashtable]
         $DefinitionFunctionsDetails,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$false)]
         [string]
         $ModuleName,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$false)]
         [Version]
-        $ModuleVersion,
+        $ModuleVersion = '0.0.1',
 
         [Parameter(Mandatory = $false)]
         [string]
@@ -81,7 +81,7 @@ function ConvertTo-SwaggerDictionary {
         Throw $LocalizedData.InvalidSwaggerSpecification
     }
 
-    if ((Get-Member -InputObject $swaggerDocObject -Name 'securityDefinitions')) {
+    if ($PowerShellCodeGen -and (Get-Member -InputObject $swaggerDocObject -Name 'securityDefinitions')) {
         $swaggerDict['SecurityDefinitions'] = $swaggerDocObject.securityDefinitions
         if ((Get-Member -InputObject $swaggerDocObject.securityDefinitions -Name 'azure_auth')) {
             $PowerShellCodeGen['ServiceType'] = 'azure'
@@ -92,7 +92,15 @@ function ConvertTo-SwaggerDictionary {
         $swaggerDict['Security'] = $swaggerDocObject.security
     }
 
-    $swaggerDict['Info'] = Get-SwaggerInfo -Info $swaggerDocObject.info -ModuleName $ModuleName -ModuleVersion $ModuleVersion
+    $GetSwaggerInfo_params = @{
+        Info = $swaggerDocObject.info
+        ModuleVersion  = $ModuleVersion
+    }
+    if($ModuleName)
+    {
+        $GetSwaggerInfo_params['ModuleName'] = $ModuleName
+    }
+    $swaggerDict['Info'] = Get-SwaggerInfo @GetSwaggerInfo_params
     $swaggerDict['Info']['DefaultCommandPrefix'] = $DefaultCommandPrefix
 
     $SwaggerParameters = @{}
@@ -140,13 +148,13 @@ function Get-SwaggerInfo {
         [PSCustomObject]
         $Info,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$false)]
         [string]
         $ModuleName,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$false)]
         [Version]
-        $ModuleVersion
+        $ModuleVersion = '0.0.1'
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -208,14 +216,14 @@ function Get-SwaggerInfo {
         $infoName = ($infoTitle -replace '[^a-zA-Z0-9_]','')
     }
 
-    $Description = $null
+    $Description = ''
     if((Get-Member -InputObject $Info -Name 'Description') -and $Info.Description) { 
         $Description = $Info.Description
     }
 
-    $ProjectUri = $null
-    $ContactEmail = $null
-    $ContactName = $null
+    $ProjectUri = ''
+    $ContactEmail = ''
+    $ContactName = ''
     if(Get-Member -InputObject $Info -Name 'Contact')
     {
         # The identifying name of the contact person/organization.
@@ -240,8 +248,8 @@ function Get-SwaggerInfo {
         }        
     }
 
-    $LicenseUri = $null
-    $LicenseName = $null
+    $LicenseUri = ''
+    $LicenseName = ''
     if(Get-Member -InputObject $Info -Name 'License')
     {
         # A URL to the license used for the API. MUST be in the format of a URL.
@@ -257,6 +265,13 @@ function Get-SwaggerInfo {
         { 
             $LicenseName = $Info.License.Name
         }
+    }
+
+    # Using the info name as module name when $ModuleName is not specified.
+    # This is required for PSMeta generaration.
+    if(-not $ModuleName)
+    {
+        $ModuleName = $infoName
     }
 
     if (-not $NameSpace) {
@@ -501,10 +516,10 @@ function Get-PathParamInfo
     
     $JsonPathItemObject.parameters | ForEach-Object {
         $AllParameterDetails = Get-ParameterDetails -ParameterJsonObject $_ `
-                                                 -SwaggerDict $SwaggerDict `
-                                                 -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
-                                                 -OperationId $operationId `
-                                                 -ParameterGroupCache $ParameterGroupCache
+                                                    -SwaggerDict $SwaggerDict `
+                                                    -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
+                                                    -OperationId $operationId `
+                                                    -ParameterGroupCache $ParameterGroupCache
         foreach ($ParameterDetails in $AllParameterDetails) {
             if($ParameterDetails -and ($ParameterDetails.ContainsKey('x_ms_parameter_grouping_group') -or $ParameterDetails.Type))
             {
@@ -613,6 +628,7 @@ function Get-ParameterDetails
             IsParameter = $paramTypeObject.IsParameter
             x_ms_parameter_location = $x_ms_parameter_location
             x_ms_parameter_grouping = $x_ms_parameter_grouping
+            OriginalParameterName = $ParameterJsonObject.Name
         }
     }
 

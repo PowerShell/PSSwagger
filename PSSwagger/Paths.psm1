@@ -43,7 +43,8 @@ function Get-SwaggerSpecPathInfo
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
     $UseAzureCsharpGenerator = $SwaggerMetaDict['UseAzureCsharpGenerator']
-    
+    $EndpointRelativePath = $JsonPathItemObject.Name
+
     # First get path level common parameters, if any, which will be common to all operations in this swagger path.
     $PathCommonParameters = @{}
     if(Get-Member -InputObject $JsonPathItemObject.value -Name 'Parameters')
@@ -60,6 +61,7 @@ function Get-SwaggerSpecPathInfo
 
     $JsonPathItemObject.value.PSObject.Properties | ForEach-Object {
         $longRunningOperation = $false
+        $operationType = $_.Name
         if (((Get-Member -InputObject $_.Value -Name 'x-ms-long-running-operation') -and $_.Value.'x-ms-long-running-operation')) {
             $longRunningOperation = $true
         }
@@ -106,7 +108,13 @@ function Get-SwaggerSpecPathInfo
             $ParametersTable = @{}
             # Add Path common parameters to the operation's parameters list.
             $PathCommonParameters.GetEnumerator() | ForEach-Object {
-                $ParametersTable[$_.Key] = $_.Value
+                # Cloning the common parameters object so that some values can be updated.
+                $PathCommonParamDetails = $_.Value.Clone()
+                if($PathCommonParamDetails.ContainsKey('OriginalParameterName') -and $PathCommonParamDetails.OriginalParameterName)
+                {
+                    $PathCommonParamDetails['OriginalParameterName'] = ''
+                }
+                $ParametersTable[$_.Key] = $PathCommonParamDetails
             }
 
             $GetPathParamInfo_params2 = @{
@@ -135,6 +143,9 @@ function Get-SwaggerSpecPathInfo
                 ParameterDetails = $ParametersTable
                 Responses = $responses
                 OperationId = $operationId
+                OperationType = $operationType
+                EndpointRelativePath = $EndpointRelativePath
+                PathCommonParameters = $PathCommonParameters
                 Priority = 100 # Default
                 'x-ms-pageable' = $x_ms_pageableObject
             }

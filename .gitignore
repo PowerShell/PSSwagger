@@ -19,6 +19,7 @@
 /Tests/ScenarioTestResults.xml
 /Tests/pesterCommand.ps1
 /Tests/dotnet-install.*
+/Tests/data/*/*.psmeta.json
 
 # Project Rider IDE files
 .idea.powershell/

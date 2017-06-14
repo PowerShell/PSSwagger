@@ -25,44 +25,71 @@ $SubModules | ForEach-Object {Import-Module -Name (Join-Path -Path $PSScriptRoot
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwagger.Resources.psd1
 
 <#
+.SYNOPSIS
+    PowerShell command to generate the PowerShell commands for a given RESTful Web Services using Swagger/OpenAPI documents.
+
 .DESCRIPTION
-  Decodes the swagger spec and generates PowerShell cmdlets.
+    PowerShell command to generate the PowerShell commands for a given RESTful Web Services using Swagger/OpenAPI documents.
+
+.EXAMPLE
+    PS> New-PSSwaggerModule -SwaggerSpecUri 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-batch/2015-12-01/swagger/BatchManagement.json' -Path 'C:\GeneratedModules\' -Name 'AzBatchManagement' -UseAzureCsharpGenerator
+    Generates a PS Module for the specified SwaggerSpecUri.
+
+.EXAMPLE
+    PS> New-PSSwaggerModule -SwaggerSpecPath 'C:\SwaggerSpecs\BatchManagement.json' -Path 'C:\GeneratedModules\' -Name 'AzBatchManagement' -UseAzureCsharpGenerator
+    Generates a PS Module for the specified SwaggerSpecPath.
 
 .PARAMETER  SwaggerSpecPath
-  Full Path to a Swagger based JSON spec.
+    Full Path to a Swagger based JSON spec.
+
+.PARAMETER  SwaggerSpecUri
+    Uri to a Swagger based JSON spec.
 
 .PARAMETER  Path
-  Full Path to a file where the commands are exported to.
+    Full Path to a file where the commands are exported to.
 
 .PARAMETER  Name
-  Name of the generated PowerShell module.
+    Name of the module to be generated. A folder with this name will be created in the location specified by Path parameter.
 
 .PARAMETER  Version
-  Version of the generated PowerShell module.
+    Version of the generated PowerShell module.
 
 .PARAMETER  DefaultCommandPrefix
-  Prefix value to be prepended to cmdlet noun or to cmdlet name without verb.
+    Prefix value to be prepended to cmdlet noun or to cmdlet name without verb.
 
 .PARAMETER  NoAssembly
-  Switch to disable saving the precompiled module assembly and instead enable dynamic compilation.
+    Switch to disable saving the precompiled module assembly and instead enable dynamic compilation.
 
 .PARAMETER  PowerShellCorePath
-  Path to PowerShell.exe for PowerShell Core.
+    Path to PowerShell.exe for PowerShell Core.
+    Only required if PowerShell Core not installed via MSI in the default path.
 
 .PARAMETER  IncludeCoreFxAssembly
-  Switch to additionally compile the module's binary component for core CLR.
+    Switch to additionally compile the module's binary component for Core CLR.
 
 .PARAMETER  InstallToolsForAllUsers
-  User wants to install local tools for all users.
+    User wants to install local tools for all users.
   
 .PARAMETER  TestBuild
-  Switch to disable optimizations during build of full CLR binary component.
-
+    Switch to disable optimizations during build of full CLR binary component.
+  
 .PARAMETER  SymbolPath
-  Path to save generated C# code and PDB file. Defaults to $Path\symbols
+    Path to save the generated C# code and PDB file. Defaults to $Path\symbols.
 
 .PARAMETER  ConfirmBootstrap
-  Automatically consent to downloading nuget.exe or NuGet packages as required.
+    Automatically consent to downloading nuget.exe or NuGet packages as required.
+
+.PARAMETER  UseAzureCsharpGenerator
+    Switch to specify whether AzureCsharp code generator is required. By default, this command uses CSharp code generator.
+
+.INPUTS
+
+.OUTPUTS
+
+.NOTES
+
+.LINK
+
 #>
 function New-PSSwaggerModule
 {
@@ -780,4 +807,4 @@ function New-ModuleManifestUtility
 
 #endregion
 
-Export-ModuleMember -Function New-PSSwaggerModule
+Export-ModuleMember -Function New-PSSwaggerModule, New-PSSwaggerMetadataFile
