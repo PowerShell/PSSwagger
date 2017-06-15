@@ -3,7 +3,16 @@
     "info": {
         "title": "DocumentDB",
         "description": "Azure DocumentDB Database Service Resource Provider REST API",
-        "version": "2015-04-08"
+        "version": "2015-04-08",
+        "contact": {
+            "name": "API Support",
+            "url": "http://www.swagger.io/support",
+            "email": "support@swagger.io"
+        },
+        "license": {
+            "name": "Apache 2.0",
+            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+        }
     },
     "host": "management.azure.com",
     "schemes": [
