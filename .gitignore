@@ -261,3 +261,14 @@ FakesAssemblies/
 *.xproj
 *.xproj.user
 *.suo
+
+# LiveTestFramework default output dir
+PSSwagger.LiveTestFramework/out/
+
+# LiveTestFramework cs files
+PSSwagger.LiveTestFramework/src/PSSwagger.LTF.ConsoleServer/*.cs
+PSSwagger.LiveTestFramework/src/PSSwagger.LTF.Lib/*.cs
+
+# LiveTestFramework test results
+PSSwagger.LiveTestFramework/test/PSSwagger.LTF.Lib.UnitTests/Results/
+PSSwagger.LiveTestFramework/test/Pester/PesterResults.xml
