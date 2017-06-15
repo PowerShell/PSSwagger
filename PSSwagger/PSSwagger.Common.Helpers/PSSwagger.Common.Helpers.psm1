@@ -597,6 +597,11 @@ function Get-PSSwaggerAddTypeParameters {
         [Parameter(Mandatory=$false)]
         [string]
         $SymbolPath,
+
+        [Parameter(Mandatory=$false)]
+        [ValidateSet("ConsoleApplication","Library")]
+        [string]
+        $OutputType = 'Library',
 		
         [Parameter(Mandatory=$false)]
         [hashtable]
@@ -678,6 +683,10 @@ function Get-PSSwaggerAddTypeParameters {
         } else {
             $compilerParameters.CompilerOptions += ' /optimize+'
         }
+
+        if ($OutputType -eq 'ConsoleApplication') {
+            $compilerParameters.GenerateExecutable = $true
+        }
     
         $compilerParameters.WarningLevel = 3
         foreach ($ref in ($FileReferences + $extraRefs)) {
@@ -686,6 +695,9 @@ function Get-PSSwaggerAddTypeParameters {
         $addTypeParams['CompilerParameters'] = $compilerParameters
     } else {
         $addTypeParams['ReferencedAssemblies'] = ($FileReferences + $extraRefs)
+        if ($OutputType -eq 'ConsoleApplication') {
+            $addTypeParams['ReferencedAssemblies'] = $OutputType
+        }
     }
 
     $OutputPdbName = ''
