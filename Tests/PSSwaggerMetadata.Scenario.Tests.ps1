@@ -1,9 +1,10 @@
 Describe "Tests for New-PSSwaggerMetadataFile cmdlet" -Tag @('PSMeta', 'ScenarioTest') {
     BeforeAll {
-        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -Force
-        $PSMetaDataTestPath = Join-Path -Path $PSScriptRoot -ChildPath "data" | Join-Path -ChildPath "psmetadatatest"
-        $SwaggerSpecPath = Join-Path -Path $PSMetaDataTestPath -ChildPath "psmetadatatest.json"
-        $PSMetaFilePath = Join-Path -Path $PSMetaDataTestPath -ChildPath "psmetadatatest.psmeta.json"
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath '..' | Join-Path -ChildPath 'PSSwagger') -Force
+        $TestsDataPath = Join-Path -Path $PSScriptRoot -ChildPath 'data'
+        $PSMetaDataTestPath = Join-Path -Path $TestsDataPath -ChildPath 'psmetadatatest'
+        $SwaggerSpecPath = Join-Path -Path $PSMetaDataTestPath -ChildPath 'psmetadatatest.json'
+        $PSMetaFilePath = Join-Path -Path $PSMetaDataTestPath -ChildPath 'psmetadatatest.psmeta.json'
 
         if (Test-Path -Path $PSMetaFilePath -PathType Leaf) {
             Remove-Item -Path $PSMetaFilePath -Force
@@ -251,6 +252,36 @@ Describe "Tests for New-PSSwaggerMetadataFile cmdlet" -Tag @('PSMeta', 'Scenario
             Test-Path -Path $PSMetaFilePath -PathType Leaf | Should Be $true
             { New-PSSwaggerMetadataFile -SwaggerSpecPath $SwaggerSpecPath } | Should Throw
             { New-PSSwaggerMetadataFile -SwaggerSpecPath $SwaggerSpecPath -Force } | Should Not Throw
+        }
+
+        It "Test New-PSSwaggerMetadataFile cmdlet with -WhatIf parameter" {            
+            if (Test-Path -Path $PSMetaFilePath -PathType Leaf) {
+                Remove-Item -Path $PSMetaFilePath -Force
+            }
+
+            { New-PSSwaggerMetadataFile -SwaggerSpecPath $SwaggerSpecPath -WhatIf } | Should Not Throw
+            Test-Path -Path $PSMetaFilePath -PathType Leaf | Should Be $false
+        }
+
+        It "Test New-PSSwaggerMetadataFile cmdlet with ValueFromPipeline functionality" {
+            if (Test-Path -Path $PSMetaFilePath -PathType Leaf) {
+                Remove-Item -Path $PSMetaFilePath -Force
+            }
+
+            { $SwaggerSpecPath | New-PSSwaggerMetadataFile } | Should Not Throw
+            Test-Path -Path $PSMetaFilePath -PathType Leaf | Should Be $true
+        }
+
+        It "Test New-PSSwaggerMetadataFile cmdlet with ValueFromPipelineByPropertyName functionality" {
+            if (Test-Path -Path $PSMetaFilePath -PathType Leaf) {
+                Remove-Item -Path $PSMetaFilePath -Force
+            }
+            $PSObject = New-Object -TypeName 'PSObject'
+            Add-Member -InputObject $PSObject -MemberType NoteProperty -Name SwaggerSpecPath -Value $SwaggerSpecPath
+            Add-Member -InputObject $PSObject -MemberType NoteProperty -Name 'SomeOtherProperty' -Value 'SomeValue'
+
+            { $PSObject | New-PSSwaggerMetadataFile } | Should Not Throw
+            Test-Path -Path $PSMetaFilePath -PathType Leaf | Should Be $true
         }
     }
 }

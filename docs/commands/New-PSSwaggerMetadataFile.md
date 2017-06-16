@@ -1,5 +1,5 @@
 ---
-external help file: PSSwaggerMetadata-help.xml
+external help file: PSSwagger-help.xml
 online version: 
 schema: 2.0.0
 ---
@@ -12,7 +12,7 @@ Creates PowerShell Metadata json file with PowerShell Extensions for the specifi
 ## SYNTAX
 
 ```
-New-PSSwaggerMetadataFile [-SwaggerSpecPath] <String> [-Force]
+New-PSSwaggerMetadataFile [-SwaggerSpecPath] <String> [-Force] [-WhatIf] [-Confirm]
 ```
 
 ## DESCRIPTION
@@ -51,7 +51,7 @@ Aliases:
 Required: True
 Position: 1
 Default value: None
-Accept pipeline input: False
+Accept pipeline input: True (ByPropertyName, ByValue)
 Accept wildcard characters: False
 ```
 
@@ -66,6 +66,37 @@ Aliases:
 Required: False
 Position: Named
 Default value: False
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -WhatIf
+Shows what would happen if the cmdlet runs.
+The cmdlet is not run.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases: wi
+
+Required: False
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -Confirm
+Prompts you for confirmation before running the cmdlet.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases: cf
+
+Required: False
+Position: Named
+Default value: None
 Accept pipeline input: False
 Accept wildcard characters: False
 ```

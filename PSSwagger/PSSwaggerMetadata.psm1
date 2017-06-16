@@ -58,9 +58,12 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwa
 
 #>
 function New-PSSwaggerMetadataFile {
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess = $true)]
     param(
-        [Parameter(Mandatory = $true)]
+        [Parameter(
+            Mandatory = $true,
+            ValueFromPipelineByPropertyName = $true,
+            ValueFromPipeline = $true)]
         [string] 
         $SwaggerSpecPath,
 
@@ -190,15 +193,21 @@ function New-PSSwaggerMetadataFile {
     $psMetadata['definitions'] = $definitionsMetadata
     $psMetadata['parameters'] = $globalParametersMetadata
 
-    $OutFile_Params = @{
-        FilePath = $PSMetaFilePath
-        Encoding = 'ascii'
-        Force    = $true
-        Confirm  = $false
-        WhatIf   = $false
+    $psmetaJson = ConvertTo-Json -InputObject $psMetadata -Depth 100 | Format-JsonUtility
+
+    if ($psmetaJson -and ($Force -or $pscmdlet.ShouldProcess($PSMetaFilePath, $LocalizedData.NewPSSwaggerMetadataFileOperationMessage))) {
+        $OutFile_Params = @{
+            InputObject = $psmetaJson
+            FilePath    = $PSMetaFilePath
+            Encoding    = 'ascii'
+            Force       = $true
+            Confirm     = $false
+            WhatIf      = $false
+        }
+        Out-File @OutFile_Params
+
+        Write-Verbose -Message ($LocalizedData.SuccessfullyGeneratedMetadataFile -f $PSMetaFilePath, $SwaggerSpecPath)
     }
-    ConvertTo-Json -InputObject $psMetadata -Depth 100 | Format-JsonUtility | Out-File @OutFile_Params
-    Write-Verbose -Message ($LocalizedData.SuccessfullyGeneratedMetadataFile -f $PSMetaFilePath, $SwaggerSpecPath)
 }
 
 #region PSSwaggerMetadata Utilities
