@@ -167,3 +167,6 @@ The scenario test suite contains tests that hit actual (local) web API endpoints
 | Scenario        | Description                           |
 | ----------------| ------------------------------------- |
 | PsSwaggerTestsBasic | A very basic test of a single string-only path using get and post.|
+
+# PSSwagger.LiveTestFramework
+The PSSwagger implementation of the [Azure Live Test Framework protocol](https://github.com/Azure/azure-rest-api-specs-tests/blob/master/json-rpc-server.md) is currently located in this repository in a subdirectory. Once PSSwagger.Common.Helpers is published to [PowerShellGallery.com](https://powershellgallery.com), the PSSwagger.LiveTestFramework code will be moved to a separate repository. You can find the readme for the PSSwagger.LiveTestFramework module [here](/docs/commands/New-PSSwaggerMetadataFile.md).
