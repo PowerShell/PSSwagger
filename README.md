@@ -9,30 +9,16 @@
 
 # PSSwagger
 
-Tool to generate PowerShell Cmdlets using Swagger based specifications
+A PowerShell module with commands to generate the PowerShell commands for a given RESTful Web Services using Swagger/OpenAPI documents.
 
-## Syntax
-```powershell
-New-PSSwaggerModule -SwaggerSpecPath <string> -Path <string> -Name <string> [-Version <version>] [-UseAzureCsharpGenerator] [-NoAssembly] [-PowerShellCorePath <string>] [-IncludeCoreFxAssembly] [-DefaultCommandPrefix <string>] [-IncludeCoreFxAssembly <string>] [-TestBuild <string>] [-SymbolPath <string>] [-ConfirmBootstrap] [<CommonParameters>]
-```
-```powershell
-New-PSSwaggerModule -SwaggerSpecUri <uri> -Path <string> -Name <string> [-Version <version>] [-UseAzureCsharpGenerator] [-NoAssembly] [-PowerShellCorePath <string>] [-IncludeCoreFxAssembly] [-DefaultCommandPrefix <string>] [-IncludeCoreFxAssembly <string>] [-TestBuild <string>] [-SymbolPath <string>] [-ConfirmBootstrap] [<CommonParameters>]
-```
+# PSSwagger Documentation
 
-| Parameter       | Description                           |
-| ----------------| ------------------------------------- |
-| SwaggerSpecPath | Full Path to a Swagger based JSON spec|
-| Path            | Full Path to a folder where the commands/modules are exported to |
-| Name            | Name of the module to be generated. A folder with this name will be created in the location specified by Path parameter |
-| Version  | Version of the module to be generated. Default value is '0.0.1' |
-| SwaggerSpecUri  | URI to the swagger spec |
-| DefaultCommandPrefix  | Prefix value to be prepended to cmdlet noun or to cmdlet name without verb. |
-| NoAssembly      | Don't save the generated assemblies to disk. Enables dynamic compilation scenario. |
-| PowerShellCorePath      | Path to PowerShell.exe for PowerShell Core. Only required if not installed via MSI in the default path |
-| IncludeCoreFxAssembly      | Switch to additionally compile the module's binary component for core CLR |
-| TestBuild      | Switch to enable debug compilation of full CLR binary component. Effects: disables compiler optimization |
-| SymbolPath     | Path that will contain the generated module's generated code and corresponding PDB file. Defaults to $Path\symbols if not specified. |
-| ConfirmBootstrap     | Automatically consent to downloading nuget.exe or NuGet packages as required. |
+## PSSwagger commands
+- [New-PSSwaggerModule](/docs/commands/New-PSSwaggerModule.md)
+- [New-PSSwaggerMetadataFile](/docs/commands/New-PSSwaggerMetadataFile.md)
+
+## Customizing PowerShell Metadata
+- [PowerShell Extensions](/docs/extensions/readme.md)
 
 ## Supported Platforms
 | Usage | Platforms |
@@ -143,18 +129,6 @@ For Microsoft Azure modules, or:
 PSSwagger.Common.Helpers\Initialize-PSSwaggerDependencies -AcceptBootstrap
 ```
 For all other modules.
-
-## Upcoming additions
-
-1. Enabe PowerShell Best practices
-   * Using approved Verbs
-   * Verbs that change system like New/Update/Remove need to implement ShouldProcess (-WhatIf/-Confirm)
-   * Mapping properties to ValueFromPipeline semantics so that  Get-<Noun> | Remove-<Noun>  (and other pipeline scenarios) work.
-   * Long running operations need to have -AsJob variants and use -Job cmdlets for further processing.
-2. Representing complex objects as parameters
-3. Identifying / driving common extensions in Swagger not just MAS but for entire PowerShell ecosystem.
-4. Test Cases
-5. Make generated cmdlets work with PowerShell Core on Linux / Mac
 
 ## Notes
 

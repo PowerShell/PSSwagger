@@ -78,5 +78,8 @@ ConvertFrom-StringData @'
     SecurityDefinitionMissingProperty=API key security definition '{0}' is missing the '{1}' property.
     UnsupportedAuthenticationType=Authentication type '{0}' is not supported by PSSwagger. The generated module will default to no authentication unless overridden.
     MultipleSecurityTypesNotSupported=Multiple security requirements are currently unsupported. Only the first security requirement is being considered for command '{0}'.
+    PSMetaFileExists=The PowerShell metadata file '{0}' already exists for the specified Swagger document '{1}'. Use -Force switch parameter to replace the existing metadata file '{0}'.
+    SuccessfullyGeneratedMetadataFile=Successfully generated the PowerShell metadata file '{0}' for the specified Swagger specification '{1}'.
+    NewPSSwaggerMetadataFileOperationMessage=Create PowerShell Swagger Metadata file
 ###PSLOC
 '@

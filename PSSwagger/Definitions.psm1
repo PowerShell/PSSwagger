@@ -206,7 +206,7 @@ function Get-DefinitionParameters
         $JsonDefinitionItemObject.Value.properties.PSObject.Properties | ForEach-Object {
 
             if((Get-Member -InputObject $_ -Name 'Name') -and $_.Name)
-            {
+            {                
                 $ParameterJsonObject = $_.Value
                 if ((Get-Member -InputObject $ParameterJsonObject -Name 'x-ms-client-name') -and $ParameterJsonObject.'x-ms-client-name') {
                     $parameterName = Get-PascalCasedString -Name $ParameterJsonObject.'x-ms-client-name'
@@ -270,6 +270,7 @@ function Get-DefinitionParameters
                     $ParameterDetails['ValidateSet'] = $ValidateSetString
                     $ParameterDetails['Mandatory'] = $IsParamMandatory
                     $ParameterDetails['Description'] = $ParameterDescription
+                    $ParameterDetails['OriginalParameterName'] = $_.Name
 
                     if($ParameterType)
                     {

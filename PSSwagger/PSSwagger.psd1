@@ -6,12 +6,17 @@ Author = 'Microsoft Corporation'
 CompanyName = 'Microsoft Corporation'
 Copyright = '(c) Microsoft Corporation. All rights reserved.'
 Description = 'PowerShell module with commands for generating the PowerShell Cmdlets using Swagger based specifications.'
-FunctionsToExport = @('New-PSSwaggerModule')
+FunctionsToExport = @(
+                        'New-PSSwaggerModule',
+                        'New-PSSwaggerMetadataFile'
+                    )
 CmdletsToExport = ''
 VariablesToExport = ''
 AliasesToExport = ''
 
-NestedModules = @()
+NestedModules = @(
+                    'PSSwaggerMetadata.psm1'
+                )
 
 FileList = @(
              'Definitions.psm1',
@@ -21,6 +26,7 @@ FileList = @(
              'PSSwagger.psd1',
              'PSSwagger.psm1',
              'PSSwagger.Resources.psd1',
+             'PSSwaggerMetadata.psm1',
              'SwaggerUtils.psm1',
              'Utilities.psm1',
              'Trie.ps1',

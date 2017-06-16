@@ -233,7 +233,7 @@ $getTaskResultBlock = @'
                 `$taskResult.Result.Body)
             {
                 `$result = `$taskResult.Result.Body
-                Write-Verbose -Message "`$(`$result | Out-String)"
+                Write-Debug -Message "`$(`$result | Out-String)"
                 $resultBlockStr
             }
         }
