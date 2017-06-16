@@ -23,7 +23,6 @@ function Start-PSSwaggerLiveTestServer {
         $NoNewWindow
     )
     
-    # Compile binaries to disk
     $osInfo = PSSwagger.Common.Helpers\Get-OperatingSystemInfo
     if ($osInfo.IsCore) {
         $clr = 'coreclr'
@@ -32,17 +31,30 @@ function Start-PSSwaggerLiveTestServer {
     }
 
     $outputDirectory = Join-Path -Path $PSScriptRoot -ChildPath "bin" | Join-Path -ChildPath $clr
+    
     # Use a friendlier but longer name
     $exeName = "PSSwagger.LiveTestFramework.ConsoleServer.exe"
-    if (-not (Test-Path -Path (Join-Path -Path $outputDirectory -ChildPath 'PSSwagger.LTF.Lib.dll'))) {
-        Add-PSSwaggerLiveTestLibType -BootstrapConsent:$BootstrapConsent -SaveAssembly -OutputDirectory $outputDirectory
-    }
-
-    if (-not (Test-Path -Path (Join-Path -Path $outputDirectory -ChildPath $exeName))) {
-        Add-PSSwaggerLiveTestServerType -BootstrapConsent:$BootstrapConsent -SaveAssembly -OutputDirectory $outputDirectory -OutputFileName $exeName
-    }
-
     $exePath = Join-Path -Path $outputDirectory -ChildPath $exeName
+    $addTypeParams = @{
+        BootstrapConsent = $BootstrapConsent
+        OutputDirectory = $outputDirectory
+    }
+
+    # Check if we have access to write the compiled binaries
+    try {
+        "" | out-file $exePath -append
+        $null = Remove-Item -Path $exePath -Force
+        $addTypeParams['SaveAssembly'] = $true
+    } catch { }
+
+    if (-not (Test-Path -Path (Join-Path -Path $outputDirectory -ChildPath 'PSSwagger.LTF.Lib.dll'))) {
+        Add-PSSwaggerLiveTestLibType @addTypeParams
+    }
+
+    if (-not (Test-Path -Path $exePath)) {
+        $addTypeParams['OutputFileName'] = $exeName
+        Add-PSSwaggerLiveTestServerType @addTypeParams
+    }
     
     # Start server.exe
     Write-Verbose -Message ($LocalizedData.StartingConsoleServerFromPath -f ($exePath))
