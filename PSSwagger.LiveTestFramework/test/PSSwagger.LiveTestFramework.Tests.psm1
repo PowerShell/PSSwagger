@@ -100,6 +100,7 @@ function Start-Run {
     [CmdletBinding()]
     param(
         [ValidateSet("net452","netcoreapp2.0")]
+        [Parameter(Mandatory=$false)]
         [string]
         $Framework = 'net452'
     )
@@ -204,7 +205,9 @@ function Start-Run {
 function Install-Dotnet {
     [CmdletBinding()]
     param(
+        [Parameter(Mandatory=$false)]
         [string]$Channel = "preview",
+        [Parameter(Mandatory=$false)]
         [string]$Version = "2.0.0-preview1-005952"
     )
 

@@ -265,9 +265,9 @@ FakesAssemblies/
 # LiveTestFramework default output dir
 PSSwagger.LiveTestFramework/out/
 
-# LiveTestFramework cs files
-PSSwagger.LiveTestFramework/src/PSSwagger.LTF.ConsoleServer/*.cs
-PSSwagger.LiveTestFramework/src/PSSwagger.LTF.Lib/*.cs
+# LiveTestFramework Code.ps1 files
+PSSwagger.LiveTestFramework/src/PSSwagger.LTF.ConsoleServer/*.Code.ps1
+PSSwagger.LiveTestFramework/src/PSSwagger.LTF.Lib/*.Code.ps1
 
 # LiveTestFramework test results
 PSSwagger.LiveTestFramework/test/PSSwagger.LTF.Lib.UnitTests/Results/

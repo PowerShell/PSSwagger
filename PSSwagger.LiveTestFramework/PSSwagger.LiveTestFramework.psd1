@@ -5,7 +5,8 @@
     Author = 'Microsoft Corporation'
     CompanyName = 'Microsoft Corporation'
     Copyright = '(c) Microsoft Corporation. All rights reserved.'
-    Description = 'PowerShell module with commands for generating the PowerShell Cmdlets using Swagger based specifications.'
+    Description = 'PowerShell module with commands for generating or manipulating PSSwagger.LiveTestFramework binaries.'
+    PowerShellVersion = '5.0'
     FunctionsToExport = @('Start-PSSwaggerLiveTestServer','Add-PSSwaggerLiveTestLibType','Add-PSSwaggerLiveTestServerType')
     CmdletsToExport = ''
     VariablesToExport = ''

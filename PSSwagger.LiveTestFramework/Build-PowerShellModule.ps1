@@ -4,27 +4,10 @@
 #>
 [CmdletBinding()]
 param(
+    [Parameter(Mandatory=$true)]
     [string]
     $OutputDirectory
 )
-
-<#
-.DESCRIPTION
-  Copy an item and log it to verbose stream.
-#>
-function Copy-ItemWithLog {
-    [CmdletBinding()]
-    param(
-        [string]
-        $Path,
-
-        [string]
-        $Destination
-    )
-
-    Write-Verbose -Message "Copying file $Path to $Destination..."
-    Copy-Item @PSBoundParameters
-}
 
 <#
 .DESCRIPTION
@@ -33,6 +16,7 @@ function Copy-ItemWithLog {
 function Prepare-OutputDirectory {
     [CmdletBinding()]
     param(
+        [Parameter(Mandatory=$true)]
         [string]
         $OutputDirectory
     )
@@ -53,15 +37,14 @@ function Prepare-OutputDirectory {
 function Convert-CSharpFiles {
     [CmdletBinding()]
     param(
+        [Parameter(Mandatory=$true)]
         [string]
         $SrcPath
     )
 
     Write-Verbose -Message "Converting all C# files to code files"
     
-    pushd $srcPath
-    & .\ConvertFrom-CSharpFiles.ps1
-    popd
+    & $SrcPath\ConvertFrom-CSharpFiles.ps1
 }
 
 <#
@@ -71,15 +54,17 @@ function Convert-CSharpFiles {
 function Copy-PowerShellModuleFiles {
     [CmdletBinding()]
     param(
+        [Parameter(Mandatory=$true)]
         [string]
         $OutputDirectory,
 
+        [Parameter(Mandatory=$true)]
         [string]
         $RepoPath
     )
 
-    Copy-ItemWithLog -Path (Join-Path -Path $repoPath -ChildPath 'PSSwagger.LiveTestFramework.psd1') -Destination (Join-Path -Path $OutputDirectory -ChildPath 'PSSwagger.LiveTestFramework.psd1')
-    Copy-ItemWithLog -Path (Join-Path -Path $repoPath -ChildPath 'PSSwagger.LiveTestFramework.psm1') -Destination (Join-Path -Path $OutputDirectory -ChildPath 'PSSwagger.LiveTestFramework.psm1')
+    Copy-Item -Path (Join-Path -Path $repoPath -ChildPath 'PSSwagger.LiveTestFramework.psd1') -Destination (Join-Path -Path $OutputDirectory -ChildPath 'PSSwagger.LiveTestFramework.psd1') -Verbose
+    Copy-Item -Path (Join-Path -Path $repoPath -ChildPath 'PSSwagger.LiveTestFramework.psm1') -Destination (Join-Path -Path $OutputDirectory -ChildPath 'PSSwagger.LiveTestFramework.psm1') -Verbose
 }
 
 <#
@@ -89,29 +74,33 @@ function Copy-PowerShellModuleFiles {
 function Copy-CodeProject {
     [CmdletBinding()]
     param(
+        [Parameter(Mandatory=$true)]
         [string]
         $OutputDirectory,
 
+        [Parameter(Mandatory=$true)]
         [string]
         $SrcPath,
 
+        [Parameter(Mandatory=$true)]
         [string]
         $Project
     )
 
     Get-ChildItem -Path (Join-Path -Path $srcPath -ChildPath $Project | Join-Path -ChildPath '*.Code.ps1') -File | ForEach-Object {
-        $dir = $_.DirectoryName
-        if (-not ($dir.Contains('vs-csproj'))) {
-            # Better way to do this?
-            $subPath = $dir.Replace($srcPath, '').Trim("/").Trim("\")
-            $outputDir = Join-Path -Path $OutputDirectory -ChildPath 'src' | Join-Path -ChildPath $subPath
-            if (-not (Test-Path -Path $outputDir)) {
-                $null = New-Item -Path $outputDir -ItemType Container -Force
-            }
-            $outputFilePath = Join-Path -Path $outputDir -ChildPath $_.Name
-            
-            Copy-ItemWithLog -Path $_.FullName -Destination $outputFilePath
+        $dir = $_.Directory
+        $subPath = "\"
+        while ($dir -and $dir.FullName -ne $srcPath) {
+            $subPath = Join-Path $dir.Name -ChildPath $dirName
+            $dir = $dir.Parent
         }
+        $outputDir = Join-Path -Path $OutputDirectory -ChildPath 'src' | Join-Path -ChildPath $subPath
+        if (-not (Test-Path -Path $outputDir -PathType Container)) {
+            $null = New-Item -Path $outputDir -ItemType Container -Force
+        }
+        $outputFilePath = Join-Path -Path $outputDir -ChildPath $_.Name
+            
+        Copy-Item -Path $_.FullName -Destination $outputFilePath -Verbose
     }
 }
 
@@ -122,6 +111,7 @@ function Copy-CodeProject {
 function Get-ReleaseInfo {
     [CmdletBinding()]
     param(
+        [Parameter(Mandatory=$true)]
         [string]
         $RepoPath
     )
@@ -131,56 +121,34 @@ function Get-ReleaseInfo {
 
 <#
 .DESCRIPTION
-  Copies misc. files that might not need signing.
-#>
-function Copy-MiscFiles {
-    [CmdletBinding()]
-    param(
-        [string]
-        $OutputDirectory,
-
-        [string]
-        $RepoPath
-    )
-
-    Copy-ItemWithLog -Path (Join-Path -Path $RepoPath -ChildPath 'release.json') -Destination (Join-Path -Path $OutputDirectory -ChildPath 'release.json')
-}
-
-<#
-.DESCRIPTION
   Replaces dynamic info in the module manifest, like ModuleVersion.
 #>
 function Set-ModuleManifestInfo {
     [CmdletBinding()]
     param(
+        [Parameter(Mandatory=$true)]
         [object]
         $Release,
 
+        [Parameter(Mandatory=$true)]
         [string]
         $OutputDirectory
     )
 
-    $manifestContent = Get-Content -Path (Join-Path -Path $OutputDirectory -ChildPath 'PSSwagger.LiveTestFramework.psd1')
+    $psd1Path = Join-Path -Path $OutputDirectory -ChildPath 'PSSwagger.LiveTestFramework.psd1'
+    $manifestContent = Get-Content -Path $psd1Path
     $manifestContent = $manifestContent.Replace("ModuleVersion = '9.9.9'", "ModuleVersion = '$($Release.version)'")
-    $manifestContent | Out-File -FilePath (Join-Path -Path $OutputDirectory -ChildPath 'PSSwagger.LiveTestFramework.psd1')
+    $manifestContent | Out-File -FilePath $psd1Path
 }
 
-$topLevel = git rev-parse --show-toplevel
-if (-not $topLevel) {
-    Write-Error -Message "Not in git repo. Rerun after navigating to the correct git repo and using git init."
-    return
-}
-
-$repoPath = Join-Path -Path $topLevel -ChildPath 'PSSwagger.LiveTestFramework'
-$srcPath = Join-Path -Path $repoPath -ChildPath 'src'
-$release = Get-ReleaseInfo -RepoPath $repoPath
+$srcPath = Join-Path -Path $PSScriptRoot -ChildPath 'src'
+$release = Get-ReleaseInfo -RepoPath $PSScriptRoot
 $moduleOutputDirectory = Join-Path -Path $OutputDirectory -ChildPath 'PSSwagger.LiveTestFramework' | Join-Path -ChildPath $release.version
 Prepare-OutputDirectory -OutputDirectory $moduleOutputDirectory
 Convert-CSharpFiles -SrcPath $srcPath
 
 # Copy PowerShell files
-Copy-PowerShellModuleFiles -OutputDirectory $moduleOutputDirectory -RepoPath $repoPath
-Copy-MiscFiles -OutputDirectory $moduleOutputDirectory -RepoPath $repoPath
+Copy-PowerShellModuleFiles -OutputDirectory $moduleOutputDirectory -RepoPath $PSScriptRoot
 
 # Copy code files
 # This should ignore csproj, intermediate cs files

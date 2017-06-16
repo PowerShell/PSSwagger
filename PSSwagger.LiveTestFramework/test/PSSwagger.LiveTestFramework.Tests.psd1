@@ -6,6 +6,7 @@
     CompanyName = 'Microsoft Corporation'
     Copyright = '(c) Microsoft Corporation. All rights reserved.'
     Description = 'PowerShell module with commands for testing the PSSwagger.LiveTestFramework module.'
+    PowerShellVersion = '5.0'
     FunctionsToExport = @('Initialize-Dependencies','Start-Run')
     CmdletsToExport = ''
     VariablesToExport = ''
