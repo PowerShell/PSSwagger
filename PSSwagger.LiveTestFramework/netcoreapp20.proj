@@ -1,0 +1,11 @@
+<Project ToolsVersion="15.0">
+  <ItemGroup Condition=" '$(TargetFramework)' == 'netcoreapp2.0' ">
+    <PackageReference Include="Microsoft.NETCore.App" Version="2.0.0-preview2-25407-01" />
+    <PackageReference Include="NETStandard.Library" Version="2.0.0-preview2-25401-01" />
+    <PackageReference Include="Microsoft.CSharp" Version="4.4.0-preview2-25405-01" />
+  </ItemGroup>
+  <PropertyGroup Condition=" '$(TargetFramework)' == 'netcoreapp2.0' ">
+    <DefineConstants>$(DefineConstants);CORECLR</DefineConstants>
+    <DebugType>portable</DebugType>
+  </PropertyGroup>
+</Project>
