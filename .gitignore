@@ -271,4 +271,5 @@ PSSwagger.LiveTestFramework/src/PSSwagger.LTF.Lib/*.Code.ps1
 
 # LiveTestFramework test results
 PSSwagger.LiveTestFramework/test/PSSwagger.LTF.Lib.UnitTests/Results/
+PSSwagger.LiveTestFramework/test/PSSwagger.LTF.Lib.UnitTests/vs-csproj/Results/
 PSSwagger.LiveTestFramework/test/Pester/PesterResults.xml

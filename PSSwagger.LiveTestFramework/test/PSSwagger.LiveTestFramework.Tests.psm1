@@ -9,7 +9,7 @@ function Initialize-Dependencies {
     param()
 
     $failed = $false
-    $expectedDotNetVersion = "2.0.0-preview1-005952"
+    $expectedDotNetVersion = "2.1.0-preview1-006547"#"2.0.0-preview1-005952" 
     Write-Host "Setting up PSSwagger.LiveTestFramework.Tests dependencies:"
     Write-Host "    dotnet: $expectedDotnetVersion"
     Write-Host "    Pester: *"
@@ -110,33 +110,37 @@ function Start-Run {
 
     # Ensure C# files exist
     Write-Host "Transforming code files into C# before executing unit tests"
-    pushd (Join-Path -Path .. -ChildPath 'src')
+    pushd (Join-Path -Path $PSScriptRoot -ChildPath .. | Join-Path -ChildPath 'src')
     .\ConvertTo-CSharpFiles.ps1
     popd
     Write-Host "Discovering and running C# projects"
     $trxLogs = @()
     $pesterLogs = @()
     Get-ChildItem -Path (Join-Path -Path . -ChildPath "*.csproj") -File -Recurse | ForEach-Object {
-        Write-Verbose "Executing test project: $($_.FullName)"
-        pushd $_.DirectoryName
-        dotnet restore
-        dotnet build --framework $Framework
-        $trxLogPath = Join-Path -Path $_.DirectoryName -ChildPath "Results" | Join-Path -ChildPath $Framework
-        if (-not (Test-Path -Path $trxLogPath)) {
-            $null = New-Item -Path $trxLogPath -ItemType Container -Force
-        }
+        # Execute only if it's a Microsoft.NET.SDK project
+        if ((Get-Content -Path $_.FullName | Out-String).Contains("<Project Sdk=`"Microsoft.NET.Sdk`"")) {
+            Write-Verbose "Executing test project: $($_.FullName)"
+            pushd $_.DirectoryName
+            $trxLogPath = Join-Path -Path $_.DirectoryName -ChildPath "Results" | Join-Path -ChildPath $Framework
+            if (-not (Test-Path -Path $trxLogPath)) {
+                $null = New-Item -Path $trxLogPath -ItemType Container -Force
+            }
 
-        $trxLogFile = Join-Path -Path $trxLogPath -ChildPath "$($_.BaseName).trx"
-        if (Test-Path -Path $trxLogFile) {
-            $null = Remove-Item -Path $trxLogFile
+            $trxLogFile = Join-Path -Path $trxLogPath -ChildPath "$($_.BaseName).trx"
+            if (Test-Path -Path $trxLogFile) {
+                $null = Remove-Item -Path $trxLogFile
+            }
+
+            $trxLogs += $trxLogFile
+            dotnet restore
+            dotnet build --framework $Framework
+            dotnet test --framework $Framework --logger "trx;LogFileName=$trxLogFile"
+            popd
         }
-        dotnet test --framework $Framework --logger "trx;LogFileName=$trxLogFile"
-        $trxLogs += $trxLogFile
-        popd
     }
 
     Write-Host "Running tests under Pester folder"
-    pushd Pester
+    pushd (Join-Path -Path $PSScriptRoot -ChildPath Pester)
     Invoke-Pester -ExcludeTag KnownIssue -OutputFormat NUnitXml -OutputFile PesterResults.xml
     $pesterLogs += (Get-Item -Path PesterResults.xml).FullName
     popd
@@ -149,39 +153,53 @@ function Start-Run {
     $otherResultsTests = 0
     foreach ($logFile in $trxLogs) {
         Write-Host "   - $logFile"
-        [xml]$xml = Get-Content -Path $logFile
-        $totalTests += $xml.TestRun.ResultSummary.Counters.Total
-        $executedTests += $xml.TestRun.ResultSummary.Counters.Executed
-        $passedTests += $xml.TestRun.ResultSummary.Counters.Passed
-        $failedTests += $xml.TestRun.ResultSummary.Counters.Failed
-        $otherResultsTests += $xml.TestRun.ResultSummary.Counters.Error
-        $otherResultsTests += $xml.TestRun.ResultSummary.Counters.Timeout
-        $otherResultsTests += $xml.TestRun.ResultSummary.Counters.Aborted
-        $otherResultsTests += $xml.TestRun.ResultSummary.Counters.Inconclusive
-        $passedTests += $xml.TestRun.ResultSummary.Counters.PassedButRunAborted
-        $otherResultsTests += $xml.TestRun.ResultSummary.Counters.NotRunnable
-        $otherResultsTests += $xml.TestRun.ResultSummary.Counters.NotExecuted
-        $otherResultsTests += $xml.TestRun.ResultSummary.Counters.Disconnected
-        $otherResultsTests += $xml.TestRun.ResultSummary.Counters.Warning
-        $otherResultsTests += $xml.TestRun.ResultSummary.Counters.Completed
-        $otherResultsTests += $xml.TestRun.ResultSummary.Counters.InProgress
-        $otherResultsTests += $xml.TestRun.ResultSummary.Counters.Pending
+        if (-not (Test-Path -Path $logFile))
+        {
+            Write-Error "Log file doesn't exist. Did the test run work?"
+            $totalTests++
+        } else 
+        {
+            [xml]$xml = Get-Content -Path $logFile
+            $totalTests += $xml.TestRun.ResultSummary.Counters.Total
+            $executedTests += $xml.TestRun.ResultSummary.Counters.Executed
+            $passedTests += $xml.TestRun.ResultSummary.Counters.Passed
+            $failedTests += $xml.TestRun.ResultSummary.Counters.Failed
+            $otherResultsTests += $xml.TestRun.ResultSummary.Counters.Error
+            $otherResultsTests += $xml.TestRun.ResultSummary.Counters.Timeout
+            $otherResultsTests += $xml.TestRun.ResultSummary.Counters.Aborted
+            $otherResultsTests += $xml.TestRun.ResultSummary.Counters.Inconclusive
+            $passedTests += $xml.TestRun.ResultSummary.Counters.PassedButRunAborted
+            $otherResultsTests += $xml.TestRun.ResultSummary.Counters.NotRunnable
+            $otherResultsTests += $xml.TestRun.ResultSummary.Counters.NotExecuted
+            $otherResultsTests += $xml.TestRun.ResultSummary.Counters.Disconnected
+            $otherResultsTests += $xml.TestRun.ResultSummary.Counters.Warning
+            $otherResultsTests += $xml.TestRun.ResultSummary.Counters.Completed
+            $otherResultsTests += $xml.TestRun.ResultSummary.Counters.InProgress
+            $otherResultsTests += $xml.TestRun.ResultSummary.Counters.Pending
+        }
     }
 
     foreach ($logFile in $pesterLogs) {
         Write-Host "   - $logFile"
-        [xml]$xml = Get-Content -Path $logFile
-        $totalTests += $xml.'test-results'.total
-        $executedTests += $xml.'test-results'.total
-        $passedTests += $xml.'test-results'.total - $xml.'test-results'.failures - $xml.'test-results'.failures - $xml.'test-results'.errors - $xml.'test-results'.'not-run' `
-            - $xml.'test-results'.inconclusive - $xml.'test-results'.ignored - $xml.'test-results'.skipped - $xml.'test-results'.invalid
-        $failedTests += $xml.'test-results'.failures
-        $failedTests += $xml.'test-results'.errors
-        $otherResultsTests += $xml.'test-results'.'not-run'
-        $otherResultsTests += $xml.'test-results'.inconclusive
-        $otherResultsTests += $xml.'test-results'.ignored
-        $otherResultsTests += $xml.'test-results'.skipped
-        $otherResultsTests += $xml.'test-results'.invalid
+        if (-not (Test-Path -Path $logFile))
+        {
+            Write-Error "Log file doesn't exist. Did the test run work?"
+            $totalTests++
+        } else 
+        {
+            [xml]$xml = Get-Content -Path $logFile
+            $totalTests += $xml.'test-results'.total
+            $executedTests += $xml.'test-results'.total
+            $passedTests += $xml.'test-results'.total - $xml.'test-results'.failures - $xml.'test-results'.failures - $xml.'test-results'.errors - $xml.'test-results'.'not-run' `
+                - $xml.'test-results'.inconclusive - $xml.'test-results'.ignored - $xml.'test-results'.skipped - $xml.'test-results'.invalid
+            $failedTests += $xml.'test-results'.failures
+            $failedTests += $xml.'test-results'.errors
+            $otherResultsTests += $xml.'test-results'.'not-run'
+            $otherResultsTests += $xml.'test-results'.inconclusive
+            $otherResultsTests += $xml.'test-results'.ignored
+            $otherResultsTests += $xml.'test-results'.skipped
+            $otherResultsTests += $xml.'test-results'.invalid
+        }
     }
     Write-Host "`n`n"
     Write-Host "Total: $totalTests" -BackgroundColor DarkCyan
@@ -193,8 +211,10 @@ function Start-Run {
     Write-Host "`n`n"
     if ($passedTests -eq $totalTests) {
         Write-Host "Test run passed!" -BackgroundColor DarkGreen
+        $true
     } else {
         Write-Host "Test run failed." -BackgroundColor DarkRed
+        $false
     }
 }
 
