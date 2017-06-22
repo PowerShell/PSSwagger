@@ -39,13 +39,7 @@ namespace PSSwagger.LTF.Lib
             command.Command = "Import-Module";
             if (!String.IsNullOrEmpty(ModulePath))
             {
-                if (this.ModulePath.EndsWith(".psd1"))
-                {
-                    command.AddParameter("Path", this.ModulePath, switchParameter: false);
-                } else
-                {
-                    command.AddParameter("Name", this.ModulePath, switchParameter: false);
-                }
+                command.AddParameter("Name", this.ModulePath, switchParameter: false);
             }
 
             if (force)

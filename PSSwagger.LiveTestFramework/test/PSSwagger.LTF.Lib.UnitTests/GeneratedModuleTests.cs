@@ -27,9 +27,9 @@ namespace PSSwagger.LTF.Lib.UnitTests
             module.Load();
 
             Assert.Equal("Import-Module", runspace.Builder.Command);
-            Assert.True(runspace.Builder.Parameters.ContainsKey("Path"));
-            Assert.Equal("test.psd1", runspace.Builder.Parameters["Path"].Item1);
-            Assert.False(runspace.Builder.Parameters["Path"].Item2);
+            Assert.True(runspace.Builder.Parameters.ContainsKey("Name"));
+            Assert.Equal("test.psd1", runspace.Builder.Parameters["Name"].Item1);
+            Assert.False(runspace.Builder.Parameters["Name"].Item2);
         }
 
         /// <summary>
@@ -44,9 +44,9 @@ namespace PSSwagger.LTF.Lib.UnitTests
             module.Load(force: true);
 
             Assert.Equal("Import-Module", runspace.Builder.Command);
-            Assert.True(runspace.Builder.Parameters.ContainsKey("Path"));
-            Assert.Equal("test.psd1", runspace.Builder.Parameters["Path"].Item1);
-            Assert.False(runspace.Builder.Parameters["Path"].Item2);
+            Assert.True(runspace.Builder.Parameters.ContainsKey("Name"));
+            Assert.Equal("test.psd1", runspace.Builder.Parameters["Name"].Item1);
+            Assert.False(runspace.Builder.Parameters["Name"].Item2);
             Assert.True(runspace.Builder.Parameters.ContainsKey("Force"));
             Assert.True((bool)runspace.Builder.Parameters["Force"].Item1);
             Assert.True(runspace.Builder.Parameters["Force"].Item2);
