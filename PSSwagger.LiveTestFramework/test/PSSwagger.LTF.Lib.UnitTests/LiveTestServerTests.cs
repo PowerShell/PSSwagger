@@ -59,10 +59,8 @@ namespace PSSwagger.LTF.Lib.UnitTests
             server.Stop();
 
             // Check the expected flow
-            //      1. Load module
-            //      2. Get module info
+            //      1. Get module info
             //      3. Process request
-            Assert.True(module.LoadCalled, "Load was never called.");
             Assert.True(mockRunspace.GetModuleInfoCalled, "GetModuleInfo was never called.");
             Assert.True(module.ProcessRequestCalled, "ProcessRequest was never called.");
         }
