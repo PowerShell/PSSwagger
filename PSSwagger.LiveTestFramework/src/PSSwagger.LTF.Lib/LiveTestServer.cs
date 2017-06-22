@@ -67,11 +67,12 @@
                 throw new InvalidOperationException("Server is already running.");
             }
 
+            // Force load the module
+            this.currentModule.Load(force: true);
+
             // Retrieve all module information using the current runspace manager
             this.currentModule = this.parameters.RunspaceManager.GetModuleInfo(this.parameters.ModulePath);
 
-            // Force load the module
-            this.currentModule.Load(force: true);
             this.IsRunning = true;
 
             // Start message read thread
