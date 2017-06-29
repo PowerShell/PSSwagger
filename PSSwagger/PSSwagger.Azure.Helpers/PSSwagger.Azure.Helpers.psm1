@@ -1,4 +1,13 @@
-﻿Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
+﻿#########################################################################################
+#
+# Copyright (c) Microsoft Corporation. All rights reserved.
+#
+# Licensed under the MIT license.
+#
+# PSSwagger.Azure.Helpers Module
+#
+#########################################################################################
+Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 
 if ((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
     . (Join-Path -Path "$PSScriptRoot" -ChildPath "Test-CoreRequirements.ps1")

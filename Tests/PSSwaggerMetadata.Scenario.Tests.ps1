@@ -1,3 +1,12 @@
+#########################################################################################
+#
+# Copyright (c) Microsoft Corporation. All rights reserved.
+#
+# Licensed under the MIT license.
+#
+# PSSwagger Tests
+#
+#########################################################################################
 Describe "Tests for New-PSSwaggerMetadataFile cmdlet" -Tag @('PSMeta', 'ScenarioTest') {
     BeforeAll {
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath '..' | Join-Path -ChildPath 'PSSwagger') -Force

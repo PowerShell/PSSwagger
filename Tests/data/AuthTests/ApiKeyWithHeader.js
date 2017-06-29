@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+
+// Licensed under the MIT license.
 module.exports.auth = function (req) {
     var authHeader = req.header('authorization');
     var keyHeader = req.header('x-ms-api-key');

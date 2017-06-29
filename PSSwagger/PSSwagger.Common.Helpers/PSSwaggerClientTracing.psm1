@@ -1,3 +1,13 @@
+#########################################################################################
+#
+# Copyright (c) Microsoft Corporation. All rights reserved.
+#
+# Licensed under the MIT license.
+#
+# PSSwagger.Common.Helpers Module
+#
+#########################################################################################
+
 class PSSwaggerClientTracing : Microsoft.PowerShell.Commands.PSSwagger.PSSwaggerClientTracingBase {
 	[void] WriteToTraceStream([string]$message) {
 		Write-Verbose -Message $message
