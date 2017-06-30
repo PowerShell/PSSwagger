@@ -36,6 +36,8 @@ A PowerShell module with commands to generate the PowerShell commands for a give
 | Newtonsoft.Json | Full CLR: 6.0.8, Core CLR: 9.0.1 | NuGet package containing Newtonsoft.Json assembly, required for all modules |
 | Microsoft.Rest.ClientRuntime | 2.3.4 | NuGet package containing Microsoft.Rest.ClientRuntime assembly, required for all modules |
 | Microsoft.Rest.ClientRuntime.Azure | 3.3.4 | NuGet package containing Microsoft.Rest.ClientRuntime.Azure assembly, required for Microsoft Azure modules |
+| AzureRM.Profile | * | Module containing authentication helpers, required for Microsoft Azure modules on PowerShell |
+| AzureRM.Profile.NetCore.Preview | * | Module containing authentication helpers, required for Microsoft Azure modules on PowerShell Core |
 
 ## Usage
 
