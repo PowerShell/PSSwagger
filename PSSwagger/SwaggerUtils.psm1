@@ -1204,18 +1204,20 @@ function Get-PathCommandName
         $cmdNoun = Get-SingularizedValue -Name $cmdNoun
     }
 
-    $cmdletNames = $cmdVerb | ForEach-Object {
+    $cmdletInfos = $cmdVerb | ForEach-Object {
         $Verb = Get-PascalCasedString -Name $_
         if($cmdNoun){
             $CommandName = "$Verb-$cmdNoun"
         } else {
             $CommandName = Get-SingularizedValue -Name $Verb
         }
-        $CommandName
+        $cmdletInfo = @{}
+        $cmdletInfo['name'] = $CommandName
+        $cmdletInfo
         Write-Verbose -Message ($LocalizedData.UsingCmdletNameForSwaggerPathOperation -f ($CommandName, $OperationId))
     }
 
-    return $cmdletNames
+    return $cmdletInfos
 }
 
 function Get-PathFunctionBody
@@ -1564,7 +1566,7 @@ function Get-CSharpModelName
                 $AssemblyName
             )
 
-            $AutoRestToolsPath = Get-Command -Name 'AutoRest.exe' | 
+            $AutoRestToolsPath = Get-Command -Name 'AutoRest.exe' |
                                 Select-Object -First 1 -ErrorAction Ignore | 
                                     ForEach-Object {Split-Path -LiteralPath $_.Source}
 

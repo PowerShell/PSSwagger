@@ -720,3 +720,29 @@ Describe "AuthTests" -Tag @('Auth','ScenarioTest') {
         }
     }
 }
+
+Describe "PSMetadataTests" -Tag @('PSMetadata','ScenarioTest')  {
+    BeforeAll {
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwagger.Common.Helpers" | `
+                       Join-Path -ChildPath "PSSwagger.Common.Helpers.psd1") -Force
+        Initialize-Test -GeneratedModuleName "Generated.PSMetadataTest.Module" -TestApiName "psmetadatatest" `
+                        -TestSpecFileName "PsMetadataModuleTest.json"  `
+                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+
+        # Import generated module
+        Write-Verbose "Importing modules"
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwagger.Common.Helpers" | `
+                       Join-Path -ChildPath "PSSwagger.Common.Helpers.psd1") -Force
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwagger.Azure.Helpers" | `
+                       Join-Path -ChildPath "PSSwagger.Azure.Helpers.psd1") -Force
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
+                       Join-Path -ChildPath "Generated.PSMetadataTest.Module")
+    }
+
+    Context "PSMetadataTest" {
+        It "Override cmdlet name" {
+            Get-Command Get-Cupcake -Module Generated.PSMetadataTest.Module -ErrorAction Ignore | should BeNullOrEmpty
+            Get-Command List-Cupcakes -Module Generated.PSMetadataTest.Module | should not BeNullOrEmpty
+        }
+    }
+}
