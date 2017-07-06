@@ -15,4 +15,5 @@ init:
   - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
 on_finish:
     - ps: |
-        $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+        Push-Location  c:\projects\psswagger\Tests
+        .\Send-AppVeyorResults.ps1 -appVeyorUrl "https://ci.appveyor.com/api/testresults/nunit/$($env:APPVEYOR_JOB_ID)" -testResultRootDir c:\projects\psswagger -testResultFilePattern "*TestResults.xml"
