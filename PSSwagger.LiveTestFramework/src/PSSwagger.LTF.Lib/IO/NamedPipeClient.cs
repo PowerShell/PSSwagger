@@ -65,7 +65,10 @@ namespace PSSwagger.LTF.Lib.IO
                 while (this.stream.IsConnected)
                 {
                     string line = this.ReadLine();
-                    OnDataReceived?.Invoke(line);
+                    if (OnDataReceived != null)
+                    {
+                        OnDataReceived.Invoke(line);
+                    }
                 }
             }){ IsBackground = true }.Start();
         }
@@ -75,9 +78,18 @@ namespace PSSwagger.LTF.Lib.IO
         /// </summary>
         public void Dispose()
         {
-            this.reader?.Dispose();
-            this.writer?.Dispose();
-            this.stream?.Dispose();
+            if (this.reader != null)
+            {
+                this.reader.Dispose();
+            }
+            if (this.writer != null)
+            {
+                this.writer.Dispose();
+            }
+            if (this.stream != null)
+            {
+                this.stream.Dispose();
+            }
         }
 
         /// <summary>

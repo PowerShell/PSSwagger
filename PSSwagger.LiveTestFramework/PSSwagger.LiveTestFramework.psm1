@@ -133,6 +133,21 @@ function Add-PSSwaggerLiveTestLibType {
         $clr = 'fullclr'
         # TODO: Fill in system and package refs for full CLR
         $systemRefs += 'System.dll'
+        $systemRefs += [System.Management.Automation.ActionPreference].Assembly.Location
+        $systemRefs += 'System.Core.dll'
+        $systemRefs += 'Microsoft.CSharp.dll'
+        $systemRefs += 'System.Data.dll'
+        $systemRefs += 'System.Data.DataSetExtensions.dll'
+        $systemRefs += 'System.Net.Http.dll'
+        $systemRefs += 'System.Xml.dll'
+        $systemRefs += 'System.Xml.Linq.dll'
+        $packageDependencies['Newtonsoft.Json'] = @{
+                                                       PackageName = 'Newtonsoft.Json'
+                                                       References = @('Newtonsoft.Json.dll')
+                                                       Framework = 'net452'
+                                                       RequiredVersion = ''
+                                                       LoadOrder = 0
+                                                   }
     }
 
     if (-not $OutputDirectory) {
@@ -217,8 +232,22 @@ function Add-PSSwaggerLiveTestServerType {
         $systemRefs += 'System.dll'
     } else {
         $clr = 'fullclr'
-        # TODO: Fill in system and package refs for full CLR
         $systemRefs += 'System.dll'
+        $systemRefs += [System.Management.Automation.ActionPreference].Assembly.Location
+        $systemRefs += 'System.Core.dll'
+        $systemRefs += 'Microsoft.CSharp.dll'
+        $systemRefs += 'System.Data.dll'
+        $systemRefs += 'System.Data.DataSetExtensions.dll'
+        $systemRefs += 'System.Net.Http.dll'
+        $systemRefs += 'System.Xml.dll'
+        $systemRefs += 'System.Xml.Linq.dll'
+        $packageDependencies['Newtonsoft.Json'] = @{
+                                                       PackageName = 'Newtonsoft.Json'
+                                                       References = @('Newtonsoft.Json.dll')
+                                                       Framework = 'net452'
+                                                       RequiredVersion = ''
+                                                       LoadOrder = 0
+                                                   }
     }
 
     if (-not $OutputDirectory) {

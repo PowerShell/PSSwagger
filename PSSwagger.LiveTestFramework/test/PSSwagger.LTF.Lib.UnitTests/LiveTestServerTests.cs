@@ -1,5 +1,6 @@
 namespace PSSwagger.LTF.Lib.UnitTests
 {
+    using Credentials;
     using Messages;
     using Mocks;
     using System;
@@ -45,7 +46,8 @@ namespace PSSwagger.LTF.Lib.UnitTests
                 Input = blockPipe,
                 Output = blockPipe,
                 RunspaceManager = mockRunspace,
-                ModulePath = "test"
+                ModulePath = "test",
+                CredentialFactory = new LiveTestCredentialFactory()
             };
             LiveTestServer server = new LiveTestServer(parms);
             server.RunAsync().Wait();
@@ -80,7 +82,8 @@ namespace PSSwagger.LTF.Lib.UnitTests
             {
                 Output = blockPipe,
                 RunspaceManager = mockRunspace,
-                ModulePath = "test"
+                ModulePath = "test",
+                CredentialFactory = new LiveTestCredentialFactory()
             };
             Assert.Throws<ArgumentNullException>(() => new LiveTestServer(parms));
         }
@@ -100,7 +103,8 @@ namespace PSSwagger.LTF.Lib.UnitTests
             {
                 Input = blockPipe,
                 RunspaceManager = mockRunspace,
-                ModulePath = "test"
+                ModulePath = "test",
+                CredentialFactory = new LiveTestCredentialFactory()
             };
             Assert.Throws<ArgumentNullException>(() => new LiveTestServer(parms));
         }
@@ -120,7 +124,8 @@ namespace PSSwagger.LTF.Lib.UnitTests
             {
                 Input = blockPipe,
                 Output = blockPipe,
-                ModulePath = "test"
+                ModulePath = "test",
+                CredentialFactory = new LiveTestCredentialFactory()
             };
             Assert.Throws<ArgumentNullException>(() => new LiveTestServer(parms));
         }
@@ -140,7 +145,29 @@ namespace PSSwagger.LTF.Lib.UnitTests
             {
                 Input = blockPipe,
                 Output = blockPipe,
-                RunspaceManager = mockRunspace
+                RunspaceManager = mockRunspace,
+                CredentialFactory = new LiveTestCredentialFactory()
+            };
+            Assert.Throws<ArgumentNullException>(() => new LiveTestServer(parms));
+        }
+
+        /// <summary>
+        /// Test LiveTestServer constructor when missing required parameter.
+        /// </summary>
+        [Fact]
+        public void MissingCredentialsFactory()
+        {
+            MockRunspaceManager mockRunspace = new MockRunspaceManager();
+            MockGeneratedModule module = new MockGeneratedModule(mockRunspace);
+            mockRunspace.ModuleMocks["test"] = module;
+            TestBlockPipe blockPipe = new TestBlockPipe();
+
+            LiveTestServerStartParams parms = new LiveTestServerStartParams()
+            {
+                Input = blockPipe,
+                Output = blockPipe,
+                RunspaceManager = mockRunspace,
+                ModulePath = "test"
             };
             Assert.Throws<ArgumentNullException>(() => new LiveTestServer(parms));
         }

@@ -35,8 +35,14 @@ namespace PSSwagger.LTF.Lib.IO
         /// </summary>
         public void Dispose()
         {
-            this.reader?.Dispose();
-            this.stream?.Dispose();
+            if (this.reader != null)
+            {
+                this.reader.Dispose();
+            }
+            if (this.stream != null)
+            {
+                this.stream.Dispose();
+            }
         }
 
         /// <summary>

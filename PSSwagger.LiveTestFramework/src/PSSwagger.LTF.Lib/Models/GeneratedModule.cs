@@ -1,5 +1,6 @@
-namespace PSSwagger.LTF.Lib
+namespace PSSwagger.LTF.Lib.Models
 {
+    using Credentials;
     using Interfaces;
     using Messages;
     using System;
@@ -15,20 +16,23 @@ namespace PSSwagger.LTF.Lib
 
         public string ModulePath { get; set; }
 
-        public IList<GeneratedModule> RequiredModules { get; set; }
+        public IList<GeneratedModule> RequiredModules { get; private set; }
+
+        public IDictionary<string, OperationData> Operations { get; private set; }
 
         public GeneratedModule(IRunspaceManager runspace)
         {
             this.runspace = runspace;
             this.RequiredModules = new List<GeneratedModule>();
+            this.Operations = new Dictionary<string, OperationData>();
         }
 
-        public virtual IEnumerable ProcessRequest(LiveTestRequest request)
+        public virtual CommandExecutionResult ProcessRequest(LiveTestRequest request, LiveTestCredentialFactory credentialsFactory)
         {
             return null;
         }
 
-        public virtual void Load(bool force = false)
+        public virtual CommandExecutionResult Load(bool force = false)
         {
             foreach (GeneratedModule requiredModule in this.RequiredModules)
             {
@@ -39,15 +43,15 @@ namespace PSSwagger.LTF.Lib
             command.Command = "Import-Module";
             if (!String.IsNullOrEmpty(ModulePath))
             {
-                command.AddParameter("Name", this.ModulePath, switchParameter: false);
+                command.AddParameter("Name", this.ModulePath);
             }
 
             if (force)
             {
-                command.AddParameter("Force", true, switchParameter: true);
+                command.AddParameter("Force", true);
             }
 
-            command.Invoke();
+            return command.Invoke();
         }
     }
 }

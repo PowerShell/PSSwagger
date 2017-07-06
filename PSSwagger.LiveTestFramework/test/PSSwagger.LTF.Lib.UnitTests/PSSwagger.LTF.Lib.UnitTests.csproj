@@ -1,10 +1,24 @@
 <Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
   <Import Project="..\project-xunittest.proj" />
   <PropertyGroup>
-    <TargetFramework>net452;netcoreapp2.0</TargetFramework>
+    <TargetFramework>net452</TargetFramework>
   </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.JSON" Version="10.0.1" />
+  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\PSSwagger.LTF.Lib\PSSwagger.LTF.Lib.csproj" />
   </ItemGroup>
-  <Import Project="..\..\netcoreapp20.proj" />
+  <ItemGroup>
+    <None Include="data\**\*.psd1">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="data\**\*.psm1">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup Condition=" '$(TargetFramework)' == 'net452' ">
+    <PackageReference Include="System.Management.Automation" Version="6.0.0-alpha17" />
+    <PackageReference Include="Microsoft.CSharp" Version="4.4.0-preview2-25405-01" />
+  </ItemGroup>
 </Project>

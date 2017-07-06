@@ -33,8 +33,16 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Newtonsoft.Json, Version=10.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>packages\Newtonsoft.Json.10.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Management.Automation, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>packages\System.Management.Automation.6.1.7601.17515\lib\net45\System.Management.Automation.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -74,9 +82,20 @@
     <Compile Include="..\Mocks\MockCommandBuilder.cs">
       <Link>Mocks\MockCommandBuilder.cs</Link>
     </Compile>
+    <Compile Include="..\Mocks\XUnitOutputPipe.cs">
+      <Link>Mocks\XUnitOutputPipe.cs</Link>
+    </Compile>
+    <Compile Include="..\Mocks\MockParameterEncoder.cs">
+      <Link>Mocks\MockParameterEncoder.cs</Link>
+    </Compile>
     <Compile Include="..\JsonBlockPipeTests.cs" />
     <Compile Include="..\LiveTestServerTests.cs" />
     <Compile Include="..\GeneratedModuleTests.cs" />
+    <Compile Include="..\PowerShellRunspaceTests.cs" />
+    <Compile Include="..\PowerShellCommandTests.cs" />
+    <Compile Include="..\PowerShellParameterEncoderTests.cs" />
+    <Compile Include="..\LiveTestCredentialFactoryTests.cs" />
+    <Compile Include="..\AzureCredentialProviderTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\PSSwagger.LTF.Lib\vs-csproj\PSSwagger.LTF.Lib.csproj">
@@ -86,6 +105,16 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\data\**\*.psd1">
+      <Link>data\%(RecursiveDir)\%(FileName).psd1</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\data\**\*.psm1">
+      <Link>data\%(RecursiveDir)\%(FileName).psm1</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <Analyzer Include="packages\xunit.analyzers.0.3.0\analyzers\dotnet\cs\xunit.analyzers.dll" />

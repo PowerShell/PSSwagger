@@ -1,6 +1,9 @@
 namespace PSSwagger.LTF.Lib.UnitTests
 {
+    using Messages;
     using Mocks;
+    using Models;
+    using System.Collections.Generic;
     using Xunit;
     using Xunit.Abstractions;
 
@@ -28,8 +31,7 @@ namespace PSSwagger.LTF.Lib.UnitTests
 
             Assert.Equal("Import-Module", runspace.Builder.Command);
             Assert.True(runspace.Builder.Parameters.ContainsKey("Name"));
-            Assert.Equal("test.psd1", runspace.Builder.Parameters["Name"].Item1);
-            Assert.False(runspace.Builder.Parameters["Name"].Item2);
+            Assert.Equal("test.psd1", runspace.Builder.Parameters["Name"]);
         }
 
         /// <summary>
@@ -45,11 +47,9 @@ namespace PSSwagger.LTF.Lib.UnitTests
 
             Assert.Equal("Import-Module", runspace.Builder.Command);
             Assert.True(runspace.Builder.Parameters.ContainsKey("Name"));
-            Assert.Equal("test.psd1", runspace.Builder.Parameters["Name"].Item1);
-            Assert.False(runspace.Builder.Parameters["Name"].Item2);
+            Assert.Equal("test.psd1", runspace.Builder.Parameters["Name"]);
             Assert.True(runspace.Builder.Parameters.ContainsKey("Force"));
-            Assert.True((bool)runspace.Builder.Parameters["Force"].Item1);
-            Assert.True(runspace.Builder.Parameters["Force"].Item2);
+            Assert.True((bool)runspace.Builder.Parameters["Force"]);
         }
 
         /// <summary>
@@ -65,8 +65,7 @@ namespace PSSwagger.LTF.Lib.UnitTests
 
             Assert.Equal("Import-Module", runspace.Builder.Command);
             Assert.True(runspace.Builder.Parameters.ContainsKey("Name"));
-            Assert.Equal("PackageManagement", runspace.Builder.Parameters["Name"].Item1);
-            Assert.False(runspace.Builder.Parameters["Name"].Item2);
+            Assert.Equal("PackageManagement", runspace.Builder.Parameters["Name"]);
         }
 
         /// <summary>
@@ -83,8 +82,8 @@ namespace PSSwagger.LTF.Lib.UnitTests
             module.RequiredModules.Add(requiredModule);
             module.Load();
 
-            Assert.Equal("import-module [name powershellget false]", runspace.Builder.InvokeHistory[0].ToLowerInvariant());
-            Assert.Equal("import-module [name packagemanagement false]", runspace.Builder.InvokeHistory[1].ToLowerInvariant());
+            Assert.Equal("import-module [name powershellget]", runspace.Builder.InvokeHistory[0].ToLowerInvariant());
+            Assert.Equal("import-module [name packagemanagement]", runspace.Builder.InvokeHistory[1].ToLowerInvariant());
         }
 
         /// <summary>
@@ -104,9 +103,32 @@ namespace PSSwagger.LTF.Lib.UnitTests
             module.RequiredModules.Add(requiredModule);
             module.Load(force: true);
 
-            Assert.Equal("import-module [name psreadline false] [force true true]", runspace.Builder.InvokeHistory[0].ToLowerInvariant());
-            Assert.Equal("import-module [name powershellget false] [force true true]", runspace.Builder.InvokeHistory[1].ToLowerInvariant());
-            Assert.Equal("import-module [name packagemanagement false] [force true true]", runspace.Builder.InvokeHistory[2].ToLowerInvariant());
+            Assert.Equal("import-module [name psreadline] [force true]", runspace.Builder.InvokeHistory[0].ToLowerInvariant());
+            Assert.Equal("import-module [name powershellget] [force true]", runspace.Builder.InvokeHistory[1].ToLowerInvariant());
+            Assert.Equal("import-module [name packagemanagement] [force true]", runspace.Builder.InvokeHistory[2].ToLowerInvariant());
+        }
+
+        [Fact]
+        public void ProcessOperationSimpleParameters()
+        {
+            MockRunspaceManager runspace = new MockRunspaceManager();
+            GeneratedModule module = new GeneratedModule(runspace);
+            module.Operations["Get-Thing"] = new OperationData("Thing_Get", "Get-Thing")
+            {
+                Parameters = new Dictionary<string, ParameterData>()
+                {
+                    { "Integer", new ParameterData() { Name = "Integer" } },
+                    { "Boolean", new ParameterData() { Name = "Boolean" } },
+                    { "Decimal", new ParameterData() { Name = "Decimal" } },
+                    { "String", new ParameterData() { Name = "String" } }
+                }
+            };
+
+            // MockLiveTestCredentialFactory credentialsFactory = new MockLiveTestCredentialFactory();
+            LiveTestRequest request = new LiveTestRequest();
+
+            CommandExecutionResult result = module.ProcessRequest(request, null);
+            Assert.Equal(1, runspace.Builder.InvokeHistory.Count);
         }
     }
 }

@@ -1,6 +1,8 @@
 namespace PSSwagger.LTF.Lib.Interfaces
 {
+    using Models;
     using System.Collections;
+    using System.Collections.Generic;
 
     /// <summary>
     /// Manages the execution space for running test commands.
@@ -8,11 +10,11 @@ namespace PSSwagger.LTF.Lib.Interfaces
     public interface IRunspaceManager
     {
         /// <summary>
-        /// Execute a given script string in this runspace.
+        /// Execute a given command in this runspace.
         /// </summary>
-        /// <param name="script">Script string to execute.</param>
-        /// <returns>Result of script execution.</returns>
-        IEnumerable Invoke(string script);
+        /// <param name="command">Raw command to execute. The exact type depends on the runspace.</param>
+        /// <returns>Result of command execution.</returns>
+        CommandExecutionResult Invoke(object command);
 
         /// <summary>
         /// Create an ICommandBuilder for this runspace.
@@ -28,10 +30,8 @@ namespace PSSwagger.LTF.Lib.Interfaces
         GeneratedModule GetModuleInfo(string modulePath);
 
         /// <summary>
-        /// Set a variable for this runspace session.
+        /// Create the parameter encoder for this runspace.
         /// </summary>
-        /// <param name="variableName">Name of variable.</param>
-        /// <param name="variableValue">Value of variable.</param>
-        void SetSessionVariable(string variableName, object variableValue);
+        IParameterEncoder CreateEncoder();
     }
 }

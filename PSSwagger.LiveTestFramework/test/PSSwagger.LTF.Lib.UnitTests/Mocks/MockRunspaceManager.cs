@@ -5,6 +5,7 @@ namespace PSSwagger.LTF.Lib.UnitTests.Mocks
     using Interfaces;
     using System;
     using System.Collections.Generic;
+    using Models;
 
     /// <summary>
     /// Mock runspace that tracks if methods are called.
@@ -14,15 +15,19 @@ namespace PSSwagger.LTF.Lib.UnitTests.Mocks
         public Dictionary<string, GeneratedModule> ModuleMocks { get; private set; }
         public MockCommandBuilder Builder { get; private set; }
         public bool GetModuleInfoCalled { get; private set; }
-
+        public IList<object> InvokeHistory { get; private set; }
+        public MockParameterEncoder Encoder { get; private set; }
         public MockRunspaceManager()
         {
             this.ModuleMocks = new Dictionary<string, GeneratedModule>();
-            this.Builder = new MockCommandBuilder();
+            this.Builder = new MockCommandBuilder(this);
+            this.InvokeHistory = new List<object>();
+            this.Encoder = new MockParameterEncoder();
         }
 
         public ICommandBuilder CreateCommand()
         {
+            this.Builder.Parameters.Clear();
             return this.Builder;
         }
 
@@ -37,14 +42,15 @@ namespace PSSwagger.LTF.Lib.UnitTests.Mocks
             return null;
         }
 
-        public IEnumerable Invoke(string script)
+        public CommandExecutionResult Invoke(object script)
         {
-            throw new NotImplementedException();
+            this.InvokeHistory.Add(script);
+            return null;
         }
 
-        public void SetSessionVariable(string variableName, object variableValue)
+        public IParameterEncoder CreateEncoder()
         {
-            throw new NotImplementedException();
+            return this.Encoder;
         }
     }
 }

@@ -1,12 +1,13 @@
 ﻿namespace PSSwagger.LTF.Lib
 {
-    using IO;
-    using Messages;
+    using Credentials;
+    using Interfaces;
     using Logging;
+    using Messages;
+    using Models;
     using System;
     using System.Threading;
     using System.Threading.Tasks;
-    using Interfaces;
 
     public class LiveTestServerStartParams
     {
@@ -15,6 +16,7 @@
         public Logger Logger { get; set; }
         public IRunspaceManager RunspaceManager { get; set; }
         public string ModulePath { get; set; }
+        public LiveTestCredentialFactory CredentialFactory { get; set; }
     }
 
     /// <summary>
@@ -47,6 +49,10 @@
             {
                 throw new ArgumentNullException("parms.RunspaceManager");
             }
+            if (parms.CredentialFactory == null)
+            {
+                throw new ArgumentNullException("parms.CredentialFactory");
+            }
             if (String.IsNullOrEmpty(parms.ModulePath))
             {
                 throw new ArgumentNullException("parms.ModulePath");
@@ -77,11 +83,26 @@
             {
                 while (this.IsRunning)
                 {
-                    LiveTestRequest msg = await this.Input.ReadBlockAsync<LiveTestRequest>();
-                    if (this.IsRunning)
+                    try
                     {
-                        this.parameters.Logger?.LogAsync("Processing message: {0}", Newtonsoft.Json.JsonConvert.SerializeObject(msg));
-                        Task.Run(() => this.currentModule.ProcessRequest(msg));
+                        LiveTestRequest msg = await this.Input.ReadBlockAsync<LiveTestRequest>();
+                        if (this.IsRunning)
+                        {
+                            if (this.parameters.Logger != null)
+                            {
+                                this.parameters.Logger.LogAsync("Processing message: {0}", Newtonsoft.Json.JsonConvert.SerializeObject(msg));
+                            }
+                            try
+                            {
+                                Task.Run(() => this.currentModule.ProcessRequest(msg, this.parameters.CredentialFactory));
+                            } catch (Exception eProcess)
+                            {
+                                // TODO: Log
+                            }
+                        }
+                    } catch (Exception eRead)
+                    {
+                        // TODO: Log
                     }
                 }
             }) { IsBackground = true };

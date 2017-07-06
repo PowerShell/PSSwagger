@@ -1,6 +1,8 @@
 namespace PSSwagger.LTF.Lib.Interfaces
 {
+    using Models;
     using System.Collections;
+    using System.Collections.Generic;
 
     /// <summary>
     /// Build commands to execute test operations.
@@ -13,18 +15,22 @@ namespace PSSwagger.LTF.Lib.Interfaces
         string Command { get; set; }
 
         /// <summary>
+        /// Gets the parent runspace.
+        /// </summary>
+        IRunspaceManager Runspace { get; }
+
+        /// <summary>
         /// Adds the given parameter.
         /// </summary>
         /// <param name="parameterName">Case insensitive name of parameter.</param>
         /// <param name="parameterValue">Parameter value.</param>
-        /// <param name="switchParameter">True if parameter should be used as a switch (<paramref name="parameterValue" must be a boolean/ >). False otherwise.</param>
         /// <returns>This command builder.</returns>
-        ICommandBuilder AddParameter(string parameterName, object parameterValue, bool switchParameter);
-        
+        ICommandBuilder AddParameter(string parameterName, object parameterValue);
+
         /// <summary>
         /// Execute the command in the parent runspace.
         /// </summary>
         /// <returns>Results of command.</returns>
-        IEnumerable Invoke();
+        CommandExecutionResult Invoke();
     }
 }

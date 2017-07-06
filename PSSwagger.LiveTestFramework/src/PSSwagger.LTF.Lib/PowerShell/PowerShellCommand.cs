@@ -1,35 +1,70 @@
 namespace PSSwagger.LTF.Lib.PowerShell
 {
     using Interfaces;
+    using Models;
     using System;
     using System.Collections;
+    using System.Collections.Generic;
+    using System.Management.Automation.Runspaces;
 
     /// <summary>
     /// Build a PowerShell command.
     /// </summary>
     public class PowerShellCommand : ICommandBuilder
     {
+        private IRunspaceManager runspace;
+        private Command powershellCommand;
+
         public string Command
         {
             get
             {
-                throw new NotImplementedException();
-            }
+                if (powershellCommand != null)
+                {
+                    return powershellCommand.CommandText;
+                }
 
+                return String.Empty;
+            }
             set
             {
-                throw new NotImplementedException();
+                this.powershellCommand = new Command(value);
             }
         }
 
-        public ICommandBuilder AddParameter(string parameterName, object parameterValue, bool switchParameter)
+        public IRunspaceManager Runspace
         {
-            throw new NotImplementedException();
+            get
+            {
+                return this.runspace;
+            }
         }
 
-        public IEnumerable Invoke()
+        public PowerShellCommand(IRunspaceManager runspace)
         {
-            throw new NotImplementedException();
+            this.runspace = runspace;
+            this.powershellCommand = null;
+        }
+
+        public ICommandBuilder AddParameter(string parameterName, object parameterValue)
+        {
+            if (String.IsNullOrEmpty(parameterName))
+            {
+                throw new ArgumentNullException("parameterName");
+            }
+
+            if (this.powershellCommand == null)
+            {
+                throw new InvalidOperationException("Set the Command property before using AddParameter.");
+            }
+
+            this.powershellCommand.Parameters.Add(parameterName, parameterValue);
+            return this;
+        }
+
+        public CommandExecutionResult Invoke()
+        {
+            return this.runspace.Invoke(this.powershellCommand);
         }
     }
 }

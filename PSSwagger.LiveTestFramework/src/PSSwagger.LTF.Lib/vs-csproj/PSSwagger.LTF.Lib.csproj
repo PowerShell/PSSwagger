@@ -35,6 +35,10 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Management.Automation, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>packages\System.Management.Automation.6.1.7601.17515\lib\net45\System.Management.Automation.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -44,60 +48,38 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="..\LiveTestServer.cs" />
-    <Compile Include="..\GeneratedModule.cs" />
-    <Compile Include="..\Interfaces\IOutputPipe.cs">
-      <Link>Interfaces\IOutputPipe.cs</Link>
+    <Compile Include="..\Models\*.cs">
+      <Link>Models\%(FileName).cs</Link>
     </Compile>
-    <Compile Include="..\Interfaces\IInputPipe.cs">
-      <Link>Interfaces\IInputPipe.cs</Link>
+    <Compile Include="..\Interfaces\*.cs">
+      <Link>Interfaces\%(FileName).cs</Link>
     </Compile>
-    <Compile Include="..\Interfaces\ICommandBuilder.cs">
-      <Link>Interfaces\ICommandBuilder.cs</Link>
+    <Compile Include="..\IO\*.cs">
+      <Link>IO\%(FileName).cs</Link>
     </Compile>
-    <Compile Include="..\Interfaces\IRunspaceManager.cs">
-      <Link>Interfaces\IRunspaceManager.cs</Link>
+    <Compile Include="..\Messages\*.cs">
+      <Link>Messages\%(FileName).cs</Link>
     </Compile>
-    <Compile Include="..\IO\JsonBlockPipe.cs">
-      <Link>IO\JsonBlockPipe.cs</Link>
+    <Compile Include="..\Logging\*.cs">
+      <Link>Logging\%(FileName).cs</Link>
     </Compile>
-    <Compile Include="..\IO\StandardInputPipe.cs">
-      <Link>IO\StandardInputPipe.cs</Link>
+    <Compile Include="..\PowerShell\*.cs">
+      <Link>PowerShell\%(FileName).cs</Link>
     </Compile>
-    <Compile Include="..\IO\StandardOutputPipe.cs">
-      <Link>IO\StandardOutputPipe.cs</Link>
+    <Compile Include="..\Extensions\*.cs">
+      <Link>Extensions\%(FileName).cs</Link>
     </Compile>
-    <Compile Include="..\IO\NamedPipeClient.cs">
-      <Link>IO\NamedPipeClient.cs</Link>
+    <Compile Include="..\Exceptions\CommandFailedException.cs">
+      <Link>Exceptions\CommandFailedException.cs</Link>
     </Compile>
-    <Compile Include="..\IO\NamedPipeServer.cs">
-      <Link>IO\NamedPipeServer.cs</Link>
+    <Compile Include="..\Exceptions\InvalidTestCredentialsException.cs">
+      <Link>Exceptions\InvalidTestCredentialsException.cs</Link>
     </Compile>
-    <Compile Include="..\IO\NullPipe.cs">
-      <Link>IO\NullPipe.cs</Link>
+    <Compile Include="..\Exceptions\ModulePathNotRootedException.cs">
+      <Link>Exceptions\ModulePathNotRootedException.cs</Link>
     </Compile>
-    <Compile Include="..\Messages\JsonRpcBase.cs">
-      <Link>Messages\JsonRpcBase.cs</Link>
-    </Compile>
-    <Compile Include="..\Messages\LiveTestRequest.cs">
-      <Link>Messages\LiveTestRequest.cs</Link>
-    </Compile>
-    <Compile Include="..\Messages\LiveTestResponse.cs">
-      <Link>Messages\LiveTestResponse.cs</Link>
-    </Compile>
-    <Compile Include="..\Messages\LiveTestResult.cs">
-      <Link>Messages\LiveTestResult.cs</Link>
-    </Compile>
-    <Compile Include="..\Messages\LiveTestError.cs">
-      <Link>Messages\LiveTestError.cs</Link>
-    </Compile>
-    <Compile Include="..\Logging\Logger.cs">
-      <Link>Logging\Logger.cs</Link>
-    </Compile>
-    <Compile Include="..\PowerShell\PowerShellCommand.cs">
-      <Link>PowerShell\PowerShellCommand.cs</Link>
-    </Compile>
-    <Compile Include="..\PowerShell\PowerShellRunspace.cs">
-      <Link>PowerShell\PowerShellRunspace.cs</Link>
+    <Compile Include="..\Credentials\*.cs">
+      <Link>Credentials\%(FileName).cs</Link>
     </Compile>
   </ItemGroup>
   <ItemGroup>

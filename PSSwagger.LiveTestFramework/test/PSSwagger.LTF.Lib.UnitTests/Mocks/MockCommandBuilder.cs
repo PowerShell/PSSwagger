@@ -1,32 +1,44 @@
 namespace PSSwagger.LTF.Lib.UnitTests.Mocks
 {
     using Interfaces;
+    using Models;
     using System;
     using System.Collections;
     using System.Collections.Generic;
+    using System.Runtime.InteropServices;
 
     /// <summary>
     /// Mock command builder. Collects parameters and history of Invoke calls.
     /// </summary>
     public class MockCommandBuilder : ICommandBuilder
     {
-        public Dictionary<string, Tuple<object, bool>> Parameters { get; private set; }
+        private IRunspaceManager runspace;
+        public Dictionary<string, object> Parameters { get; private set; }
         public string Command { get; set; }
         public IList<string> InvokeHistory { get; private set; }
-
-        public MockCommandBuilder()
+        public CommandExecutionResult MockResult { get; set; }
+        public IRunspaceManager Runspace
         {
-            this.Parameters = new Dictionary<string, Tuple<object, bool>>();
+            get
+            {
+                return runspace;
+            }
+        }
+
+        public MockCommandBuilder(MockRunspaceManager runspace)
+        {
+            this.runspace = runspace;
+            this.Parameters = new Dictionary<string, object>();
             this.InvokeHistory = new List<string>();
         }
 
-        public ICommandBuilder AddParameter(string parameterName, object parameterValue, bool switchParameter = false)
+        public ICommandBuilder AddParameter(string parameterName, object parameterValue)
         {
-            this.Parameters[parameterName] = new Tuple<object, bool>(parameterValue, switchParameter);
+            this.Parameters[parameterName] = parameterValue;
             return this;
         }
 
-        public IEnumerable Invoke()
+        public CommandExecutionResult Invoke()
         {
             // Format for mock is: command [parameterName parameterValue.ToString() isSwitch]+
             string invokeString = this.Command;
@@ -34,13 +46,32 @@ namespace PSSwagger.LTF.Lib.UnitTests.Mocks
             {
                 foreach (string key in this.Parameters.Keys)
                 {
-                    invokeString += String.Format(" [{0} {1} {2}]", key, this.Parameters[key].Item1.ToString(), this.Parameters[key].Item2);
+                    string encodedVal = this.Parameters[key] == null ? "null" : this.Parameters[key].ToString();
+                    if (this.Parameters[key] is System.Management.Automation.PSCredential)
+                    {
+                        System.Management.Automation.PSCredential specificType = (System.Management.Automation.PSCredential)this.Parameters[key];
+                        string password = String.Empty;
+                        IntPtr valuePtr = IntPtr.Zero;
+                        try
+                        {
+                            valuePtr = Marshal.SecureStringToGlobalAllocUnicode(specificType.Password);
+                            password = Marshal.PtrToStringUni(valuePtr);
+                        }
+                        finally
+                        {
+                            Marshal.ZeroFreeGlobalAllocUnicode(valuePtr);
+                        }
+
+                        encodedVal = "(" + specificType.UserName + " " + password + ")";
+                    }
+
+                    invokeString += String.Format(" [{0} {1}]", key, encodedVal);
                 }
             }
 
             this.InvokeHistory.Add(invokeString);
 
-            return null;
+            return this.MockResult;
         }
     }
 }

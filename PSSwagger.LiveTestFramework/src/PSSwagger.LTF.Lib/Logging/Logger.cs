@@ -29,7 +29,10 @@ namespace PSSwagger.LTF.Lib.Logging
         /// <param name="message">Message to log.</param>
         public void Log(string message)
         {
-            this.stdout?.WriteLine(FormatMessage(message, "info"));
+            if (this.stdout != null)
+            {
+                this.stdout.WriteLine(FormatMessage(message, "info"));
+            }
         }
 
         /// <summary>
@@ -60,7 +63,10 @@ namespace PSSwagger.LTF.Lib.Logging
         /// <param name="message"></param>
         public void LogError(string message)
         {
-            this.stderr?.WriteLine(FormatMessage(message, "error"));
+            if (this.stderr != null)
+            {
+                this.stderr.WriteLine(FormatMessage(message, "error"));
+            }
         }
 
         /// <summary>
