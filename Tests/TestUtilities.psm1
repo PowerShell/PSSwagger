@@ -191,3 +191,12 @@ function Stop-JsonServer {
         $NodeProcess | Stop-Process
     }
 }
+
+function Enable-Tracing {
+    [CmdletBinding()]
+    param()
+    Initialize-PSSwaggerDependencies
+    Import-Module "$PSScriptRoot\PSSwaggerTestTracing.psm1"
+    [Microsoft.Rest.ServiceClientTracing]::AddTracingInterceptor((New-PSSwaggerTestClientTracing))
+    [Microsoft.Rest.ServiceClientTracing]::IsEnabled = $true
+}

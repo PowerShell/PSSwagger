@@ -9,7 +9,7 @@ build: off
 test_script:
  - ps: |
         Push-Location  c:\projects\psswagger\Tests
-        .\run-tests.ps1
+        .\run-tests.ps1 -EnableTracing
         Pop-Location	 
 init:
   - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))

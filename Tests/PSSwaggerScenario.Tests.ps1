@@ -25,6 +25,9 @@ Describe "Basic API" -Tag ScenarioTest {
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
                        Join-Path -ChildPath "Generated.Basic.Module")
         $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "PsSwaggerTestBasic" -TestRoutesFileName "PsSwaggerTestBasicRoutes.json" -Verbose
+        if ($global:PSSwaggerTest_EnableTracing) {
+            Enable-Tracing
+        }
     }
 
     Context "Basic API tests" {
@@ -70,6 +73,9 @@ Describe "All Operations: Basic" -Tag ScenarioTest {
                        Join-Path -ChildPath "Generated.TypesTest.Module")
         
         $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "OperationTypes" -TestMiddlewareFileNames "OperationTypesMiddleware.js" -TestRoutesFileName "OperationTypesRoutes.json"
+        if ($global:PSSwaggerTest_EnableTracing) {
+            Enable-Tracing
+        }
     }
 
     Context "All Operations: Basic tests" {
@@ -144,6 +150,9 @@ Describe "Get/List tests" -Tag ScenarioTest {
                        Join-Path -ChildPath "Generated.GetList.Module")
 
         $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "GetListTests" -TestRoutesFileName "GetListTestsRoutes.json"
+        if ($global:PSSwaggerTest_EnableTracing) {
+            Enable-Tracing
+        }
     }
 
     Context "Get/List tests" {
@@ -178,12 +187,15 @@ Describe "Optional parameter tests" -Tag ScenarioTest {
         Write-Verbose "Importing modules"
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwagger.Common.Helpers" | `
                        Join-Path -ChildPath "PSSwagger.Common.Helpers.psd1") -Force
+        
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwagger.Azure.Helpers" | `
                        Join-Path -ChildPath "PSSwagger.Azure.Helpers.psd1") -Force
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
                        Join-Path -ChildPath "Generated.Optional.Module")
-        
         $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "OptionalParametersTests" -TestRoutesFileName "OptionalParametersTestsRoutes.json"
+        if ($global:PSSwaggerTest_EnableTracing) {
+            Enable-Tracing
+        }
     }
 
     Context "Optional parameter tests" {
@@ -235,6 +247,9 @@ Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
                        Join-Path -ChildPath "Generated.ParamTypes.Module")
 
         $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "ParameterTypes"
+        if ($global:PSSwaggerTest_EnableTracing) {
+            Enable-Tracing
+        }
     }
 
     Context "ParameterTypes tests" {
@@ -381,6 +396,9 @@ Describe "AzureExtensions" {
                        Join-Path -ChildPath "Generated.AzExt.Module")
         
         $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "AzureExtensions" -TestRoutesFileName "AzureExtensionsRoutes.json"
+        if ($global:PSSwaggerTest_EnableTracing) {
+            Enable-Tracing
+        }
     }
 
     Context "AzureExtensions" {
@@ -578,7 +596,9 @@ Describe "AuthTests" -Tag @('Auth','ScenarioTest') {
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
                        Join-Path -ChildPath "Generated.ApiKeyQueryTest.Module") -Prefix "ApiKeyQuery"
 
-        
+        if ($global:PSSwaggerTest_EnableTracing) {
+            Enable-Tracing
+        }
     }
 
     Context "Basic Authentication" {
@@ -737,6 +757,9 @@ Describe "PSMetadataTests" -Tag @('PSMetadata','ScenarioTest')  {
                        Join-Path -ChildPath "PSSwagger.Azure.Helpers.psd1") -Force
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
                        Join-Path -ChildPath "Generated.PSMetadataTest.Module")
+        if ($global:PSSwaggerTest_EnableTracing) {
+            Enable-Tracing
+        }
     }
 
     Context "PSMetadataTest" {

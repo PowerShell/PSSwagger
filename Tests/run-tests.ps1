@@ -12,7 +12,8 @@ param(
     [string[]]$TestSuite = "All",
     [string[]]$TestName,
     [ValidateSet("net452", "netstandard1.7")]
-    [string]$TestFramework = "net452"
+    [string]$TestFramework = "net452",
+    [switch]$EnableTracing
 )
 
 $executeTestsCommand = ""
@@ -103,6 +104,10 @@ if ("netstandard1.7" -eq $TestFramework) {
     $psVersion = $powershellCore.Name.Substring(11)
     $powershellFolder = "$Env:ProgramFiles\PowerShell\$($psVersion)"
     $executeTestsCommand += ";`$env:PSModulePath_Backup=`"$env:PSModulePath`""
+}
+
+if ($EnableTracing) {
+    $executeTestsCommand += ";`$global:PSSwaggerTest_EnableTracing=`$true"
 }
 
 $executeTestsCommand += ";`$verbosepreference=`"continue`";Invoke-Pester -ExcludeTag KnownIssue -OutputFormat NUnitXml -OutputFile ScenarioTestResults.xml -Verbose"
