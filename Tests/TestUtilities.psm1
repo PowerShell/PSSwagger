@@ -116,6 +116,10 @@ function Start-JsonServer {
         $nodeProcesses = @($nodeProcesses)
     }
 
+    foreach ($nodeProcess in $nodeProcesses) {
+        Write-Verbose -Message ($nodeProcess | Out-String)
+    }
+
     $argList = "--watch `"$PSScriptRoot\NodeModules\db.json`""
     if ($TestRoutesFileName) {
         $argList += " --routes `"$testCaseDataLocation\$TestRoutesFileName`""
@@ -130,7 +134,7 @@ function Start-JsonServer {
         $argList += " $CustomServerParameters"
     }
 
-    Write-Verbose "Starting json-server: $PSScriptRoot\NodeModules\json-server.cmd $argList"
+    Write-Verbose -Message "Starting json-server: $PSScriptRoot\NodeModules\json-server.cmd $argList"
     if ('Core' -eq $PSEdition) {
         $jsonServerProcess = Start-Process -FilePath "$PSScriptRoot\NodeModules\json-server.cmd" -ArgumentList $argList -PassThru
     } else {
@@ -148,6 +152,8 @@ function Start-JsonServer {
     while ($nodeProcessToStop -eq $null) {
         $nodeProcessToStop = Get-Process -Name "node" -ErrorAction SilentlyContinue | Where-Object {-not $nodeProcesses.Contains($_)}
     }
+
+    Write-Verbose -Message "Node process: $($nodeProcessToStop | Out-String)"
 
     $props = @{
         ServerProcess = $jsonServerProcess;
