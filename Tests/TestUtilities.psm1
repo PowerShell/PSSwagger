@@ -202,8 +202,8 @@ function Stop-JsonServer {
 function Enable-Tracing {
     [CmdletBinding()]
     param()
-    Write-Verbose -Message 'Initialize PSSwaggerUtilities'
-    Initialize-PSSwaggerUtilities
+    Write-Verbose -Message 'Initialize PSSwaggerDependencies'
+    Initialize-PSSwaggerDependencies
     Write-Verbose -Message 'Import PSSwaggerTestTracing'
     Import-Module "$PSScriptRoot\PSSwaggerTestTracing.psm1"
     Write-Verbose -Message 'AddTracingInterceptor'
