@@ -138,7 +138,7 @@ function Start-JsonServer {
     }
 
     # Wait for local json-server to start 
-    while (-not (Test-Connection -ComputerName localhost -Port 3000)) {
+    while (-not ((Test-NetConnection -ComputerName localhost -Port 3000).TcpTestSucceeded)) {
         Write-Verbose -Message "Waiting for server to start..." -Verbose
         Start-Sleep -s 1
     }
