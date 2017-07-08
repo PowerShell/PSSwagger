@@ -25,8 +25,11 @@ Describe "Basic API" -Tag ScenarioTest {
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
                        Join-Path -ChildPath "Generated.Basic.Module")
         $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "PsSwaggerTestBasic" -TestRoutesFileName "PsSwaggerTestBasicRoutes.json" -Verbose
+        Write-Verbose -Message "Tracing: $($global:PSSwaggerTest_EnableTracing)"
         if ($global:PSSwaggerTest_EnableTracing) {
+            Write-Verbose -Message "Enable tracing"
             Enable-Tracing
+            Write-Verbose -Message "Tracing enabled"
         }
     }
 
