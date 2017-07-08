@@ -138,11 +138,12 @@ function Start-JsonServer {
     }
 
     # Wait for local json-server to start 
+    Write-Verbose -Message "Waiting for server to start..."
     while (-not ((Test-NetConnection -ComputerName localhost -Port 3000).TcpTestSucceeded)) {
-        Write-Verbose -Message "Waiting for server to start..." -Verbose
         Start-Sleep -s 1
     }
 
+    Write-Verbose -Message "Server started"
     $nodeProcessToStop = Get-Process -Name "node" -ErrorAction SilentlyContinue | Where-Object {-not $nodeProcesses.Contains($_)}
     while ($nodeProcessToStop -eq $null) {
         $nodeProcessToStop = Get-Process -Name "node" -ErrorAction SilentlyContinue | Where-Object {-not $nodeProcesses.Contains($_)}
