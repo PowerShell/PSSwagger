@@ -7,7 +7,7 @@
 # PSSwagger Module
 #
 #########################################################################################
-$script:EnableTracer = $false
+$script:EnableTracer = $true
 Import-Module (Join-Path "$PSScriptRoot" "TestUtilities.psm1")
 Describe "Basic API" -Tag ScenarioTest {
     BeforeAll {
@@ -61,7 +61,11 @@ Describe "Basic API" -Tag ScenarioTest {
     }
 
     AfterAll {
+        Write-Verbose -Message "Before Stop - Server Process Exited = $($processes.ServerProcess.HasExited)"
+        Write-Verbose -Message "Before Stop - Node Process Exited = $($processes.NodeProcess.HasExited)"
         Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
+        Write-Verbose -Message "After Stop - Server Process Exited = $($processes.ServerProcess.HasExited)"
+        Write-Verbose -Message "After Stop - Node Process Exited = $($processes.NodeProcess.HasExited)"
     }
 }
 
