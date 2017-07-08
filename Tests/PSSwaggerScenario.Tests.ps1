@@ -27,9 +27,10 @@ Describe "Basic API" -Tag ScenarioTest {
         $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "PsSwaggerTestBasic" -TestRoutesFileName "PsSwaggerTestBasicRoutes.json" -Verbose
         Write-Verbose -Message "Tracing: $($global:PSSwaggerTest_EnableTracing)"
         if ($global:PSSwaggerTest_EnableTracing) {
-            Write-Verbose -Message "Enable tracing"
-            Enable-Tracing
-            Write-Verbose -Message "Tracing enabled"
+            Initialize-PSSwaggerDependencies
+            Import-Module "$PSScriptRoot\PSSwaggerTestTracing.psm1"
+            [Microsoft.Rest.ServiceClientTracing]::AddTracingInterceptor((New-PSSwaggerTestClientTracing))
+            [Microsoft.Rest.ServiceClientTracing]::IsEnabled = $true
         }
     }
 
@@ -77,7 +78,10 @@ Describe "All Operations: Basic" -Tag ScenarioTest {
         
         $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "OperationTypes" -TestMiddlewareFileNames "OperationTypesMiddleware.js" -TestRoutesFileName "OperationTypesRoutes.json"
         if ($global:PSSwaggerTest_EnableTracing) {
-            Enable-Tracing
+            Initialize-PSSwaggerDependencies
+            Import-Module "$PSScriptRoot\PSSwaggerTestTracing.psm1"
+            [Microsoft.Rest.ServiceClientTracing]::AddTracingInterceptor((New-PSSwaggerTestClientTracing))
+            [Microsoft.Rest.ServiceClientTracing]::IsEnabled = $true
         }
     }
 
@@ -154,7 +158,10 @@ Describe "Get/List tests" -Tag ScenarioTest {
 
         $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "GetListTests" -TestRoutesFileName "GetListTestsRoutes.json"
         if ($global:PSSwaggerTest_EnableTracing) {
-            Enable-Tracing
+            Initialize-PSSwaggerDependencies
+            Import-Module "$PSScriptRoot\PSSwaggerTestTracing.psm1"
+            [Microsoft.Rest.ServiceClientTracing]::AddTracingInterceptor((New-PSSwaggerTestClientTracing))
+            [Microsoft.Rest.ServiceClientTracing]::IsEnabled = $true
         }
     }
 
@@ -197,7 +204,10 @@ Describe "Optional parameter tests" -Tag ScenarioTest {
                        Join-Path -ChildPath "Generated.Optional.Module")
         $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "OptionalParametersTests" -TestRoutesFileName "OptionalParametersTestsRoutes.json"
         if ($global:PSSwaggerTest_EnableTracing) {
-            Enable-Tracing
+            Initialize-PSSwaggerDependencies
+            Import-Module "$PSScriptRoot\PSSwaggerTestTracing.psm1"
+            [Microsoft.Rest.ServiceClientTracing]::AddTracingInterceptor((New-PSSwaggerTestClientTracing))
+            [Microsoft.Rest.ServiceClientTracing]::IsEnabled = $true
         }
     }
 
@@ -251,7 +261,10 @@ Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
 
         $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "ParameterTypes"
         if ($global:PSSwaggerTest_EnableTracing) {
-            Enable-Tracing
+            Initialize-PSSwaggerDependencies
+            Import-Module "$PSScriptRoot\PSSwaggerTestTracing.psm1"
+            [Microsoft.Rest.ServiceClientTracing]::AddTracingInterceptor((New-PSSwaggerTestClientTracing))
+            [Microsoft.Rest.ServiceClientTracing]::IsEnabled = $true
         }
     }
 
@@ -400,7 +413,10 @@ Describe "AzureExtensions" {
         
         $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "AzureExtensions" -TestRoutesFileName "AzureExtensionsRoutes.json"
         if ($global:PSSwaggerTest_EnableTracing) {
-            Enable-Tracing
+            Initialize-PSSwaggerDependencies
+            Import-Module "$PSScriptRoot\PSSwaggerTestTracing.psm1"
+            [Microsoft.Rest.ServiceClientTracing]::AddTracingInterceptor((New-PSSwaggerTestClientTracing))
+            [Microsoft.Rest.ServiceClientTracing]::IsEnabled = $true
         }
     }
 
@@ -600,7 +616,10 @@ Describe "AuthTests" -Tag @('Auth','ScenarioTest') {
                        Join-Path -ChildPath "Generated.ApiKeyQueryTest.Module") -Prefix "ApiKeyQuery"
 
         if ($global:PSSwaggerTest_EnableTracing) {
-            Enable-Tracing
+            Initialize-PSSwaggerDependencies
+            Import-Module "$PSScriptRoot\PSSwaggerTestTracing.psm1"
+            [Microsoft.Rest.ServiceClientTracing]::AddTracingInterceptor((New-PSSwaggerTestClientTracing))
+            [Microsoft.Rest.ServiceClientTracing]::IsEnabled = $true
         }
     }
 
@@ -761,7 +780,10 @@ Describe "PSMetadataTests" -Tag @('PSMetadata','ScenarioTest')  {
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
                        Join-Path -ChildPath "Generated.PSMetadataTest.Module")
         if ($global:PSSwaggerTest_EnableTracing) {
-            Enable-Tracing
+            Initialize-PSSwaggerDependencies
+            Import-Module "$PSScriptRoot\PSSwaggerTestTracing.psm1"
+            [Microsoft.Rest.ServiceClientTracing]::AddTracingInterceptor((New-PSSwaggerTestClientTracing))
+            [Microsoft.Rest.ServiceClientTracing]::IsEnabled = $true
         }
     }
 
