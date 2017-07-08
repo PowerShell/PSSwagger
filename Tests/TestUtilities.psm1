@@ -134,7 +134,7 @@ function Start-JsonServer {
         $argList += " $CustomServerParameters"
     }
 
-    Write-Verbose -Message "Starting json-server: $PSScriptRoot\NodeModules\json-server.cmd $argList"
+    Write-Host -Message "Starting json-server: $PSScriptRoot\NodeModules\json-server.cmd $argList"
     if ('Core' -eq $PSEdition) {
         $jsonServerProcess = Start-Process -FilePath "$PSScriptRoot\NodeModules\json-server.cmd" -ArgumentList $argList -PassThru
     } else {
@@ -190,11 +190,11 @@ function Stop-JsonServer {
         [System.Diagnostics.Process]$NodeProcess
     )
     if ($JsonServerProcess) {
-        Write-Verbose "Stopping process: $($JsonServerProcess.ID)"
+        Write-Host "Stopping process: $($JsonServerProcess.ID)"
         $JsonServerProcess | Stop-Process
     }
     if ($NodeProcess) {
-        Write-Verbose "Stopping process: $($NodeProcess.ID)"
+        Write-Host "Stopping process: $($NodeProcess.ID)"
         $NodeProcess | Stop-Process
     }
 }
