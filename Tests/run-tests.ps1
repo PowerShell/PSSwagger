@@ -25,6 +25,7 @@ $nugetPackageSource = Test-NugetPackageSource
 
 $testRunGuid = [guid]::NewGuid().GUID
 Write-Verbose -message "Test run GUID: $testRunGuid"
+$nodeModuleVersions = @{}
 # Set up scenario test requirements
 if ($TestSuite.Contains("All") -or $TestSuite.Contains("ScenarioTest")) {
     # Ensure node.js is installed
@@ -39,6 +40,7 @@ if ($TestSuite.Contains("All") -or $TestSuite.Contains("ScenarioTest")) {
     if ($npmModule -eq $null) {
         throw "NPM failed to install."
     }
+    $nodeModuleVersions['npm'] = $npmModule.Version
 
     $npmInstallPath = Split-Path -Path $npmModule.Source
 
@@ -60,8 +62,9 @@ if ($TestSuite.Contains("All") -or $TestSuite.Contains("ScenarioTest")) {
     # Ensure we have json-server
     if (-not (Test-Path $jsonServerPath)) {
         Write-Verbose "Couldn't find $jsonServerPath. Running npm install -g json-server."
-        & $nodeExePath (Join-Path -Path $npmInstallPath -ChildPath "node_modules\npm\bin\npm-cli.js") "install" "-g" "json-server"
+        & $nodeExePath (Join-Path -Path $npmInstallPath -ChildPath "node_modules\npm\bin\npm-cli.js") "install" "-g" "json-server@0.9.6"
     }
+    $nodeModuleVersions['json-server'] = & $nodeExePath (Join-Path -Path $npmInstallPath -ChildPath "node_modules\npm\bin\npm-cli.js") 'list' '-g' 'json-server'
 
     # For these node modules, it's easier on the middleware script devs to just install the modules locally instead of globally
     # Ensure we have request (for easy HTTP request creation for some test middlewares)
@@ -148,6 +151,9 @@ Write-Verbose " -- AzureRM.Profile: $($azureRmProfile.Version)"
 Write-Verbose " -- Pester: $((get-command invoke-pester).Version)"
 if ($autoRestModule) {
     Write-Verbose " -- AutoRest: $($autoRestModule.Version)"
+}
+foreach ($entry in $nodeModuleVersions.GetEnumerator()) {
+    Write-Verbose " -- $($entry.Key): $($entry.Value)"
 }
 Write-Verbose "Executing: $executeTestsCommand"
 $executeTestsCommand | Out-File pesterCommand.ps1
