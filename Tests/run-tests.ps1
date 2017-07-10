@@ -7,6 +7,7 @@
 # PSSwagger Tests
 #
 #########################################################################################
+[CmdletBinding()]
 param(
     [ValidateSet("All","UnitTest","ScenarioTest")]
     [string[]]$TestSuite = "All",
@@ -94,6 +95,16 @@ $autoRestModule = Test-Package -packageName "AutoRest" -packageSourceName $nuget
 $autoRestInstallPath = Split-Path -Path $autoRestModule.Source
 $executeTestsCommand += ";`$env:Path+=`";$autoRestInstallPath\tools`""
 
+# AzureRM.Profile requirement
+$azureRmProfile = Get-Package AzureRM.Profile -ErrorAction Ignore
+if (-not $azureRmProfile) {
+    if (-not (Get-PackageSource PSGallery -ErrorAction Ignore)) {
+        Register-PackageSource PSGallery -ProviderName PowerShellGet
+    }
+
+    $azureRmProfile = Install-Package AzureRM.Profile -Source PSGallery -RequiredVersion 2.8.0 -Force | Where-Object { $_.Name -eq 'AzureRM.Profile' }
+}
+
 $powershellFolder = $null
 if ("netstandard1.7" -eq $TestFramework) {
     # beta > alpha
@@ -132,6 +143,12 @@ Write-Verbose "Cleaning old test assemblies, if any."
 Get-ChildItem -Path (Join-Path "$PSScriptRoot" "PSSwagger.TestUtilities") -Filter *.dll | Remove-Item -Force
 Get-ChildItem -Path (Join-Path "$PSScriptRoot" "PSSwagger.TestUtilities") -Filter *.pdb | Remove-Item -Force
 
+Write-Verbose "Dependency versions:"
+Write-Verbose " -- AzureRM.Profile: $($azureRmProfile.Version)"
+Write-Verbose " -- Pester: $((get-command invoke-pester).Version)"
+if ($autoRestModule) {
+    Write-Verbose " -- AutoRest: $($autoRestModule.Version)"
+}
 Write-Verbose "Executing: $executeTestsCommand"
 $executeTestsCommand | Out-File pesterCommand.ps1
 
