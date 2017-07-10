@@ -43,3 +43,4 @@ Write-Host "Zipping generated modules dir '$generatedModulesDir' assuming 7z is 
 7z a .\Generated.zip $generatedModulesDir
 Write-Host "Pushing generated modules zip to AppVeyor"
 Push-AppveyorArtifact .\Generated.zip
+$blockRdp = $true
