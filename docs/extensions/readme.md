@@ -74,7 +74,8 @@ guid | `string` | **Required**. Module guid. MUST be in the form of valid guid.
         "description": "Azure DocumentDB Database Service Resource Provider REST API",
         "moduleVersion": "2.4.23",
         "guid": "caec68a4-c968-4d9b-b8bb-50814e19dc71",
-        "companyName": "Microsoft Corporation",
+        "author": "author@contoso.com",
+        "companyName": "Contoso",
         "tags": [
             "Swagger",
             "Azure",

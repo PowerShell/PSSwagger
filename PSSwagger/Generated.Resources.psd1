@@ -4,7 +4,7 @@
 #
 # Licensed under the MIT license.
 #
-# Localized Generated.Resources.psd1
+# PSSwagger Module
 #
 #########################################################################################
 

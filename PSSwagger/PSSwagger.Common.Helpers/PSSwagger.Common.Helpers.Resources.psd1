@@ -4,7 +4,7 @@
 #
 # Licensed under the MIT license.
 #
-# Localized PSSwagger.Common.Helpers.Resources.psd1
+# PSSwagger Module
 #
 #########################################################################################
 
