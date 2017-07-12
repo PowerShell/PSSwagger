@@ -188,8 +188,14 @@ Describe "Optional parameter tests" -Tag ScenarioTest {
             $results.Length | should be 2
         }
 
+        It "Generates cmdlet using optional query parameters (flavor and maker)" {
+            $results = Get-Cupcake -Flavor "chocolate" -Maker "bob"
+            $results.Length | should be 1
+        }
+
         It "Generates cmdlet using optional path parameters" {
-            Get-CupcakeByMaker -Flavor "chocolate" -Maker "bob"
+            $results = Get-CupcakeByMaker -Flavor "chocolate" -Maker "bob"
+            $results.Length | should be 1
         }
 
         It "Sets default value when specified in spec" {

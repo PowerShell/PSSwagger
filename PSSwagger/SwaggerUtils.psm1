@@ -1546,6 +1546,41 @@ function Get-Response
     return $responseBody, $outputType
 }
 
+<#
+
+    Get-ToolsPath
+
+#>
+function Get-ToolsPath {
+        [string]$AutoRestToolsPath = $null
+
+        # Note: DLLs are automatically downloaded and extracted into the folder 
+        # "$env:USERPROFILE/.autorest/plugins/autorest/$VERSION" if they do not 
+        # exist for newer versions of autorest.
+        [string]$basePath = Join-Path -Path $env:USERPROFILE -ChildPath ".autorest" | Join-Path -ChildPath "plugins" | Join-Path -ChildPath "autorest"
+
+        
+        if(Test-Path $basePath) { # Try to load newer version of autorest
+            $versions = @(Get-ChildItem -Directory $basePath | ForEach-Object {[System.Version]$_.Name} | Sort-Object -Descending)
+            
+            if($versions.Length -ne 0) {
+                [string]$version = $versions[0] # Get newest
+                $AutoRestToolsPath = Join-Path -Path $basePath -ChildPath $version
+            }
+        } else { # Fallback to old version of autorest
+            $AutoRestToolsPath = Get-Command -Name 'AutoRest.exe' | 
+                Select-Object -First 1 -ErrorAction Ignore | 
+                    ForEach-Object {Split-Path -LiteralPath $_.Source}
+        }
+
+        if (-not ($AutoRestToolsPath))
+        {
+            throw $LocalizedData.AutoRestNotInPath
+        }
+
+        return $AutoRestToolsPath
+}
+
 function Get-CSharpModelName
 {
     param(
@@ -1561,15 +1596,8 @@ function Get-CSharpModelName
                 [string]
                 $AssemblyName
             )
-
-            $AutoRestToolsPath = Get-Command -Name 'AutoRest.exe' | 
-                                Select-Object -First 1 -ErrorAction Ignore | 
-                                    ForEach-Object {Split-Path -LiteralPath $_.Source}
-
-            if (-not ($AutoRestToolsPath))
-            {
-                throw $LocalizedData.AutoRestNotInPath
-            }
+   
+            [string]$AutoRestToolsPath = Get-ToolsPath
 
             $AssemblyFilePath = Join-Path -Path $AutoRestToolsPath -ChildPath $AssemblyName
             if(-not $AssemblyFilePath -or -not (Test-Path -LiteralPath $AssemblyFilePath -PathType Leaf))
