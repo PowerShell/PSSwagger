@@ -67,41 +67,18 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="..\Mocks\StringPipe.cs">
-      <Link>Mocks\StringPipe.cs</Link>
+    <Compile Include="..\Mocks\*.cs">
+      <Link>Mocks\%(FileName).cs</Link>
     </Compile>
-    <Compile Include="..\Mocks\TestBlockPipe.cs">
-      <Link>Mocks\TestBlockPipe.cs</Link>
-    </Compile>
-    <Compile Include="..\Mocks\MockGeneratedModule.cs">
-      <Link>Mocks\MockGeneratedModule.cs</Link>
-    </Compile>
-    <Compile Include="..\Mocks\MockRunspaceManager.cs">
-      <Link>Mocks\MockRunspaceManager.cs</Link>
-    </Compile>
-    <Compile Include="..\Mocks\MockCommandBuilder.cs">
-      <Link>Mocks\MockCommandBuilder.cs</Link>
-    </Compile>
-    <Compile Include="..\Mocks\XUnitOutputPipe.cs">
-      <Link>Mocks\XUnitOutputPipe.cs</Link>
-    </Compile>
-    <Compile Include="..\Mocks\MockParameterEncoder.cs">
-      <Link>Mocks\MockParameterEncoder.cs</Link>
-    </Compile>
-    <Compile Include="..\JsonBlockPipeTests.cs" />
+    <Compile Include="..\JsonRpcPipeTests.cs" />
     <Compile Include="..\LiveTestServerTests.cs" />
     <Compile Include="..\GeneratedModuleTests.cs" />
     <Compile Include="..\PowerShellRunspaceTests.cs" />
     <Compile Include="..\PowerShellCommandTests.cs" />
-    <Compile Include="..\PowerShellParameterEncoderTests.cs" />
     <Compile Include="..\LiveTestCredentialFactoryTests.cs" />
     <Compile Include="..\AzureCredentialProviderTests.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\..\src\PSSwagger.LTF.Lib\vs-csproj\PSSwagger.LTF.Lib.csproj">
-      <Project>{D2E4CBA1-BA97-4C60-9645-317666DF6C9F}</Project>
-      <Name>PSSwagger.LTF.Lib</Name>
-    </ProjectReference>
+    <Compile Include="..\LiveTestRequestConverterTests.cs" />
+    <Compile Include="..\DynamicTypedObjectConverterTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -121,6 +98,16 @@
   </ItemGroup>
   <ItemGroup>
     <Service Include="{82A7F48D-3B50-4B1E-B82E-3ADA8210C358}" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\PSSwagger.LTF.IO.Lib\vs-csproj\PSSwagger.LTF.IO.Lib.csproj">
+      <Project>{6c53850a-7758-452c-8c02-cbaa894b814e}</Project>
+      <Name>PSSwagger.LTF.IO.Lib</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\src\PSSwagger.LTF.Lib\vs-csproj\PSSwagger.LTF.Lib.csproj">
+      <Project>{d2e4cba1-ba97-4c60-9645-317666df6c9f}</Project>
+      <Name>PSSwagger.LTF.Lib</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

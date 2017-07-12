@@ -54,31 +54,24 @@ namespace PSSwagger.LTF.Lib.IO
         }
 
         /// <summary>
-        /// Read a single character.
+        /// Sleep until a client connects.
         /// </summary>
-        /// <returns>Character read.</returns>
-        public char ReadChar()
+        private void WaitForConnection()
         {
-            WaitForConnection();
-            return (char)reader.Read();
+            while (!this.stream.IsConnected)
+            {
+                Thread.Sleep(1);
+            }
         }
 
-        /// <summary>
-        /// Write a single character.
-        /// </summary>
-        /// <param name="b">Character to write.</param>
-        public void Write(char b)
+        public async Task Write(char b)
         {
             WaitForConnection();
             byte[] buf = BitConverter.GetBytes(b);
             this.stream.Write(buf, 0, buf.Length);
         }
 
-        /// <summary>
-        /// Write the given string then a new line in UTF-8.
-        /// </summary>
-        /// <param name="line">Line to write, not including new line.</param>
-        public void WriteLine(string line)
+        public async Task WriteLine(string line)
         {
             WaitForConnection();
             byte[] buf = Encoding.UTF8.GetBytes(line);
@@ -89,41 +82,31 @@ namespace PSSwagger.LTF.Lib.IO
             this.stream.Write(charBuf, 0, charBuf.Length);
         }
 
-        /// <summary>
-        /// Read until the next new line character.
-        /// </summary>
-        /// <returns>All text input up to but not including the new line character.</returns>
-        public string ReadLine()
+        public Task WriteBlock<T>(T msg) where T : class
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task<char> ReadChar()
+        {
+            WaitForConnection();
+            return (char)reader.Read();
+        }
+
+        public async Task<string> ReadLine()
         {
             WaitForConnection();
             return this.reader.ReadLine();
         }
 
-        /// <summary>
-        /// NotImplemented
-        /// </summary>
-        public Task WriteBlockAsync<T>(T msg) where T : class
+        public Task<T> ReadBlock<T>() where T : class
         {
             throw new NotImplementedException();
         }
 
-        /// <summary>
-        /// NotImplemented
-        /// </summary>
-        public Task<T> ReadBlockAsync<T>() where T : class
+        public Task<byte> ReadByte()
         {
             throw new NotImplementedException();
-        }
-
-        /// <summary>
-        /// Sleep until a client connects.
-        /// </summary>
-        private void WaitForConnection()
-        {
-            while (!this.stream.IsConnected)
-            {
-                Thread.Sleep(1);
-            }
         }
     }
 }

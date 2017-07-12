@@ -1,7 +1,6 @@
 namespace PSSwagger.LTF.Lib.UnitTests.Mocks
 {
     using Interfaces;
-    using System.Collections;
     using System.Collections.Generic;
     using System.Threading.Tasks;
     using Xunit.Abstractions;
@@ -27,7 +26,7 @@ namespace PSSwagger.LTF.Lib.UnitTests.Mocks
         /// Write a single character + newline to inner ITestOutputHelper.
         /// </summary>
         /// <param name="b">Character to write.</param>
-        public void Write(char b)
+        public async Task Write(char b)
         {
             if (this.logAsErrors)
             {
@@ -39,7 +38,7 @@ namespace PSSwagger.LTF.Lib.UnitTests.Mocks
         /// <summary>
         /// Serialize <param name="msg" /> into JSON then write to inner ITestOutputHelper.
         /// </summary>
-        public async Task WriteBlockAsync<T>(T msg) where T : class
+        public async Task WriteBlock<T>(T msg) where T : class
         {
             if (msg != null)
             {
@@ -56,7 +55,7 @@ namespace PSSwagger.LTF.Lib.UnitTests.Mocks
         /// Write the given string then a new line to inner ITestOutputHelper.
         /// </summary>
         /// <param name="line">Line to write, not including new line.</param>
-        public void WriteLine(string line)
+        public async Task WriteLine(string line)
         {
             if (this.logAsErrors)
             {

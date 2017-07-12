@@ -3,7 +3,6 @@ namespace PSSwagger.LTF.Lib.UnitTests.Mocks
     using System;
     using System.Threading;
     using System.Threading.Tasks;
-    using System.Text;
     using Interfaces;
     using Messages;
     using System.Collections.Generic;
@@ -26,22 +25,22 @@ namespace PSSwagger.LTF.Lib.UnitTests.Mocks
         {
         }
 
-        public char ReadChar()
+        public Task<char> ReadChar()
         {
             throw new NotImplementedException();
         }
 
-        public void Write(char b)
+        public Task Write(char b)
         {
             throw new NotImplementedException();
         }
 
-        public string ReadLine()
+        public Task<string> ReadLine()
         {
             throw new NotImplementedException();
         }
 
-        public async Task<T> ReadBlockAsync<T>() where T : class
+        public async Task<T> ReadBlock<T>() where T : class
         {
             if (typeof(T) != typeof(LiveTestRequest))
             {
@@ -56,12 +55,12 @@ namespace PSSwagger.LTF.Lib.UnitTests.Mocks
             return this.Requests.Dequeue() as T;
         }
 
-        public void WriteLine(string line)
+        public Task WriteLine(string line)
         {
             throw new NotImplementedException();
         }
 
-        public async Task WriteBlockAsync<T>(T msg) where T : class
+        public async Task WriteBlock<T>(T msg) where T : class
         {
             if (!(msg is LiveTestResponse))
             {
@@ -69,6 +68,11 @@ namespace PSSwagger.LTF.Lib.UnitTests.Mocks
             }
 
             this.Responses.Add(msg as LiveTestResponse);
+        }
+
+        public Task<byte> ReadByte()
+        {
+            throw new NotImplementedException();
         }
     }
 }

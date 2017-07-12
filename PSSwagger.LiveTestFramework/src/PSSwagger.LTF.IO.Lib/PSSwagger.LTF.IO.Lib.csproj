@@ -5,11 +5,7 @@
   <ItemGroup>
     <PackageReference Include="Newtonsoft.JSON" Version="10.0.1" />
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\PSSwagger.LTF.IO.Lib\PSSwagger.LTF.IO.Lib.csproj" />
-  </ItemGroup>
   <ItemGroup Condition=" '$(TargetFramework)' == 'net452' ">
-    <PackageReference Include="System.Management.Automation" Version="6.0.0-alpha17" />
     <PackageReference Include="Microsoft.CSharp" Version="4.4.0-preview2-25405-01" />
   </ItemGroup>
 </Project>

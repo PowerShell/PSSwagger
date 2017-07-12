@@ -9,13 +9,14 @@ namespace PSSwagger.LTF.Lib.IO
     /// </summary>
     public class StandardOutputPipe : IOutputPipe
     {
-        /// <summary>
-        /// Write a single character to System.Console.
-        /// </summary>
-        /// <param name="b">Character to write.</param>
-        public void Write(char b)
+        public async Task Write(char b)
         {
             Console.Write(b);
+        }
+
+        public Task WriteBlock<T>(T msg) where T : class
+        {
+            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -26,11 +27,7 @@ namespace PSSwagger.LTF.Lib.IO
             throw new NotImplementedException();
         }
 
-        /// <summary>
-        /// Write the given string then a new line to System.Console.
-        /// </summary>
-        /// <param name="line">Line to write, not including new line.</param>
-        public void WriteLine(string line)
+        public async Task WriteLine(string line)
         {
             Console.WriteLine(line);
         }

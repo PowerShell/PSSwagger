@@ -9,6 +9,11 @@ namespace PSSwagger.LTF.Lib.IO
     /// </summary>
     public class StandardInputPipe : IInputPipe
     {
+        public Task<T> ReadBlock<T>() where T : class
+        {
+            throw new NotImplementedException();
+        }
+
         /// <summary>
         /// NotImplemented
         /// </summary>
@@ -17,22 +22,19 @@ namespace PSSwagger.LTF.Lib.IO
             throw new NotImplementedException();
         }
 
-        /// <summary>
-        /// Read a single character from System.Console.
-        /// </summary>
-        /// <returns>Character read.</returns>
-        public char ReadChar()
+        public Task<byte> ReadByte()
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task<char> ReadChar()
         {
             return (char)Console.In.Read();
         }
 
-        /// <summary>
-        /// Read until the next new line character from System.Console.
-        /// </summary>
-        /// <returns>All text input up to but not including the new line character.</returns>
-        public string ReadLine()
+        public async Task<string> ReadLine()
         {
-            return Console.ReadLine();
+            return Console.In.ReadLine();
         }
     }
 }

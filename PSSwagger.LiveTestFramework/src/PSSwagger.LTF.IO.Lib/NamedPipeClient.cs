@@ -60,11 +60,11 @@ namespace PSSwagger.LTF.Lib.IO
         /// </summary>
         public void BeginProcessing()
         {
-            new Thread(() =>
+            new Thread(async () =>
             {
                 while (this.stream.IsConnected)
                 {
-                    string line = this.ReadLine();
+                    string line = await this.ReadLine();
                     if (OnDataReceived != null)
                     {
                         OnDataReceived.Invoke(line);
@@ -104,7 +104,7 @@ namespace PSSwagger.LTF.Lib.IO
         /// Read a single character.
         /// </summary>
         /// <returns>Character read.</returns>
-        public char ReadChar()
+        public async Task<char> ReadChar()
         {
             return (char)this.reader.Read();
         }
@@ -127,27 +127,32 @@ namespace PSSwagger.LTF.Lib.IO
             this.writer.WriteLine(line);
         }
 
-        /// <summary>
-        /// Read until the next new line character.
-        /// </summary>
-        /// <returns>All text input up to but not including the new line character.</returns>
-        public string ReadLine()
-        {
-            return this.reader.ReadLine();
-        }
-
-        /// <summary>
-        /// NotImplemented
-        /// </summary>
-        public Task<T> ReadBlockAsync<T>() where T : class
+        public Task<string> ReadLine()
         {
             throw new NotImplementedException();
         }
 
-        /// <summary>
-        /// NotImplemented
-        /// </summary>
-        public Task WriteBlockAsync<T>(T msg) where T : class
+        public Task<T> ReadBlock<T>() where T : class
+        {
+            throw new NotImplementedException();
+        }
+
+        Task IOutputPipe.Write(char b)
+        {
+            throw new NotImplementedException();
+        }
+
+        Task IOutputPipe.WriteLine(string line)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task WriteBlock<T>(T msg) where T : class
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<byte> ReadByte()
         {
             throw new NotImplementedException();
         }

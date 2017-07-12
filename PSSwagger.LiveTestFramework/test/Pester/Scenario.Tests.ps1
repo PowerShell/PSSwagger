@@ -56,8 +56,6 @@ Describe "Build" {
             $pdbFiles = Get-ChildItem -Path (Join-Path -Path $debugPath -ChildPath "*.pdb") -Recurse -File -ErrorAction Ignore
             $csFiles | should not benullorempty
             $pdbFiles | should not benullorempty
-            $csFiles -isnot [System.Array] | should be true
-            $pdbFiles -isnot [System.Array] | should be true
         }
 
         It "Compiles console server with minimum parameters" {

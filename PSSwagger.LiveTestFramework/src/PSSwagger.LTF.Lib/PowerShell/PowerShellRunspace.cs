@@ -33,11 +33,6 @@ namespace PSSwagger.LTF.Lib.PowerShell
             return new PowerShellCommand(this);
         }
 
-        public IParameterEncoder CreateEncoder()
-        {
-            return new PowerShellParameterEncoder();
-        }
-
         public GeneratedModule GetModuleInfo(string modulePath)
         {
             if (this.logger != null)

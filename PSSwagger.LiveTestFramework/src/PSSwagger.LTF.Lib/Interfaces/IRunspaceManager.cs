@@ -28,10 +28,5 @@ namespace PSSwagger.LTF.Lib.Interfaces
         /// <param name="modulePath">Path to module or module name.</param>
         /// <returns>Parsed module information struct.</returns>
         GeneratedModule GetModuleInfo(string modulePath);
-
-        /// <summary>
-        /// Create the parameter encoder for this runspace.
-        /// </summary>
-        IParameterEncoder CreateEncoder();
     }
 }

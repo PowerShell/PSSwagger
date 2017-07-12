@@ -16,13 +16,11 @@ namespace PSSwagger.LTF.Lib.UnitTests.Mocks
         public MockCommandBuilder Builder { get; private set; }
         public bool GetModuleInfoCalled { get; private set; }
         public IList<object> InvokeHistory { get; private set; }
-        public MockParameterEncoder Encoder { get; private set; }
         public MockRunspaceManager()
         {
             this.ModuleMocks = new Dictionary<string, GeneratedModule>();
             this.Builder = new MockCommandBuilder(this);
             this.InvokeHistory = new List<object>();
-            this.Encoder = new MockParameterEncoder();
         }
 
         public ICommandBuilder CreateCommand()
@@ -46,11 +44,6 @@ namespace PSSwagger.LTF.Lib.UnitTests.Mocks
         {
             this.InvokeHistory.Add(script);
             return null;
-        }
-
-        public IParameterEncoder CreateEncoder()
-        {
-            return this.Encoder;
         }
     }
 }

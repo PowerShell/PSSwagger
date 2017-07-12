@@ -85,12 +85,12 @@
                 {
                     try
                     {
-                        LiveTestRequest msg = await this.Input.ReadBlockAsync<LiveTestRequest>();
+                        LiveTestRequest msg = await this.Input.ReadBlock<LiveTestRequest>();
                         if (this.IsRunning)
                         {
                             if (this.parameters.Logger != null)
                             {
-                                this.parameters.Logger.LogAsync("Processing message: {0}", Newtonsoft.Json.JsonConvert.SerializeObject(msg));
+                                this.parameters.Logger.LogAsync("Processing message: {0}", msg);
                             }
                             try
                             {
