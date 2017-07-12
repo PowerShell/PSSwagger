@@ -23,7 +23,7 @@ namespace PSSwagger.LTF.Lib.UnitTests
         [Fact]
         public void ConvertObjectWithRenames()
         {
-            string json = "{ \"prop\": \"test\", \"booleanproperty\": true }";
+            string json = "{\"prop\":\"test\",\"booleanproperty\":true}";
             TypeData typeData = new TypeData();
             typeData.Type = typeof(DynamicTypedObjectConverterTestsObject);
             typeData.Properties.Add("prop", new ParameterData()
@@ -52,7 +52,7 @@ namespace PSSwagger.LTF.Lib.UnitTests
         public void ConvertNestedObject()
         {
             string json = "{ \"obj\": { \"prop\": \"test\", \"booleanproperty\": true }, \"unconvertedobject\": { \"prop\": \"5\" } }";
-            string expectedJson = "{ \"obj\": { \"prop\": \"test\", \"booleanproperty\": true }, \"unconvertedobject\": { \"prop\": null } }";
+            string expectedJson = "{\"obj\":{\"prop\":\"test\",\"booleanproperty\":true},\"unconvertedobject\":{\"Property\":null}}";
             TypeData childTypeData = new TypeData();
             childTypeData.Type = typeof(DynamicTypedObjectConverterTestsObject);
             childTypeData.Properties.Add("prop", new ParameterData()

@@ -13,6 +13,7 @@ namespace PSSwagger.LTF.Lib.Converters
     public class DynamicTypedObjectConverter : JsonConverter
     {
         private TypeData typeData;
+        private Dictionary<string, ParameterData> typePropertyToTypeData;
 
         /// <summary>
         /// Constructor.
@@ -21,6 +22,14 @@ namespace PSSwagger.LTF.Lib.Converters
         public DynamicTypedObjectConverter(TypeData typeData)
         {
             this.typeData = typeData;
+            this.typePropertyToTypeData = new Dictionary<string, ParameterData>();
+            foreach (ParameterData data in this.typeData.Properties.Values)
+            {
+                if (!String.IsNullOrEmpty(data.Name))
+                {
+                    this.typePropertyToTypeData[data.Name.ToLowerInvariant()] = data;
+                }
+            }
         }
 
         public override bool CanConvert(Type objectType)
@@ -87,6 +96,28 @@ namespace PSSwagger.LTF.Lib.Converters
                 writer.WriteRawValue("null");
                 return;
             }
+
+            Dictionary<string, object> dict = new Dictionary<string, object>();
+            
+            foreach (PropertyInfo pi in value.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+            {
+                if (pi.GetCustomAttribute(typeof(JsonIgnoreAttribute)) == null)
+                {
+                    object val = pi.GetValue(value);
+                    if ((val != null) || serializer.NullValueHandling == NullValueHandling.Include)
+                    {
+                        string propertyName = pi.Name.ToLowerInvariant();
+                        if (this.typePropertyToTypeData.ContainsKey(propertyName) && !String.IsNullOrEmpty(this.typePropertyToTypeData[propertyName].JsonName))
+                        {
+                            propertyName = this.typePropertyToTypeData[propertyName].JsonName;
+                        }
+
+                        dict[propertyName] = val;
+                    }
+                }
+            }
+
+            serializer.Serialize(writer, dict);
         }
     }
 }
