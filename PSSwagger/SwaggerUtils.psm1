@@ -14,6 +14,7 @@ Import-Module -Name (Join-Path -Path $PSScriptRoot -ChildPath 'PSSwagger.Common.
 . "$PSScriptRoot\PSSwagger.Constants.ps1" -Force
 . "$PSScriptRoot\Trie.ps1" -Force
 . "$PSScriptRoot\PSCommandVerbMap.ps1" -Force
+. "$PSScriptRoot\PluralToSingularMap.ps1" -Force
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwagger.Resources.psd1
 $script:CmdVerbTrie = $null
 $script:CSharpCodeNamer = $null
@@ -29,6 +30,11 @@ if(-not (Get-OperatingSystemInfo).IsCore)
     }
 
     $script:PluralizationService = [System.Data.Entity.Design.PluralizationServices.PluralizationService]::CreateService([System.Globalization.CultureInfo]::CurrentCulture)
+    $script:CustomPluralToSinglularMapList | ForEach-Object {
+        $_.GetEnumerator() | ForEach-Object {
+            $script:PluralizationService.AddWord($_.Value, $_.Key)
+        }
+    }
 }
 
 $script:IgnoredAutoRestParameters = @(@('Modeler', 'm'), @('AddCredentials'), @('CodeGenerator', 'g'))
