@@ -2,7 +2,9 @@
 #
 # Copyright (c) Microsoft Corporation. All rights reserved.
 #
-# Localized PSSwagger.Constants.ps1
+# Licensed under the MIT license.
+#
+# PSSwagger Module
 #
 #########################################################################################
 

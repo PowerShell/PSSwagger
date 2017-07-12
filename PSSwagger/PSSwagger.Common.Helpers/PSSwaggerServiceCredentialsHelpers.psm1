@@ -1,3 +1,12 @@
+#########################################################################################
+#
+# Copyright (c) Microsoft Corporation. All rights reserved.
+#
+# Licensed under the MIT license.
+#
+# PSSwagger.Common.Helpers Module
+#
+#########################################################################################
 function Get-BasicAuthCredentialInternal {
     [CmdletBinding()]
     param(

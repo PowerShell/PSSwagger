@@ -2,7 +2,9 @@
 #
 # Copyright (c) Microsoft Corporation. All rights reserved.
 #
-# PSSwaggerMetadata.psm1
+# Licensed under the MIT license.
+#
+# PSSwagger Module
 #
 #########################################################################################
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest

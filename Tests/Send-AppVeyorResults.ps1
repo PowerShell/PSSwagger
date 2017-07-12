@@ -1,3 +1,13 @@
+
+#########################################################################################
+#
+# Copyright (c) Microsoft Corporation. All rights reserved.
+#
+# Licensed under the MIT license.
+#
+# PSSwagger Tests
+#
+#########################################################################################
 [CmdletBinding()]
 param(
     [Parameter(Mandatory=$true)]

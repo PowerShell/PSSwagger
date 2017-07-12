@@ -2,7 +2,9 @@
 #
 # Copyright (c) Microsoft Corporation. All rights reserved.
 #
-# SwaggerUtils Module
+# Licensed under the MIT license.
+#
+# PSSwagger Module
 #
 #########################################################################################
 

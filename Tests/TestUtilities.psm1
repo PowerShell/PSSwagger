@@ -1,3 +1,12 @@
+#########################################################################################
+#
+# Copyright (c) Microsoft Corporation. All rights reserved.
+#
+# Licensed under the MIT license.
+#
+# PSSwagger Tests
+#
+#########################################################################################
 # Ensures a package source exists for the location "http://nuget.org/api/v2/"
 function Test-NugetPackageSource {
     $bestNugetLocation = "http://nuget.org/api/v2/"

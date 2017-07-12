@@ -36,6 +36,8 @@ A PowerShell module with commands to generate the PowerShell commands for a give
 | Newtonsoft.Json | Full CLR: 6.0.8, Core CLR: 9.0.1 | NuGet package containing Newtonsoft.Json assembly, required for all modules |
 | Microsoft.Rest.ClientRuntime | 2.3.4 | NuGet package containing Microsoft.Rest.ClientRuntime assembly, required for all modules |
 | Microsoft.Rest.ClientRuntime.Azure | 3.3.4 | NuGet package containing Microsoft.Rest.ClientRuntime.Azure assembly, required for Microsoft Azure modules |
+| AzureRM.Profile | * | Module containing authentication helpers, required for Microsoft Azure modules on PowerShell |
+| AzureRM.Profile.NetCore.Preview | * | Module containing authentication helpers, required for Microsoft Azure modules on PowerShell Core |
 
 ## Usage
 
@@ -170,3 +172,6 @@ The scenario test suite contains tests that hit actual (local) web API endpoints
 
 # PSSwagger.LiveTestFramework
 The PSSwagger implementation of the [Azure Live Test Framework protocol](https://github.com/Azure/azure-rest-api-specs-tests/blob/master/json-rpc-server.md) is currently located in this repository in a subdirectory. Once PSSwagger.Common.Helpers is published to [PowerShellGallery.com](https://powershellgallery.com), the PSSwagger.LiveTestFramework code will be moved to a separate repository. You can find the readme for the PSSwagger.LiveTestFramework module [here](/docs/commands/New-PSSwaggerMetadataFile.md).
+
+# Code of Conduct 
+This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/). For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.

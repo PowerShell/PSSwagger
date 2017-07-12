@@ -1,3 +1,12 @@
+#########################################################################################
+#
+# Copyright (c) Microsoft Corporation. All rights reserved.
+#
+# Licensed under the MIT license.
+#
+# PSSwagger Tests
+#
+#########################################################################################
 param(
     [ValidateSet("All","UnitTest","ScenarioTest")]
     [string[]]$TestSuite = "All",

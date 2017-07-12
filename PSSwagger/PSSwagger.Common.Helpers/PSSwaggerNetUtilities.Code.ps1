@@ -1,4 +1,7 @@
-﻿namespace Microsoft.PowerShell.Commands.PSSwagger
+﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+
+// Licensed under the MIT license.
+namespace Microsoft.PowerShell.Commands.PSSwagger
 {
 	using Microsoft.Rest;
 	using System;
