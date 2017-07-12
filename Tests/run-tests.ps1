@@ -1,9 +1,20 @@
+#########################################################################################
+#
+# Copyright (c) Microsoft Corporation. All rights reserved.
+#
+# Licensed under the MIT license.
+#
+# PSSwagger Tests
+#
+#########################################################################################
+[CmdletBinding()]
 param(
     [ValidateSet("All","UnitTest","ScenarioTest")]
     [string[]]$TestSuite = "All",
     [string[]]$TestName,
     [ValidateSet("net452", "netstandard1.7")]
-    [string]$TestFramework = "net452"
+    [string]$TestFramework = "net452",
+    [switch]$EnableTracing
 )
 
 $executeTestsCommand = ""
@@ -14,6 +25,7 @@ $nugetPackageSource = Test-NugetPackageSource
 
 $testRunGuid = [guid]::NewGuid().GUID
 Write-Verbose -message "Test run GUID: $testRunGuid"
+$nodeModuleVersions = @{}
 # Set up scenario test requirements
 if ($TestSuite.Contains("All") -or $TestSuite.Contains("ScenarioTest")) {
     # Ensure node.js is installed
@@ -28,6 +40,7 @@ if ($TestSuite.Contains("All") -or $TestSuite.Contains("ScenarioTest")) {
     if ($npmModule -eq $null) {
         throw "NPM failed to install."
     }
+    $nodeModuleVersions['npm'] = $npmModule.Version
 
     $npmInstallPath = Split-Path -Path $npmModule.Source
 
@@ -49,8 +62,9 @@ if ($TestSuite.Contains("All") -or $TestSuite.Contains("ScenarioTest")) {
     # Ensure we have json-server
     if (-not (Test-Path $jsonServerPath)) {
         Write-Verbose "Couldn't find $jsonServerPath. Running npm install -g json-server."
-        & $nodeExePath (Join-Path -Path $npmInstallPath -ChildPath "node_modules\npm\bin\npm-cli.js") "install" "-g" "json-server"
+        & $nodeExePath (Join-Path -Path $npmInstallPath -ChildPath "node_modules\npm\bin\npm-cli.js") "install" "-g" "json-server@0.9.6"
     }
+    $nodeModuleVersions['json-server'] = & $nodeExePath (Join-Path -Path $npmInstallPath -ChildPath "node_modules\npm\bin\npm-cli.js") 'list' '-g' 'json-server'
 
     # For these node modules, it's easier on the middleware script devs to just install the modules locally instead of globally
     # Ensure we have request (for easy HTTP request creation for some test middlewares)
@@ -84,6 +98,16 @@ $autoRestModule = Test-Package -packageName "AutoRest" -packageSourceName $nuget
 $autoRestInstallPath = Split-Path -Path $autoRestModule.Source
 $executeTestsCommand += ";`$env:Path+=`";$autoRestInstallPath\tools`""
 
+# AzureRM.Profile requirement
+$azureRmProfile = Get-Package AzureRM.Profile -ErrorAction Ignore
+if (-not $azureRmProfile) {
+    if (-not (Get-PackageSource PSGallery -ErrorAction Ignore)) {
+        Register-PackageSource PSGallery -ProviderName PowerShellGet
+    }
+
+    $azureRmProfile = Install-Package AzureRM.Profile -Source PSGallery -RequiredVersion 2.8.0 -Force | Where-Object { $_.Name -eq 'AzureRM.Profile' }
+}
+
 $powershellFolder = $null
 if ("netstandard1.7" -eq $TestFramework) {
     # beta > alpha
@@ -94,6 +118,10 @@ if ("netstandard1.7" -eq $TestFramework) {
     $psVersion = $powershellCore.Name.Substring(11)
     $powershellFolder = "$Env:ProgramFiles\PowerShell\$($psVersion)"
     $executeTestsCommand += ";`$env:PSModulePath_Backup=`"$env:PSModulePath`""
+}
+
+if ($EnableTracing) {
+    $executeTestsCommand += ";`$global:PSSwaggerTest_EnableTracing=`$true"
 }
 
 $executeTestsCommand += ";`$verbosepreference=`"continue`";Invoke-Pester -ExcludeTag KnownIssue -OutputFormat NUnitXml -OutputFile ScenarioTestResults.xml -Verbose"
@@ -118,6 +146,15 @@ Write-Verbose "Cleaning old test assemblies, if any."
 Get-ChildItem -Path (Join-Path "$PSScriptRoot" "PSSwagger.TestUtilities") -Filter *.dll | Remove-Item -Force
 Get-ChildItem -Path (Join-Path "$PSScriptRoot" "PSSwagger.TestUtilities") -Filter *.pdb | Remove-Item -Force
 
+Write-Verbose "Dependency versions:"
+Write-Verbose " -- AzureRM.Profile: $($azureRmProfile.Version)"
+Write-Verbose " -- Pester: $((get-command invoke-pester).Version)"
+if ($autoRestModule) {
+    Write-Verbose " -- AutoRest: $($autoRestModule.Version)"
+}
+foreach ($entry in $nodeModuleVersions.GetEnumerator()) {
+    Write-Verbose " -- $($entry.Key): $($entry.Value)"
+}
 Write-Verbose "Executing: $executeTestsCommand"
 $executeTestsCommand | Out-File pesterCommand.ps1
 

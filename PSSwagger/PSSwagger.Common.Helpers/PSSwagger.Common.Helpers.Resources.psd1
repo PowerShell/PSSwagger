@@ -2,7 +2,9 @@
 #
 # Copyright (c) Microsoft Corporation. All rights reserved.
 #
-# Localized PSSwagger.Common.Helpers.Resources.psd1
+# Licensed under the MIT license.
+#
+# PSSwagger Module
 #
 #########################################################################################
 

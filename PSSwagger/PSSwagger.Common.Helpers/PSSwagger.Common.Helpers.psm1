@@ -1,4 +1,13 @@
-﻿Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
+﻿#########################################################################################
+#
+# Copyright (c) Microsoft Corporation. All rights reserved.
+#
+# Licensed under the MIT license.
+#
+# PSSwagger.Common.Helpers Module
+#
+#########################################################################################
+Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwagger.Common.Helpers.Resources.psd1
 
 <#

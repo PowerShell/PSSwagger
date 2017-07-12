@@ -2,7 +2,9 @@
 #
 # Copyright (c) Microsoft Corporation. All rights reserved.
 #
-# SwaggerUtils Module
+# Licensed under the MIT license.
+#
+# PSSwagger Module
 #
 #########################################################################################
 
@@ -1202,18 +1204,20 @@ function Get-PathCommandName
         $cmdNoun = Get-SingularizedValue -Name $cmdNoun
     }
 
-    $cmdletNames = $cmdVerb | ForEach-Object {
+    $cmdletInfos = $cmdVerb | ForEach-Object {
         $Verb = Get-PascalCasedString -Name $_
         if($cmdNoun){
             $CommandName = "$Verb-$cmdNoun"
         } else {
             $CommandName = Get-SingularizedValue -Name $Verb
         }
-        $CommandName
+        $cmdletInfo = @{}
+        $cmdletInfo['name'] = $CommandName
+        $cmdletInfo
         Write-Verbose -Message ($LocalizedData.UsingCmdletNameForSwaggerPathOperation -f ($CommandName, $OperationId))
     }
 
-    return $cmdletNames
+    return $cmdletInfos
 }
 
 function Get-PathFunctionBody

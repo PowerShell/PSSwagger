@@ -1,6 +1,10 @@
 #########################################################################################
 #
-# Localized Generated.Resources.psd1
+# Copyright (c) Microsoft Corporation. All rights reserved.
+#
+# Licensed under the MIT license.
+#
+# PSSwagger Module
 #
 #########################################################################################
 

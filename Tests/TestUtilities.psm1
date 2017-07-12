@@ -1,3 +1,12 @@
+#########################################################################################
+#
+# Copyright (c) Microsoft Corporation. All rights reserved.
+#
+# Licensed under the MIT license.
+#
+# PSSwagger Tests
+#
+#########################################################################################
 # Ensures a package source exists for the location "http://nuget.org/api/v2/"
 function Test-NugetPackageSource {
     $bestNugetLocation = "http://nuget.org/api/v2/"
@@ -107,6 +116,10 @@ function Start-JsonServer {
         $nodeProcesses = @($nodeProcesses)
     }
 
+    foreach ($nodeProcess in $nodeProcesses) {
+        Write-Verbose -Message ($nodeProcess | Out-String)
+    }
+
     $argList = "--watch `"$PSScriptRoot\NodeModules\db.json`""
     if ($TestRoutesFileName) {
         $argList += " --routes `"$testCaseDataLocation\$TestRoutesFileName`""
@@ -121,7 +134,7 @@ function Start-JsonServer {
         $argList += " $CustomServerParameters"
     }
 
-    Write-Verbose "Starting json-server: $PSScriptRoot\NodeModules\json-server.cmd $argList"
+    Write-Host -Message "Starting json-server: $PSScriptRoot\NodeModules\json-server.cmd $argList"
     if ('Core' -eq $PSEdition) {
         $jsonServerProcess = Start-Process -FilePath "$PSScriptRoot\NodeModules\json-server.cmd" -ArgumentList $argList -PassThru
     } else {
@@ -129,15 +142,18 @@ function Start-JsonServer {
     }
 
     # Wait for local json-server to start 
-    while (-not (Test-Connection -ComputerName localhost -Port 3000)) {
-        Write-Verbose -Message "Waiting for server to start..." -Verbose
+    Write-Verbose -Message "Waiting for server to start..."
+    while (-not ((Test-NetConnection -ComputerName localhost -Port 3000).TcpTestSucceeded)) {
         Start-Sleep -s 1
     }
 
+    Write-Verbose -Message "Server started"
     $nodeProcessToStop = Get-Process -Name "node" -ErrorAction SilentlyContinue | Where-Object {-not $nodeProcesses.Contains($_)}
     while ($nodeProcessToStop -eq $null) {
         $nodeProcessToStop = Get-Process -Name "node" -ErrorAction SilentlyContinue | Where-Object {-not $nodeProcesses.Contains($_)}
     }
+
+    Write-Verbose -Message "Node process: $($nodeProcessToStop | Out-String)"
 
     $props = @{
         ServerProcess = $jsonServerProcess;
@@ -174,11 +190,11 @@ function Stop-JsonServer {
         [System.Diagnostics.Process]$NodeProcess
     )
     if ($JsonServerProcess) {
-        Write-Verbose "Stopping process: $($JsonServerProcess.ID)"
+        Write-Host "Stopping process: $($JsonServerProcess.ID)"
         $JsonServerProcess | Stop-Process
     }
     if ($NodeProcess) {
-        Write-Verbose "Stopping process: $($NodeProcess.ID)"
+        Write-Host "Stopping process: $($NodeProcess.ID)"
         $NodeProcess | Stop-Process
     }
 }

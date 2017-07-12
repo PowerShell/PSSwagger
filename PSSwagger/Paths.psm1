@@ -2,7 +2,9 @@
 #
 # Copyright (c) Microsoft Corporation. All rights reserved.
 #
-# Paths Module
+# Licensed under the MIT license.
+#
+# PSSwagger Module
 #
 #########################################################################################
 
@@ -95,6 +97,18 @@ function Get-SwaggerSpecPathInfo
             $operationSecurityObject = $null
         }
 
+        $cmdletInfoOverrides = @()
+        if ((Get-Member -InputObject $_.Value -Name 'x-ps-cmdlet-infos') -and $_.Value.'x-ps-cmdlet-infos') {
+            foreach ($cmdletMetadata in $_.Value.'x-ps-cmdlet-infos') {
+                $cmdletInfoOverride = @{}
+                if ((Get-Member -InputObject $cmdletMetadata -Name 'name') -and $cmdletMetadata.name) {
+                    $cmdletInfoOverride['name'] = $cmdletMetadata.name
+                }
+
+                $cmdletInfoOverrides += $cmdletInfoOverride
+            }
+        }
+
         if(Get-Member -InputObject $_.Value -Name 'OperationId')
         {
             $operationId = $_.Value.operationId
@@ -131,9 +145,9 @@ function Get-SwaggerSpecPathInfo
                 $responses = $_.value.responses 
             }
 
-            if((Get-Member -InputObject $_.value -Name 'x-ms-cmdlet-name') -and $_.value.'x-ms-cmdlet-name')
+            if($cmdletInfoOverrides)
             {
-                $commandNames = $_.value.'x-ms-cmdlet-name'
+                $commandNames = $cmdletInfoOverrides
             } else {
                 $commandNames = Get-PathCommandName -OperationId $operationId
             }
@@ -174,10 +188,10 @@ function Get-SwaggerSpecPathInfo
 
             $commandNames | ForEach-Object {
                 $FunctionDetails = @{}
-                if ($PathFunctionDetails.ContainsKey($_)) {
-                    $FunctionDetails = $PathFunctionDetails[$_]
+                if ($PathFunctionDetails.ContainsKey($_.name)) {
+                    $FunctionDetails = $PathFunctionDetails[$_.name]
                 } else {
-                    $FunctionDetails['CommandName'] = $_
+                    $FunctionDetails['CommandName'] = $_.name
                     $FunctionDetails['x-ms-long-running-operation'] = $longRunningOperation
                 }
 
@@ -192,7 +206,7 @@ function Get-SwaggerSpecPathInfo
 
                 $ParameterSetDetails += $ParameterSetDetail
                 $FunctionDetails['ParameterSetDetails'] = $ParameterSetDetails
-                $PathFunctionDetails[$_] = $FunctionDetails
+                $PathFunctionDetails[$_.name] = $FunctionDetails
             }
         }
         elseif(-not ((Get-Member -InputObject $_ -Name 'Name') -and ($_.Name -eq 'Parameters')))

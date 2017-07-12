@@ -2,7 +2,9 @@
 #
 # Copyright (c) Microsoft Corporation. All rights reserved.
 #
-# Definitions Module
+# Licensed under the MIT license.
+#
+# PSSwagger Module
 #
 #########################################################################################
 
