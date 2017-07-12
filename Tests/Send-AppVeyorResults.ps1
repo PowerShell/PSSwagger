@@ -22,6 +22,10 @@ param(
     [string]
     $testResultFilePattern,
 
+    [Parameter(Mandatory=$true)]
+    [string]
+    $generatedModulesDir,
+
     [Parameter(Mandatory=$false)]
     [string]
     $_garbage
@@ -35,3 +39,7 @@ Get-ChildItem -Path "$testResultRootDir" -Filter $testResultFilePattern -File -R
     Write-Host "Uploading file: $($_.FullName)"
     $webClient.UploadFile($appVeyorUrl, "$($_.FullName)")
 }
+Write-Host "Zipping generated modules dir '$generatedModulesDir' assuming 7z is in path"
+7z a .\Generated.zip $generatedModulesDir
+Write-Host "Pushing generated modules zip to AppVeyor"
+Push-AppveyorArtifact .\Generated.zip
