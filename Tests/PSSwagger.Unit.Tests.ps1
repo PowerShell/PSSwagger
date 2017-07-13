@@ -18,49 +18,53 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
     InModuleScope PSSwagger {
         Context "Get-PathCommandName Unit Tests" {
             It "Get-PathCommandName should return command names with proper verb for VM_CreateOrUpdateWithNounSuffix operationid" {
-                $CommandNames = Get-PathCommandName -OperationId VM_CreateOrUpdateWithNounSuffix | %{ $_.name }
+                $CommandNames = Get-PathCommandName -OperationId VM_CreateOrUpdateWithNounSuffix | Foreach-Object { $_.name }
                 $CommandNames -CContains 'New-VMWithNounSuffix' | Should Be $True
                 $CommandNames -CContains 'Set-VMWithNounSuffix' | Should Be $True
             }
 
             It "Get-PathCommandName should return command names with proper verb for VM_createorupdatewithnounsuffix operationid" {
-                $CommandNames = Get-PathCommandName -OperationId VM_createorupdatewithnounsuffix | %{ $_.name }
+                $CommandNames = Get-PathCommandName -OperationId VM_createorupdatewithnounsuffix | Foreach-Object { $_.name }
                 $CommandNames -CContains 'New-VMWithnounsuffix' | Should Be $True
                 $CommandNames -CContains 'Set-VMWithnounsuffix' | Should Be $True
             }
 
             It "Get-PathCommandName should return command name with proper verb for VM_createOrWithNounSuffix operationid" {
-                Get-PathCommandName -OperationId VM_createOrWithNounSuffix | %{ $_.name } | Should BeExactly 'New-VMOrWithNounSuffix'
+                Get-PathCommandName -OperationId VM_createOrWithNounSuffix | Foreach-Object { $_.name } | Should BeExactly 'New-VMOrWithNounSuffix'
             }
 
             It "Get-PathCommandName should return command name with proper verb for VM_migrateWithNounSuffix operationid" {
-                Get-PathCommandName -OperationId VM_migrateWithNounSuffix | %{ $_.name } | Should BeExactly 'Move-VMWithNounSuffix'
+                Get-PathCommandName -OperationId VM_migrateWithNounSuffix | Foreach-Object { $_.name } | Should BeExactly 'Move-VMWithNounSuffix'
             }
 
             It "Get-PathCommandName should return command name with proper verb for CreateFooResource operationid" {
-                Get-PathCommandName -OperationId CreateFooResource | %{ $_.name } | Should BeExactly 'New-FooResource'
+                Get-PathCommandName -OperationId CreateFooResource | Foreach-Object { $_.name } | Should BeExactly 'New-FooResource'
             }
 
             It "Get-PathCommandName should return command names with proper verb for createorupdatebarResource operationid" {
-                $CommandNames = Get-PathCommandName -OperationId createorupdatebarResource | %{ $_.name }
+                $CommandNames = Get-PathCommandName -OperationId createorupdatebarResource | Foreach-Object { $_.name }
                 $CommandNames -CContains 'New-BarResource' | Should BeExactly $True
                 $CommandNames -CContains 'Set-BarResource' | Should BeExactly $True
             }
 
             It "Get-PathCommandName should return command name with proper verb for anotherFooResource_createFoo operationid" {
-                Get-PathCommandName -OperationId anotherFooResource_createFoo | %{ $_.name } | Should BeExactly 'New-AnotherFooResource'
+                Get-PathCommandName -OperationId anotherFooResource_createFoo | Foreach-Object { $_.name } | Should BeExactly 'New-AnotherFooResource'
             }
 
             It "Get-PathCommandName should return command name with proper verb for FooResource_createresource operationid" {
-                Get-PathCommandName -OperationId FooResource_createresource | %{ $_.name } | Should BeExactly 'New-FooResource'
+                Get-PathCommandName -OperationId FooResource_createresource | Foreach-Object { $_.name } | Should BeExactly 'New-FooResource'
             }
 
             It "Get-PathCommandName should return proper command name for abcd operationid" {
-                Get-PathCommandName -OperationId abcd | %{ $_.name } | Should BeExactly 'Abcd'
+                Get-PathCommandName -OperationId abcd | Foreach-Object { $_.name } | Should BeExactly 'Abcd'
             }
 
             It "Get-PathCommandName with NetworkInterfaces_ListVirtualMachineScaleSetVMNetworkInterfaces" {
-                Get-PathCommandName -OperationId NetworkInterfaces_ListVirtualMachineScaleSetVMNetworkInterfaces | %{ $_.name } | Should BeExactly 'Get-VirtualMachineScaleSetVMNetworkInterface'
+                Get-PathCommandName -OperationId NetworkInterfaces_ListVirtualMachineScaleSetVMNetworkInterfaces | Foreach-Object { $_.name } | Should BeExactly 'Get-VirtualMachineScaleSetVMNetworkInterface'
+            }
+
+            It "Get-PathCommandName with Databases_Pause" {
+                Get-PathCommandName -OperationId Databases_Pause | ForEach-Object { $_.name } | Should BeExactly 'Suspend-Database'
             }
         }
 

@@ -1,0 +1,10 @@
+{
+    "CustomPluralToSingularMapping": [
+        {
+            "Databases": "Database"
+        },
+        {
+            "databases": "database"
+        }
+    ]
+}
