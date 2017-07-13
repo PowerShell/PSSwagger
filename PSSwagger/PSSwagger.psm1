@@ -529,7 +529,6 @@ function ConvertTo-CsharpCode
     $info = $SwaggerDict['Info']
 
     $autoRestExePath = "AutoRest"
-    # fallback on older version of autorest
     if (-not (get-command -name $autoRestExePath)) {
             throw $LocalizedData.AutoRestNotInPath
     }
