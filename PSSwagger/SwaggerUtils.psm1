@@ -29,6 +29,15 @@ if(-not (Get-OperatingSystemInfo).IsCore)
     }
 
     $script:PluralizationService = [System.Data.Entity.Design.PluralizationServices.PluralizationService]::CreateService([System.Globalization.CultureInfo]::CurrentCulture)
+
+    $PluralToSingularMapPath = Join-Path -Path $PSScriptRoot -ChildPath 'PluralToSingularMap.json'
+    if(Test-Path -Path $PluralToSingularMapPath -PathType Leaf)
+    {
+        $PluralToSingularMapJsonObject = ConvertFrom-Json -InputObject ((Get-Content -Path $PluralToSingularMapPath) -join [Environment]::NewLine) -ErrorAction Stop
+        $PluralToSingularMapJsonObject.CustomPluralToSingularMapping | ForEach-Object {
+            $script:PluralizationService.AddWord($_.PSObject.Properties.Value, $_.PSObject.Properties.Name)
+        }
+    }
 }
 
 $script:IgnoredAutoRestParameters = @(@('Modeler', 'm'), @('AddCredentials'), @('CodeGenerator', 'g'))
