@@ -24,7 +24,7 @@ ConvertFrom-StringData @'
     SwaggerSpecPathNotExist=Swagger file $SwaggerSpecPath does not exist. Check the path
     SamePropertyName=Same property name '{0}' is defined in a definition '{1}' with AllOf inheritance.
     DataTypeNotImplemented=Please get an implementation of '{0}' for '{1}'
-    AutoRestNotInPath=Unable to find AutoRest.exe in PATH environment. Ensure the PATH is updated.
+    AutoRestNotInPath=Unable to find AutoRest in PATH environment. Ensure the PATH is updated.
     AutoRestError=AutoRest resulted in an error
     SwaggerParamsMissing=No parameters in the Swagger
     SwaggerDefinitionsMissing=No definitions in the Swagger
@@ -62,11 +62,11 @@ ConvertFrom-StringData @'
     InvalidPathParameterType=Extracted an invalid parameter type '{0}' for parameter '{1}' in path operation.
     InvalidDefinitionParameterType=Extracted an invalid parameter type '{0}' for parameter '{1}' in definition '{2}'.
     AutoRestParameterIgnored=The parameter '{0}' with value '{1}' specified in the Swagger specification will be overwritten by PSSwagger during code generation.
-    InvokingAutoRestWithParams=Invoking AutoRest.exe with the following parameters:
+    InvokingAutoRestWithParams=Invoking AutoRest with the following parameters:
     AutoRestParam=  {0} = {1}
     OutputDirectoryMustBeEmpty=Code output directory '{0}' must not contain any .cs files in order for PSSwagger to correctly determine the files from which the SDK should be built.
     CustomNamespaceNotRecommended=Custom namespaces are not recommended when using PSSwagger, as the generated modules may not support side-by-side.
-    CodeDirectoryWillBeCreated=Code output directory '{0}' will be created by AutoRest.exe and contain unused generated code. You may delete this directory after the module has finished generating if you wish.
+    CodeDirectoryWillBeCreated=Code output directory '{0}' will be created by AutoRest and contain unused generated code. You may delete this directory after the module has finished generating if you wish.
     MultiplePageReturnTypes=Multiple page return types found, unable to generate -Page parameter with a strong type for cmdlet '{0}'.
     FailedToFindPagingOperation=Failed to find specified next page operation with operationId '{0}' for cmdlet '{1}'.
     InvalidPagingOperationSchema=PSSwagger requires that the NextLink operation contains exactly one parameter different than the original operation, where the different parameter is used to pass the nextLink value to the NextLink operation. Current cmdlet: '{0}'. NextLink operation: '{1}'
