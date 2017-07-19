@@ -9,7 +9,7 @@ install:
     - npm install
     - node --version
     - npm --version
-    - npm install -g autorest@1.1.0
+    - npm install -g autorest
     - autorest --reset
 build: off
 test_script:

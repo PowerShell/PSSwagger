@@ -1617,7 +1617,7 @@ function Get-CSharpModelName
                 throw ($LocalizedData.PathNotFound -f $AssemblyFilePath)
             }
 
-            Add-Type -LiteralPath $AssemblyFilePath
+            Add-Type -LiteralPath $AssemblyFilePath -ErrorAction Ignore
         }
     }
 

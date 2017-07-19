@@ -9,7 +9,7 @@
 #########################################################################################
 [CmdletBinding()]
 param(
-    [ValidateSet("All","UnitTest","ScenarioTest")]
+    [ValidateSet("All", "UnitTest", "ScenarioTest")]
     [string[]]$TestSuite = "All",
     [string[]]$TestName,
     [ValidateSet("net452", "netstandard1.7")]
@@ -27,46 +27,39 @@ $NodeJSPackageName = "node-v$NodeJSVersion-win-x64"
 #    the directory name must be less than 248 characters"
 $NodeJSLocalPath = Join-Path -Path $env:SystemDrive -ChildPath $NodeJSPackageName
 
-if(-not (Test-Path -Path $NodeJSLocalPath -PathType Container))
-{
+if (-not (Test-Path -Path $NodeJSLocalPath -PathType Container)) {
     $NodeJSZipURL = "https://nodejs.org/dist/v$NodeJSVersion/$NodeJSPackageName.zip"
     $TempNodeJSZipLocalPath = Join-Path -Path $env:TEMP -ChildPath "$NodeJSPackageName.zip"
     Invoke-WebRequest -Uri $NodeJSZipURL -OutFile $TempNodeJSZipLocalPath -UseBasicParsing
-    try
-    {
+    try {
         # Using Join-Path to get "$env:SystemDrive\" path.
         $DestinationPath = Join-Path -Path $env:SystemDrive -ChildPath ''
         Expand-Archive -Path $TempNodeJSZipLocalPath -DestinationPath $DestinationPath -Force
 
-        if(-not (Test-Path -Path $NodeJSLocalPath -PathType Container))
-        {
+        if (-not (Test-Path -Path $NodeJSLocalPath -PathType Container)) {
             Throw "Unable to install '$NodeJSZipURL' to local machine."
         }
     }
-    finally
-    {
+    finally {
         Remove-Item -Path $TempNodeJSZipLocalPath -Force
     }
 }
 
 $NpmCmdPath = Join-Path -Path $NodeJSLocalPath -ChildPath 'npm.cmd'
-if(-not (Test-Path -Path $NpmCmdPath -PathType Leaf))
-{
+if (-not (Test-Path -Path $NpmCmdPath -PathType Leaf)) {
     Throw "Unable to find $NpmCmdPath."
 }
 $nodeModuleVersions['npm'] = & $NpmCmdPath list -g npm
 
 $NodeModulesPath = Join-Path -Path $PSScriptRoot -ChildPath 'NodeModules'
-if(-not (Test-Path -Path $NodeModulesPath -PathType Container))
-{
+if (-not (Test-Path -Path $NodeModulesPath -PathType Container)) {
     $null = New-Item -Path $NodeModulesPath -ItemType Directory -Force
 }
 
 # Set up AutoRest
 # Install AutoRest using NPM, if not installed already.
 $AutorestCmdPath = Join-Path -Path $NodeModulesPath -ChildPath 'autorest.cmd'
-if (-not (Test-Path -Path $AutorestCmdPath -PathType Leaf))
-{
+if (-not (Test-Path -Path $AutorestCmdPath -PathType Leaf)) {
     Write-Verbose "Couldn't find $AutorestCmdPath. Running 'npm install -g autorest'."
     & $NpmCmdPath install -g --prefix $NodeModulesPath autorest --scripts-prepend-node-path
 }
@@ -74,12 +67,11 @@ $nodeModuleVersions['autorest'] = & $NpmCmdPath list -g --prefix $NodeModulesPat
 $executeTestsCommand += ";`$env:Path =`"$NodeModulesPath;`$env:Path`""
 
 $AutoRestPluginPath = Join-Path -Path $env:USERPROFILE -ChildPath '.autorest' | 
-                          Join-Path -ChildPath 'plugins' | 
-                              Join-Path -ChildPath 'autorest'
+    Join-Path -ChildPath 'plugins' | 
+    Join-Path -ChildPath 'autorest'
 
-if(-not ((Test-Path -Path $AutoRestPluginPath -PathType Container) -and 
-         (Get-ChildItem -Path $AutoRestPluginPath -Directory)))
-{
+if (-not ((Test-Path -Path $AutoRestPluginPath -PathType Container) -and 
+        (Get-ChildItem -Path $AutoRestPluginPath -Directory))) {
     # Create the generator plugins
     & $AutorestCmdPath  --reset
 }
@@ -91,22 +83,21 @@ if ($TestSuite.Contains("All") -or $TestSuite.Contains("ScenarioTest")) {
 
     # Ensure we have json-server
     $jsonServerPath = Join-Path -Path $NodeModulesPath -ChildPath 'json-server.cmd'
-    if (-not (Test-Path -Path $jsonServerPath -PathType Leaf))
-    {
+    if (-not (Test-Path -Path $jsonServerPath -PathType Leaf)) {
         Write-Verbose "Couldn't find $jsonServerPath. Running 'npm install -g json-server@0.9.6'."
         & $NpmCmdPath install -g --prefix $NodeModulesPath json-server@0.9.6 --scripts-prepend-node-path
     }
     $nodeModuleVersions['json-server'] = & $NpmCmdPath list -g --prefix $NodeModulesPath json-server
 
     $localnode_modulesPath = Join-Path -Path $PSScriptRoot -ChildPath 'node_modules'
-<#
+    <#
     # Create package.json under $PSScriptRoot using below command.
     # Otherwise, you will get following error in AppVeyor build.
     #    "npm.cmd : npm WARN saveError ENOENT: no such file or directory, open 'C:\projects\psswagger\Tests\package.json'""
     Set-Location -Path $PSScriptRoot
     & $NpmCmdPath install express --scripts-prepend-node-path
     & $NpmCmdPath init -y
-#>
+    #>
     # For these node modules, it's easier on the middleware script devs to just install the modules locally instead of globally
     # Ensure we have request (for easy HTTP request creation for some test middlewares)
     if (-not (Test-Path -Path (Join-Path -Path $localnode_modulesPath -ChildPath 'request'))) {
@@ -167,7 +158,8 @@ if ($PSBoundParameters.ContainsKey('TestName')) {
 
 if ($TestSuite.Contains("All")) {
     Write-Verbose "Invoking all tests."
-} else {
+}
+else {
     Write-Verbose "Running only tests with tag: $TestSuite"
     $executeTestsCommand += " -Tag $TestSuite"
 }
@@ -190,17 +182,18 @@ if ($TestFramework -eq "netstandard1.7") {
         $null = Get-CimInstance Win32_OperatingSystem
         Write-Verbose -Message "Invoking PowerShell Core at: $powershellFolder"
         & "$powershellFolder\powershell" -command $PesterCommandFilePath
-    } catch {
+    }
+    catch {
         # For non-Windows, keep using the basic command
         powershell -command $PesterCommandFilePath
     }
-} else {
+}
+else {
     powershell -command $PesterCommandFilePath
 }
 
 # Verify output
 $x = [xml](Get-Content -raw "ScenarioTestResults.xml")
-if ([int]$x.'test-results'.failures -gt 0)
-{
+if ([int]$x.'test-results'.failures -gt 0) {
     throw "$($x.'test-results'.failures) tests failed"
 }
