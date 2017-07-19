@@ -73,7 +73,16 @@ if (-not (Test-Path -Path $AutorestCmdPath -PathType Leaf))
 $nodeModuleVersions['autorest'] = & $NpmCmdPath list -g --prefix $NodeModulesPath autorest
 $executeTestsCommand += ";`$env:Path =`"$NodeModulesPath;`$env:Path`""
 
+$AutoRestPluginPath = Join-Path -Path $env:USERPROFILE -ChildPath '.autorest' | 
+                          Join-Path -ChildPath 'plugins' | 
+                              Join-Path -ChildPath 'autorest'
 
+if(-not ((Test-Path -Path $AutoRestPluginPath -PathType Container) -and 
+         (Get-ChildItem -Path $AutoRestPluginPath -Directory)))
+{
+    # Create the generator plugins
+    & $AutorestCmdPath  --reset
+}
 
 $testRunGuid = [guid]::NewGuid().GUID
 Write-Verbose -message "Test run GUID: $testRunGuid"

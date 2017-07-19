@@ -51,7 +51,10 @@ A PowerShell module with commands to generate the PowerShell commands for a give
     ```powershell
     $env:path += ";$env:APPDATA\npm"
     ```
-
+  - Create or Update the generator plugins to the latest stable version
+    ```
+    autorest --reset
+    ```
 4. If you plan on precompiling the generated assembly, ensure you have the module AzureRM.Profile or AzureRM.NetCore.Preview available to PackageManagement if you are on PowerShell or PowerShell Core, respectively.
 
 5. Run the following in a PowerShell console from the directory where you cloned PSSwagger in
