@@ -99,13 +99,14 @@ if ($TestSuite.Contains("All") -or $TestSuite.Contains("ScenarioTest")) {
     $nodeModuleVersions['json-server'] = & $NpmCmdPath list -g --prefix $NodeModulesPath json-server
 
     $localnode_modulesPath = Join-Path -Path $PSScriptRoot -ChildPath 'node_modules'
+<#
     # Create package.json under $PSScriptRoot using below command.
     # Otherwise, you will get following error in AppVeyor build.
     #    "npm.cmd : npm WARN saveError ENOENT: no such file or directory, open 'C:\projects\psswagger\Tests\package.json'""
     Set-Location -Path $PSScriptRoot
     & $NpmCmdPath install express --scripts-prepend-node-path
     & $NpmCmdPath init -y
-
+#>
     # For these node modules, it's easier on the middleware script devs to just install the modules locally instead of globally
     # Ensure we have request (for easy HTTP request creation for some test middlewares)
     if (-not (Test-Path -Path (Join-Path -Path $localnode_modulesPath -ChildPath 'request'))) {

@@ -528,9 +528,9 @@ function ConvertTo-CsharpCode
     Write-Verbose -Message $LocalizedData.GenerateCodeUsingAutoRest
     $info = $SwaggerDict['Info']
 
-    $autoRestExePath = "AutoRest"
-    if (-not (get-command -name $autoRestExePath)) {
-            throw $LocalizedData.AutoRestNotInPath
+    $autoRestPath = "AutoRest"
+    if (-not (Get-Command -Name $autoRestPath)) {
+        throw $LocalizedData.AutoRestNotInPath
     }
 
     $outputDirectory = $SwaggerMetaDict['outputDirectory']
@@ -593,7 +593,7 @@ function ConvertTo-CsharpCode
             Write-Verbose -Message ($LocalizedData.AutoRestParam -f ($autoRestParams[$i], $autoRestParams[$i+1]))
         }
 
-        $null = & $autoRestExePath $autoRestParams
+        $null = & $autoRestPath $autoRestParams
         if ($LastExitCode)
         {
             throw $LocalizedData.AutoRestError

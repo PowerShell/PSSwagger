@@ -1559,39 +1559,38 @@ function Get-Response
     return $responseBody, $outputType
 }
 
-<#
+function Get-AutoRestVersionPluginsPath {
+    $AutoRestVersionPluginsPath = $null
 
-    Get-ToolsPath
-
-#>
-function Get-ToolsPath {
-        [string]$AutoRestToolsPath = $null
-
-        # Note: DLLs are automatically downloaded and extracted into the folder 
-        # "$env:USERPROFILE/.autorest/plugins/autorest/$VERSION" if they do not 
-        # exist for newer versions of autorest.
-        [string]$basePath = Join-Path -Path $env:USERPROFILE -ChildPath ".autorest" | Join-Path -ChildPath "plugins" | Join-Path -ChildPath "autorest"
-
+    # Note: DLLs are automatically downloaded and extracted into the folder 
+    # "$env:USERPROFILE/.autorest/plugins/autorest/$VERSION" if they do not 
+    # exist for newer versions of autorest.
+    $basePath = Join-Path -Path $env:USERPROFILE -ChildPath ".autorest" | Join-Path -ChildPath "plugins" | Join-Path -ChildPath "autorest"
         
-        if(Test-Path $basePath) { # Try to load newer version of autorest
-            $versions = @(Get-ChildItem -Directory $basePath | ForEach-Object {[System.Version]$_.Name} | Sort-Object -Descending)
+    if (Test-Path -Path $basePath -PathType Container) {
+        # Try to load newer version of autorest
+        $versions = @(Get-ChildItem -Directory -Path $basePath | ForEach-Object {[System.Version]$_.Name} | Sort-Object -Descending)
             
-            if($versions.Length -ne 0) {
-                [string]$version = $versions[0] # Get newest
-                $AutoRestToolsPath = Join-Path -Path $basePath -ChildPath $version
-            }
-        } else { # Fallback to old version of autorest
-            $AutoRestToolsPath = Get-Command -Name 'AutoRest.exe' | 
-                Select-Object -First 1 -ErrorAction Ignore | 
-                    ForEach-Object {Split-Path -LiteralPath $_.Source}
+        if ($versions) {
+             # Get newest version path
+            $version = $versions[0]
+            $AutoRestVersionPluginsPath = Join-Path -Path $basePath -ChildPath $version
         }
+    }
 
-        if (-not ($AutoRestToolsPath))
-        {
-            throw $LocalizedData.AutoRestNotInPath
-        }
+    if(-not $AutoRestVersionPluginsPath)
+    {
+        # Fallback to old version of autorest
+        $AutoRestVersionPluginsPath = Get-Command -Name 'AutoRest.exe' | 
+                                Select-Object -First 1 -ErrorAction Ignore | 
+                                    ForEach-Object {Split-Path -LiteralPath $_.Source}
+    }
 
-        return $AutoRestToolsPath
+    if (-not ($AutoRestVersionPluginsPath)) {
+        throw $LocalizedData.AutoRestNotInPath
+    }
+
+    return $AutoRestVersionPluginsPath
 }
 
 function Get-CSharpModelName
@@ -1610,9 +1609,9 @@ function Get-CSharpModelName
                 $AssemblyName
             )
    
-            [string]$AutoRestToolsPath = Get-ToolsPath
+            $AutoRestVersionPluginsPath = Get-AutoRestVersionPluginsPath
 
-            $AssemblyFilePath = Join-Path -Path $AutoRestToolsPath -ChildPath $AssemblyName
+            $AssemblyFilePath = Join-Path -Path $AutoRestVersionPluginsPath -ChildPath $AssemblyName
             if(-not $AssemblyFilePath -or -not (Test-Path -LiteralPath $AssemblyFilePath -PathType Leaf))
             {
                 throw ($LocalizedData.PathNotFound -f $AssemblyFilePath)
