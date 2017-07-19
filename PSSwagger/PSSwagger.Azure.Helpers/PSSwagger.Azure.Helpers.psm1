@@ -47,8 +47,15 @@ function Get-AzSubscriptionId
     [CmdletBinding()]
     param()
 
-    $AzureContext = & "$moduleName\Get-AzureRmContext" -ErrorAction Stop    
-    $AzureContext.Subscription.SubscriptionId
+    $AzureContext = & "$moduleName\Get-AzureRmContext" -ErrorAction Stop
+    if(Get-Member -InputObject $AzureContext.Subscription -Name SubscriptionId)
+    {
+        return $AzureContext.Subscription.SubscriptionId
+    }
+    else
+    {
+        return $AzureContext.Subscription.Id        
+    }
 }
 
 function Get-AzResourceManagerUrl
