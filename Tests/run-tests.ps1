@@ -99,13 +99,13 @@ $autoRestInstallPath = Split-Path -Path $autoRestModule.Source
 $executeTestsCommand += ";`$env:Path+=`";$autoRestInstallPath\tools`""
 
 # AzureRM.Profile requirement
-$azureRmProfile = Get-Package AzureRM.Profile -ErrorAction Ignore
+$azureRmProfile = Get-Package -Name AzureRM.Profile -Provider PowerShellGet -ErrorAction Ignore
 if (-not $azureRmProfile) {
-    if (-not (Get-PackageSource PSGallery -ErrorAction Ignore)) {
-        Register-PackageSource PSGallery -ProviderName PowerShellGet
+    if (-not (Get-PackageSource -Name PSGallery -ErrorAction Ignore)) {
+        Register-PackageSource -Name PSGallery -ProviderName PowerShellGet
     }
 
-    $azureRmProfile = Install-Package AzureRM.Profile -Source PSGallery -RequiredVersion 2.8.0 -Force | Where-Object { $_.Name -eq 'AzureRM.Profile' }
+    $azureRmProfile = Install-Package -Name AzureRM.Profile -Provider PowerShellGet -Source PSGallery -Force | Where-Object { $_.Name -eq 'AzureRM.Profile' }
 }
 
 $powershellFolder = $null
