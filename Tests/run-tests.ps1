@@ -103,7 +103,7 @@ if ($TestSuite.Contains("All") -or $TestSuite.Contains("ScenarioTest")) {
     # Otherwise, you will get following error in AppVeyor build.
     #    "npm.cmd : npm WARN saveError ENOENT: no such file or directory, open 'C:\projects\psswagger\Tests\package.json'""
     Set-Location -Path $PSScriptRoot
-    & $NpmCmdPath install install express
+    & $NpmCmdPath install express --scripts-prepend-node-path
     & $NpmCmdPath init -y
 
     # For these node modules, it's easier on the middleware script devs to just install the modules locally instead of globally
