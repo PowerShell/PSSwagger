@@ -153,6 +153,13 @@ function Add-PSSwaggerLiveTestLibType {
                                                        RequiredVersion = ''
                                                        LoadOrder = 0
                                                    }
+        $packageDependencies['Microsoft.Rest.ClientRuntime'] = @{
+                                                       PackageName = 'Microsoft.Rest.ClientRuntime'
+                                                       References = @('Microsoft.Rest.ClientRuntime.dll')
+                                                       Framework = 'net452'
+                                                       RequiredVersion = '2.3.4'
+                                                       LoadOrder = 0
+                                                   }
     }
 
     if (-not $OutputDirectory) {
@@ -229,6 +236,14 @@ function Add-PSSwaggerLiveTestServerType {
 
         [Parameter(Mandatory=$false)]
         [string]
+        $OutputLibraryFileName = "PSSwagger.LTF.Lib.dll",
+
+        [Parameter(Mandatory=$false)]
+        [string]
+        $OutputIOLibraryFileName = "PSSwagger.LTF.IO.Lib.dll",
+
+        [Parameter(Mandatory=$false)]
+        [string]
         $DebugSymbolDirectory,
 
         [Parameter(Mandatory=$false)]
@@ -276,6 +291,9 @@ function Add-PSSwaggerLiveTestServerType {
     if (-not $OutputDirectory) {
         $OutputDirectory = Join-Path -Path $PSScriptRoot -ChildPath "bin" | Join-Path -ChildPath $clr
     }
+
+    $systemRefs += (Join-Path -Path $OutputDirectory -ChildPath $OutputIOLibraryFileName)
+    $systemRefs += (Join-Path -Path $OutputDirectory -ChildPath $OutputLibraryFileName)
 
     foreach ($item in (Get-ChildItem -Path (Join-Path -Path $PSScriptRoot -ChildPath "src" | Join-Path -ChildPath "PSSwagger.LTF.ConsoleServer" | Join-Path -ChildPath "*.Code.ps1") -Recurse -File)) {
         if ($osInfo.IsWindows) {

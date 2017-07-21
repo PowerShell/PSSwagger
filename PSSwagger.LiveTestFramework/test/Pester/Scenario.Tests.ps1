@@ -63,14 +63,15 @@ Describe "Build" {
         }
 
         It "Compiles console server with custom output directory and name" {
-            $customOutputDir = Join-Path -Path $PSScriptRoot -ChildPath 'mybin' | Join-Path -ChildPath 'fullclr'
+            $customOutputDir = Join-Path -Path $PSScriptRoot -ChildPath 'mybinserver' | Join-Path -ChildPath 'fullclr'
             $customFileName = 'Server.exe'
             $expectedOutputPath = Join-Path -Path $customOutputDir -ChildPath $customFileName
             if (Test-Path -Path $expectedOutputPath)
             {
                 Remove-Item -Path $expectedOutputPath
             }
-            Invoke-Command -Session $s -ScriptBlock { param($customOutputDir, $customFileName) Add-PSSwaggerLiveTestServerType -BootstrapConsent -OutputDirectory $customOutputDir -OutputFileName $customFileName -SaveAssembly } -Args $customOutputDir,$customFileName
+            
+            Invoke-Command -Session $s -ScriptBlock { param($customOutputDir, $customFileName) Add-PSSwaggerLiveTestLibType -BootstrapConsent -OutputDirectory $customOutputDir -SaveAssembly;Add-PSSwaggerLiveTestServerType -BootstrapConsent -OutputDirectory $customOutputDir -OutputFileName $customFileName -SaveAssembly } -Args $customOutputDir,$customFileName
             Get-Item -Path $expectedOutputPath -ErrorAction Ignore | should not benullorempty
         }
 

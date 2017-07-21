@@ -2,6 +2,8 @@ namespace PSSwagger.LTF.Lib.IO
 {
     using Interfaces;
     using System;
+    using System.Collections.Concurrent;
+    using System.Text;
     using System.Threading.Tasks;
 
     /// <summary>
@@ -9,6 +11,8 @@ namespace PSSwagger.LTF.Lib.IO
     /// </summary>
     public class StandardInputPipe : IInputPipe
     {
+        private ConcurrentQueue<byte> byteQueue = new ConcurrentQueue<byte>();
+
         public Task<T> ReadBlock<T>() where T : class
         {
             throw new NotImplementedException();
@@ -22,9 +26,34 @@ namespace PSSwagger.LTF.Lib.IO
             throw new NotImplementedException();
         }
 
-        public Task<byte> ReadByte()
+        public async Task<byte> ReadByte()
         {
-            throw new NotImplementedException();
+            while (byteQueue.Count > 0)
+            {
+                byte b;
+                if (byteQueue.TryDequeue(out b))
+                {
+                    return b;
+                }
+            }
+
+            while (true)
+            {
+                while (byteQueue.Count > 0)
+                {
+                    byte b;
+                    if (byteQueue.TryDequeue(out b))
+                    {
+                        return b;
+                    }
+                }
+
+                char c = await ReadChar();
+                foreach (byte b in Encoding.UTF8.GetBytes(new char[] { c }))
+                {
+                    byteQueue.Enqueue(b);
+                }
+            }
         }
 
         public async Task<char> ReadChar()

@@ -29,6 +29,10 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Microsoft.Rest.ClientRuntime, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>C:\Users\brywang\Documents\Visual Studio 2015\Projects\LiveTestClient\packages\Microsoft.Rest.ClientRuntime.2.3.4\lib\net45\Microsoft.Rest.ClientRuntime.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="Newtonsoft.Json, Version=10.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>packages\Newtonsoft.Json.10.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>True</Private>
@@ -39,6 +43,9 @@
       <HintPath>packages\System.Management.Automation.6.1.7601.17515\lib\net45\System.Management.Automation.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="System.Net" />
+    <Reference Include="System.Net.Http.WebRequest" />
+    <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -47,7 +54,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-	<ProjectReference Include="..\..\..\src\PSSwagger.LTF.IO.Lib\vs-csproj\PSSwagger.LTF.IO.Lib.csproj">
+    <ProjectReference Include="..\..\..\src\PSSwagger.LTF.IO.Lib\vs-csproj\PSSwagger.LTF.IO.Lib.csproj">
       <Project>{726C2CFE-2795-45DC-AD28-F211DE79801D}</Project>
       <Name>PSSwagger.LTF.IO.Lib</Name>
     </ProjectReference>
@@ -81,8 +88,15 @@
     <Compile Include="..\Converters\*.cs">
       <Link>Converters\%(FileName).cs</Link>
     </Compile>
+    <Compile Include="..\ServiceTracing\*.cs">
+      <Link>ServiceTracing\%(FileName).cs</Link>
+    </Compile>
+    <Compile Include="..\Json\*.cs">
+      <Link>Json\%(FileName).cs</Link>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
+    <None Include="app.config" />
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

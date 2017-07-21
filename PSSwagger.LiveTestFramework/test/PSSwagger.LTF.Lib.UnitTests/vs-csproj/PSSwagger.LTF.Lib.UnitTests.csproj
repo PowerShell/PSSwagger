@@ -79,8 +79,12 @@
     <Compile Include="..\AzureCredentialProviderTests.cs" />
     <Compile Include="..\LiveTestRequestConverterTests.cs" />
     <Compile Include="..\DynamicTypedObjectConverterTests.cs" />
+    <Compile Include="..\LiveTestRequestTests.cs" />
+    <Compile Include="..\JsonPathFinderTests.cs" />
+    <Compile Include="..\JsonQueryBuilderTests.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="app.config" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>

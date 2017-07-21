@@ -156,7 +156,7 @@ namespace PSSwagger.LTF.Lib.UnitTests
             JsonRpcPipe reader = new JsonRpcPipe(stringPipe, outputPipe);
             await reader.WriteBlock<SimpleObject>(data);
             string output = outputPipe.OutputBuffer.ToString();
-            Assert.Equal("Content-Length: 57\r\nContent-Type: application/vscode-jsonrpc; charset=utf-8\r\n\r\n{\"StringProp\":\"test\",\"BooleanProp\":true,\"NumberProp\":456}", output);
+            Assert.Equal("Content-Length: 57\r\nContent-Type: application/vscode-jsonrpc; charset=utf-8\r\n\r\n{\"StringProp\":\"test\",\"BooleanProp\":true,\"NumberProp\":456}\r\n", output);
         }
     }
 

@@ -14,26 +14,35 @@ namespace PSSwagger.LTF.Lib.Credentials
     /// </summary>
     public class LiveTestCredentialFactory
     {
+        protected IDictionary<string, Func<Logger, ICredentialProvider>> providers = new Dictionary<string, Func<Logger, ICredentialProvider>>()
+        {
+            { "azure", (logger) => new AzureCredentialProvider(logger) }
+        };
+
         public virtual IEnumerable<ICredentialProvider> Create(LiveTestRequest request, Logger logger)
         {
-            Dictionary<string, object> reservedParams = (Dictionary<string, object>)request.Params["__reserved"];
-            LiveTestCredentials[] arr = (LiveTestCredentials[])reservedParams["credentials"];
-            foreach (LiveTestCredentials credentials in arr)
+            if (request.Params != null && request.Params.ContainsKey("__reserved"))
             {
-                ICredentialProvider provider = null;
-                if (String.IsNullOrEmpty(credentials.Type) || credentials.Type.Equals("azure", StringComparison.OrdinalIgnoreCase))
+                Dictionary<string, object> reservedParams = (Dictionary<string, object>)request.Params["__reserved"];
+                LiveTestCredentials[] arr = (LiveTestCredentials[])reservedParams["credentials"];
+                foreach (LiveTestCredentials credentials in arr)
                 {
-                    provider = new AzureCredentialProvider(logger);
-                }
-
-                if (provider != null)
-                {
-                    foreach (string property in credentials.Properties.Keys)
+                    ICredentialProvider provider = null;
+                    string credType = String.IsNullOrEmpty(credentials.Type) ? "azure" : credentials.Type.ToLowerInvariant();
+                    if (this.providers.ContainsKey(credType))
                     {
-                        provider.Set(property, credentials.Properties[property]);
+                        provider = this.providers[credType](logger);
                     }
 
-                    yield return provider;
+                    if (provider != null)
+                    {
+                        foreach (string property in credentials.Properties.Keys)
+                        {
+                            provider.Set(property, credentials.Properties[property]);
+                        }
+
+                        yield return provider;
+                    }
                 }
             }
         }
@@ -47,34 +56,43 @@ namespace PSSwagger.LTF.Lib.Credentials
         /// <param name="request">Request object to transform.</param>
         public virtual void TranslateCredentialsObjects(LiveTestRequest request)
         {
-            JObject reservedParams = (JObject)request.Params["__reserved"];
-            Dictionary<string, object> reservedParamsDict = new Dictionary<string, object>();
-            foreach (JProperty property in reservedParams.Properties())
+            // Check if request requires conversion
+            if (request.Params != null && request.Params.ContainsKey("__reserved") && request.Params["__reserved"] is JObject)
             {
-                if (property.Name.Equals("credentials", StringComparison.OrdinalIgnoreCase))
+                JObject reservedParams = (JObject)request.Params["__reserved"];
+                Dictionary<string, object> reservedParamsDict = new Dictionary<string, object>();
+                foreach (JProperty property in reservedParams.Properties())
                 {
-                    List<LiveTestCredentials> credsList = new List<LiveTestCredentials>();
-                    if (property.Value is JObject)
+                    if (property.Name.Equals("credentials", StringComparison.OrdinalIgnoreCase))
                     {
-                        // Single credentials object
-                        credsList.Add(GetCredentials((JObject)property.Value));
-                    } else if (property.Value is JArray)
-                    {
-                        // Array of credentials objects
-                        foreach (JToken obj in (JArray)property.Value)
+                        List<LiveTestCredentials> credsList = new List<LiveTestCredentials>();
+                        if (property.Value is JObject)
                         {
-                            credsList.Add(GetCredentials((JObject)obj));
+                            // Single credentials object
+                            credsList.Add(GetCredentials((JObject)property.Value));
                         }
+                        else if (property.Value is JArray)
+                        {
+                            // Array of credentials objects
+                            foreach (JToken obj in (JArray)property.Value)
+                            {
+                                credsList.Add(GetCredentials((JObject)obj));
+                            }
+                        }
+
+                        reservedParamsDict[property.Name] = credsList.ToArray();
+                    } else if (property.Name.Equals("httpResponse", StringComparison.OrdinalIgnoreCase))
+                    {
+                        request.HttpResponse = property.Value.Value<bool>();
                     }
-
-                    reservedParamsDict[property.Name] = credsList.ToArray();
-                } else
-                {
-                    reservedParamsDict[property.Name] = property.Value;
+                    else
+                    {
+                        reservedParamsDict[property.Name] = property.Value;
+                    }
                 }
-            }
 
-            request.Params["__reserved"] = reservedParamsDict;
+                request.Params["__reserved"] = reservedParamsDict;
+            }
         }
 
         private LiveTestCredentials GetCredentials(JObject credsObject)

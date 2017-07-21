@@ -47,7 +47,8 @@ namespace PSSwagger.LTF.Lib.UnitTests
                 Output = blockPipe,
                 RunspaceManager = mockRunspace,
                 ModulePath = "test",
-                CredentialFactory = new LiveTestCredentialFactory()
+                CredentialFactory = new LiveTestCredentialFactory(),
+                TracingManager = new MockServiceTracingManager()
             };
             LiveTestServer server = new LiveTestServer(parms);
             server.RunAsync().Wait();

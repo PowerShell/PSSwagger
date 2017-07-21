@@ -34,12 +34,19 @@ namespace PSSwagger.LTF.Lib.UnitTests
             test.Set("clientId", "testClientId");
             test.Set("secret", "testSecret");
             MockRunspaceManager runspace = new MockRunspaceManager();
-            runspace.Builder.MockResult = new CommandExecutionResult(null, null, false);
-            test.Process(runspace.Builder);
+            runspace.CommandBuilders.Add(new MockCommandBuilder(runspace)
+            {
+                MockResult = new CommandExecutionResult(null, null, false)
+            });
+            runspace.CommandBuilders.Add(new MockCommandBuilder(runspace)
+            {
+                MockResult = new CommandExecutionResult(null, null, false)
+            });
+            test.Process(runspace.CommandBuilders[0]);
 
-            Assert.Equal(2, runspace.Builder.InvokeHistory.Count);
-            Assert.Equal("import-module [name azurerm.profile]", runspace.Builder.InvokeHistory[0].ToLowerInvariant());
-            Assert.Equal("add-azurermaccount [credential (testclientid testsecret)] [tenantid testtenantid] [serviceprincipal true]", runspace.Builder.InvokeHistory[1].ToLowerInvariant());
+            Assert.Equal(2, runspace.InvokeHistory.Count);
+            Assert.Equal("import-module [name azurerm.profile]", ((string)runspace.InvokeHistory[0]).ToLowerInvariant());
+            Assert.Equal("add-azurermaccount [credential (testclientid testsecret)] [tenantid testtenantid] [serviceprincipal true]", ((string)runspace.InvokeHistory[1]).ToLowerInvariant());
         }
 
         [Fact]
@@ -49,7 +56,7 @@ namespace PSSwagger.LTF.Lib.UnitTests
             test.Set("tenantId", "testTenantId");
             test.Set("clientId", "testClientId");
             MockRunspaceManager runspace = new MockRunspaceManager();
-            Assert.Throws<InvalidTestCredentialsException>(() => test.Process(runspace.Builder));
+            Assert.Throws<InvalidTestCredentialsException>(() => test.Process(runspace.CreateCommand()));
         }
 
         [Fact]
@@ -60,7 +67,7 @@ namespace PSSwagger.LTF.Lib.UnitTests
             test.Set("clientId", "testClientId");
             test.Set("secret", String.Empty);
             MockRunspaceManager runspace = new MockRunspaceManager();
-            Assert.Throws<InvalidTestCredentialsException>(() => test.Process(runspace.Builder));
+            Assert.Throws<InvalidTestCredentialsException>(() => test.Process(runspace.CreateCommand()));
         }
 
         [Fact]
@@ -71,8 +78,11 @@ namespace PSSwagger.LTF.Lib.UnitTests
             test.Set("clientId", "testClientId");
             test.Set("secret", "testSecret");
             MockRunspaceManager runspace = new MockRunspaceManager();
-            runspace.Builder.MockResult = new CommandExecutionResult(null, new List<string>() { "This is an error" }, true);
-            Assert.Throws<CommandFailedException>(() => test.Process(runspace.Builder));
+            runspace.CommandBuilders.Add(new MockCommandBuilder(runspace)
+            {
+                MockResult = new CommandExecutionResult(null, new List<string>() { "This is an error" }, true)
+            });
+            Assert.Throws<CommandFailedException>(() => test.Process(runspace.CommandBuilders[0]));
         }
     }
 }

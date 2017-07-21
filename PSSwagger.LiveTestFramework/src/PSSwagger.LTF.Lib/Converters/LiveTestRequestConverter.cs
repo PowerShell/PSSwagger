@@ -3,19 +3,26 @@ namespace PSSwagger.LTF.Lib.Converters
     using System;
     using Newtonsoft.Json;
     using Models;
+    using Messages;
+    using System.Collections.Generic;
+    using System.Linq;
+    using Newtonsoft.Json.Linq;
+    using System.Reflection;
 
     /// <summary>
     /// Converts JSON objects into a LiveTestRequest.
     /// </summary>
     public class LiveTestRequestConverter : JsonConverter
     {
+        private GeneratedModule module;
+
         /// <summary>
         /// Constructor.
         /// </summary>
         /// <param name="module">Module containing all operations and data this converter should handle.</param>
         public LiveTestRequestConverter(GeneratedModule module)
         {
-
+            this.module = module;
         }
 
         /// <summary>
@@ -24,22 +31,148 @@ namespace PSSwagger.LTF.Lib.Converters
         /// <param name="settings">Serializer settings to register all converters to.</param>
         public void RegisterSelf(JsonSerializerSettings settings)
         {
+            settings.Converters.Add(this);
+            foreach (OperationData operation in module.Operations.Values)
+            {
+                foreach (ParameterData parameter in operation.Parameters.Values)
+                {
+                    RegisterTypeConverter(parameter.Type, settings);
+                }
+            }
+        }
 
+        private void RegisterTypeConverter(RuntimeTypeData typeData, JsonSerializerSettings settings)
+        {
+            if (typeData != null && typeData.Type != null && typeData.Type.GetConstructor(new Type[] { }) != null)
+            {
+                settings.Converters.Add(new DynamicTypedObjectConverter(typeData));
+                foreach (ParameterData property in typeData.Properties.Values)
+                {
+                    RegisterTypeConverter(property.Type, settings);
+                }
+            }
         }
 
         public override bool CanConvert(Type objectType)
         {
-            throw new NotImplementedException();
+            return objectType.Equals(typeof(LiveTestRequest));
         }
 
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
         {
-            throw new NotImplementedException();
+            JsonSerializer cleanSerializer = new JsonSerializer();
+            LiveTestRequest request = cleanSerializer.Deserialize(reader, objectType) as LiveTestRequest;
+            int dotIndex = request.Method.IndexOf('.');
+            if (dotIndex != -1)
+            {
+                request.OperationId = request.Method.Substring(dotIndex+1).ToLowerInvariant();
+                if (module.Operations.ContainsKey(request.OperationId))
+                {
+                    OperationData op = module.Operations[request.OperationId];
+                    if (request.Params != null)
+                    {
+                        Dictionary<string, object> newParams = new Dictionary<string, object>();
+                        foreach (string key in request.Params.Keys)
+                        {
+                            if (key.Equals("__reserved", StringComparison.OrdinalIgnoreCase))
+                            {
+                                newParams[key] = request.Params[key];
+                            }
+                            else
+                            {
+                                ParameterData match = op.Parameters.Where((kvp) => !String.IsNullOrEmpty(kvp.Value.JsonName) &&
+                                    kvp.Value.JsonName.Equals(key, StringComparison.OrdinalIgnoreCase)).Select((kvp) => kvp.Value).FirstOrDefault();
+                                if (match == null && op.Parameters.ContainsKey(key.ToLowerInvariant()))
+                                {
+                                    match = op.Parameters[key.ToLowerInvariant()];
+                                }
+                                if (match != null)
+                                {
+                                    object converted;
+                                    if (ConvertObject(request.Params[key], match.Type.Type, serializer, out converted))
+                                    {
+                                        newParams[match.Name.ToLowerInvariant()] = converted;
+                                    }
+                                }
+                            }
+                        }
+
+                        request.Params = newParams;
+                    }
+                }
+            }
+            
+            return request;
         }
 
         public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
         {
-            throw new NotImplementedException();
+            if (value == null)
+            {
+                writer.WriteRawValue("null");
+                return;
+            }
+            
+            LiveTestRequest request = (LiveTestRequest)value;
+            Dictionary<string, object> dict = new Dictionary<string, object>();
+            foreach (PropertyInfo pi in value.GetType().GetProperties())
+            {
+                if (!pi.Name.Equals("params", StringComparison.OrdinalIgnoreCase) && pi.GetCustomAttribute(typeof(JsonIgnoreAttribute)) == null)
+                {
+                    object val = pi.GetValue(value);
+                    if ((val != null) || serializer.NullValueHandling == NullValueHandling.Include)
+                    {
+                        dict[pi.Name.ToLowerInvariant()] = val;
+                    }
+                }
+            }
+
+            dict["params"] = request.Params;
+            if (module.Operations.ContainsKey(request.OperationId))
+            {
+                OperationData op = module.Operations[request.OperationId];
+                Dictionary<string, object> newParams = new Dictionary<string, object>();
+                foreach (string key in request.Params.Keys)
+                {
+                    if (key.Equals("__reserved", StringComparison.OrdinalIgnoreCase))
+                    {
+                        newParams[key] = request.Params;
+                    } else if (op.Parameters.ContainsKey(key))
+                    {
+                        if (!String.IsNullOrEmpty(op.Parameters[key].JsonName))
+                        {
+                            newParams[op.Parameters[key].JsonName.ToLowerInvariant()] = request.Params[key];
+                        } else
+                        {
+                            newParams[op.Parameters[key].Name.ToLowerInvariant()] = request.Params[key];
+                        }
+                    }
+                }
+
+                dict["params"] = newParams;
+            }
+
+            serializer.Serialize(writer, dict);
+        }
+
+        private bool ConvertObject(object val, Type expectedType, JsonSerializer serializer, out object converted)
+        {
+            converted = null;
+            bool success = true;
+            if (val == null || val.GetType().Equals(expectedType))
+            {
+                converted = val;
+            }
+            else if (val is JToken)
+            {
+                converted = serializer.Deserialize(new JTokenReader(val as JToken), expectedType);
+            }
+            else
+            {
+                success = false;
+            }
+
+            return success;
         }
     }
 }

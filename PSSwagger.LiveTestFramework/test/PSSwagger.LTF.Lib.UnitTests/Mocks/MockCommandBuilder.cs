@@ -69,7 +69,7 @@ namespace PSSwagger.LTF.Lib.UnitTests.Mocks
                 }
             }
 
-            this.InvokeHistory.Add(invokeString);
+            this.runspace.Invoke(invokeString);
 
             return this.MockResult;
         }

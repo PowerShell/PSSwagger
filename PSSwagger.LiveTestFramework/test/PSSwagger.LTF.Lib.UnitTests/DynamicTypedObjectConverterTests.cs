@@ -24,13 +24,13 @@ namespace PSSwagger.LTF.Lib.UnitTests
         public void ConvertObjectWithRenames()
         {
             string json = "{\"prop\":\"test\",\"booleanproperty\":true}";
-            TypeData typeData = new TypeData();
+            RuntimeTypeData typeData = new RuntimeTypeData();
             typeData.Type = typeof(DynamicTypedObjectConverterTestsObject);
-            typeData.Properties.Add("prop", new ParameterData()
+            typeData.Properties.Add("property", new ParameterData()
             {
                  JsonName = "prop",
                  Name = "property",
-                 Type = new TypeData()
+                 Type = new RuntimeTypeData()
                  {
                      Type = typeof(string)
                  }
@@ -53,20 +53,20 @@ namespace PSSwagger.LTF.Lib.UnitTests
         {
             string json = "{ \"obj\": { \"prop\": \"test\", \"booleanproperty\": true }, \"unconvertedobject\": { \"prop\": \"5\" } }";
             string expectedJson = "{\"obj\":{\"prop\":\"test\",\"booleanproperty\":true},\"unconvertedobject\":{\"Property\":null}}";
-            TypeData childTypeData = new TypeData();
+            RuntimeTypeData childTypeData = new RuntimeTypeData();
             childTypeData.Type = typeof(DynamicTypedObjectConverterTestsObject);
-            childTypeData.Properties.Add("prop", new ParameterData()
+            childTypeData.Properties.Add("property", new ParameterData()
             {
                 JsonName = "prop",
                 Name = "property",
-                Type = new TypeData()
+                Type = new RuntimeTypeData()
                 {
                     Type = typeof(string)
                 }
             });
-            TypeData parentTypeData = new TypeData();
+            RuntimeTypeData parentTypeData = new RuntimeTypeData();
             parentTypeData.Type = typeof(DynamicTypedObjectConverterTestsNestedObject);
-            parentTypeData.Properties.Add("obj", new ParameterData()
+            parentTypeData.Properties.Add("object", new ParameterData()
             {
                 JsonName = "obj",
                 Name = "object",

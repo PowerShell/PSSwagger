@@ -1,13 +1,21 @@
 ﻿namespace PSSwagger.LTF.Lib
 {
+    using Converters;
     using Credentials;
     using Interfaces;
+    using IO;
     using Logging;
     using Messages;
     using Models;
     using System;
+    using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
+    using System.Collections.Generic;
+    using System.Net.Http;
+    using ServiceTracing;
+    using Newtonsoft.Json;
+    using System.IO;
 
     public class LiveTestServerStartParams
     {
@@ -16,7 +24,13 @@
         public Logger Logger { get; set; }
         public IRunspaceManager RunspaceManager { get; set; }
         public string ModulePath { get; set; }
+        public IList<string> SpecificationPaths { get; set; }
         public LiveTestCredentialFactory CredentialFactory { get; set; }
+        public ServiceTracingManager TracingManager { get; set; }
+        public LiveTestServerStartParams()
+        {
+            this.SpecificationPaths = new List<string>();
+        }
     }
 
     /// <summary>
@@ -24,6 +38,11 @@
     /// </summary>
     public class LiveTestServer
     {
+        #region Language Server Protocol error codes
+        private const int MethodNotFound = -32601;
+        private const int InternalError = -32603;
+        #endregion
+
         private LiveTestServerStartParams parameters;
         private GeneratedModule currentModule;
         private Thread messageReadThread;
@@ -53,6 +72,10 @@
             {
                 throw new ArgumentNullException("parms.CredentialFactory");
             }
+            if (parms.TracingManager == null)
+            {
+                throw new ArgumentNullException("parms.TracingManager");
+            }
             if (String.IsNullOrEmpty(parms.ModulePath))
             {
                 throw new ArgumentNullException("parms.ModulePath");
@@ -72,9 +95,47 @@
             {
                 throw new InvalidOperationException("Server is already running.");
             }
-            
+
             // Retrieve all module information using the current runspace manager
             this.currentModule = this.parameters.RunspaceManager.GetModuleInfo(this.parameters.ModulePath);
+            this.currentModule.Logger = this.parameters.Logger;
+            
+            if (this.Input is JsonRpcPipe)
+            {
+                JsonRpcPipe jsonRpcPipe = (JsonRpcPipe)this.Input;
+                new LiveTestRequestConverter(this.currentModule).RegisterSelf(jsonRpcPipe.JsonSerializerSettings);
+                if (this.parameters.Logger != null)
+                {
+                    this.parameters.Logger.JsonSerializerSettings = jsonRpcPipe.JsonSerializerSettings;
+                }
+            }
+
+            if (this.Output is JsonRpcPipe)
+            {
+                JsonRpcPipe jsonRpcPipe = (JsonRpcPipe)this.Output;
+                new LiveTestRequestConverter(this.currentModule).RegisterSelf(jsonRpcPipe.JsonSerializerSettings);
+                if (this.parameters.Logger != null)
+                {
+                    this.parameters.Logger.JsonSerializerSettings = jsonRpcPipe.JsonSerializerSettings;
+                }
+            }
+
+            if (this.parameters.SpecificationPaths != null)
+            {
+                foreach (string specificationPath in this.parameters.SpecificationPaths)
+                {
+                    if (this.parameters.Logger != null)
+                    {
+                        this.parameters.Logger.LogAsync("Loading specification file: " + specificationPath);
+                    }
+                        Json.JsonPathFinder jsonFinder = new Json.JsonPathFinder(File.ReadAllText(specificationPath));
+                        if (this.parameters.Logger != null)
+                        {
+                            this.parameters.Logger.LogAsync("Parsing specification file: " + specificationPath);
+                        }
+                        this.currentModule.LoadMetadataFromSpecification(jsonFinder);
+                }
+            }
 
             this.IsRunning = true;
 
@@ -92,21 +153,70 @@
                             {
                                 this.parameters.Logger.LogAsync("Processing message: {0}", msg);
                             }
-                            try
+                            Task.Run(() =>
                             {
-                                Task.Run(() => this.currentModule.ProcessRequest(msg, this.parameters.CredentialFactory));
-                            } catch (Exception eProcess)
-                            {
-                                // TODO: Log
-                            }
+                                LiveTestResponse response = null;
+                                IServiceTracer serviceTracer = null;
+                                try
+                                {
+                                    long invocationId = this.parameters.TracingManager.GetNextInvocationId();
+                                    serviceTracer = this.parameters.TracingManager.CreateTracer(invocationId, this.parameters.Logger);
+                                    this.parameters.TracingManager.EnableTracing();
+                                    CommandExecutionResult commandResult = this.currentModule.ProcessRequest(msg, this.parameters.CredentialFactory);
+                                    if (commandResult == null)
+                                    {
+                                        if (this.parameters.Logger != null)
+                                        {
+                                            this.parameters.Logger.LogAsync("Command not found.");
+                                        }
+
+                                        response = msg.MakeResponse(null, MethodNotFound);
+                                    }
+                                    else
+                                    {
+                                        response = msg.MakeResponse(commandResult, serviceTracer, this.parameters.Logger);
+                                    }
+                                }
+                                catch (Exception exRequest)
+                                {
+                                    if (this.parameters.Logger != null)
+                                    {
+                                        this.parameters.Logger.LogError("Exception processing request: " + exRequest.ToString());
+                                    }
+
+                                    response = msg.MakeResponse(exRequest, InternalError);
+                                } finally
+                                {
+                                    if (response != null)
+                                    {
+                                        this.Output.WriteBlock(response);
+                                    }
+
+                                    if (serviceTracer != null)
+                                    {
+                                        this.parameters.TracingManager.RemoveTracer(serviceTracer);
+                                    }
+                                }
+                            });
                         }
-                    } catch (Exception eRead)
+                    }
+                    catch (Exception eRead)
                     {
-                        // TODO: Log
+                        if (this.parameters.Logger != null)
+                        {
+                            this.parameters.Logger.LogError("Exception during test server message loop: " + eRead.ToString());
+                        }
+
+                        this.IsRunning = false;
                     }
                 }
-            }) { IsBackground = true };
+            })
+            { IsBackground = true };
             this.messageReadThread.Start();
+            if (this.parameters.Logger != null)
+            {
+                this.parameters.Logger.LogAsync("PowerShell live test server has started.");
+            }
         }
 
         public void Stop()

@@ -18,6 +18,6 @@ namespace PSSwagger.LTF.Lib.Models
         /// <summary>
         /// Type of this parameter.
         /// </summary>
-        public TypeData Type { get; set; }
+        public RuntimeTypeData Type { get; set; }
     }
 }

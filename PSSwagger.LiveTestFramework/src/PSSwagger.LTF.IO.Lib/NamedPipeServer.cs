@@ -71,15 +71,18 @@ namespace PSSwagger.LTF.Lib.IO
             this.stream.Write(buf, 0, buf.Length);
         }
 
-        public async Task WriteLine(string line)
+        public Task WriteLine(string line)
         {
-            WaitForConnection();
-            byte[] buf = Encoding.UTF8.GetBytes(line);
-            byte[] newLine = Encoding.UTF8.GetBytes(Environment.NewLine);
-            byte[] charBuf = new byte[buf.Length + newLine.Length];
-            Array.Copy(buf, charBuf, buf.Length);
-            Array.Copy(newLine, 0, charBuf, buf.Length, newLine.Length);
-            this.stream.Write(charBuf, 0, charBuf.Length);
+            return Task.Run(() =>
+            {
+                WaitForConnection();
+                byte[] buf = Encoding.UTF8.GetBytes(line);
+                byte[] newLine = Encoding.UTF8.GetBytes(Environment.NewLine);
+                byte[] charBuf = new byte[buf.Length + newLine.Length];
+                Array.Copy(buf, charBuf, buf.Length);
+                Array.Copy(newLine, 0, charBuf, buf.Length, newLine.Length);
+                this.stream.Write(charBuf, 0, charBuf.Length);
+            });
         }
 
         public Task WriteBlock<T>(T msg) where T : class

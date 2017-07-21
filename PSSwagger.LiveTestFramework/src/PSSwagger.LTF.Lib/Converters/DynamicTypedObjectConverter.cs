@@ -6,30 +6,22 @@ namespace PSSwagger.LTF.Lib.Converters
     using System.Collections.Generic;
     using System.Reflection;
     using Newtonsoft.Json.Linq;
+    using System.Linq;
 
     /// <summary>
     /// Converts JSON objects into a strongly-typed object with different property names from the JSON object when the type is not known at compile time.
     /// </summary>
     public class DynamicTypedObjectConverter : JsonConverter
     {
-        private TypeData typeData;
-        private Dictionary<string, ParameterData> typePropertyToTypeData;
+        private RuntimeTypeData typeData;
 
         /// <summary>
         /// Constructor.
         /// </summary>
         /// <param name="typeData">Metadata for type this converter should convert.</param>
-        public DynamicTypedObjectConverter(TypeData typeData)
+        public DynamicTypedObjectConverter(RuntimeTypeData typeData)
         {
             this.typeData = typeData;
-            this.typePropertyToTypeData = new Dictionary<string, ParameterData>();
-            foreach (ParameterData data in this.typeData.Properties.Values)
-            {
-                if (!String.IsNullOrEmpty(data.Name))
-                {
-                    this.typePropertyToTypeData[data.Name.ToLowerInvariant()] = data;
-                }
-            }
         }
 
         public override bool CanConvert(Type objectType)
@@ -57,16 +49,52 @@ namespace PSSwagger.LTF.Lib.Converters
                     {
                         objectTypeProperties[propertyName].SetValue(obj, converted);
                     }
-                } else if (typeData.Properties.ContainsKey(propertyName) && objectTypeProperties.ContainsKey(typeData.Properties[propertyName].Name))
+                } else //if (typeData.Properties.ContainsKey(propertyName) && objectTypeProperties.ContainsKey(typeData.Properties[propertyName].Name))
                 {
-                    if (ConvertObject(dict[prop], objectTypeProperties[typeData.Properties[propertyName].Name].PropertyType, serializer, out converted))
+                    ParameterData match = typeData.Properties.Where((kvp) => !String.IsNullOrEmpty(kvp.Value.JsonName) &&
+                                kvp.Value.JsonName.Equals(propertyName, StringComparison.OrdinalIgnoreCase)).Select((kvp) => kvp.Value).FirstOrDefault();
+                    if (match != null)
                     {
-                        objectTypeProperties[typeData.Properties[propertyName].Name].SetValue(obj, converted);
+                        if (ConvertObject(dict[prop], objectTypeProperties[match.Name].PropertyType, serializer, out converted))
+                        {
+                            objectTypeProperties[match.Name].SetValue(obj, converted);
+                        }
                     }
                 }
             }
 
             return obj;
+        }
+
+        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        {
+            if (value == null)
+            {
+                writer.WriteRawValue("null");
+                return;
+            }
+
+            Dictionary<string, object> dict = new Dictionary<string, object>();
+            
+            foreach (PropertyInfo pi in value.GetType().GetProperties())
+            {
+                if (pi.GetCustomAttribute(typeof(JsonIgnoreAttribute)) == null)
+                {
+                    object val = pi.GetValue(value);
+                    if ((val != null) || serializer.NullValueHandling == NullValueHandling.Include)
+                    {
+                        string propertyName = pi.Name.ToLowerInvariant();
+                        if (this.typeData.Properties.ContainsKey(propertyName) && !String.IsNullOrEmpty(this.typeData.Properties[propertyName].JsonName))
+                        {
+                            propertyName = this.typeData.Properties[propertyName].JsonName;
+                        }
+
+                        dict[propertyName] = val;
+                    }
+                }
+            }
+
+            serializer.Serialize(writer, dict);
         }
 
         private bool ConvertObject(object val, Type expectedType, JsonSerializer serializer, out object converted)
@@ -87,37 +115,6 @@ namespace PSSwagger.LTF.Lib.Converters
             }
 
             return success;
-        }
-
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
-        {
-            if (value == null)
-            {
-                writer.WriteRawValue("null");
-                return;
-            }
-
-            Dictionary<string, object> dict = new Dictionary<string, object>();
-            
-            foreach (PropertyInfo pi in value.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
-            {
-                if (pi.GetCustomAttribute(typeof(JsonIgnoreAttribute)) == null)
-                {
-                    object val = pi.GetValue(value);
-                    if ((val != null) || serializer.NullValueHandling == NullValueHandling.Include)
-                    {
-                        string propertyName = pi.Name.ToLowerInvariant();
-                        if (this.typePropertyToTypeData.ContainsKey(propertyName) && !String.IsNullOrEmpty(this.typePropertyToTypeData[propertyName].JsonName))
-                        {
-                            propertyName = this.typePropertyToTypeData[propertyName].JsonName;
-                        }
-
-                        dict[propertyName] = val;
-                    }
-                }
-            }
-
-            serializer.Serialize(writer, dict);
         }
     }
 }

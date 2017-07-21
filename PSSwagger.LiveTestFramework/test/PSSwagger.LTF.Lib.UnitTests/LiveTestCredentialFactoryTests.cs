@@ -301,5 +301,22 @@ namespace PSSwagger.LTF.Lib.UnitTests
             Assert.Equal("testClientId", result.Properties["clientId"].ToString());
             Assert.Equal("testSecret", result.Properties["secret"].ToString());
         }
+
+        [Fact]
+        public void TranslateHttpResponseProperty()
+        {
+            string requestJson = "{ \"params\": { \"__reserved\": { \"httpResponse\": true } } }";
+            LiveTestRequest request = Newtonsoft.Json.JsonConvert.DeserializeObject<LiveTestRequest>(requestJson);
+
+            LiveTestCredentialFactory test = new LiveTestCredentialFactory();
+            test.TranslateCredentialsObjects(request);
+
+            request.Params.ContainsKey("__reserved");
+            Assert.True(request.Params["__reserved"] is Dictionary<string, object>);
+            Dictionary<string, object> reservedParams = (Dictionary<string, object>)request.Params["__reserved"];
+
+            Assert.False(reservedParams.ContainsKey("httpResponse"));
+            Assert.True(request.HttpResponse);
+        }
     }
 }

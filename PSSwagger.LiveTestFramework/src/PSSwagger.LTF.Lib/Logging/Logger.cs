@@ -1,6 +1,7 @@
 namespace PSSwagger.LTF.Lib.Logging
 {
     using Interfaces;
+    using Newtonsoft.Json;
     using System;
     using System.Globalization;
     using System.Text;
@@ -15,12 +16,16 @@ namespace PSSwagger.LTF.Lib.Logging
         private IOutputPipe stderr;
         private bool timestamp;
         private bool loggingLevel;
+
+        public JsonSerializerSettings JsonSerializerSettings { get; set; }
+
         public Logger(IOutputPipe stdout, IOutputPipe stderr, bool timestamp = true, bool loggingLevel = true)
         {
             this.stdout = stdout;
             this.stderr = stderr;
             this.timestamp = timestamp;
             this.loggingLevel = loggingLevel;
+            this.JsonSerializerSettings = new JsonSerializerSettings();
         }
 
         /// <summary>
@@ -45,9 +50,14 @@ namespace PSSwagger.LTF.Lib.Logging
             string[] objSerialized = new string[objs.Length];
             for (int i = 0; i < objs.Length; i++)
             {
-                if (objs[i] != null)
+                object objToSerialize = objs[i];
+                if (objToSerialize != null)
                 {
-                    objSerialized[i] = Newtonsoft.Json.JsonConvert.SerializeObject(objs[i]);
+                    if (objToSerialize is System.Management.Automation.PSObject)
+                    {
+                        objToSerialize = ((System.Management.Automation.PSObject)objToSerialize).ImmediateBaseObject;
+                    }
+                    objSerialized[i] = Newtonsoft.Json.JsonConvert.SerializeObject(objToSerialize, this.JsonSerializerSettings);
                 } else
                 {
                     objSerialized[i] = "null";

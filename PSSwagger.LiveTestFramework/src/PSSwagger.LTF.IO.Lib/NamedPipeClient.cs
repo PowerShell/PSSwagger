@@ -35,6 +35,24 @@ namespace PSSwagger.LTF.Lib.IO
         }
 
         /// <summary>
+        /// Gets if the named pipe client has more inbound data.
+        /// </summary>
+        public bool HasMoreData
+        {
+            get
+            {
+                try
+                {
+                    return this.stream.InBufferSize > 0;
+                } catch (Exception)
+                {
+                    return false;
+                }
+            }
+        }
+
+
+        /// <summary>
         /// Create a named pipe client on the local machine.
         /// </summary>
         /// <param name="pipeName">Name of pipe.</param>
@@ -127,9 +145,9 @@ namespace PSSwagger.LTF.Lib.IO
             this.writer.WriteLine(line);
         }
 
-        public Task<string> ReadLine()
+        public async Task<string> ReadLine()
         {
-            throw new NotImplementedException();
+            return this.reader.ReadLine();
         }
 
         public Task<T> ReadBlock<T>() where T : class

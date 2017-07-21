@@ -29,7 +29,10 @@ namespace PSSwagger.LTF.Lib.IO
             this.characterReader = characterReader;
             this.characterWriter = characterWriter;
             this.blockQueue = new ConcurrentQueue<object>();
-            this.JsonSerializerSettings = new JsonSerializerSettings();
+            this.JsonSerializerSettings = new JsonSerializerSettings()
+            {
+                NullValueHandling = NullValueHandling.Ignore
+            };
         }
 
         /// <summary>
@@ -68,7 +71,7 @@ namespace PSSwagger.LTF.Lib.IO
 
                 if (jsonString.StartsWith("["))
                 {
-                    T[] arr = Newtonsoft.Json.JsonConvert.DeserializeObject<T[]>(jsonString);
+                    T[] arr = Newtonsoft.Json.JsonConvert.DeserializeObject<T[]>(jsonString, this.JsonSerializerSettings);
                     foreach (T obj in arr)
                     {
                         if (returnObj == null)
@@ -83,7 +86,7 @@ namespace PSSwagger.LTF.Lib.IO
                 }
                 else
                 {
-                    returnObj = Newtonsoft.Json.JsonConvert.DeserializeObject<T>(jsonString);
+                    returnObj = Newtonsoft.Json.JsonConvert.DeserializeObject<T>(jsonString, this.JsonSerializerSettings);
                 }
             }
 
@@ -97,15 +100,12 @@ namespace PSSwagger.LTF.Lib.IO
 
         public async Task WriteBlock<T>(T msg) where T : class
         {
-            string messageSerialized = Newtonsoft.Json.JsonConvert.SerializeObject(msg);
+            string messageSerialized = Newtonsoft.Json.JsonConvert.SerializeObject(msg, this.JsonSerializerSettings);
             StringBuilder sb = new StringBuilder();
             sb.Append("Content-Length: " + Encoding.ASCII.GetByteCount(messageSerialized) + "\r\n");
             sb.Append("Content-Type: application/vscode-jsonrpc; charset=utf-8\r\n\r\n");
             sb.Append(messageSerialized);
-            foreach (char c in sb.ToString())
-            {
-                this.characterWriter.Write(c);
-            }
+            this.characterWriter.WriteLine(sb.ToString());
         }
 
         public Task WriteLine(string line)

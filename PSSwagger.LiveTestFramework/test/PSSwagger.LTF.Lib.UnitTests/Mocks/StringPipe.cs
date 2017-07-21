@@ -70,9 +70,9 @@ namespace PSSwagger.LTF.Lib.UnitTests.Mocks
             throw new NotImplementedException();
         }
 
-        public Task WriteLine(string line)
+        public async Task WriteLine(string line)
         {
-            throw new NotImplementedException();
+            this.OutputBuffer.AppendLine(line);
         }
 
         public Task WriteBlock<T>(T msg) where T : class
