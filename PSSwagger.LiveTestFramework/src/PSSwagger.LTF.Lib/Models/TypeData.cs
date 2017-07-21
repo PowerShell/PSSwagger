@@ -6,7 +6,7 @@ namespace PSSwagger.LTF.Lib.Models
     /// <summary>
     /// Contains metadata for a single Type whose properties differ from its JSON object representation.
     /// </summary>
-    public class TypeData
+    public class RuntimeTypeData
     {
         /// <summary>
         /// Type represented.
@@ -18,9 +18,14 @@ namespace PSSwagger.LTF.Lib.Models
         /// </summary>
         public IDictionary<string, ParameterData> Properties { get; private set; }
 
-        public TypeData()
+        public RuntimeTypeData() : this(null)
+        {
+        }
+
+        public RuntimeTypeData(Type t)
         {
             this.Properties = new Dictionary<string, ParameterData>();
+            this.Type = t;
         }
     }
 }

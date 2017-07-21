@@ -13,6 +13,7 @@ namespace PSSwagger.LTF.Lib.PowerShell
     using System.Linq;
     using System.Management.Automation;
     using System.Management.Automation.Runspaces;
+    using System.Reflection;
 
     /// <summary>
     /// Manage a PowerShell runspace.
@@ -53,9 +54,10 @@ namespace PSSwagger.LTF.Lib.PowerShell
                 ICommandBuilder testModuleManifest = this.CreateCommand();
                 testModuleManifest.Command = "Test-ModuleManifest";
                 testModuleManifest.AddParameter("Path", modulePath);
+                // Note that this returns errors, but RequiredModules is still filled out.
                 CommandExecutionResult result = testModuleManifest.Invoke();
 
-                dynamic testResult = (result.Results.FirstOrDefault() as PSObject).AsDynamic();
+                PSModuleInfo testResult = result.Results.FirstOrDefault() as PSModuleInfo;
                 if (testResult == null)
                 {
                     if (this.logger != null)
@@ -99,10 +101,10 @@ namespace PSSwagger.LTF.Lib.PowerShell
                 throw new CommandFailedException(getModule, getModuleResult, "Failed to get module after loading.");
             }
 
-            dynamic moduleInfo = (getModuleResult.Results.First() as PSObject).AsDynamic();
-            foreach (string entry in moduleInfo.ExportedCommands.Keys)
+            PSModuleInfo moduleInfo = getModuleResult.Results.First() as PSModuleInfo;
+            foreach (string entry in moduleInfo.ExportedFunctions.Keys)
             {
-                FunctionInfo commandInfo = moduleInfo.ExportedCommands[entry] as FunctionInfo;
+                FunctionInfo commandInfo = moduleInfo.ExportedFunctions[entry] as FunctionInfo;
                 if (this.logger != null)
                 {
                     this.logger.LogAsync("Parsing command: " + entry);
@@ -119,11 +121,12 @@ namespace PSSwagger.LTF.Lib.PowerShell
                         foreach (CommandParameterInfo commandParameterInfo in parameterSet.Parameters)
                         {
                             ParameterData parameterData = new ParameterData();
-                            parameterData.Name = commandParameterInfo.Name;
-                            operationData.Parameters.Add(parameterData.Name, parameterData);
+                            parameterData.Name = commandParameterInfo.Name.ToLowerInvariant();
+                            parameterData.Type = new RuntimeTypeData(commandParameterInfo.ParameterType);
+                            operationData.Parameters.Add(parameterData.Name.ToLowerInvariant(), parameterData);
                         }
 
-                        module.Operations[operationData.OperationId] = operationData;
+                        module.Operations[operationData.OperationId.ToLowerInvariant()] = operationData;
                     }
                 }
             }
@@ -144,7 +147,17 @@ namespace PSSwagger.LTF.Lib.PowerShell
                 try
                 {
                     Collection<PSObject> psResults = pipeline.Invoke();
-                    results = psResults.AsEnumerable<object>();
+                    results = psResults.Select(psObj =>
+                    {
+                        FieldInfo fieldInfo = psResults[0].GetType().GetField("immediateBaseObjectIsEmpty", BindingFlags.Instance | BindingFlags.NonPublic);
+                        if (fieldInfo != null && !(bool)fieldInfo.GetValue(psObj))
+                        {
+                            return psObj.ImmediateBaseObject;
+                        } else
+                        {
+                            return psObj;
+                        }
+                    });
                     hadErrors = pipeline.Error.Count > 0;
                     if (hadErrors)
                     {
@@ -154,9 +167,9 @@ namespace PSSwagger.LTF.Lib.PowerShell
                 {
                     if (this.logger != null)
                     {
-                        this.logger.LogError("Invoke ran into an exception: " + e.Message);
+                        this.logger.LogError("Invoke ran into an exception: " + e.ToString());
                     }
-                    errors = new string[] { e.Message };
+                    errors = new object[] { e };
                     hadErrors = true;
                 }
 

@@ -11,5 +11,7 @@
   <ItemGroup Condition=" '$(TargetFramework)' == 'net452' ">
     <PackageReference Include="System.Management.Automation" Version="6.0.0-alpha17" />
     <PackageReference Include="Microsoft.CSharp" Version="4.4.0-preview2-25405-01" />
+    <PackageReference Include="System.Net.Http" Version="*" />
+    <PackageReference Include="Microsoft.Rest.ClientRuntime" Version="2.3.4" />
   </ItemGroup>
 </Project>
