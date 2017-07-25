@@ -1,7 +1,8 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+
+// Licensed under the MIT license.
 namespace PSSwagger.LTF.Lib
 {
-    using Interfaces;
-    using Models;
     using System;
     using System.Globalization;
 

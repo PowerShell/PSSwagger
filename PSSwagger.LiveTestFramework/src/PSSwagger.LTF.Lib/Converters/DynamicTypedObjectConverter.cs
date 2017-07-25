@@ -1,12 +1,15 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+
+// Licensed under the MIT license.
 namespace PSSwagger.LTF.Lib.Converters
 {
-    using System;
-    using Newtonsoft.Json;
     using Models;
-    using System.Collections.Generic;
-    using System.Reflection;
+    using Newtonsoft.Json;
     using Newtonsoft.Json.Linq;
+    using System;
+    using System.Collections.Generic;
     using System.Linq;
+    using System.Reflection;
 
     /// <summary>
     /// Converts JSON objects into a strongly-typed object with different property names from the JSON object when the type is not known at compile time.
@@ -45,12 +48,14 @@ namespace PSSwagger.LTF.Lib.Converters
                 object converted;
                 if (objectTypeProperties.ContainsKey(propertyName))
                 {
+                    // This JSON property directly translates to a .NET property. This should be similar to normal deserialization.
                     if (ConvertObject(dict[prop], objectTypeProperties[propertyName].PropertyType, serializer, out converted))
                     {
                         objectTypeProperties[propertyName].SetValue(obj, converted);
                     }
-                } else //if (typeData.Properties.ContainsKey(propertyName) && objectTypeProperties.ContainsKey(typeData.Properties[propertyName].Name))
+                } else
                 {
+                    // Check if typeData describes a mapping from this JSON property to a .NET property.
                     ParameterData match = typeData.Properties.Where((kvp) => !String.IsNullOrEmpty(kvp.Value.JsonName) &&
                                 kvp.Value.JsonName.Equals(propertyName, StringComparison.OrdinalIgnoreCase)).Select((kvp) => kvp.Value).FirstOrDefault();
                     if (match != null)
@@ -74,8 +79,8 @@ namespace PSSwagger.LTF.Lib.Converters
                 return;
             }
 
+            // This reverses the process of mapping JSON property -> .NET property, going from .NET to JSON instead.
             Dictionary<string, object> dict = new Dictionary<string, object>();
-            
             foreach (PropertyInfo pi in value.GetType().GetProperties())
             {
                 if (pi.GetCustomAttribute(typeof(JsonIgnoreAttribute)) == null)
@@ -97,6 +102,14 @@ namespace PSSwagger.LTF.Lib.Converters
             serializer.Serialize(writer, dict);
         }
 
+        /// <summary>
+        /// Convert a raw Newtonsoft.Json object into the expected type.
+        /// </summary>
+        /// <param name="val">Raw Newtonsoft.Json object.</param>
+        /// <param name="expectedType">Type to convert to.</param>
+        /// <param name="serializer">Current serializer.</param>
+        /// <param name="converted">Converter object. Can be null whether or not true is returned.</param>
+        /// <returns>True if conversion was recognized by this method; false otherwise.</returns>
         private bool ConvertObject(object val, Type expectedType, JsonSerializer serializer, out object converted)
         {
             converted = null;

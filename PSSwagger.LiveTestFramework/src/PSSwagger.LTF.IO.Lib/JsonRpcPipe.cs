@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+
+// Licensed under the MIT license.
 namespace PSSwagger.LTF.Lib.IO
 {
     using Interfaces;
@@ -13,11 +16,17 @@ namespace PSSwagger.LTF.Lib.IO
     /// </summary>
     public class JsonRpcPipe : IInputPipe, IOutputPipe
     {
+        /// <summary>
+        /// Constant to indicate that headers are done.
+        /// </summary>
         private const string HeaderEndConstant = "end";
         private IInputPipe characterReader;
         private IOutputPipe characterWriter;
         private ConcurrentQueue<object> blockQueue;
 
+        /// <summary>
+        /// Serialize settings used during serialization and deserialization. Use this to add converters/customizations.
+        /// </summary>
         public JsonSerializerSettings JsonSerializerSettings { get; private set; }
 
         /// <summary>
@@ -98,11 +107,17 @@ namespace PSSwagger.LTF.Lib.IO
             throw new NotImplementedException();
         }
 
+        /// <summary>
+        /// Serialize into a JSON-RPC string ending with newline. Content type is application/vscode-jsonrpc. Charset is UTF-8.
+        /// </summary>
+        /// <typeparam name="T">Type of message to serialize.</typeparam>
+        /// <param name="msg">Message to serialize. Must not be null.</param>
         public async Task WriteBlock<T>(T msg) where T : class
         {
             string messageSerialized = Newtonsoft.Json.JsonConvert.SerializeObject(msg, this.JsonSerializerSettings);
             StringBuilder sb = new StringBuilder();
-            sb.Append("Content-Length: " + Encoding.ASCII.GetByteCount(messageSerialized) + "\r\n");
+            // LSP states that content is encoded in UTF-8
+            sb.Append("Content-Length: " + Encoding.UTF8.GetByteCount(messageSerialized) + "\r\n");
             sb.Append("Content-Type: application/vscode-jsonrpc; charset=utf-8\r\n\r\n");
             sb.Append(messageSerialized);
             this.characterWriter.WriteLine(sb.ToString());
@@ -134,13 +149,21 @@ namespace PSSwagger.LTF.Lib.IO
             throw new NotImplementedException();
         }
 
+        /// <summary>
+        /// Read a single JSON-RPC header. Returns HeaderEndConstant when \r\n follows a \r\n.
+        /// </summary>
+        /// <returns>Header name and header value.</returns>
         private async Task<Tuple<string, string>> ReadHeader()
         {
+            // Cyclic buffer of last two characters - used to read \r\n
             char[] lastCharBuf = new char[2];
             lastCharBuf[0] = '\0';
             lastCharBuf[1] = '\0';
+            // Current index of cyclic buffer
             int index = 0;
             bool endRead = false;
+            // We expect the following format for headers: "headerName: headerValue"
+            // These two variables help track if we've read the special colon and space between headerName and headervalue
             bool colonRead = false;
             bool spaceRead = false;
             string header = String.Empty;
@@ -157,6 +180,9 @@ namespace PSSwagger.LTF.Lib.IO
                         if (colonRead)
                         {
                             spaceRead = true;
+                        } else
+                        {
+                            val += c;
                         }
                         break;
                     case '\n':

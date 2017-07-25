@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+
+// Licensed under the MIT license.
 namespace PSSwagger.LTF.Lib.UnitTests
 {
     using Credentials;
@@ -5,8 +8,6 @@ namespace PSSwagger.LTF.Lib.UnitTests
     using Logging;
     using Messages;
     using Mocks;
-    using Models;
-    using System;
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;

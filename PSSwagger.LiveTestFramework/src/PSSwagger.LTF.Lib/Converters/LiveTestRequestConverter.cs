@@ -1,12 +1,15 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+
+// Licensed under the MIT license.
 namespace PSSwagger.LTF.Lib.Converters
 {
-    using System;
-    using Newtonsoft.Json;
-    using Models;
     using Messages;
+    using Models;
+    using Newtonsoft.Json;
+    using Newtonsoft.Json.Linq;
+    using System;
     using System.Collections.Generic;
     using System.Linq;
-    using Newtonsoft.Json.Linq;
     using System.Reflection;
 
     /// <summary>
@@ -62,6 +65,7 @@ namespace PSSwagger.LTF.Lib.Converters
         {
             JsonSerializer cleanSerializer = new JsonSerializer();
             LiveTestRequest request = cleanSerializer.Deserialize(reader, objectType) as LiveTestRequest;
+            // Current test protocol states that the method is given as A.B_C, so ignore anything without a '.'.
             int dotIndex = request.Method.IndexOf('.');
             if (dotIndex != -1)
             {
@@ -74,6 +78,7 @@ namespace PSSwagger.LTF.Lib.Converters
                         Dictionary<string, object> newParams = new Dictionary<string, object>();
                         foreach (string key in request.Params.Keys)
                         {
+                            // Reserved parameter will be converted later.
                             if (key.Equals("__reserved", StringComparison.OrdinalIgnoreCase))
                             {
                                 newParams[key] = request.Params[key];
@@ -88,6 +93,7 @@ namespace PSSwagger.LTF.Lib.Converters
                                 }
                                 if (match != null)
                                 {
+                                    // This means that the parameter has been renamed from the spec name.
                                     object converted;
                                     if (ConvertObject(request.Params[key], match.Type.Type, serializer, out converted))
                                     {
@@ -139,6 +145,7 @@ namespace PSSwagger.LTF.Lib.Converters
                         newParams[key] = request.Params;
                     } else if (op.Parameters.ContainsKey(key))
                     {
+                        // Decide if the JSON name or the PowerShell name should be used
                         if (!String.IsNullOrEmpty(op.Parameters[key].JsonName))
                         {
                             newParams[op.Parameters[key].JsonName.ToLowerInvariant()] = request.Params[key];

@@ -1,13 +1,14 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+
+// Licensed under the MIT license.
 namespace PSSwagger.LTF.Lib.ServiceTracing
 {
-    using Microsoft.Rest;
-    using Models;
-    using System.Collections;
-    using System.Collections.Generic;
-    using System.Net.Http;
-    using System;
     using Interfaces;
     using Logging;
+    using Microsoft.Rest;
+    using System;
+    using System.Collections.Generic;
+    using System.Net.Http;
 
     /// <summary>
     /// Traces operations at the service layer using Microsoft.Rest.ClientRuntime.

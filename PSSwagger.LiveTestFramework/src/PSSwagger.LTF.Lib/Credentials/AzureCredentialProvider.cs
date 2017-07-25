@@ -1,10 +1,12 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+
+// Licensed under the MIT license.
 namespace PSSwagger.LTF.Lib.Credentials
 {
     using Interfaces;
     using Logging;
     using Models;
     using System;
-    using System.Globalization;
     using System.Management.Automation;
     using System.Security;
 
@@ -24,6 +26,10 @@ namespace PSSwagger.LTF.Lib.Credentials
             this.logger = logger;
         }
 
+        /// <summary>
+        /// Logs in using Azure ServicePrincipal information.
+        /// </summary>
+        /// <param name="command">Uses the runspace from this ICommandBuilder.</param>
         public void Process(ICommandBuilder command)
         {
             if (String.IsNullOrEmpty(this.TenantId) || String.IsNullOrEmpty(this.ClientId) || String.IsNullOrEmpty(this.Secret))
@@ -31,6 +37,7 @@ namespace PSSwagger.LTF.Lib.Credentials
                 throw new InvalidTestCredentialsException();
             }
 
+            // First import the expected module containing Add-AzureRmAccount
             ICommandBuilder importAzureModule = command.Runspace.CreateCommand();
             importAzureModule.Command = "Import-Module";
             importAzureModule.AddParameter("Name", "AzureRM.Profile");
@@ -41,6 +48,7 @@ namespace PSSwagger.LTF.Lib.Credentials
                 throw new CommandFailedException(importAzureModule, importAzureModuleResult);
             }
 
+            // Now run Add-AzureRmAccount
             ICommandBuilder addAzureRmAccount = command.Runspace.CreateCommand();
             addAzureRmAccount.Command = "Add-AzureRmAccount";
             SecureString ss = new SecureString();

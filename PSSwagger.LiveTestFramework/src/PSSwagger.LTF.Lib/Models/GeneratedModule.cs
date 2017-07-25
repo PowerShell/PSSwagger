@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+
+// Licensed under the MIT license.
 namespace PSSwagger.LTF.Lib.Models
 {
     using Credentials;
@@ -6,7 +9,6 @@ namespace PSSwagger.LTF.Lib.Models
     using Logging;
     using Messages;
     using System;
-    using System.Collections;
     using System.Collections.Generic;
     using System.Globalization;
     using System.Linq;

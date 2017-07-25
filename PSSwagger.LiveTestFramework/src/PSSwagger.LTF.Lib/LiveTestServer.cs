@@ -1,4 +1,7 @@
-﻿namespace PSSwagger.LTF.Lib
+﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+
+// Licensed under the MIT license.
+namespace PSSwagger.LTF.Lib
 {
     using Converters;
     using Credentials;
@@ -7,15 +10,12 @@
     using Logging;
     using Messages;
     using Models;
+    using ServiceTracing;
     using System;
-    using System.Linq;
+    using System.Collections.Generic;
+    using System.IO;
     using System.Threading;
     using System.Threading.Tasks;
-    using System.Collections.Generic;
-    using System.Net.Http;
-    using ServiceTracing;
-    using Newtonsoft.Json;
-    using System.IO;
 
     public class LiveTestServerStartParams
     {
@@ -100,6 +100,7 @@
             this.currentModule = this.parameters.RunspaceManager.GetModuleInfo(this.parameters.ModulePath);
             this.currentModule.Logger = this.parameters.Logger;
             
+            // For JSON-RPC pipe input/output, add Newtonsoft.Json converters
             if (this.Input is JsonRpcPipe)
             {
                 JsonRpcPipe jsonRpcPipe = (JsonRpcPipe)this.Input;
@@ -120,6 +121,7 @@
                 }
             }
 
+            // Parse specifications/metadata files for extra information, e.g. parameter renaming
             if (this.parameters.SpecificationPaths != null)
             {
                 foreach (string specificationPath in this.parameters.SpecificationPaths)
@@ -146,6 +148,7 @@
                 {
                     try
                     {
+                        // Block and wait for the next request
                         LiveTestRequest msg = await this.Input.ReadBlock<LiveTestRequest>();
                         if (this.IsRunning)
                         {
@@ -159,9 +162,11 @@
                                 IServiceTracer serviceTracer = null;
                                 try
                                 {
+                                    // Enable service tracing so that we can get service layer information required by test protocol
                                     long invocationId = this.parameters.TracingManager.GetNextInvocationId();
                                     serviceTracer = this.parameters.TracingManager.CreateTracer(invocationId, this.parameters.Logger);
                                     this.parameters.TracingManager.EnableTracing();
+                                    // Process teh request
                                     CommandExecutionResult commandResult = this.currentModule.ProcessRequest(msg, this.parameters.CredentialFactory);
                                     if (commandResult == null)
                                     {

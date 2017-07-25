@@ -76,9 +76,6 @@
     <Compile Include="..\PowerShell\*.cs">
       <Link>PowerShell\%(FileName).cs</Link>
     </Compile>
-    <Compile Include="..\Extensions\*.cs">
-      <Link>Extensions\%(FileName).cs</Link>
-    </Compile>
     <Compile Include="..\Exceptions\*.cs">
       <Link>Exceptions\%(FileName).cs</Link>
     </Compile>

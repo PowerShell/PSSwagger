@@ -1,13 +1,14 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+
+// Licensed under the MIT license.
 namespace PSSwagger.LTF.Lib.Credentials
 {
     using Interfaces;
     using Logging;
     using Messages;
-    using Models;
     using Newtonsoft.Json.Linq;
     using System;
     using System.Collections.Generic;
-    using System.Globalization;
 
     /// <summary>
     /// Handle creation of credential providers.
@@ -19,6 +20,12 @@ namespace PSSwagger.LTF.Lib.Credentials
             { "azure", (logger) => new AzureCredentialProvider(logger) }
         };
 
+        /// <summary>
+        /// Create all credential providers specified by the given request, assuming the __reserved parameter has alreayd been converted by TranslateCredentialsObjects.
+        /// </summary>
+        /// <param name="request"></param>
+        /// <param name="logger"></param>
+        /// <returns></returns>
         public virtual IEnumerable<ICredentialProvider> Create(LiveTestRequest request, Logger logger)
         {
             if (request.Params != null && request.Params.ContainsKey("__reserved"))

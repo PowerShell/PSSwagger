@@ -1,10 +1,12 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+
+// Licensed under the MIT license.
 namespace PSSwagger.LTF.Lib.UnitTests.Mocks
 {
     using Credentials;
     using Interfaces;
     using Messages;
     using Models;
-    using System.Collections;
 
     /// <summary>
     /// Mock generated module that tracks if methods are called.

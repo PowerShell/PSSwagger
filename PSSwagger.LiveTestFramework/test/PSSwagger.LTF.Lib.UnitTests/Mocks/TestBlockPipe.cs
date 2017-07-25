@@ -1,11 +1,14 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+
+// Licensed under the MIT license.
 namespace PSSwagger.LTF.Lib.UnitTests.Mocks
 {
-    using System;
-    using System.Threading;
-    using System.Threading.Tasks;
     using Interfaces;
     using Messages;
+    using System;
     using System.Collections.Generic;
+    using System.Threading;
+    using System.Threading.Tasks;
 
     /// <summary>
     /// Test interface for pushing LiveTestRequest blocks to input and getting LiveTestResponse from output.

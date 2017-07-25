@@ -1,13 +1,12 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+
+// Licensed under the MIT license.
 namespace PSSwagger.LTF.Lib.Json
 {
-    using Models;
     using Newtonsoft.Json;
     using Newtonsoft.Json.Linq;
     using System;
-    using System.Collections;
     using System.Collections.Generic;
-    using System.IO;
-    using System.Net.Http;
 
     /// <summary>
     /// Provides parsing for a JSON file.

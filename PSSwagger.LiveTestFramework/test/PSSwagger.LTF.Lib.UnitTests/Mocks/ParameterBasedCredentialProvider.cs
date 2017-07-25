@@ -1,11 +1,9 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+
+// Licensed under the MIT license.
 namespace PSSwagger.LTF.Lib.UnitTests.Mocks
 {
     using Interfaces;
-    using Models;
-    using System;
-    using System.Collections;
-    using System.Collections.Generic;
-    using System.Runtime.InteropServices;
 
     /// <summary>
     /// Mock credential provider that adds a parameter to the given command (e.g. supplying -APIKey).

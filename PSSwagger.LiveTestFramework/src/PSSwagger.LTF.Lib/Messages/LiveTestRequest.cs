@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+
+// Licensed under the MIT license.
 namespace PSSwagger.LTF.Lib.Messages
 {
     using Interfaces;
@@ -8,7 +11,6 @@ namespace PSSwagger.LTF.Lib.Messages
     using System.Collections.Generic;
     using System.Linq;
     using System.Net.Http;
-    using System.Net.Http.Headers;
 
     /// <summary>
     /// An Azure Live Test Framework JSON-RPC request.
@@ -20,9 +22,9 @@ namespace PSSwagger.LTF.Lib.Messages
         #endregion
 
         public string Method { get; set; }
+        public Dictionary<string, object> Params { get; set; }
         [JsonIgnore]
         public string OperationId { get; set; }
-        public Dictionary<string, object> Params { get; set; }
         [JsonIgnore]
         public bool HttpResponse { get; set; }
 

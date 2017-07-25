@@ -1,11 +1,14 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+
+// Licensed under the MIT license.
 namespace PSSwagger.LTF.Lib.UnitTests.Mocks
 {
+    using Interfaces;
     using System;
+    using System.Collections.Generic;
+    using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
-    using System.Text;
-    using Interfaces;
-    using System.Collections.Generic;
 
     /// <summary>
     /// Basic string input/output interface. Use BufferInputString to add a string to the read buffer.

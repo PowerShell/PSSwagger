@@ -1,8 +1,10 @@
-﻿namespace PSSwagger.LTF.ConsoleServer
+﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+
+// Licensed under the MIT license.
+namespace PSSwagger.LTF.ConsoleServer
 {
     using Lib;
     using Lib.Credentials;
-    using Lib.Interfaces;
     using Lib.IO;
     using Lib.Logging;
     using Lib.Models;
@@ -68,7 +70,7 @@
                 logger.LogError("Failed to start server: " + ex.ToString());
             }
 
-            // Wait forever
+            // Wait until server exits (usually means the server ran into an internal error)
             while (server.IsRunning)
             {
                 Thread.Sleep(1);

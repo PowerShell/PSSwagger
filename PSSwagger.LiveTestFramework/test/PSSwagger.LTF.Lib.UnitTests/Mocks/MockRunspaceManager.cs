@@ -1,11 +1,11 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+
+// Licensed under the MIT license.
 namespace PSSwagger.LTF.Lib.UnitTests.Mocks
 {
-    using System.Collections;
-    using Messages;
     using Interfaces;
-    using System;
-    using System.Collections.Generic;
     using Models;
+    using System.Collections.Generic;
 
     /// <summary>
     /// Mock runspace that tracks if methods are called.

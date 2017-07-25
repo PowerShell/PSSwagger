@@ -1,11 +1,9 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+
+// Licensed under the MIT license.
 namespace PSSwagger.LTF.Lib.UnitTests
 {
-    using Converters;
     using Json;
-    using Messages;
-    using Mocks;
-    using Models;
-    using System.Collections.Generic;
     using System.Linq;
     using Xunit;
     using Xunit.Abstractions;

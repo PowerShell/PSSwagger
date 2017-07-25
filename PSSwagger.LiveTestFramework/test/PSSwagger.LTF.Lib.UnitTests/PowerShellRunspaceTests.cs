@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+
+// Licensed under the MIT license.
 namespace PSSwagger.LTF.Lib.UnitTests
 {
     using Interfaces;
@@ -6,9 +9,8 @@ namespace PSSwagger.LTF.Lib.UnitTests
     using Models;
     using PowerShell;
     using System;
-    using System.Collections;
-    using System.Linq;
     using System.IO;
+    using System.Linq;
     using System.Reflection;
     using Xunit;
     using Xunit.Abstractions;
