@@ -62,7 +62,7 @@ A PowerShell module with commands to generate the PowerShell commands for a give
   ```powershell
   Import-Module .\PSSwagger\PSSwagger.psd1
   $param = @{
-    SwaggerSpecUri = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-batch/2015-12-01/swagger/BatchManagement.json'
+    SpecificationUri = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-batch/2015-12-01/swagger/BatchManagement.json'
     Path           = 'C:\GeneratedModules\'
     Name           = 'AzBatchManagement'
     UseAzureCsharpGenerator = $true

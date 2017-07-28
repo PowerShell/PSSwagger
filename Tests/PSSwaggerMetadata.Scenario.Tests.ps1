@@ -18,7 +18,7 @@ Describe "Tests for New-PSSwaggerMetadataFile cmdlet" -Tag @('PSMeta', 'Scenario
         if (Test-Path -Path $PSMetaFilePath -PathType Leaf) {
             Remove-Item -Path $PSMetaFilePath -Force
         }
-        New-PSSwaggerMetadataFile -SwaggerSpecPath $SwaggerSpecPath
+        New-PSSwaggerMetadataFile -SpecificationPath $SwaggerSpecPath
 
         $PSMetaJsonObject = ConvertFrom-Json -InputObject ((Get-Content -Path $PSMetaFilePath) -join [Environment]::NewLine) -ErrorAction Stop
         $SwaggerJsonObject = ConvertFrom-Json -InputObject ((Get-Content -Path $SwaggerSpecPath) -join [Environment]::NewLine) -ErrorAction Stop
@@ -259,8 +259,8 @@ Describe "Tests for New-PSSwaggerMetadataFile cmdlet" -Tag @('PSMeta', 'Scenario
 
         It "Test New-PSSwaggerMetadataFile cmdlet with -Force parameter" {
             Test-Path -Path $PSMetaFilePath -PathType Leaf | Should Be $true
-            { New-PSSwaggerMetadataFile -SwaggerSpecPath $SwaggerSpecPath } | Should Throw
-            { New-PSSwaggerMetadataFile -SwaggerSpecPath $SwaggerSpecPath -Force } | Should Not Throw
+            { New-PSSwaggerMetadataFile -SpecificationPath $SwaggerSpecPath } | Should Throw
+            { New-PSSwaggerMetadataFile -SpecificationPath $SwaggerSpecPath -Force } | Should Not Throw
         }
 
         It "Test New-PSSwaggerMetadataFile cmdlet with -WhatIf parameter" {            
@@ -268,7 +268,7 @@ Describe "Tests for New-PSSwaggerMetadataFile cmdlet" -Tag @('PSMeta', 'Scenario
                 Remove-Item -Path $PSMetaFilePath -Force
             }
 
-            { New-PSSwaggerMetadataFile -SwaggerSpecPath $SwaggerSpecPath -WhatIf } | Should Not Throw
+            { New-PSSwaggerMetadataFile -SpecificationPath $SwaggerSpecPath -WhatIf } | Should Not Throw
             Test-Path -Path $PSMetaFilePath -PathType Leaf | Should Be $false
         }
 
@@ -286,7 +286,7 @@ Describe "Tests for New-PSSwaggerMetadataFile cmdlet" -Tag @('PSMeta', 'Scenario
                 Remove-Item -Path $PSMetaFilePath -Force
             }
             $PSObject = New-Object -TypeName 'PSObject'
-            Add-Member -InputObject $PSObject -MemberType NoteProperty -Name SwaggerSpecPath -Value $SwaggerSpecPath
+            Add-Member -InputObject $PSObject -MemberType NoteProperty -Name SpecificationPath -Value $SwaggerSpecPath
             Add-Member -InputObject $PSObject -MemberType NoteProperty -Name 'SomeOtherProperty' -Value 'SomeValue'
 
             { $PSObject | New-PSSwaggerMetadataFile } | Should Not Throw
@@ -305,7 +305,7 @@ Describe "Tests for New-PSSwaggerMetadataFile cmdlet with x-ms-paths extension i
         if (Test-Path -Path $PSMetaFilePath -PathType Leaf) {
             Remove-Item -Path $PSMetaFilePath -Force
         }
-        New-PSSwaggerMetadataFile -SwaggerSpecPath $SwaggerSpecPath
+        New-PSSwaggerMetadataFile -SpecificationPath $SwaggerSpecPath
 
         $PSMetaJsonObject = ConvertFrom-Json -InputObject ((Get-Content -Path $PSMetaFilePath) -join [Environment]::NewLine) -ErrorAction Stop
         $SwaggerJsonObject = ConvertFrom-Json -InputObject ((Get-Content -Path $SwaggerSpecPath) -join [Environment]::NewLine) -ErrorAction Stop
@@ -367,7 +367,7 @@ Describe "Tests for New-PSSwaggerMetadataFile cmdlet with composite swagger docu
         if (Test-Path -Path $PSMetaFilePath -PathType Leaf) {
             Remove-Item -Path $PSMetaFilePath -Force
         }
-        New-PSSwaggerMetadataFile -SwaggerSpecPath $SwaggerSpecPath
+        New-PSSwaggerMetadataFile -SpecificationPath $SwaggerSpecPath
 
         $PSMetaJsonObject = ConvertFrom-Json -InputObject ((Get-Content -Path $PSMetaFilePath) -join [Environment]::NewLine) -ErrorAction Stop
     }

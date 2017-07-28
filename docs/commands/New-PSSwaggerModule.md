@@ -13,14 +13,14 @@ PowerShell command to generate the PowerShell commands for a given RESTful Web S
 
 ### SwaggerPath
 ```
-New-PSSwaggerModule -SwaggerSpecPath <String> -Path <String> -Name <String> [-Version <Version>]
+New-PSSwaggerModule -SpecificationPath <String> -Path <String> -Name <String> [-Version <Version>]
  [-DefaultCommandPrefix <String>] [-UseAzureCsharpGenerator] [-NoAssembly] [-PowerShellCorePath <String>]
  [-IncludeCoreFxAssembly] [-InstallToolsForAllUsers] [-TestBuild] [-SymbolPath <String>] [-ConfirmBootstrap]
 ```
 
 ### SwaggerURI
 ```
-New-PSSwaggerModule -SwaggerSpecUri <Uri> -Path <String> -Name <String> [-Version <Version>]
+New-PSSwaggerModule -SpecificationUri <Uri> -Path <String> -Name <String> [-Version <Version>]
  [-DefaultCommandPrefix <String>] [-UseAzureCsharpGenerator] [-NoAssembly] [-PowerShellCorePath <String>]
  [-IncludeCoreFxAssembly] [-InstallToolsForAllUsers] [-TestBuild] [-SymbolPath <String>] [-ConfirmBootstrap]
 ```
@@ -32,21 +32,21 @@ PowerShell command to generate the PowerShell commands for a given RESTful Web S
 
 ### -------------------------- EXAMPLE 1 --------------------------
 ```
-New-PSSwaggerModule -SwaggerSpecUri 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-batch/2015-12-01/swagger/BatchManagement.json' -Path 'C:\GeneratedModules\' -Name 'AzBatchManagement' -UseAzureCsharpGenerator
+New-PSSwaggerModule -SpecificationUri 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-batch/2015-12-01/swagger/BatchManagement.json' -Path 'C:\GeneratedModules\' -Name 'AzBatchManagement' -UseAzureCsharpGenerator
 ```
 
-Generates a PS Module for the specified SwaggerSpecUri.
+Generates a PS Module for the specified SpecificationUri.
 
 ### -------------------------- EXAMPLE 2 --------------------------
 ```
-New-PSSwaggerModule -SwaggerSpecPath 'C:\SwaggerSpecs\BatchManagement.json' -Path 'C:\GeneratedModules\' -Name 'AzBatchManagement' -UseAzureCsharpGenerator
+New-PSSwaggerModule -SpecificationPath 'C:\SwaggerSpecs\BatchManagement.json' -Path 'C:\GeneratedModules\' -Name 'AzBatchManagement' -UseAzureCsharpGenerator
 ```
 
-Generates a PS Module for the specified SwaggerSpecPath.
+Generates a PS Module for the specified SpecificationPath.
 
 ## PARAMETERS
 
-### -SwaggerSpecPath
+### -SpecificationPath
 Full Path to a Swagger based JSON spec.
 
 ```yaml
@@ -61,7 +61,7 @@ Accept pipeline input: False
 Accept wildcard characters: False
 ```
 
-### -SwaggerSpecUri
+### -SpecificationUri
 Uri to a Swagger based JSON spec.
 
 ```yaml

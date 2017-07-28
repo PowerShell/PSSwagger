@@ -33,7 +33,7 @@ Import-Module .\PSSwagger\PSSwagger.psd1 -Force
 # AzureStackRM.FabricResourceProvider
 $ModuleName = 'Generated.AzureStackRM.FabricResourceProvider'
 $param = @{
-    SwaggerSpecUri  = 'C:\code\swaggerrelated\JsonFiles\SwaggerTransformed.json'
+    SpecificationUri  = 'C:\code\swaggerrelated\JsonFiles\SwaggerTransformed.json'
     Path            = $TargetPath
     Name            = $ModuleName
     UseAzureCsharpGenerator = $false

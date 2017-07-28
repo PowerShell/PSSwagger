@@ -527,10 +527,10 @@ Describe "Composite Swagger Tests" -Tag @('Composite','ScenarioTest') {
             if((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
                 & "powershell.exe" -command "& {`$env:PSModulePath=`$env:PSModulePath_Backup;
                     Import-Module (Join-Path `"$PsSwaggerPath`" `"PSSwagger.psd1`") -Force -ArgumentList `$true;
-                    New-PSSwaggerModule -SwaggerSpecPath $SwaggerSpecPath -Name $ModuleName -UseAzureCsharpGenerator -Path $Path -NoAssembly -Verbose -ConfirmBootstrap;
+                    New-PSSwaggerModule -SpecificationPath $SwaggerSpecPath -Name $ModuleName -UseAzureCsharpGenerator -Path $Path -NoAssembly -Verbose -ConfirmBootstrap;
                 }"
             } else {
-                New-PSSwaggerModule -SwaggerSpecPath $SwaggerSpecPath -Name $ModuleName -UseAzureCsharpGenerator -Path $Path -NoAssembly -Verbose -ConfirmBootstrap
+                New-PSSwaggerModule -SpecificationPath $SwaggerSpecPath -Name $ModuleName -UseAzureCsharpGenerator -Path $Path -NoAssembly -Verbose -ConfirmBootstrap
             }
         
             $ModulePath = Join-Path -Path $Path -ChildPath $ModuleName

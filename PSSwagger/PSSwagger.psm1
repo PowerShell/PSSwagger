@@ -34,17 +34,17 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwa
     PowerShell command to generate the PowerShell commands for a given RESTful Web Services using Swagger/OpenAPI documents.
 
 .EXAMPLE
-    PS> New-PSSwaggerModule -SwaggerSpecUri 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-batch/2015-12-01/swagger/BatchManagement.json' -Path 'C:\GeneratedModules\' -Name 'AzBatchManagement' -UseAzureCsharpGenerator
-    Generates a PS Module for the specified SwaggerSpecUri.
+    PS> New-PSSwaggerModule -SpecificationUri 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-batch/2015-12-01/swagger/BatchManagement.json' -Path 'C:\GeneratedModules\' -Name 'AzBatchManagement' -UseAzureCsharpGenerator
+    Generates a PS Module for the specified SpecificationUri.
 
 .EXAMPLE
-    PS> New-PSSwaggerModule -SwaggerSpecPath 'C:\SwaggerSpecs\BatchManagement.json' -Path 'C:\GeneratedModules\' -Name 'AzBatchManagement' -UseAzureCsharpGenerator
-    Generates a PS Module for the specified SwaggerSpecPath.
+    PS> New-PSSwaggerModule -SpecificationPath 'C:\SwaggerSpecs\BatchManagement.json' -Path 'C:\GeneratedModules\' -Name 'AzBatchManagement' -UseAzureCsharpGenerator
+    Generates a PS Module for the specified SpecificationPath.
 
-.PARAMETER  SwaggerSpecPath
+.PARAMETER  SpecificationPath
     Full Path to a Swagger based JSON spec.
 
-.PARAMETER  SwaggerSpecUri
+.PARAMETER  SpecificationUri
     Uri to a Swagger based JSON spec.
 
 .PARAMETER  Path
@@ -99,11 +99,11 @@ function New-PSSwaggerModule
     param(
         [Parameter(Mandatory = $true, ParameterSetName = 'SwaggerPath')]
         [string] 
-        $SwaggerSpecPath,
+        $SpecificationPath,
 
         [Parameter(Mandatory = $true, ParameterSetName = 'SwaggerURI')]
         [Uri]
-        $SwaggerSpecUri,
+        $SpecificationUri,
 
         [Parameter(Mandatory = $true)]
         [string]
@@ -184,32 +184,32 @@ function New-PSSwaggerModule
     if ($PSCmdlet.ParameterSetName -eq 'SwaggerURI')
     {
         # Ensure that if the URI is coming from github, it is getting the raw content
-        if($SwaggerSpecUri.Host -eq 'github.com'){
-            $SwaggerSpecUri = "https://raw.githubusercontent.com$($SwaggerSpecUri.AbsolutePath.Replace('/blob/','/'))"
-            $message = $LocalizedData.ConvertingSwaggerSpecToGithubContent -f ($SwaggerSpecUri)
+        if($SpecificationUri.Host -eq 'github.com'){
+            $SpecificationUri = "https://raw.githubusercontent.com$($SpecificationUri.AbsolutePath.Replace('/blob/','/'))"
+            $message = $LocalizedData.ConvertingSwaggerSpecToGithubContent -f ($SpecificationUri)
             Write-Verbose -Message $message -Verbose
         }
 
         $TempPath = Join-Path -Path (Get-XDGDirectory -DirectoryType Cache) -ChildPath (Get-Random)
         $null = New-Item -Path $TempPath -ItemType Directory -Force -Confirm:$false -WhatIf:$false
 
-        $SwaggerFileName = Split-Path -Path $SwaggerSpecUri -Leaf
-        $SwaggerSpecPath = Join-Path -Path $TempPath -ChildPath $SwaggerFileName
+        $SwaggerFileName = Split-Path -Path $SpecificationUri -Leaf
+        $SpecificationPath = Join-Path -Path $TempPath -ChildPath $SwaggerFileName
 
-        $message = $LocalizedData.SwaggerSpecDownloadedTo -f ($SwaggerSpecUri, $SwaggerSpecPath)
+        $message = $LocalizedData.SwaggerSpecDownloadedTo -f ($SpecificationUri, $SpecificationPath)
         Write-Verbose -Message $message
         
         $ev = $null
-        Invoke-WebRequest -Uri $SwaggerSpecUri -OutFile $SwaggerSpecPath -ErrorVariable ev
+        Invoke-WebRequest -Uri $SpecificationUri -OutFile $SpecificationPath -ErrorVariable ev
         if($ev) {
             return 
         }
 
-        $jsonObject = ConvertFrom-Json -InputObject ((Get-Content -Path $SwaggerSpecPath) -join [Environment]::NewLine) -ErrorAction Stop
+        $jsonObject = ConvertFrom-Json -InputObject ((Get-Content -Path $SpecificationPath) -join [Environment]::NewLine) -ErrorAction Stop
         if((Get-Member -InputObject $jsonObject -Name 'Documents') -and ($jsonObject.Documents.Count))
         {
             $AutoRestModeler = 'CompositeSwagger'
-            $BaseSwaggerUri = "$SwaggerSpecUri".Substring(0, "$SwaggerSpecUri".LastIndexOf('/'))
+            $BaseSwaggerUri = "$SpecificationUri".Substring(0, "$SpecificationUri".LastIndexOf('/'))
             foreach($document in $jsonObject.Documents)
             {
                 $FileName = Split-Path -Path $document -Leaf
@@ -233,7 +233,7 @@ function New-PSSwaggerModule
         }
         else
         {
-            $SwaggerSpecFilePaths += $SwaggerSpecPath
+            $SwaggerSpecFilePaths += $SpecificationPath
         }
     }    
 
@@ -250,9 +250,9 @@ function New-PSSwaggerModule
     }
   
     # Validate swagger path and composite swagger paths
-    if (-not (Test-path -Path $SwaggerSpecPath))
+    if (-not (Test-path -Path $SpecificationPath))
     {
-        throw $LocalizedData.SwaggerSpecPathNotExist -f ($SwaggerSpecPath)
+        throw $LocalizedData.SwaggerSpecPathNotExist -f ($SpecificationPath)
         return
     }
 
@@ -265,11 +265,11 @@ function New-PSSwaggerModule
 
     if ($PSCmdlet.ParameterSetName -eq 'SwaggerPath')
     {
-        $jsonObject = ConvertFrom-Json -InputObject ((Get-Content -Path $SwaggerSpecPath) -join [Environment]::NewLine) -ErrorAction Stop
+        $jsonObject = ConvertFrom-Json -InputObject ((Get-Content -Path $SpecificationPath) -join [Environment]::NewLine) -ErrorAction Stop
         if((Get-Member -InputObject $jsonObject -Name 'Documents') -and ($jsonObject.Documents.Count))
         {
             $AutoRestModeler = 'CompositeSwagger'
-            $SwaggerBaseDir = Split-Path -Path $SwaggerSpecPath -Parent
+            $SwaggerBaseDir = Split-Path -Path $SpecificationPath -Parent
             foreach($document in $jsonObject.Documents)
             {
                 $FileName = Split-Path -Path $document -Leaf
@@ -289,7 +289,7 @@ function New-PSSwaggerModule
         }
         else
         {
-            $SwaggerSpecFilePaths += $SwaggerSpecPath
+            $SwaggerSpecFilePaths += $SpecificationPath
         }
     }
 
@@ -351,7 +351,7 @@ function New-PSSwaggerModule
 
     # Parse the JSON and populate the dictionary
     $ConvertToSwaggerDictionary_params = @{
-        SwaggerSpecPath = $SwaggerSpecPath
+        SwaggerSpecPath = $SpecificationPath
         ModuleName = $Name
         ModuleVersion = $Version
         DefaultCommandPrefix = $DefaultCommandPrefix
@@ -363,7 +363,7 @@ function New-PSSwaggerModule
     }
     $swaggerDict = ConvertTo-SwaggerDictionary @ConvertToSwaggerDictionary_params
 
-    Get-PowerShellCodeGenSettings -Path $SwaggerSpecPath -CodeGenSettings $PowerShellCodeGen -PSMetaJsonObject $PSMetaJsonObject
+    Get-PowerShellCodeGenSettings -Path $SpecificationPath -CodeGenSettings $PowerShellCodeGen -PSMetaJsonObject $PSMetaJsonObject
     if(-not $PSMetaJsonObject) {
         foreach ($additionalSwaggerSpecPath in $SwaggerSpecFilePaths) {
             Get-PowerShellCodeGenSettings -Path $additionalSwaggerSpecPath -CodeGenSettings $PowerShellCodeGen
@@ -405,7 +405,7 @@ function New-PSSwaggerModule
     $swaggerMetaDict = @{
         OutputDirectory = $outputDirectory
         UseAzureCsharpGenerator = $UseAzureCsharpGenerator
-        SwaggerSpecPath = $SwaggerSpecPath
+        SwaggerSpecPath = $SpecificationPath
         SwaggerSpecFilePaths = $SwaggerSpecFilePaths
         AutoRestModeler = $AutoRestModeler
         PowerShellCodeGen = $PowerShellCodeGen

@@ -37,14 +37,14 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwa
     This <SwaggerSpecFileName>.psmeta.json file gets created under the same location as the specified swagger document path.
 
 .EXAMPLE
-    PS> New-PSSwaggerMetadataFile -SwaggerSpecPath 'C:\SwaggerSpecs\BatchManagement.json'
+    PS> New-PSSwaggerMetadataFile -SpecificationPath 'C:\SwaggerSpecs\BatchManagement.json'
     Generates 'C:\SwaggerSpecs\BatchManagement.psmeta.json' file with PowerShell extensions for customizing the PowerShell related metadata.
 
 .EXAMPLE
-    PS> New-PSSwaggerMetadataFile -SwaggerSpecPath 'C:\SwaggerSpecs\BatchManagement.json' -Force
+    PS> New-PSSwaggerMetadataFile -SpecificationPath 'C:\SwaggerSpecs\BatchManagement.json' -Force
     Regenerates 'C:\SwaggerSpecs\BatchManagement.psmeta.json' file with PowerShell extensions for customizing the PowerShell related metadata.
   
-.PARAMETER  SwaggerSpecPath
+.PARAMETER  SpecificationPath
     Full Path to a Swagger based JSON spec.
 
 .PARAMETER  Force
@@ -67,7 +67,7 @@ function New-PSSwaggerMetadataFile {
             ValueFromPipelineByPropertyName = $true,
             ValueFromPipeline = $true)]
         [string] 
-        $SwaggerSpecPath,
+        $SpecificationPath,
 
         [Parameter(Mandatory = $false)]
         [switch]
@@ -75,20 +75,20 @@ function New-PSSwaggerMetadataFile {
     )
 
     # Validate swagger path
-    if (-not (Test-path -Path $SwaggerSpecPath -PathType Leaf)) {
-        throw $LocalizedData.SwaggerSpecPathNotExist -f ($SwaggerSpecPath)
+    if (-not (Test-path -Path $SpecificationPath -PathType Leaf)) {
+        throw $LocalizedData.SwaggerSpecPathNotExist -f ($SpecificationPath)
         return
     }
 
-    $PSMetaFilePath = [regex]::replace($SwaggerSpecPath, ".json$", ".psmeta.json")
+    $PSMetaFilePath = [regex]::replace($SpecificationPath, ".json$", ".psmeta.json")
     if ((-not $Force) -and (Test-Path -Path $PSMetaFilePath -PathType Leaf)) {
-        Throw $LocalizedData.PSMetaFileExists -f ($PSMetaFilePath, $SwaggerSpecPath)
+        Throw $LocalizedData.PSMetaFileExists -f ($PSMetaFilePath, $SpecificationPath)
     }
 
     $SwaggerSpecFilePaths = @()
     $AutoRestModeler = 'Swagger'    
-    $jsonObject = ConvertFrom-Json -InputObject ((Get-Content -Path $SwaggerSpecPath) -join [Environment]::NewLine) -ErrorAction Stop
-    $SwaggerBaseDir = Split-Path -Path $SwaggerSpecPath -Parent
+    $jsonObject = ConvertFrom-Json -InputObject ((Get-Content -Path $SpecificationPath) -join [Environment]::NewLine) -ErrorAction Stop
+    $SwaggerBaseDir = Split-Path -Path $SpecificationPath -Parent
     if ((Get-Member -InputObject $jsonObject -Name 'Documents') -and ($jsonObject.Documents.Count)) {
         $AutoRestModeler = 'CompositeSwagger'
         foreach ($document in $jsonObject.Documents) {
@@ -105,7 +105,7 @@ function New-PSSwaggerMetadataFile {
         }
     }
     else {
-        $SwaggerSpecFilePaths += $SwaggerSpecPath
+        $SwaggerSpecFilePaths += $SpecificationPath
     }
 
     $DefinitionFunctionsDetails = @{}
@@ -115,7 +115,7 @@ function New-PSSwaggerMetadataFile {
     
     # Parse the JSON and populate the dictionary
     $ConvertToSwaggerDictionary_params = @{
-        SwaggerSpecPath            = $SwaggerSpecPath
+        SwaggerSpecPath            = $SpecificationPath
         SwaggerSpecFilePaths       = $SwaggerSpecFilePaths
         DefinitionFunctionsDetails = $DefinitionFunctionsDetails
     }
@@ -124,7 +124,7 @@ function New-PSSwaggerMetadataFile {
     $nameSpace = $swaggerDict['info'].NameSpace
     $models = $swaggerDict['info'].Models
     $swaggerMetaDict = @{
-        SwaggerSpecPath      = $SwaggerSpecPath
+        SwaggerSpecPath      = $SpecificationPath
         SwaggerSpecFilePaths = $SwaggerSpecFilePaths
         AutoRestModeler      = $AutoRestModeler
     }
@@ -208,7 +208,7 @@ function New-PSSwaggerMetadataFile {
         }
         Out-File @OutFile_Params
 
-        Write-Verbose -Message ($LocalizedData.SuccessfullyGeneratedMetadataFile -f $PSMetaFilePath, $SwaggerSpecPath)
+        Write-Verbose -Message ($LocalizedData.SuccessfullyGeneratedMetadataFile -f $PSMetaFilePath, $SpecificationPath)
     }
 }
 
