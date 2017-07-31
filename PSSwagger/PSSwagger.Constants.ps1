@@ -156,6 +156,19 @@ $parameterGroupPropertyExpression = @'
     if (`$PSBoundParameters.ContainsKey('$parameterGroupPropertyName')) { `$$groupName.$parameterGroupPropertyName = `$$parameterGroupPropertyName }
 '@
 
+$constructFlattenedParameter = @'
+    
+    `$flattenedParameters = $flattenedParametersListStr
+    `$utilityCmdParams = @{}
+    `$flattenedParameters | ForEach-Object {
+        if(`$PSBoundParameters.ContainsKey(`$_)) {
+            `$utilityCmdParams[`$_] = `$PSBoundParameters[`$_]
+        }
+    }
+    `$$SwaggerOperationParameterName = New-$($FlattenedParamType)Object @utilityCmdParams
+
+'@
+
 $functionBodyStr = @'
 
     `$ErrorActionPreference = 'Stop'
@@ -166,6 +179,7 @@ $functionBodyStr = @'
     $GlobalParameterBlock
     $oDataExpressionBlock
     $parameterGroupsExpressionBlock
+    $flattenedParametersBlock
 
     `$skippedCount = 0
     `$returnedCount = 0
