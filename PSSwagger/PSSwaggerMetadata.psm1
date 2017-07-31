@@ -15,7 +15,7 @@ $SubScripts = @(
 $SubScripts | ForEach-Object {. (Join-Path -Path $PSScriptRoot -ChildPath $_) -Force}
 
 $SubModules = @(
-    'PSSwagger.Common.Helpers',
+    'PSSwaggerUtility',
     'SwaggerUtils.psm1',
     'Utilities.psm1',
     'Paths.psm1',

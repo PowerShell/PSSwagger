@@ -18,7 +18,7 @@ function Get-AzServiceCredential
     [CmdletBinding()]
     param()
 
-    $AzureContext = & "$moduleName\Get-AzureRmContext" -ErrorAction Stop
+    $AzureContext = & "Get-AzureRmContext" -ErrorAction Stop
     $authenticationFactory = New-Object -TypeName Microsoft.Azure.Commands.Common.Authentication.Factories.AuthenticationFactory
     if ((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
         [Action[string]]$stringAction = {param($s)}
@@ -51,7 +51,7 @@ function Get-AzSubscriptionId
     [CmdletBinding()]
     param()
 
-    $AzureContext = & "$moduleName\Get-AzureRmContext" -ErrorAction Stop
+    $AzureContext = & "Get-AzureRmContext" -ErrorAction Stop
     if(Get-Member -InputObject $AzureContext.Subscription -Name SubscriptionId)
     {
         return $AzureContext.Subscription.SubscriptionId
@@ -71,7 +71,7 @@ function Get-AzResourceManagerUrl
     [CmdletBinding()]
     param()
 
-    $AzureContext = & "$moduleName\Get-AzureRmContext" -ErrorAction Stop    
+    $AzureContext = & "Get-AzureRmContext" -ErrorAction Stop    
     $AzureContext.Environment.ResourceManagerUrl
 }
 

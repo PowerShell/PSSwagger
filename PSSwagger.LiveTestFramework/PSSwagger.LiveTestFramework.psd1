@@ -11,7 +11,7 @@
     CmdletsToExport = ''
     VariablesToExport = ''
     AliasesToExport = ''
-    RequiredModules = @('PSSwagger.Common.Helpers')
+    RequiredModules = @('PSSwaggerUtility')
     NestedModules = @()
 
     FileList = @(

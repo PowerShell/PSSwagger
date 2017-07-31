@@ -4,7 +4,7 @@
 #
 # Licensed under the MIT license.
 #
-# PSSwagger Module
+# PSSwaggerUtility Module
 #
 #########################################################################################
 

@@ -11,7 +11,7 @@ When you, as the service owner, have multiple language SDKs you need to test, yo
 Live service <-> Language-specific SDK <-> Language-specific test server <-> Test code
 
 ## Usage
-After you've imported ```PSSwagger.Common.Helpers```, you can import ```PSSwagger.LiveTestFramework```. Use this module to compile the library and console server types or start the server directly.
+After you've imported ```PSSwaggerUtility```, you can import ```PSSwagger.LiveTestFramework```. Use this module to compile the library and console server types or start the server directly.
 
 ### Start-PSSwaggerLiveTestServer
 TODO

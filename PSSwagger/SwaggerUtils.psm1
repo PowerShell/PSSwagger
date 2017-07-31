@@ -10,7 +10,7 @@
 
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 Import-Module (Join-Path -Path $PSScriptRoot -ChildPath Utilities.psm1)
-Import-Module -Name (Join-Path -Path $PSScriptRoot -ChildPath 'PSSwagger.Common.Helpers')
+Import-Module -Name (Join-Path -Path $PSScriptRoot -ChildPath 'PSSwaggerUtility')
 . "$PSScriptRoot\PSSwagger.Constants.ps1" -Force
 . "$PSScriptRoot\Trie.ps1" -Force
 . "$PSScriptRoot\PSCommandVerbMap.ps1" -Force

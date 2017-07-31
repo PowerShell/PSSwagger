@@ -4,11 +4,11 @@
 #
 # Licensed under the MIT license.
 #
-# PSSwagger.Common.Helpers Module
+# PSSwaggerUtility Module
 #
 #########################################################################################
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
-Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwagger.Common.Helpers.Resources.psd1
+Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwaggerUtility.Resources.psd1
 
 <#
 .DESCRIPTION
@@ -17,7 +17,7 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwa
 .PARAMETER Path
   Path to the file whose contents should be read.
 #>
-function Get-SignedCodeContent {
+function Remove-AuthenticodeSignatureBlock {
     param(
         [Parameter(Mandatory=$true)]
         [string]$Path
@@ -82,7 +82,7 @@ function Get-RequiredModulesPath
 .PARAMETER  CallerModule
   PSModuleInfo object of the Swagger command.
 #>
-function Invoke-SwaggerCommandUtility
+function Start-PSSwaggerJobHelper
 {
     param(
         [Parameter(Mandatory=$true)]
@@ -395,7 +395,7 @@ $script:AppLocalPath = $null
 .PARAMETER  SymbolPath
   Path to store PDB file and matching source file.
 #>
-function Invoke-PSSwaggerAssemblyCompilation {
+function Add-PSSwaggerClientType {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory=$true)]
@@ -657,7 +657,7 @@ function Get-PSSwaggerAddTypeParameters {
 
     # Combine the possibly authenticode-signed *.Code.ps1 files into a single file, adding preprocessor directives to the beginning if specified
     $srcContent = @()
-    $srcContent += $Path | ForEach-Object { "// File $_"; Get-SignedCodeContent -Path $_ }
+    $srcContent += $Path | ForEach-Object { "// File $_"; Remove-AuthenticodeSignatureBlock -Path $_ }
     if ($PreprocessorDirectives) {
         foreach ($preprocessorDirective in $PreprocessorDirectives) {
             $srcContent = ,$preprocessorDirective + $srcContent
@@ -1387,7 +1387,7 @@ function Register-NugetPackageSource
 .PARAMETER  CallerPSBoundParameters
   PSBoundParameters of the caller.
 #>
-function Get-PSCommonParameters
+function Get-PSCommonParameter
 {
     param(
         [Parameter(Mandatory=$true)]
@@ -1627,7 +1627,7 @@ function Initialize-PSSwaggerUtilities {
                 }
             }
 
-            $PSSwaggerJobSourceString = Get-SignedCodeContent -Path $PSSwaggerJobFilePath | Out-String
+            $PSSwaggerJobSourceString = Remove-AuthenticodeSignatureBlock -Path $PSSwaggerJobFilePath | Out-String
             Add-Type -AssemblyName System.Net.Http
             $RequiredAssemblies = @(
                 [System.Management.Automation.PSCmdlet].Assembly.FullName,
@@ -1713,7 +1713,7 @@ function Initialize-PSSwaggerUtilities {
                 }
             }
 
-            $PSSwaggerJobSourceString = Get-SignedCodeContent -Path $PSSwaggerJobFilePath | Out-String
+            $PSSwaggerJobSourceString = Remove-AuthenticodeSignatureBlock -Path $PSSwaggerJobFilePath | Out-String
             Add-Type -AssemblyName System.Net.Http
             $compilerParameters = New-Object -TypeName System.CodeDom.Compiler.CompilerParameters
             $compilerParameters.CompilerOptions = '/debug:full /optimize+ /unsafe'
@@ -1854,39 +1854,31 @@ function Unregister-PSSwaggerClientTracing {
     Unregister-PSSwaggerClientTracingInternal -TracerObject $TracerObject
 }
 
-function Get-BasicAuthCredential {
-    [CmdletBinding()]
+function Get-AutoRestCredential {
+    [CmdletBinding(DefaultParameterSetName='NoAuth')]
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$true, ParameterSetName='BasicAuth')]
         [PSCredential]
-        $Credential
-    )
-
-    Get-BasicAuthCredentialInternal -Credential $Credential
-}
-
-function Get-ApiKeyCredential {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory=$true)]
+        $Credential,
+        
+        [Parameter(Mandatory=$true, ParameterSetName='ApiKeyAuth')]
         [string]
         $APIKey,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false, ParameterSetName='ApiKeyAuth')]
         [string]
-        $In,
+        $Location,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$false, ParameterSetName='ApiKeyAuth')]
         [string]
         $Name
     )
 
-    Get-ApiKeyCredentialInternal -APIKey $APIKey -In $In -Name $Name
-}
-
-function Get-EmptyAuthCredential {
-    [CmdletBinding()]
-    param()
-
-    Get-EmptyAuthCredentialInternal
+    if ('BasicAuth' -eq $PsCmdlet.ParameterSetName) {
+        Get-BasicAuthCredentialInternal -Credential $Credential
+    } elseif ('ApiKeyAuth' -eq $PsCmdlet.ParameterSetName) {
+        Get-ApiKeyCredentialInternal -APIKey $APIKey -Location $Location -Name $Name
+    } else {
+        Get-EmptyAuthCredentialInternal
+    }
 }

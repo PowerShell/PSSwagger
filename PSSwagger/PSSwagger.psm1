@@ -15,7 +15,7 @@ $SubScripts = @(
 $SubScripts | ForEach-Object {. (Join-Path -Path $PSScriptRoot -ChildPath $_) -Force}
 
 $SubModules = @(
-    'PSSwagger.Common.Helpers',
+    'PSSwaggerUtility',
     'SwaggerUtils.psm1',
     'Utilities.psm1',
     'Paths.psm1',
@@ -669,8 +669,8 @@ function ConvertTo-CsharpCode
         Export-CliXml -InputObject $PathFunctionDetails -Path $cliXmlTmpPath
         $dependencies = Get-PSSwaggerExternalDependencies -Azure:$codeCreatedByAzureGenerator -Framework 'net4'
         $microsoftRestClientRuntimeAzureRequiredVersion = if ($dependencies.ContainsKey('Microsoft.Rest.ClientRuntime.Azure')) { $dependencies['Microsoft.Rest.ClientRuntime.Azure'].RequiredVersion } else { '' }
-        $command = "Import-Module '$PSScriptRoot\PSSwagger.Common.Helpers';
-                    Invoke-PSSwaggerAssemblyCompilation  -OutputAssemblyName '$outAssembly' ``
+        $command = "Import-Module '$PSScriptRoot\PSSwaggerUtility';
+                    Add-PSSwaggerClientType  -OutputAssemblyName '$outAssembly' ``
                                                 -ClrPath '$clrPath' ``
                                                 -CSharpFiles $allCSharpFilesArrayString ``
                                                 -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator ``
@@ -749,8 +749,8 @@ function ConvertTo-CsharpCode
         }
         $dependencies = Get-PSSwaggerExternalDependencies -Azure:$codeCreatedByAzureGenerator -Framework 'netstandard1'
         $microsoftRestClientRuntimeAzureRequiredVersion = if ($dependencies.ContainsKey('Microsoft.Rest.ClientRuntime.Azure')) { $dependencies['Microsoft.Rest.ClientRuntime.Azure'].RequiredVersion } else { '' }
-        $command = "Import-Module '$PSScriptRoot\PSSwagger.Common.Helpers';
-                    Invoke-PSSwaggerAssemblyCompilation -OutputAssemblyName '$outAssembly' ``
+        $command = "Import-Module '$PSScriptRoot\PSSwaggerUtility';
+                    Add-PSSwaggerClientType -OutputAssemblyName '$outAssembly' ``
                                                -ClrPath '$clrPath' ``
                                                -CSharpFiles $allCSharpFilesArrayString ``
                                                -MicrosoftRestClientRuntimeAzureRequiredVersion '$microsoftRestClientRuntimeAzureRequiredVersion' ``
@@ -814,7 +814,7 @@ function New-ModuleManifestUtility
         Description = $Info.Description
         CopyRight = $info.LicenseName
         Author = $info.ContactEmail
-        RequiredModules = @('PSSwagger.Common.Helpers')
+        RequiredModules = @('PSSwaggerUtility')
         RootModule = "$($Info.ModuleName).psm1"
         FormatsToProcess = $FormatsToProcess
         FunctionsToExport = $FunctionsToExport

@@ -71,7 +71,7 @@ if (-not (Test-Path -Path `$dllFullName)) {
     `$microsoftRestClientRuntimeRequiredVersion = `$dependencies['Microsoft.Rest.ClientRuntime'].RequiredVersion
     `$newtonsoftJsonRequiredVersion = `$dependencies['Newtonsoft.Json'].RequiredVersion
 
-    `$success = Invoke-PSSwaggerAssemblyCompilation -CSharpFiles `$allCSharpFiles -NewtonsoftJsonRequiredVersion `$newtonsoftJsonRequiredVersion -MicrosoftRestClientRuntimeRequiredVersion `$microsoftRestClientRuntimeRequiredVersion -MicrosoftRestClientRuntimeAzureRequiredVersion "`$microsoftRestClientRuntimeAzureRequiredVersion" -ClrPath `$clrPath -BootstrapConsent:`$consent -CodeCreatedByAzureGenerator:`$isAzureCSharp
+    `$success = Add-PSSwaggerClientType -CSharpFiles `$allCSharpFiles -NewtonsoftJsonRequiredVersion `$newtonsoftJsonRequiredVersion -MicrosoftRestClientRuntimeRequiredVersion `$microsoftRestClientRuntimeRequiredVersion -MicrosoftRestClientRuntimeAzureRequiredVersion "`$microsoftRestClientRuntimeAzureRequiredVersion" -ClrPath `$clrPath -BootstrapConsent:`$consent -CodeCreatedByAzureGenerator:`$isAzureCSharp
     if (-not `$success) {
         `$message = `$LocalizedData.CompilationFailed -f (`$dllFullName)
         throw `$message
@@ -123,13 +123,27 @@ function $commandName
 
     Begin 
     {
-	    $helperModule\Initialize-PSSwaggerDependencies
+	    $dependencyInitFunction
+        `$tracerObject = `$null
+        if (`$MyInvocation.BoundParameters.ContainsKey('Debug') -and `$MyInvocation.BoundParameters.Debug -and `$PSVersionTable.PSVersion -ge '5.1') {
+            `$oldDebugPreference = `$global:DebugPreference
+			`$global:DebugPreference = "continue"
+            `$tracerObject = PSSwaggerUtility\New-PSSwaggerClientTracing
+            Register-PSSwaggerClientTracing -TracerObject `$tracerObject
+        }
 	}
 
     Process {
     $body
 
     $PathFunctionBody
+    }
+
+    End {
+        if (`$tracerObject) {
+            `$global:DebugPreference = `$oldDebugPreference
+            Unregister-PSSwaggerClientTracing -TracerObject `$tracerObject
+        }
     }
 }
 '@
@@ -320,7 +334,7 @@ Write-Verbose -Message "Waiting for the operation to complete."
         }
     }
 
-    `$PSCommonParameters = Get-PSCommonParameters -CallerPSBoundParameters `$PSBoundParameters
+    `$PSCommonParameters = Get-PSCommonParameter -CallerPSBoundParameters `$PSBoundParameters
 
     if(`$AsJob)
     {
@@ -329,7 +343,7 @@ Write-Verbose -Message "Waiting for the operation to complete."
         `$ScriptBlockParameters['AsJob'] = `$AsJob
         `$PSCommonParameters.GetEnumerator() | ForEach-Object { `$ScriptBlockParameters[`$_.Name] = `$_.Value }
 
-        Invoke-SwaggerCommandUtility -ScriptBlock `$PSSwaggerJobScriptBlock ``
+        Start-PSSwaggerJobHelper -ScriptBlock `$PSSwaggerJobScriptBlock ``
                                      -CallerPSBoundParameters `$ScriptBlockParameters ``
                                      -CallerPSCmdlet `$PSCmdlet ``
                                      @PSCommonParameters

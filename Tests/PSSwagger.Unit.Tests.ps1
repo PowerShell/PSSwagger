@@ -69,7 +69,7 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
         }
 
         Context 'Get-XDGDirectory Unit Tests (Linux) (Default)' {
-            Mock Get-OperatingSystemInfo -ModuleName PSSwagger.Common.Helpers {
+            Mock Get-OperatingSystemInfo -ModuleName PSSwaggerUtility {
                 return @{
                     IsCore = $true
                     IsLinux = $true
@@ -78,7 +78,7 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
                 }
             }
 
-            Mock Get-EnvironmentVariable -ModuleName PSSwagger.Common.Helpers {
+            Mock Get-EnvironmentVariable -ModuleName PSSwaggerUtility {
                 if ('HOME' -eq $Name) {
                     return '/hometest'
                 }
@@ -116,7 +116,7 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
         }
 
         Context 'Get-XDGDirectory Unit Tests (Linux) (Custom)' {
-            Mock Get-OperatingSystemInfo -ModuleName PSSwagger.Common.Helpers {
+            Mock Get-OperatingSystemInfo -ModuleName PSSwaggerUtility {
                 return @{
                     IsCore = $true
                     IsLinux = $true
@@ -125,7 +125,7 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
                 }
             }
 
-            Mock Get-EnvironmentVariable -ModuleName PSSwagger.Common.Helpers {
+            Mock Get-EnvironmentVariable -ModuleName PSSwaggerUtility {
                 if ('HOME' -eq $Name) {
                     return '/hometest'
                 } elseif ('XDG_CACHE_HOME' -eq $Name) {
@@ -157,7 +157,7 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
         }
 
         Context 'Get-XDGDirectory Unit Tests (Windows)' {
-            Mock Get-OperatingSystemInfo -ModuleName PSSwagger.Common.Helpers {
+            Mock Get-OperatingSystemInfo -ModuleName PSSwaggerUtility {
                 return @{
                     IsCore = $true
                     IsLinux = $false

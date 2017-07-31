@@ -4,7 +4,7 @@
 #
 # Licensed under the MIT license.
 #
-# PSSwagger.Common.Helpers Module
+# PSSwaggerUtility Module
 #
 #########################################################################################
 function Get-BasicAuthCredentialInternal {
@@ -34,14 +34,14 @@ function Get-ApiKeyCredentialInternal {
 
         [Parameter(Mandatory=$false)]
         [string]
-        $In,
+        $Location,
 
         [Parameter(Mandatory=$false)]
         [string]
         $Name
     )
 
-    New-Object -TypeName 'Microsoft.PowerShell.Commands.PSSwagger.PSApiKeyAuthentication' -ArgumentList $APIKey,$In,$Name
+    New-Object -TypeName 'Microsoft.PowerShell.Commands.PSSwagger.PSApiKeyAuthentication' -ArgumentList $APIKey,$Location,$Name
 }
 
 function Get-EmptyAuthCredentialInternal {

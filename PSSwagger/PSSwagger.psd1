@@ -29,9 +29,7 @@ FileList = @(
              'PSSwaggerMetadata.psm1',
              'SwaggerUtils.psm1',
              'Utilities.psm1',
-             'Trie.ps1',
-             'PSSwagger.Common.Helpers\PSSwagger.Common.Helpers.psd1',
-             'PSSwagger.Common.Helpers\PSSwagger.Common.Helpers.psm1'
+             'Trie.ps1'
             )
 
 PrivateData = @{

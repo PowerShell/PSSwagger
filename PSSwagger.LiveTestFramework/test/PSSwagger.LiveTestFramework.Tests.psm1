@@ -231,7 +231,7 @@ function Install-Dotnet {
         [string]$Version = "2.0.0-preview1-005952"
     )
 
-    $osInfo = PSSwagger.Common.Helpers\Get-OperatingSystemInfo
+    $osInfo = PSSwaggerUtility\Get-OperatingSystemInfo
     $obtainUrl = "https://raw.githubusercontent.com/dotnet/cli/master/scripts/obtain"
 
     # Install for Linux and OS X
@@ -290,7 +290,7 @@ function Get-DotNetPath
     [CmdletBinding()]
     param()
 
-    $osInfo = PSSwagger.Common.Helpers\Get-OperatingSystemInfo
+    $osInfo = PSSwaggerUtility\Get-OperatingSystemInfo
     if ($osInfo.IsWindows) {
         $path = "$env:LocalAppData\Microsoft\dotnet"
     } else {

@@ -23,7 +23,7 @@ function Start-PSSwaggerLiveTestServer {
         $NoNewWindow
     )
     
-    $osInfo = PSSwagger.Common.Helpers\Get-OperatingSystemInfo
+    $osInfo = PSSwaggerUtility\Get-OperatingSystemInfo
     if ($osInfo.IsCore) {
         $clr = 'coreclr'
     } else {
@@ -120,7 +120,7 @@ function Add-PSSwaggerLiveTestLibType {
         $SaveAssembly
     )
 
-    $osInfo = PSSwagger.Common.Helpers\Get-OperatingSystemInfo
+    $osInfo = PSSwaggerUtility\Get-OperatingSystemInfo
     $codeFilePaths = @()
     $systemRefs = @()
     $packageDependencies = @{}
@@ -206,7 +206,7 @@ function Add-PSSwaggerLiveTestServerType {
         $SaveAssembly
     )
 
-    $osInfo = PSSwagger.Common.Helpers\Get-OperatingSystemInfo
+    $osInfo = PSSwaggerUtility\Get-OperatingSystemInfo
     $codeFilePaths = @()
     $systemRefs = @()
     $packageDependencies = @{}
@@ -493,7 +493,7 @@ function Get-PSSwaggerAddTypeParameters {
 
     # Combine the possibly authenticode-signed *.Code.ps1 files into a single file, adding preprocessor directives to the beginning if specified
     $srcContent = @()
-    $srcContent += $Path | ForEach-Object { "// File $_"; Get-SignedCodeContent -Path $_ }
+    $srcContent += $Path | ForEach-Object { "// File $_"; Remove-AuthenticodeSignatureBlock -Path $_ }
     if ($PreprocessorDirectives) {
         foreach ($preprocessorDirective in $PreprocessorDirectives) {
             $srcContent = ,$preprocessorDirective + $srcContent

@@ -72,11 +72,10 @@ A PowerShell module with commands to generate the PowerShell commands for a give
 
 After step 5, the module will be in `C:\Temp\GeneratedModule\Generated.AzureRM.BatchManagement ($param.Path)` folder.
 
-Before importing that module and using it, you need to import `PSSwagger.Common.Helpers` module which is under PSSwagger folder. If the module is built on Azure, import the `PSSwagger.Azure.Helpers` module as well.
+Before importing that module and using it, you need to import `PSSwaggerUtility` module which is under PSSwagger folder.
     
 ```powershell
-Import-Module .\PSSwagger\PSSwagger.Common.Helpers
-Import-Module .\PSSwagger\PSSwagger.Azure.Helpers
+Import-Module .\PSSwagger\PSSwaggerUtility
 Import-Module "$($param.Path)\$($param.Name)"
 Get-Command -Module $param.Name
 ```
@@ -90,15 +89,9 @@ If the generated module is not signed, the catalog file's signing will not be ch
 Because of the dynamic compilation feature, it is highly recommended that publishers of a generated module Authenticode sign the module and strong name sign both precompiled assemblies (full CLR and core CLR).
 
 ## Microsoft.Rest.ServiceClientTracing support
-To enable Microsoft.Rest.ServiceClientTracing support, you must:
-1. Register a tracer (one is included in the PSSwagger.Common.Helpers module for PowerShell 5.0 and above)
-2. Enable tracing
+To enable Microsoft.Rest.ServiceClientTracing support, pass -Debug into any generated command.
 
-To register the PowerShell tracer included in the PSSwagger.Common.Helpers module, run:
-```powershell
-Register-PSSwaggerClientTracing -TracerObject (New-PSSwaggerClientTracing)
-```
-The included PowerShell tracer uses Write-Verbose to write tracing messages. To see these messages, you must set $VerbosePreference, as passing in the -Verbose flag to the cmdlet won't carry over to the tracing client.
+The included PowerShell tracer uses Write-Debug to write tracing messages.
 
 When the module is imported to older version of PowerShell, the following steps will need to be taken:
 1. Implement either Microsoft.PowerShell.Commands.PSSwagger.PSSwaggerClientTracing or Microsoft.Rest.IServiceClientTracingInterceptor
@@ -124,11 +117,11 @@ If -Paging is not specified and the cmdlet supports paging, the cmdlet will auto
 # Silent execution when missing dependency packages
 When dependency packages are expected to be missing, silent execution (bypassing the missing packages prompt) can be achieved by calling:
 ```powershell
-PSSwagger.Azure.Helpers\Initialize-PSSwaggerDependencies -AcceptBootstrap
+PSSwaggerUtility\Initialize-PSSwaggerDependencies -AcceptBootstrap -Azure
 ```
 For Microsoft Azure modules, or:
 ```powershell
-PSSwagger.Common.Helpers\Initialize-PSSwaggerDependencies -AcceptBootstrap
+PSSwaggerUtility\Initialize-PSSwaggerDependencies -AcceptBootstrap
 ```
 For all other modules.
 
@@ -171,7 +164,7 @@ The scenario test suite contains tests that hit actual (local) web API endpoints
 | PsSwaggerTestsBasic | A very basic test of a single string-only path using get and post.|
 
 # PSSwagger.LiveTestFramework
-The PSSwagger implementation of the [Azure Live Test Framework protocol](https://github.com/Azure/azure-rest-api-specs-tests/blob/master/json-rpc-server.md) is currently located in this repository in a subdirectory. Once PSSwagger.Common.Helpers is published to [PowerShellGallery.com](https://powershellgallery.com), the PSSwagger.LiveTestFramework code will be moved to a separate repository. You can find the readme for the PSSwagger.LiveTestFramework module [here](/docs/commands/New-PSSwaggerMetadataFile.md).
+The PSSwagger implementation of the [Azure Live Test Framework protocol](https://github.com/Azure/azure-rest-api-specs-tests/blob/master/json-rpc-server.md) is currently located in this repository in a subdirectory. Once PSSwaggerUtility is published to [PowerShellGallery.com](https://powershellgallery.com), the PSSwagger.LiveTestFramework code will be moved to a separate repository. You can find the readme for the PSSwagger.LiveTestFramework module [here](/docs/commands/New-PSSwaggerMetadataFile.md).
 
 # [Code of Conduct](CODE_OF_CONDUCT.md)
 This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/). For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
