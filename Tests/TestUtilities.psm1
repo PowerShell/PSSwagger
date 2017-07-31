@@ -90,7 +90,7 @@ function Initialize-Test {
     if((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
         & "powershell.exe" -command "& {`$env:PSModulePath=`$env:PSModulePath_Backup;
             Import-Module (Join-Path `"$PsSwaggerPath`" `"PSSwagger.psd1`") -Force;
-            Import-Module (Join-Path `"$PsSwaggerPath`" `"PSSwagger.Common.Helpers`") -Force;
+            Import-Module (Join-Path `"$PsSwaggerPath`" `"PSSwaggerUtility`") -Force;
             Initialize-PSSwaggerDependencies -AllFrameworks -AcceptBootstrap -Azure:`$$UseAzureCSharpGenerator;
             New-PSSwaggerModule -SpecificationPath (Join-Path -Path `"$testCaseDataLocation`" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Verbose -NoAssembly -UseAzureCSharpGenerator:`$$UseAzureCSharpGenerator -ConfirmBootstrap;
         }"
@@ -142,7 +142,7 @@ function Start-JsonServer {
         $argList += " $CustomServerParameters"
     }
 
-    Write-Host -Message "Starting json-server: $PSScriptRoot\NodeModules\json-server.cmd $argList"
+    Write-Host "Starting json-server: $PSScriptRoot\NodeModules\json-server.cmd $argList"
     if ('Core' -eq $PSEdition) {
         $jsonServerProcess = Start-Process -FilePath "$PSScriptRoot\NodeModules\json-server.cmd" -ArgumentList $argList -PassThru
     } else {
