@@ -187,7 +187,7 @@ Field Name | Type | Description
 ---|:---:|---
 name| `string` | **Required**. Name of Cmdlet parameter.
 description | `string` | Description of Cmdlet parameter.
-
+flatten | `bool` | Boolean to specify whether the parameters of the swagger path parameter type gets flattened on the generated PowerShell command. Currently, this is only applicable to the Swagger path operations.
 **Examples**:
 
 1. x-ps-parameter-info on operation

@@ -440,7 +440,7 @@ function Get-DefinitionParameterType
     return $ParameterType
 }
 
-function New-SwaggerDefinitionCommand
+function Expand-SwaggerDefinition
 {
     [CmdletBinding()]
     param
@@ -448,10 +448,6 @@ function New-SwaggerDefinitionCommand
         [Parameter(Mandatory = $true)]
         [hashtable]
         $DefinitionFunctionsDetails,
-
-        [Parameter(Mandatory = $true)]
-        [hashtable]
-        $SwaggerMetaDict,
 
         [Parameter(Mandatory = $true)]
         [string]
@@ -463,11 +459,6 @@ function New-SwaggerDefinitionCommand
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
-
-    $FunctionsToExport = @()
-    $GeneratedCommandsPath = Join-Path -Path $SwaggerMetaDict['outputDirectory'] -ChildPath $GeneratedCommandsName
-    $SwaggerDefinitionCommandsPath = Join-Path -Path $GeneratedCommandsPath -ChildPath 'SwaggerDefinitionCommands'
-    $FormatFilesPath = Join-Path -Path $GeneratedCommandsPath -ChildPath 'FormatFiles'
 
     # Expand the definition parameters from 'AllOf' definitions and x_ms_client-flatten declarations.
     $ExpandedAllDefinitions = $false
@@ -553,6 +544,36 @@ function New-SwaggerDefinitionCommand
             Set-GenerateDefinitionCmdlet -DefinitionFunctionsDetails $DefinitionFunctionsDetails -FunctionDetails $FunctionDetails -ModelsNamespaceWithDot "$Namespace.$Models."
         }
     }
+}
+
+function New-SwaggerDefinitionCommand
+{
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [hashtable]
+        $DefinitionFunctionsDetails,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]
+        $SwaggerMetaDict,
+
+        [Parameter(Mandatory = $true)]
+        [string]
+        $NameSpace,
+
+        [Parameter(Mandatory = $true)]
+        [string]
+        $Models
+    )
+
+    Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+
+    $FunctionsToExport = @()
+    $GeneratedCommandsPath = Join-Path -Path $SwaggerMetaDict['outputDirectory'] -ChildPath $GeneratedCommandsName
+    $SwaggerDefinitionCommandsPath = Join-Path -Path $GeneratedCommandsPath -ChildPath 'SwaggerDefinitionCommands'
+    $FormatFilesPath = Join-Path -Path $GeneratedCommandsPath -ChildPath 'FormatFiles'
 
     $DefinitionFunctionsDetails.GetEnumerator() | ForEach-Object {        
         $FunctionDetails = $_.Value
