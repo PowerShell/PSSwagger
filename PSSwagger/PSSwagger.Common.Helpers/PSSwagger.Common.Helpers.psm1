@@ -573,6 +573,8 @@ function Invoke-PSSwaggerAssemblyCompilation {
 
 .PARAMETER  PreprocessorDirectives
   Preprocessor directives to add to the top of the combined source code file.
+.NOTES
+  This function will be deprecated when we move away from Add-Type compilation.
 #>
 function Get-PSSwaggerAddTypeParameters {
     [CmdletBinding()]
@@ -769,7 +771,7 @@ function Initialize-PSSwaggerDependencies {
     } else {
         $framework = if ((Get-OperatingSystemInfo).IsCore) { 'netstandard1' } else { 'net4' }
     }
-    $null = Initialize-PSSwaggerLocalTools -AllUsers:$AllUsers -Azure:$Azure -Framework $framework -AcceptBootstrap:$AcceptBootstrap
+    $null = Initialize-PSSwaggerLocalTool -AllUsers:$AllUsers -Azure:$Azure -Framework $framework -AcceptBootstrap:$AcceptBootstrap
     $null = Initialize-PSSwaggerUtilities
 }
 
@@ -783,7 +785,7 @@ function Initialize-PSSwaggerDependencies {
 .PARAMETER  Precompiling
   Initialize local tools required for compilation.
 #>
-function Initialize-PSSwaggerLocalTools {
+function Initialize-PSSwaggerLocalTool {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory=$false)]
@@ -1662,7 +1664,7 @@ function Initialize-PSSwaggerUtilities {
                 }
 
                 if ($getDependency) {
-                    $userConsent = Initialize-PSSwaggerLocalTools -Framework @($externalReferencesFramework)
+                    $userConsent = Initialize-PSSwaggerLocalTool -Framework @($externalReferencesFramework)
                     $extraRefs = Get-PSSwaggerDependency -PackageName $reference.PackageName `
                                                         -References $reference.References `
                                                         -Framework $reference.Framework `
@@ -1740,7 +1742,7 @@ function Initialize-PSSwaggerUtilities {
                 }
 
                 if ($getDependency) {
-                    $userConsent = Initialize-PSSwaggerLocalTools -Framework @($externalReferencesFramework)
+                    $userConsent = Initialize-PSSwaggerLocalTool -Framework @($externalReferencesFramework)
                     $extraRefs = Get-PSSwaggerDependency -PackageName $reference.PackageName `
                                                             -References $reference.References `
                                                             -Framework $reference.Framework `
@@ -1887,19 +1889,4 @@ function Get-EmptyAuthCredential {
     param()
 
     Get-EmptyAuthCredentialInternal
-}
-
-function Get-HttpClientHandler {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory=$true)]
-        [PSCredential]
-        $Credential
-    )
-
-    Add-Type -AssemblyName System.Net.Http
-    $httpClientHandler = New-Object -TypeName System.Net.Http.HttpClientHandler
-    $httpClientHandler.PreAuthenticate = $true
-    $httpClientHandler.Credentials = $Credential
-    $httpClientHandler
 }

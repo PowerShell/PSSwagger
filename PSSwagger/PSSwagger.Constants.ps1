@@ -62,7 +62,7 @@ if (-not (Test-Path -Path `$dllFullName)) {
     }
 
     `$dependencies = Get-PSSwaggerExternalDependencies -Azure:`$isAzureCSharp -Framework `$framework
-    `$consent = Initialize-PSSwaggerLocalTools -Azure:`$isAzureCSharp -Framework `$framework
+    `$consent = Initialize-PSSwaggerLocalTool -Azure:`$isAzureCSharp -Framework `$framework
     `$microsoftRestClientRuntimeAzureRequiredVersion = ''
     if (`$dependencies.ContainsKey('Microsoft.Rest.ClientRuntime.Azure')) {
         `$microsoftRestClientRuntimeAzureRequiredVersion = `$dependencies['Microsoft.Rest.ClientRuntime.Azure'].RequiredVersion
@@ -110,6 +110,7 @@ $AsJobParameterString = @'
 
 
 $advFnSignatureForPath = @'
+Import-Module -Name (Join-Path -Path `$PSScriptRoot -ChildPath .. | Join-Path -ChildPath .. | Join-Path -ChildPath "GeneratedHelpers.psm1")
 <#
 $commandHelp
 $paramHelp

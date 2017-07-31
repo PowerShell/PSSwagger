@@ -15,17 +15,15 @@ FunctionsToExport = @('Invoke-SwaggerCommandUtility',
                       'Get-XDGDirectory',
                       'Get-PSCommonParameters',
                       'Invoke-PSSwaggerAssemblyCompilation',
-                      'Get-PSSwaggerAddTypeParameters',
                       'Get-PSSwaggerMsi',
                       'Get-PSSwaggerDependencyPackage',
                       'Get-PSSwaggerDependency',
                       'Get-PSSwaggerExternalDependencies',
-                      'Initialize-PSSwaggerLocalTools',
+                      'Initialize-PSSwaggerLocalTool',
                       'Initialize-PSSwaggerDependencies',
                       'Get-BasicAuthCredential',
                       'Get-ApiKeyCredential',
-                      'Get-EmptyAuthCredential',
-                      'Get-HttpClientHandler')
+                      'Get-EmptyAuthCredential')
 CmdletsToExport = @('Start-PSSwaggerJob')
 VariablesToExport = ''
 AliasesToExport = ''

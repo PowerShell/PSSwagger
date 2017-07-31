@@ -663,7 +663,7 @@ function New-SwaggerPath
                     } else {
                         # Use an empty service client credentials object because we're using HttpClientHandler instead
                         $authFunctionCall = 'PSSwagger.Common.Helpers\Get-EmptyAuthCredential'
-                        $httpClientHandlerCall = '$httpClientHandler = PSSwagger.Common.Helpers\Get-HttpClientHandler -Credential $Credential'
+                        $httpClientHandlerCall = '$httpClientHandler = New-HttpClientHandler -Credential $Credential'
                     }
                 } elseif ($type -eq 'apiKey') {
                     if (-not (Get-Member -InputObject $securityDefinition -Name 'name')) {
@@ -965,9 +965,9 @@ function New-SwaggerPath
     $outputTypeBlock = $bodyObject.OutputTypeBlock
 
     if ($UseAzureCsharpGenerator) {
-        $helperModule = "PSSwagger.Azure.Helpers"
+        $dependencyInitFunction = "Initialize-PSSwaggerDependencies -Azure"
     } else {
-        $helperModule = "PSSwagger.Common.Helpers"
+        $dependencyInitFunction = "Initialize-PSSwaggerDependencies"
     }
     
     $CommandString = $executionContext.InvokeCommand.ExpandString($advFnSignatureForPath)

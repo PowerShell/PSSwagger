@@ -788,8 +788,6 @@ Describe "PSMetadataTests" -Tag @('PSMetadata','ScenarioTest')  {
         Write-Verbose "Importing modules"
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwagger.Common.Helpers" | `
                        Join-Path -ChildPath "PSSwagger.Common.Helpers.psd1") -Force
-        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwagger.Azure.Helpers" | `
-                       Join-Path -ChildPath "PSSwagger.Azure.Helpers.psd1") -Force
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
                        Join-Path -ChildPath "Generated.PSMetadataTest.Module")
         if ($global:PSSwaggerTest_EnableTracing -and $script:EnableTracer) {

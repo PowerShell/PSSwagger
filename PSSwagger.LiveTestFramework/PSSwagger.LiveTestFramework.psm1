@@ -342,7 +342,7 @@ function Add-PSSwaggerLiveTestTypeGeneric {
         $GetPSSwaggerAddTypeParametersParams['OutputAssemblyName'] = $OutputFileName
     }
 
-    $addTypeParamsResult = PSSwagger.Common.Helpers\Get-PSSwaggerAddTypeParameters @GetPSSwaggerAddTypeParametersParams
+    $addTypeParamsResult = Get-PSSwaggerAddTypeParameters @GetPSSwaggerAddTypeParametersParams
 
     if ($addTypeParamsResult['ResolvedPackageReferences']) {
         foreach ($extraRef in $addTypeParamsResult['ResolvedPackageReferences']) {
@@ -376,6 +376,194 @@ function Add-PSSwaggerLiveTestTypeGeneric {
             $null = Copy-Item -Path (Join-Path -Path $OutputDirectory -ChildPath $OutputPdbName) -Destination (Join-Path -Path $DebugSymbolDirectory -ChildPath $OutputPdbName)
         }
     }
+}
+
+<#
+.DESCRIPTION
+  Compiles AutoRest generated C# code using the framework of the current PowerShell process.
+
+.PARAMETER  Path
+  All *.Code.ps1 C# files to compile.
+
+.PARAMETER  OutputDirectory
+  Full Path to output directory.
+
+.PARAMETER  OutputAssemblyName
+  Optional assembly file name.
+
+.PARAMETER  AllUsers
+  User has specified to install package dependencies to global location.
+
+.PARAMETER  BootstrapConsent
+  User has consented to bootstrap dependencies.
+
+.PARAMETER  TestBuild
+  Build binaries for testing (disable compiler optimizations, enable full debug information).
+
+.PARAMETER  SymbolPath
+  Path to store PDB file and matching source file.
+
+.PARAMETER  PackageDependencies
+  Map of package dependencies to add as referenced assemblies but don't exist on disk.
+
+.PARAMETER  FileReferences
+  Compilation references that exist on disk.
+
+.PARAMETER  PreprocessorDirectives
+  Preprocessor directives to add to the top of the combined source code file.
+#>
+function Get-PSSwaggerAddTypeParameters {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$false)]
+        [string[]]
+        $Path,
+
+        [Parameter(Mandatory=$false)]
+        [AllowEmptyString()]
+        [string]
+        $OutputDirectory,
+
+        [Parameter(Mandatory=$false)]
+        [AllowEmptyString()]
+        [string]
+        $OutputAssemblyName,
+
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $AllUsers,
+
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $BootstrapConsent,
+
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $TestBuild,
+
+        [Parameter(Mandatory=$false)]
+        [string]
+        $SymbolPath,
+
+        [Parameter(Mandatory=$false)]
+        [ValidateSet("ConsoleApplication","Library")]
+        [string]
+        $OutputType = 'Library',
+		
+        [Parameter(Mandatory=$false)]
+        [hashtable]
+        $PackageDependencies,
+		
+        [Parameter(Mandatory=$false)]
+        [string[]]
+        $FileReferences,
+
+        [Parameter(Mandatory=$false)]
+        [string[]]
+        $PreprocessorDirectives
+    )
+	
+    $resultObj = @{
+        # The add type parameters to use
+        Params = $null
+        # Full path to resolved package reference assemblies
+        ResolvedPackageReferences = @()
+        # The expected output assembly full path
+        OutputAssemblyPath = $null
+        # The actual source to be emitted
+        SourceCode = $null
+        # The file name the returned params expect to exist, if required
+        SourceFileName = $null
+    }
+
+    # Resolve package dependencies
+    $extraRefs = @()
+    if ($PackageDependencies) {
+        foreach ($entry in ($PackageDependencies.GetEnumerator() | Sort-Object { $_.Value.LoadOrder })) {
+            $reference = $entry.Value
+            $resolvedRef = Get-PSSwaggerDependency -PackageName $reference.PackageName `
+                                                -RequiredVersion $reference.RequiredVersion `
+                                                -References $reference.References `
+                                                -Framework $reference.Framework `
+                                                -AllUsers:$AllUsers -Install -BootstrapConsent:$BootstrapConsent
+            $extraRefs += $resolvedRef
+            $resultObj['ResolvedPackageReferences'] += $resolvedRef
+        }
+    }
+
+    # Combine the possibly authenticode-signed *.Code.ps1 files into a single file, adding preprocessor directives to the beginning if specified
+    $srcContent = @()
+    $srcContent += $Path | ForEach-Object { "// File $_"; Get-SignedCodeContent -Path $_ }
+    if ($PreprocessorDirectives) {
+        foreach ($preprocessorDirective in $PreprocessorDirectives) {
+            $srcContent = ,$preprocessorDirective + $srcContent
+        }
+    }
+
+    $oneSrc = $srcContent -join "`n"
+    $resultObj['SourceCode'] = $oneSrc
+    if ($SymbolPath) {
+        if ($OutputAssemblyName) {
+            $OutputAssemblyBaseName = [System.IO.Path]::GetFileNameWithoutExtension("$OutputAssemblyName")
+            $resultObj['SourceFileName'] = Join-Path -Path $SymbolPath -ChildPath "Generated.$OutputAssemblyBaseName.cs"
+        } else {
+            $resultObj['SourceFileName'] = Join-Path -Path $SymbolPath -ChildPath "Generated.cs"
+        }
+
+        $addTypeParams = @{
+            Path = $resultObj['SourceFileName']
+            WarningAction = 'Ignore'
+        }
+    } else {
+        $addTypeParams = @{
+            TypeDefinition = $oneSrc
+            Language = "CSharp"
+            WarningAction = 'Ignore'
+        }
+    }
+
+    if (-not (Get-OperatingSystemInfo).IsCore) {
+        $compilerParameters = New-Object -TypeName System.CodeDom.Compiler.CompilerParameters
+        $compilerParameters.CompilerOptions = '/debug:full'
+        if ($TestBuild) {
+            $compilerParameters.IncludeDebugInformation = $true
+        } else {
+            $compilerParameters.CompilerOptions += ' /optimize+'
+        }
+
+        if ($OutputType -eq 'ConsoleApplication') {
+            $compilerParameters.GenerateExecutable = $true
+        }
+    
+        $compilerParameters.WarningLevel = 3
+        foreach ($ref in ($FileReferences + $extraRefs)) {
+            $null = $compilerParameters.ReferencedAssemblies.Add($ref)
+        }
+        $addTypeParams['CompilerParameters'] = $compilerParameters
+    } else {
+        $addTypeParams['ReferencedAssemblies'] = ($FileReferences + $extraRefs)
+        if ($OutputType -eq 'ConsoleApplication') {
+            $addTypeParams['ReferencedAssemblies'] = $OutputType
+        }
+    }
+
+    $OutputPdbName = ''
+    if ($OutputAssemblyName) {
+        $OutputAssembly = Join-Path -Path $OutputDirectory -ChildPath $OutputAssemblyName
+        $resultObj['OutputAssemblyPath'] = $OutputAssembly
+        if ($addTypeParams.ContainsKey('CompilerParameters')) {
+            $addTypeParams['CompilerParameters'].OutputAssembly = $OutputAssembly
+        } else {
+            $addTypeParams['OutputAssembly'] = $OutputAssembly
+        }
+    } else {
+        if ($addTypeParams.ContainsKey('CompilerParameters')) {
+            $addTypeParams['CompilerParameters'].GenerateInMemory = $true
+        }
+    }
+    
+    $resultObj['Params'] = $addTypeParams
+    return $resultObj
 }
 
 Export-ModuleMember -Function Start-PSSwaggerLiveTestServer,Add-PSSwaggerLiveTestLibType,Add-PSSwaggerLiveTestServerType
