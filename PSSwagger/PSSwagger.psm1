@@ -258,7 +258,7 @@ function New-PSSwaggerModule
 
     # Get the PowerShell Metadata if .psmeta.json file is available.
     $PSMetaJsonObject = $null
-    $PSMetaFilePath = [regex]::replace($SwaggerSpecPath, ".json$", ".psmeta.json")
+    $PSMetaFilePath = [regex]::replace($SpecificationPath, ".json$", ".psmeta.json")
     if (Test-Path -Path $PSMetaFilePath -PathType Leaf) {
         $PSMetaJsonObject = ConvertFrom-Json -InputObject ((Get-Content -Path $PSMetaFilePath) -join [Environment]::NewLine) -ErrorAction Stop
     }

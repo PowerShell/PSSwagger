@@ -424,8 +424,7 @@ Describe "Tests for New-PSSwaggerModule with Swagger spec and its .psmeta.json f
 
         # Import generated module
         Write-Verbose "Importing modules"
-        Import-Module (Join-Path -Path $PSSwaggerPath -ChildPath "PSSwagger.Common.Helpers") -Force
-        Import-Module (Join-Path -Path $PSSwaggerPath -ChildPath "PSSwagger.Azure.Helpers") -Force
+        Import-Module (Join-Path -Path $PSSwaggerPath -ChildPath "PSSwaggerUtility") -Force
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | Join-Path -ChildPath $GeneratedModuleName) -Force
 
         $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName 'psmetadatatest'
