@@ -1765,7 +1765,7 @@ function Get-PowerShellCodeGenSettings {
         $props = Get-Member -InputObject $swaggerObject.'info'.'x-ps-code-generation-settings' -MemberType NoteProperty
         foreach ($prop in $props) {
             if (-not $CodeGenSettings.ContainsKey($prop.Name)) {                
-                Write-Warning -Message ($LocalizedData.UnkownPSMetadataProperty -f ('x-ps-code-generation-settings', $prop.Name))
+                Write-Warning -Message ($LocalizedData.UnknownPSMetadataProperty -f ('x-ps-code-generation-settings', $prop.Name))
             } else {
                 $CodeGenSettings[$prop.Name] = $swaggerObject.'info'.'x-ps-code-generation-settings'.$($prop.Name)
             }

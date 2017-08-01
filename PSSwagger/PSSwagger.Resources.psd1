@@ -82,7 +82,7 @@ ConvertFrom-StringData @'
     SuccessfullyGeneratedMetadataFile=Successfully generated the PowerShell metadata file '{0}' for the specified Swagger specification '{1}'.
     NewPSSwaggerMetadataFileOperationMessage=Create PowerShell Swagger Metadata file
     ServiceTypeMetadataFileNotFound=The service type metadata file '{0}' does not exist.
-    UnkownPSMetadataProperty=Unknown '{0}' property: '{1}'.
+    UnknownPSMetadataProperty=Unknown '{0}' property: '{1}'.
     InvalidPSMetaFlattenParameter=Flatten property is specified as 'true' for an invalid parameter '{0}' with type '{1}'.
 ###PSLOC
 '@
