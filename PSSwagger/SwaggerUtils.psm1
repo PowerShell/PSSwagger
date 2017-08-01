@@ -1424,11 +1424,11 @@ function Get-PathFunctionBody
         $DefinitionDetails = $_.Value
         $FlattenedParamType = $DefinitionDetails.Name
 
-        $FlattenedParametersList = @()
-        $DefinitionDetails.ParametersTable.GetEnumerator() | ForEach-Object {
-            $FlattenedParametersList += $_.Name
+        $FlattenedParametersList = $DefinitionDetails.ParametersTable.GetEnumerator() | ForEach-Object { $_.Name }
+        $FlattenedParametersListStr = ''
+        if($FlattenedParametersList) {
+            $FlattenedParametersListStr = "@('$($flattenedParametersList -join "', '")')"
         }
-        $FlattenedParametersListStr = "@('$($flattenedParametersList -join "', '")')"
 
         $FlattenedParametersBlock += $executionContext.InvokeCommand.ExpandString($constructFlattenedParameter)
     }
