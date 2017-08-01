@@ -80,7 +80,11 @@ function ConvertTo-SwaggerDictionary {
 
         [Parameter(Mandatory = $false)]
         [hashtable]
-        $PowerShellCodeGen
+        $PowerShellCodeGen,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]
+        $PSMetaJsonObject
     )
     
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -118,6 +122,12 @@ function ConvertTo-SwaggerDictionary {
     $SwaggerDefinitions = @{}
     $SwaggerPaths = @{}
 
+    $PSMetaParametersJsonObject = $null
+    if($PSMetaJsonObject) {
+        if(Get-Member -InputObject $PSMetaJsonObject -Name 'parameters'){
+            $PSMetaParametersJsonObject = $PSMetaJsonObject.parameters
+        }
+    }
     foreach($FilePath in $SwaggerSpecFilePaths) {
         $swaggerObject = ConvertFrom-Json ((Get-Content $FilePath) -join [Environment]::NewLine) -ErrorAction Stop
         if(Get-Member -InputObject $swaggerObject -Name 'parameters') {
@@ -127,7 +137,8 @@ function ConvertTo-SwaggerDictionary {
                 Info = $swaggerDict['Info']
                 SwaggerParameters = $swaggerParameters
                 DefinitionFunctionsDetails = $DefinitionFunctionsDetails
-				AzureSpec = $AzureSpec
+                AzureSpec = $AzureSpec
+                PSMetaParametersJsonObject = $PSMetaParametersJsonObject
             }
 
             Get-SwaggerParameters @GetSwaggerParameters_Params
@@ -358,7 +369,11 @@ function Get-SwaggerParameters {
 
         [Parameter(Mandatory = $false)]
         [switch]
-        $AzureSpec
+        $AzureSpec,
+
+        [Parameter(Mandatory=$false)]
+        [PSCustomObject]
+        $PSMetaParametersJsonObject
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -435,6 +450,14 @@ function Get-SwaggerParameters {
             $x_ms_parameter_grouping = $parsedName
         }
 
+        $FlattenOnPSCmdlet = $false
+        if($PSMetaParametersJsonObject -and 
+          (Get-Member -InputObject $PSMetaParametersJsonObject -Name $GlobalParameterName) -and
+          (Get-Member -InputObject $PSMetaParametersJsonObject.$GlobalParameterName -Name 'x-ps-parameter-info') -and
+          (Get-Member -InputObject $PSMetaParametersJsonObject.$GlobalParameterName.'x-ps-parameter-info' -Name 'flatten')) {
+            $FlattenOnPSCmdlet = $PSMetaParametersJsonObject.$GlobalParameterName.'x-ps-parameter-info'.'flatten'
+        }
+
         $SwaggerParameters[$GlobalParameterName] = @{
             Name = $parameterName
             Type = $paramTypeObject.ParamType
@@ -446,6 +469,7 @@ function Get-SwaggerParameters {
             x_ms_parameter_grouping = $x_ms_parameter_grouping
             ConstantValue = $ConstantValue
             ReadOnlyGlobalParameter = $ReadOnlyGlobalParameter
+            FlattenOnPSCmdlet = $FlattenOnPSCmdlet
         }
     }
 }
@@ -514,7 +538,11 @@ function Get-PathParamInfo
 
         [Parameter(Mandatory=$true)]
         [hashtable]
-        $ParametersTable
+        $ParametersTable,
+
+        [Parameter(Mandatory=$false)]
+        [PSCustomObject]
+        $PSMetaParametersJsonObject
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -530,7 +558,8 @@ function Get-PathParamInfo
                                                     -SwaggerDict $SwaggerDict `
                                                     -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
                                                     -OperationId $operationId `
-                                                    -ParameterGroupCache $ParameterGroupCache
+                                                    -ParameterGroupCache $ParameterGroupCache `
+                                                    -PSMetaParametersJsonObject $PSMetaParametersJsonObject
         foreach ($ParameterDetails in $AllParameterDetails) {
             if($ParameterDetails -and ($ParameterDetails.ContainsKey('x_ms_parameter_grouping_group') -or $ParameterDetails.Type))
             {
@@ -564,7 +593,11 @@ function Get-ParameterDetails
 
         [Parameter(Mandatory=$true)]
         [hashtable]
-        $ParameterGroupCache
+        $ParameterGroupCache,
+
+        [Parameter(Mandatory=$false)]
+        [PSCustomObject]
+        $PSMetaParametersJsonObject
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -630,6 +663,14 @@ function Get-ParameterDetails
             $x_ms_parameter_grouping = $parsedName
         }
 
+        $FlattenOnPSCmdlet = $false
+        if($PSMetaParametersJsonObject -and 
+          (Get-Member -InputObject $PSMetaParametersJsonObject -Name $parameterName) -and
+          (Get-Member -InputObject $PSMetaParametersJsonObject.$parameterName -Name 'x-ps-parameter-info') -and
+          (Get-Member -InputObject $PSMetaParametersJsonObject.$parameterName.'x-ps-parameter-info' -Name 'flatten')) {
+            $FlattenOnPSCmdlet = $PSMetaParametersJsonObject.$parameterName.'x-ps-parameter-info'.'flatten'
+        }
+
         $ParameterDetails = @{
             Name = $parameterName
             Type = $paramTypeObject.ParamType
@@ -640,6 +681,7 @@ function Get-ParameterDetails
             x_ms_parameter_location = $x_ms_parameter_location
             x_ms_parameter_grouping = $x_ms_parameter_grouping
             OriginalParameterName = $ParameterJsonObject.Name
+            FlattenOnPSCmdlet = $FlattenOnPSCmdlet
         }
     }
 
@@ -900,6 +942,11 @@ function Get-ParamType
                 #  #<...>/parameters/<PARAMETERNAME>
                 $GlobalParameters = $SwaggerDict['Parameters']
                 $GlobalParamDetails = $GlobalParameters[$ReferenceParts[-1]]
+
+                # Get the definition name of the global parameter so that 'New-<DefinitionName>Object' can be generated.
+                if($GlobalParamDetails.Type -and $GlobalParamDetails.Type -match '[.]') {
+                    $ReferenceTypeName = ($GlobalParamDetails.Type -split '[.]')[-1]
+                }
 
                 # Valid values for this extension are: "client", "method".
                 $GlobalParameterDetails = $GlobalParamDetails
@@ -1271,6 +1318,10 @@ function Get-PathFunctionBody
         $OverrideBaseUriBlock,
         
         [Parameter(Mandatory=$true)]
+        [PSCustomObject]
+        $FlattenedParametersOnPSCmdlet,
+
+        [Parameter(Mandatory=$true)]
         [string]
         $ClientArgumentList
     )
@@ -1364,6 +1415,22 @@ function Get-PathFunctionBody
             # Add the beginning if condition
             $parameterSetBasedMethodStr += $executionContext.InvokeCommand.ExpandString($parameterSetBasedMethodStrIfCase)
         }
+    }
+
+    # Prepare the code block for constructing the actual operation parameters which got flattened on the generated cmdlet.
+    $FlattenedParametersBlock = ''
+    $FlattenedParametersOnPSCmdlet.GetEnumerator() | ForEach-Object {
+        $SwaggerOperationParameterName = $_.Name        
+        $DefinitionDetails = $_.Value
+        $FlattenedParamType = $DefinitionDetails.Name
+
+        $FlattenedParametersList = $DefinitionDetails.ParametersTable.GetEnumerator() | ForEach-Object { $_.Name }
+        $FlattenedParametersListStr = ''
+        if($FlattenedParametersList) {
+            $FlattenedParametersListStr = "@('$($flattenedParametersList -join "', '")')"
+        }
+
+        $FlattenedParametersBlock += $executionContext.InvokeCommand.ExpandString($constructFlattenedParameter)
     }
 
     $body = $executionContext.InvokeCommand.ExpandString($functionBodyStr)
@@ -1675,16 +1742,30 @@ function New-ObjectFromDependency {
 function Get-PowerShellCodeGenSettings {
     [CmdletBinding()]
     param(
-        [string]$Path,
-        [hashtable]$CodeGenSettings
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Path,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $CodeGenSettings,
+
+        [Parameter(Mandatory=$false)]
+        [PSCustomObject]
+        $PSMetaJsonObject
     )
 
-    $swaggerObject = ConvertFrom-Json ((Get-Content $Path) -join [Environment]::NewLine) -ErrorAction Stop
+    if($PSMetaJsonObject) {
+        $swaggerObject = $PSMetaJsonObject
+    }
+    else {
+        $swaggerObject = ConvertFrom-Json ((Get-Content $Path) -join [Environment]::NewLine) -ErrorAction Stop
+    }
     if ((Get-Member -InputObject $swaggerObject -Name 'info') -and (Get-Member -InputObject $swaggerObject.'info' -Name 'x-ps-code-generation-settings')) {
         $props = Get-Member -InputObject $swaggerObject.'info'.'x-ps-code-generation-settings' -MemberType NoteProperty
         foreach ($prop in $props) {
-            if (-not $CodeGenSettings.ContainsKey($prop.Name)) {
-                Write-Warning -Message "Unknown x-ps-code-generation-settings property: $($prop.Name)"
+            if (-not $CodeGenSettings.ContainsKey($prop.Name)) {                
+                Write-Warning -Message ($LocalizedData.UnknownPSMetadataProperty -f ('x-ps-code-generation-settings', $prop.Name))
             } else {
                 $CodeGenSettings[$prop.Name] = $swaggerObject.'info'.'x-ps-code-generation-settings'.$($prop.Name)
             }

@@ -90,6 +90,7 @@ $script:PSCommandVerbMap = @{
     Nullify = 'Clear'
 
     Recover = 'Restore'
+    Undelete = 'Restore'
 
     Synchronize = 'Sync'
     Synch = 'Sync'

@@ -40,23 +40,43 @@ function Get-SwaggerSpecPathInfo
 
         [Parameter(Mandatory=$true)]
         [hashtable]
-        $ParameterGroupCache
+        $ParameterGroupCache,
+
+        [Parameter(Mandatory=$false)]
+        [PSCustomObject]
+        $PSMetaJsonObject
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
     $UseAzureCsharpGenerator = $SwaggerMetaDict['UseAzureCsharpGenerator']
     $EndpointRelativePath = $JsonPathItemObject.Name
 
+    $PSMetaPathJsonObject = $null
+    if($PSMetaJsonObject) {
+        if(Get-Member -InputObject $PSMetaJsonObject.paths -Name $EndpointRelativePath) {
+            $PSMetaPathJsonObject = $PSMetaJsonObject.paths.$EndpointRelativePath
+        }
+        elseif(Get-Member -InputObject $PSMetaJsonObject.'x-ms-paths' -Name $EndpointRelativePath) {
+            $PSMetaPathJsonObject = $PSMetaJsonObject.'x-ms-paths'.$EndpointRelativePath
+        }
+    }
+
     # First get path level common parameters, if any, which will be common to all operations in this swagger path.
     $PathCommonParameters = @{}
     if(Get-Member -InputObject $JsonPathItemObject.value -Name 'Parameters')
     {
+        $PSMetaParametersJsonObject = $null
+        if($PSMetaPathJsonObject -and (Get-Member -InputObject $PSMetaPathJsonObject -Name 'parameters')) {
+            $PSMetaParametersJsonObject = $PSMetaPathJsonObject.'parameters'
+        }
+
         $GetPathParamInfo_params = @{
             JsonPathItemObject = $JsonPathItemObject.Value
             SwaggerDict = $swaggerDict
             DefinitionFunctionsDetails = $DefinitionFunctionsDetails
             ParameterGroupCache = $ParameterGroupCache
             ParametersTable = $PathCommonParameters
+            PSMetaParametersJsonObject = $PSMetaParametersJsonObject
         }
         Get-PathParamInfo @GetPathParamInfo_params
     }
@@ -98,7 +118,21 @@ function Get-SwaggerSpecPathInfo
         }
 
         $cmdletInfoOverrides = @()
-        if ((Get-Member -InputObject $_.Value -Name 'x-ps-cmdlet-infos') -and $_.Value.'x-ps-cmdlet-infos') {
+        $PSMetaOperationJsonObject = $null
+        if($PSMetaPathJsonObject -and
+           (Get-Member -InputObject $PSMetaPathJsonObject -Name $operationType)) {
+            $PSMetaOperationJsonObject = $PSMetaPathJsonObject.$operationType
+        }
+        
+        if($PSMetaOperationJsonObject -and
+           (Get-Member -InputObject $PSMetaOperationJsonObject -Name 'x-ps-cmdlet-infos')) {
+            $PSMetaOperationJsonObject.'x-ps-cmdlet-infos' | ForEach-Object {
+                $cmdletInfoOverrides += @{
+                    Name = $_.name
+                }
+            }
+        }
+        elseif ((Get-Member -InputObject $_.Value -Name 'x-ps-cmdlet-infos') -and $_.Value.'x-ps-cmdlet-infos') {
             foreach ($cmdletMetadata in $_.Value.'x-ps-cmdlet-infos') {
                 $cmdletInfoOverride = @{}
                 if ((Get-Member -InputObject $cmdletMetadata -Name 'name') -and $cmdletMetadata.name) {
@@ -131,12 +165,18 @@ function Get-SwaggerSpecPathInfo
                 $ParametersTable[$_.Key] = $PathCommonParamDetails
             }
 
+            $PSMetaParametersJsonObject = $null
+            if($PSMetaOperationJsonObject -and (Get-Member -InputObject $PSMetaOperationJsonObject -Name 'parameters')) {
+                $PSMetaParametersJsonObject = $PSMetaOperationJsonObject.'parameters'
+            }
+
             $GetPathParamInfo_params2 = @{
                 JsonPathItemObject = $_.value
                 SwaggerDict = $swaggerDict
                 DefinitionFunctionsDetails = $DefinitionFunctionsDetails
                 ParameterGroupCache = $ParameterGroupCache
                 ParametersTable = $ParametersTable
+                PSMetaParametersJsonObject = $PSMetaParametersJsonObject
             }
             Get-PathParamInfo @GetPathParamInfo_params2
 
@@ -232,7 +272,11 @@ function New-SwaggerSpecPathCommand
 
         [Parameter(Mandatory = $true)]
         [hashtable]
-        $SwaggerDict
+        $SwaggerDict,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $DefinitionFunctionsDetails
     )
     
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -243,7 +287,8 @@ function New-SwaggerSpecPathCommand
         $FunctionsToExport += New-SwaggerPath -FunctionDetails $_.Value `
                                               -SwaggerMetaDict $SwaggerMetaDict `
                                               -SwaggerDict $SwaggerDict `
-                                              -PathFunctionDetails $PathFunctionDetails
+                                              -PathFunctionDetails $PathFunctionDetails `
+                                              -DefinitionFunctionsDetails $DefinitionFunctionsDetails
     }
 
     return $FunctionsToExport
@@ -277,6 +322,10 @@ function Add-UniqueParameter {
     [CmdletBinding()]
     param
     (
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $ParameterDetails,
+        
         [Parameter(Mandatory=$true)]
         [hashtable]
         $CandidateParameterDetails,
@@ -340,7 +389,11 @@ function New-SwaggerPath
 
         [Parameter(Mandatory = $true)]
         [hashtable]
-        $PathFunctionDetails
+        $PathFunctionDetails,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $DefinitionFunctionsDetails
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -360,6 +413,7 @@ function New-SwaggerPath
     $paramBlock = ''
     $paramHelp = ''
     $parametersToAdd = @{}
+    $flattenedParametersOnPSCmdlet = @{}
     $parameterHitCount = @{}
     $globalParameterBlock = ''
     $x_ms_pageableObject = $null
@@ -446,12 +500,34 @@ function New-SwaggerPath
             }
 
             if ($parameterRequiresAdding) {
+                $AddUniqueParameter_params = @{
+                    ParameterDetails = $parameterDetails
+                    OperationId = $parameterSetDetail.OperationId
+                    ParametersToAdd = $parametersToAdd
+                    ParameterHitCount = $parameterHitCount
+                }
+
                 if ($parameterDetails.ContainsKey('x_ms_parameter_grouping_group')) {
                     foreach ($parameterDetailEntry in $parameterDetails.'x_ms_parameter_grouping_group'.GetEnumerator()) {
-                        Add-UniqueParameter -CandidateParameterDetails $parameterDetailEntry.Value -OperationId $parameterSetDetail.OperationId -ParametersToAdd $parametersToAdd -ParameterHitCount $parameterHitCount
+                        $AddUniqueParameter_params['CandidateParameterDetails'] = $parameterDetailEntry.Value
+                        Add-UniqueParameter @AddUniqueParameter_params
+                    }
+                } elseif($parameterDetails.ContainsKey('FlattenOnPSCmdlet') -and $parameterDetails.FlattenOnPSCmdlet) {
+                    $DefinitionName = ($parameterDetails.Type -split '[.]')[-1]
+                    if($DefinitionFunctionsDetails.ContainsKey($DefinitionName)) {
+                        $DefinitionDetails = $DefinitionFunctionsDetails[$DefinitionName]
+                        $flattenedParametersOnPSCmdlet[$parameterDetails.Name] = $DefinitionDetails
+                        $DefinitionDetails.ParametersTable.GetEnumerator() | ForEach-Object {
+                            $AddUniqueParameter_params['CandidateParameterDetails'] = $_.value
+                            Add-UniqueParameter @AddUniqueParameter_params
+                        }
+                    }
+                    else{
+                        Throw ($LocalizedData.InvalidPSMetaFlattenParameter -f ($parameterDetails.Name,$parameterDetails.Type))
                     }
                 } else {
-                    Add-UniqueParameter -CandidateParameterDetails $parameterDetails -OperationId $parameterSetDetail.OperationId -ParametersToAdd $parametersToAdd -ParameterHitCount $parameterHitCount
+                    $AddUniqueParameter_params['CandidateParameterDetails'] = $parameterDetails
+                    Add-UniqueParameter @AddUniqueParameter_params
                 }
             } else {
                 # This magic string is here to distinguish local vs global parameters with the same name, e.g. in the Azure Resources API
@@ -789,8 +865,8 @@ function New-SwaggerPath
             }
 
             $parameterDefaultValueOption = ""
+            $paramType = "$([Environment]::NewLine)        "
             if ($parameterToAdd.Details.ContainsKey('ExtendedData')) {
-                $paramType = "$([Environment]::NewLine)        "
                 if ($parameterToAdd.Details.ExtendedData.ContainsKey('IsODataParameter') -and $parameterToAdd.Details.ExtendedData.IsODataParameter) {
                     $paramType = "[$($parameterToAdd.Details.Type)]$paramType"
                     $oDataExpression += "    if (`$$parameterName) { `$oDataQuery += `"&```$$parameterName=`$$parameterName`" }" + [Environment]::NewLine
@@ -833,6 +909,12 @@ function New-SwaggerPath
                 $paramBlock += $executionContext.InvokeCommand.ExpandString($parameterDefString)
                 $pDescription = $parameterToAdd.Details.Description
                 $paramHelp += $executionContext.InvokeCommand.ExpandString($helpParamStr)
+            } elseif($parameterToAdd.Details.Containskey('Type')) {
+                $paramType = "[$($parameterToAdd.Details.Type)]$paramType"
+
+                $paramblock += $executionContext.InvokeCommand.ExpandString($parameterDefString)
+                $pDescription = $parameterToAdd.Details.Description
+                $paramHelp += $executionContext.InvokeCommand.ExpandString($helpParamStr)
             } else {
                 Write-Warning ($LocalizedData.ParameterMissingFromAutoRestCode -f ($parameterName, $commandName))
             }
@@ -873,6 +955,7 @@ function New-SwaggerPath
                                 SecurityBlock = $executionContext.InvokeCommand.ExpandString($securityBlockStr)
                                 OverrideBaseUriBlock = $overrideBaseUriBlock
                                 ClientArgumentList = $clientArgumentList
+                                FlattenedParametersOnPSCmdlet = $flattenedParametersOnPSCmdlet
                            }
 
     $pathGenerationPhaseResult = Get-PathFunctionBody @functionBodyParams

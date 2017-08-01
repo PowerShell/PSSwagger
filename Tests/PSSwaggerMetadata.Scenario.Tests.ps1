@@ -412,3 +412,66 @@ Describe "Tests for New-PSSwaggerMetadataFile cmdlet with composite swagger docu
         }
     }
 }
+
+Describe "Tests for New-PSSwaggerModule with Swagger spec and its .psmeta.json file" -Tag @('PSMeta', 'Generation', 'ScenarioTest') {
+    BeforeAll {
+        $PSSwaggerPath = Split-Path -Path $PSScriptRoot -Parent | Join-Path -ChildPath "PSSwagger"
+        $GeneratedModuleName = 'Generated.TestSwaggerSpecWithPSMetaFile.Module'
+        Initialize-Test -GeneratedModuleName $GeneratedModuleName -TestApiName "psmetadatatest" `
+                        -TestSpecFileName "TestSwaggerSpecWithPSMetaFile.json"  `
+                        -PSSwaggerPath $PSSwaggerPath -TestRootPath $PSScriptRoot
+
+        # Import generated module
+        Write-Verbose "Importing modules"
+        Import-Module (Join-Path -Path $PSSwaggerPath -ChildPath "PSSwagger.Common.Helpers") -Force
+        Import-Module (Join-Path -Path $PSSwaggerPath -ChildPath "PSSwagger.Azure.Helpers") -Force
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | Join-Path -ChildPath $GeneratedModuleName) -Force
+    }
+
+    Context "Validate extended cmdlet name using .psmeta.json" {
+        It "Validate extended cmdlet name with .psmeta.json file" {
+            Get-Command -Name Get-DatabaseAccount -Module $GeneratedModuleName -ErrorAction Ignore | Should BeNullOrEmpty
+            Get-Command -Name Get-PSMetaExtendedDatabaseAccount -Module $GeneratedModuleName | Should not BeNullOrEmpty
+        }
+    }
+
+    Context "Validate flattening of complex parameter of swagger operation" {
+        It "Validate flattening of complex parameter defined at swagger OPERATION level" {
+            $CommandName = 'Get-PSMetaExtendedDatabaseAccount'
+            Get-Command -ParameterName 'DatabaseAccountsGetParameter' -Name $CommandName -Module $GeneratedModuleName -ErrorAction Ignore | Should BeNullOrEmpty
+
+            @('keyKind', 'RegenerateReason') | ForEach-Object {
+                $ExpectedParameterName = $_
+                Get-Command -ParameterName $ExpectedParameterName -Name $CommandName -Module $GeneratedModuleName | Where-Object {$_.Parameters.Keys -contains $ExpectedParameterName} | Should Not BeNullOrEmpty
+            }
+        }
+
+        It "Validate flattening of complex parameter defined at swagger PATH/Endpoint level" {
+            @('New-DatabaseAccount','Set-DatabaseAccount','Update-DatabaseAccount','Get-PSMetaExtendedDatabaseAccount') | ForEach-Object {
+                $CommandName = $_
+                Get-Command -ParameterName 'EndpointLevelQuotaParameter' -Name $CommandName -Module $GeneratedModuleName -ErrorAction Ignore | Should BeNullOrEmpty
+
+                @('CommonDefParam1', 'CommonDefParam2') | ForEach-Object {
+                    $ExpectedParameterName = $_
+                    Get-Command -ParameterName $ExpectedParameterName -Name $CommandName -Module $GeneratedModuleName | Where-Object {$_.Parameters.Keys -contains $ExpectedParameterName} | Should Not BeNullOrEmpty
+                }
+            }
+        }
+
+        It "Validate flattening of complex parameter defined at swagger '#/parameters/'" {
+            @('Get-PSMetaExtendedDatabaseAccount') | ForEach-Object {
+                $CommandName = $_
+                Get-Command -ParameterName 'QuotaParameters' -Name $CommandName -Module $GeneratedModuleName -ErrorAction Ignore | Should BeNullOrEmpty
+
+                @('CapacityInGB', 'NumberOfStorageAccounts', 'Tags', 'Name', 'Location') | ForEach-Object {
+                    $ExpectedParameterName = $_
+                    Get-Command -ParameterName $ExpectedParameterName -Name $CommandName -Module $GeneratedModuleName | Where-Object {$_.Parameters.Keys -contains $ExpectedParameterName} | Should Not BeNullOrEmpty
+                }
+            }
+        }
+
+        It "Validate 'New-<Type>Object' function generation for the complex types used for the global parameters" {
+            Get-Command -Name New-QuotaParametersObject -Module $GeneratedModuleName | Should Not BeNullOrEmpty
+        }
+    }
+}

@@ -256,6 +256,13 @@ function New-PSSwaggerModule
         return
     }
 
+    # Get the PowerShell Metadata if .psmeta.json file is available.
+    $PSMetaJsonObject = $null
+    $PSMetaFilePath = [regex]::replace($SwaggerSpecPath, ".json$", ".psmeta.json")
+    if (Test-Path -Path $PSMetaFilePath -PathType Leaf) {
+        $PSMetaJsonObject = ConvertFrom-Json -InputObject ((Get-Content -Path $PSMetaFilePath) -join [Environment]::NewLine) -ErrorAction Stop
+    }
+
     if ($PSCmdlet.ParameterSetName -eq 'SwaggerPath')
     {
         $jsonObject = ConvertFrom-Json -InputObject ((Get-Content -Path $SwaggerSpecPath) -join [Environment]::NewLine) -ErrorAction Stop
@@ -339,6 +346,7 @@ function New-PSSwaggerModule
         CustomAuthCommand = ""
         HostOverrideCommand = ""
         NoAuthChallenge = $false
+        NameSpacePrefix = ''
     }
 
     # Parse the JSON and populate the dictionary
@@ -351,19 +359,22 @@ function New-PSSwaggerModule
         DefinitionFunctionsDetails = $DefinitionFunctionsDetails
         AzureSpec = $UseAzureCsharpGenerator
         PowerShellCodeGen = $PowerShellCodeGen
+        PSMetaJsonObject = $PSMetaJsonObject
     }
     $swaggerDict = ConvertTo-SwaggerDictionary @ConvertToSwaggerDictionary_params
 
-    Get-PowerShellCodeGenSettings -Path $SwaggerSpecPath -CodeGenSettings $PowerShellCodeGen
-    foreach ($additionalSwaggerSpecPath in $SwaggerSpecFilePaths) {
-        Get-PowerShellCodeGenSettings -Path $additionalSwaggerSpecPath -CodeGenSettings $PowerShellCodeGen
+    Get-PowerShellCodeGenSettings -Path $SwaggerSpecPath -CodeGenSettings $PowerShellCodeGen -PSMetaJsonObject $PSMetaJsonObject
+    if(-not $PSMetaJsonObject) {
+        foreach ($additionalSwaggerSpecPath in $SwaggerSpecFilePaths) {
+            Get-PowerShellCodeGenSettings -Path $additionalSwaggerSpecPath -CodeGenSettings $PowerShellCodeGen
+        }
     }
 
     # Expand partner metadata
     if ($PowerShellCodeGen['ServiceType']) {
         $partnerFilePath = Join-Path -Path $PSScriptRoot -ChildPath "ServiceTypes" | Join-Path -ChildPath "$($PowerShellCodeGen['ServiceType'].ToLowerInvariant()).PSMeta.json"
-        if (-not (Test-Path -Path $partnerFilePath)) {
-            Write-Warning -Message "Service type metadata file doesn't exist: $partnerFilePath"
+        if (-not (Test-Path -Path $partnerFilePath -PathType Leaf)) {
+            Write-Warning -Message ($LocalizedData.ServiceTypeMetadataFileNotFound -f $partnerFilePath)
         } else {
             Get-PowerShellCodeGenSettings -Path $partnerFilePath -CodeGenSettings $PowerShellCodeGen
         }
@@ -388,8 +399,8 @@ function New-PSSwaggerModule
         }
     }
 
-    $null = New-Item -ItemType Directory $outputDirectory -Force -ErrorAction Stop
-    $null = New-Item -ItemType Directory $SymbolPath -Force -ErrorAction Stop
+    $null = New-Item -ItemType Directory $outputDirectory -Force -ErrorAction Stop -Confirm:$false -WhatIf:$false
+    $null = New-Item -ItemType Directory $SymbolPath -Force -ErrorAction Stop -Confirm:$false -WhatIf:$false
 
     $swaggerMetaDict = @{
         OutputDirectory = $outputDirectory
@@ -424,7 +435,8 @@ function New-PSSwaggerModule
                                         -SwaggerDict $swaggerDict `
                                         -SwaggerMetaDict $swaggerMetaDict `
                                         -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
-                                        -ParameterGroupCache $ParameterGroupCache
+                                        -ParameterGroupCache $ParameterGroupCache `
+                                        -PSMetaJsonObject $PSMetaJsonObject
             }
         }
 
@@ -436,7 +448,9 @@ function New-PSSwaggerModule
                                         -SwaggerDict $swaggerDict `
                                         -SwaggerMetaDict $swaggerMetaDict `
                                         -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
-                                        -ParameterGroupCache $ParameterGroupCache
+                                        -ParameterGroupCache $ParameterGroupCache `
+                                        -PSMetaJsonObject $PSMetaJsonObject
+
             }
         }
     }
@@ -454,10 +468,14 @@ function New-PSSwaggerModule
     $PathFunctionDetails = $codePhaseResult.PathFunctionDetails
     $generatedCSharpFilePath = $codePhaseResult.GeneratedCSharpPath
 
+    # Need to expand the definitions early as parameter flattening feature requires the parameters list of the definition/model types.
+    Expand-SwaggerDefinition -DefinitionFunctionsDetails $DefinitionFunctionsDetails -NameSpace $NameSpace -Models $Models
+
     $FunctionsToExport = @()
     $FunctionsToExport += New-SwaggerSpecPathCommand -PathFunctionDetails $PathFunctionDetails `
                                                      -SwaggerMetaDict $swaggerMetaDict `
-                                                     -SwaggerDict $swaggerDict
+                                                     -SwaggerDict $swaggerDict `
+                                                     -DefinitionFunctionsDetails $DefinitionFunctionsDetails
 
     $FunctionsToExport += New-SwaggerDefinitionCommand -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
                                                        -SwaggerMetaDict $swaggerMetaDict `
@@ -545,7 +563,7 @@ function ConvertTo-CsharpCode
 
     $clrPath = Join-Path -Path $outputDirectory -ChildPath 'ref' | Join-Path -ChildPath 'fullclr'
     if (-not (Test-Path -Path $clrPath)) {
-        $null = New-Item -Path $clrPath -ItemType Directory
+        $null = New-Item -Path $clrPath -ItemType Directory -Force -Confirm:$false -WhatIf:$false
     }
 
     $outAssembly = "$NameSpace.dll"
@@ -705,7 +723,7 @@ function ConvertTo-CsharpCode
         }
 
         if (-not (Test-Path -Path $clrPath)) {
-            $null = New-Item $clrPath -ItemType Directory
+            $null = New-Item $clrPath -ItemType Directory -Force -Confirm:$false -WhatIf:$false
         }
         $dependencies = Get-PSSwaggerExternalDependencies -Azure:$codeCreatedByAzureGenerator -Framework 'netstandard1'
         $microsoftRestClientRuntimeAzureRequiredVersion = if ($dependencies.ContainsKey('Microsoft.Rest.ClientRuntime.Azure')) { $dependencies['Microsoft.Rest.ClientRuntime.Azure'].RequiredVersion } else { '' }

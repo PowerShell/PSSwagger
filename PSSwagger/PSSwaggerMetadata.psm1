@@ -75,7 +75,7 @@ function New-PSSwaggerMetadataFile {
     )
 
     # Validate swagger path
-    if (-not (Test-path -Path $SwaggerSpecPath)) {
+    if (-not (Test-path -Path $SwaggerSpecPath -PathType Leaf)) {
         throw $LocalizedData.SwaggerSpecPathNotExist -f ($SwaggerSpecPath)
         return
     }
@@ -424,6 +424,7 @@ function Get-PathsPSMetadata {
                         $x_ps_parameter_info = [ordered]@{
                             name        = $parameterName
                             description = $paramDetails.Description
+                            flatten     = $false
                         }
                         $parametersPSMetadata[$paramDetails.OriginalParameterName] = [ordered]@{
                             'x-ps-parameter-info' = $x_ps_parameter_info
@@ -446,6 +447,7 @@ function Get-PathsPSMetadata {
                             $x_ps_parameter_info = [ordered]@{
                                 name        = $parameterName
                                 description = $paramDetails.Description
+                                flatten     = $false
                             }
                             $pathItemFieldPSMetadata[$paramDetails.OriginalParameterName] = [ordered]@{
                                 'x-ps-parameter-info' = $x_ps_parameter_info
@@ -482,6 +484,7 @@ function Get-GlobalParametersPSMetadata {
         $x_ps_parameter_info = [ordered]@{
             name        = $parameterDetails.Name
             description = $parameterDetails.Description
+            flatten     = $false
         }
         $parameterPSMetadata = [ordered]@{
             'x-ps-parameter-info' = $x_ps_parameter_info
