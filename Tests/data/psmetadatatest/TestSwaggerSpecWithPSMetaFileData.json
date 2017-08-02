@@ -1,0 +1,10 @@
+{
+  "flatcupcakes": [
+    {
+      "id": "1",
+      "flavor": "mint-chocolate",
+      "ageInYears": 1,
+      "ageInDays": 365
+    }
+  ]
+}

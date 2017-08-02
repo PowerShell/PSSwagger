@@ -136,6 +136,34 @@
           }
         }
       }
+    },
+    "/flatcupcakes": {
+      "get": {
+        "x-ps-cmdlet-infos": [
+          {
+            "name": "Get-FlatCupcake",
+            "description": "Make a flatcupcake or update an existing one.",
+            "defaultParameterSet": "FlatCupcake_List",
+            "generateCommand": true
+          }
+        ],
+        "parameters": {
+          "FlatCupcakeAgeParameter": {
+            "x-ps-parameter-info": {
+              "name": "FlatCupcakeAgeParameter",
+              "description": "parameter description",
+              "flatten": true
+            }
+          },
+          "flavor": {
+            "x-ps-parameter-info": {
+              "name": "Flavor",
+              "description": "Flavor of flatcupcake",
+              "flatten": false
+            }
+          }
+        }
+      }
     }
   },
   "definitions": {
@@ -261,6 +289,41 @@
         }
       }
     },
+    "FlatCupcakeAge": {
+      "x-ps-cmdlet-infos": [
+        {
+          "name": "New-FlatCupcakeAgeObject",
+          "description": "",
+          "defaultParameterSet": "FlatCupcakeAge",
+          "generateCommand": true,
+          "generateOutputFormat": true
+        }
+      ],
+      "properties": {
+        "ageInYears": {
+          "x-ps-parameter-info": {
+            "name": "AgeInYears",
+            "description": "Int32 test"
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 0,
+            "width": 10
+          }
+        },
+        "ageInDays": {
+          "x-ps-parameter-info": {
+            "name": "AgeInDays",
+            "description": "Int64 test"
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 1,
+            "width": 10
+          }
+        }
+      }
+    },
     "StorageQuota": {
       "x-ps-cmdlet-infos": [
         {
@@ -332,6 +395,63 @@
       ],
       "properties": {
         
+      }
+    },
+    "FlatCupcake": {
+      "x-ps-cmdlet-infos": [
+        {
+          "name": "New-FlatCupcakeObject",
+          "description": "",
+          "defaultParameterSet": "FlatCupcake",
+          "generateCommand": true,
+          "generateOutputFormat": true
+        }
+      ],
+      "properties": {
+        "ageInYears": {
+          "x-ps-parameter-info": {
+            "name": "AgeInYears",
+            "description": "Int32 test"
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 0,
+            "width": 10
+          }
+        },
+        "ageInDays": {
+          "x-ps-parameter-info": {
+            "name": "AgeInDays",
+            "description": "Int64 test"
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 1,
+            "width": 10
+          }
+        },
+        "id": {
+          "x-ps-parameter-info": {
+            "name": "Id",
+            "description": "Unique identifier"
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 2,
+            "width": 10
+          }
+        },
+        "flavor": {
+          "x-ps-parameter-info": {
+            "name": "Flavor",
+            "description": "String test"
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 3,
+            "width": 10
+          }
+        }
       }
     },
     "DatabaseAccountCreateUpdateParameters": {
@@ -458,6 +578,41 @@
           "x-ps-output-format-info": {
             "include": true,
             "position": 2,
+            "width": 10
+          }
+        }
+      }
+    },
+    "Error": {
+      "x-ps-cmdlet-infos": [
+        {
+          "name": "New-ErrorObject",
+          "description": "",
+          "defaultParameterSet": "Error",
+          "generateCommand": true,
+          "generateOutputFormat": true
+        }
+      ],
+      "properties": {
+        "code": {
+          "x-ps-parameter-info": {
+            "name": "Code",
+            "description": "Error code"
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 0,
+            "width": 10
+          }
+        },
+        "message": {
+          "x-ps-parameter-info": {
+            "name": "Message",
+            "description": "Message"
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 1,
             "width": 10
           }
         }

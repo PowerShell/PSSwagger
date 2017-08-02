@@ -419,6 +419,7 @@ Describe "Tests for New-PSSwaggerModule with Swagger spec and its .psmeta.json f
         $GeneratedModuleName = 'Generated.TestSwaggerSpecWithPSMetaFile.Module'
         Initialize-Test -GeneratedModuleName $GeneratedModuleName -TestApiName "psmetadatatest" `
                         -TestSpecFileName "TestSwaggerSpecWithPSMetaFile.json"  `
+                        -TestDataFileName "TestSwaggerSpecWithPSMetaFileData.json" `
                         -PSSwaggerPath $PSSwaggerPath -TestRootPath $PSScriptRoot
 
         # Import generated module
@@ -426,6 +427,19 @@ Describe "Tests for New-PSSwaggerModule with Swagger spec and its .psmeta.json f
         Import-Module (Join-Path -Path $PSSwaggerPath -ChildPath "PSSwagger.Common.Helpers") -Force
         Import-Module (Join-Path -Path $PSSwaggerPath -ChildPath "PSSwagger.Azure.Helpers") -Force
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | Join-Path -ChildPath $GeneratedModuleName) -Force
+
+        $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName 'psmetadatatest'
+        if ($global:PSSwaggerTest_EnableTracing -and $script:EnableTracer) {
+            $script:EnableTracer = $false
+            Initialize-PSSwaggerDependencies -AcceptBootstrap
+            Import-Module "$PSScriptRoot\PSSwaggerTestTracing.psm1"
+            [Microsoft.Rest.ServiceClientTracing]::AddTracingInterceptor((New-PSSwaggerTestClientTracing))
+            [Microsoft.Rest.ServiceClientTracing]::IsEnabled = $true
+        }
+    }
+
+    AfterAll {
+        Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
     }
 
     Context "Validate extended cmdlet name using .psmeta.json" {
@@ -468,6 +482,18 @@ Describe "Tests for New-PSSwaggerModule with Swagger spec and its .psmeta.json f
                     Get-Command -ParameterName $ExpectedParameterName -Name $CommandName -Module $GeneratedModuleName | Where-Object {$_.Parameters.Keys -contains $ExpectedParameterName} | Should Not BeNullOrEmpty
                 }
             }
+        }
+
+        It "Validate flattening of complex parameter by running the generated command" {
+            Get-Command -ParameterName 'FlatCupCakeParameters' -Name 'Get-FlatCupCake' -Module $GeneratedModuleName -ErrorAction Ignore | Should BeNullOrEmpty
+
+            @('AgeInDays', 'AgeInYears', 'Flavor') | ForEach-Object {
+                $ExpectedParameterName = $_
+                Get-Command -ParameterName $ExpectedParameterName -Name 'Get-FlatCupCake' -Module $GeneratedModuleName | Where-Object {$_.Parameters.Keys -contains $ExpectedParameterName} | Should Not BeNullOrEmpty
+            }
+
+            Get-FlatCupCake -AgeInYears 1 -AgeInDays 365 -Flavor mint-chocolate | Should Not BeNullOrEmpty
+            Get-FlatCupCake -AgeInYears 2 -AgeInDays 36 -Flavor vanilla | Should BeNullOrEmpty
         }
 
         It "Validate 'New-<Type>Object' function generation for the complex types used for the global parameters" {
