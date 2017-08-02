@@ -810,6 +810,7 @@ function New-ModuleManifestUtility
         FunctionsToExport = $FunctionsToExport
         CmdletsToExport = @()
         AliasesToExport = @()
+        VariablesToExport = @()
     }
 
     if($Info.DefaultCommandPrefix)
