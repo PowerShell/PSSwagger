@@ -17,7 +17,7 @@ AliasesToExport = ''
 
 NestedModules = @(
                     'PSSwaggerMetadata.psm1',
-                    'PSSwaggerUtility\PSSwaggerUtility.psm1'
+                    'PSSwaggerUtility'
                 )
 
 FileList = @(
