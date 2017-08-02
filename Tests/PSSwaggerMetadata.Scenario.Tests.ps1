@@ -493,6 +493,7 @@ Describe "Tests for New-PSSwaggerModule with Swagger spec and its .psmeta.json f
             }
 
             Get-FlatCupCake -AgeInYears 1 -AgeInDays 365 -Flavor mint-chocolate | Should Not BeNullOrEmpty
+            Get-FlatCupCake -AgeInYears 2 -AgeInDays 36 -Flavor vanilla | Should BeNullOrEmpty
         }
 
         It "Validate 'New-<Type>Object' function generation for the complex types used for the global parameters" {
