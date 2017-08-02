@@ -482,18 +482,11 @@ function New-PSSwaggerModule
                                                        -Models $models
 
     $RootModuleFilePath = Join-Path $outputDirectory "$Name.psm1"
-    $testAzureModule = ''
     $testCoreModuleRequirements = ''
     $testFullModuleRequirements = ''
     if ($UseAzureCSharpGenerator) {
-        $testCoreModuleRequirements = '$requiredAzureModule = "AzureRM.Profile.NetCore.Preview"' + [Environment]::NewLine + "    "
-        $testFullModuleRequirements = '$requiredAzureModule = "AzureRM.Profile"' + [Environment]::NewLine + "    "
-        $testAzureModule = @'
-if (-not (Get-Module $requiredAzureModule -ListAvailable)) {
-    throw ($LocalizedData.MissingModule -f ($requiredAzureModule))
-}
-Import-Module $requiredAzureModule
-'@
+        $testCoreModuleRequirements = '. (Join-Path -Path $PSScriptRoot "Test-CoreRequirements.ps1")' + [Environment]::NewLine + "    "
+        $testFullModuleRequirements = '. (Join-Path -Path $PSScriptRoot "Test-FullRequirements.ps1")' + [Environment]::NewLine + "    "
     }
 
     Out-File -FilePath $RootModuleFilePath `
@@ -505,10 +498,12 @@ Import-Module $requiredAzureModule
 
     New-ModuleManifestUtility -Path $outputDirectory `
                               -FunctionsToExport $FunctionsToExport `
-                              -Info $swaggerDict['info'] `
-                              -UseAzureCsharpGenerator:$UseAzureCsharpGenerator
+                              -Info $swaggerDict['info']
 
     Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Generated.Resources.psd1") (Join-Path -Path "$outputDirectory" -ChildPath "$Name.Resources.psd1") -Force
+    Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "GeneratedHelpers.psm1") (Join-Path -Path "$outputDirectory" -ChildPath "GeneratedHelpers.psm1") -Force
+    Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Test-CoreRequirements.ps1") (Join-Path -Path "$outputDirectory" -ChildPath "Test-CoreRequirements.ps1") -Force
+    Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Test-FullRequirements.ps1") (Join-Path -Path "$outputDirectory" -ChildPath "Test-FullRequirements.ps1") -Force
 
     Write-Verbose -Message ($LocalizedData.SuccessfullyGeneratedModule -f $Name,$outputDirectory)
 }
@@ -796,11 +791,7 @@ function New-ModuleManifestUtility
 
         [Parameter(Mandatory=$true)]
         [hashtable]
-        $Info,
-
-        [Parameter()]
-        [switch]
-        $UseAzureCsharpGenerator
+        $Info
     )
 
     $FormatsToProcess = Get-ChildItem -Path "$Path\$GeneratedCommandsName\FormatFiles\*.ps1xml" `
@@ -817,9 +808,9 @@ function New-ModuleManifestUtility
         RootModule = "$($Info.ModuleName).psm1"
         FormatsToProcess = $FormatsToProcess
         FunctionsToExport = $FunctionsToExport
+        CmdletsToExport = @()
+        AliasesToExport = @()
     }
-
-    
 
     if($Info.DefaultCommandPrefix)
     {

@@ -29,10 +29,10 @@ Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename $Name.Resources.psd1
 
 if ((Get-OperatingSystemInfo).IsCore) {
-    `$clr = 'coreclr'
+    $testCoreModuleRequirements`$clr = 'coreclr'
     `$framework = 'netstandard1'
 } else {
-    `$clr = 'fullclr'
+    $testFullModuleRequirements`$clr = 'fullclr'
     `$framework = 'net4'
 }
 
