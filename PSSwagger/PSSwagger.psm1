@@ -667,6 +667,14 @@ function ConvertTo-CsharpCode
                                                 -BootstrapConsent:`$$UserConsent ``
                                                 -TestBuild:`$$TestBuild ``
                                                 -SymbolPath $SymbolPath;
+                    if('$outAssembly') {
+                        # Load the generated assembly to extract the extended metadata
+                        `$AssemblyPath = Join-Path -Path '$clrPath' -ChildPath '$outAssembly'
+                        if(Test-Path -Path `$AssemblyPath -PathType Leaf) {
+                            Add-Type -Path `$AssemblyPath
+                        }
+                    }
+
                     Import-Module `"`$(Join-Path -Path `"$PSScriptRoot`" -ChildPath `"Paths.psm1`")` -DisableNameChecking;
                     Set-ExtendedCodeMetadata -MainClientTypeName $fullModuleName ``
                                                 -CliXmlTmpPath $cliXmlTmpPath"
