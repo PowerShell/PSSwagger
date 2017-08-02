@@ -117,10 +117,12 @@ If -Paging is not specified and the cmdlet supports paging, the cmdlet will auto
 # Silent execution when missing dependency packages
 When dependency packages are expected to be missing, silent execution (bypassing the missing packages prompt) can be achieved by calling:
 ```powershell
+Import-Module PSSwaggerUtility
 PSSwaggerUtility\Initialize-PSSwaggerDependencies -AcceptBootstrap -Azure
 ```
 For Microsoft Azure modules, or:
 ```powershell
+Import-Module PSSwaggerUtility
 PSSwaggerUtility\Initialize-PSSwaggerDependencies -AcceptBootstrap
 ```
 For all other modules.

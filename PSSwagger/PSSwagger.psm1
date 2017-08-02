@@ -804,7 +804,7 @@ function New-ModuleManifestUtility
         Description = $Info.Description
         CopyRight = $info.LicenseName
         Author = $info.ContactEmail
-        RequiredModules = @('PSSwaggerUtility')
+        NestedModules = @('PSSwaggerUtility')
         RootModule = "$($Info.ModuleName).psm1"
         FormatsToProcess = $FormatsToProcess
         FunctionsToExport = $FunctionsToExport

@@ -19,8 +19,6 @@ Describe "Basic API" -Tag ScenarioTest {
 
         # Import generated module
         Write-Verbose "Importing modules"
-        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwaggerUtility" | `
-                       Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
                        Join-Path -ChildPath "Generated.Basic.Module")
         $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "PsSwaggerTestBasic" -TestRoutesFileName "PsSwaggerTestBasicRoutes.json" -Verbose
@@ -68,8 +66,6 @@ Describe "All Operations: Basic" -Tag ScenarioTest {
 
         # Import generated module
         Write-Verbose "Importing modules"
-        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwaggerUtility" | `
-                       Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
                        Join-Path -ChildPath "Generated.TypesTest.Module")
         
@@ -147,8 +143,6 @@ Describe "Get/List tests" -Tag ScenarioTest {
 
         # Import generated module
         Write-Verbose "Importing modules"
-        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwaggerUtility" | `
-                       Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
                        Join-Path -ChildPath "Generated.GetList.Module")
 
@@ -192,8 +186,6 @@ Describe "Optional parameter tests" -Tag ScenarioTest {
 
         # Import generated module
         Write-Verbose "Importing modules"
-        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwaggerUtility" | `
-                       Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
                        Join-Path -ChildPath "Generated.Optional.Module")
         $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "OptionalParametersTests" -TestRoutesFileName "OptionalParametersTestsRoutes.json"
@@ -253,8 +245,6 @@ Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
 
         # Import generated module
         Write-Verbose "Importing modules"
-        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwaggerUtility" | `
-                       Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
                        Join-Path -ChildPath "Generated.ParamTypes.Module")
 
@@ -404,8 +394,6 @@ Describe "AzureExtensions" {
 
         # Import generated module
         Write-Verbose "Importing modules"
-        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwaggerUtility" | `
-                       Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
                        Join-Path -ChildPath "Generated.AzExt.Module")
         
@@ -525,7 +513,6 @@ Describe "Composite Swagger Tests" -Tag @('Composite','ScenarioTest') {
 
             # Import generated module
             Write-Verbose "Importing $ModuleName module"
-            Import-Module (Join-Path -Path $PsSwaggerPath -ChildPath "PSSwaggerUtility") -Force -ArgumentList $true
             $ev = $null
             Import-Module $ModulePath -Force -ErrorVariable ev
             $ev | Should BeNullOrEmpty
@@ -562,8 +549,6 @@ Describe "AllOfDefinition" -Tag @('AllOf','ScenarioTest')  {
 
         # Import generated module
         Write-Verbose "Importing modules"
-        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwaggerUtility" | `
-                       Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
                        Join-Path -ChildPath "Generated.AllOfDefinition.Module")
     }
@@ -600,8 +585,6 @@ Describe "AuthTests" -Tag @('Auth','ScenarioTest') {
         
         # Import generated modules
         Write-Verbose "Importing modules"
-        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwaggerUtility" | `
-                       Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
                        Join-Path -ChildPath "Generated.BasicAuthTest.Module")
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
@@ -770,8 +753,6 @@ Describe "PSMetadataTests" -Tag @('PSMetadata','ScenarioTest')  {
 
         # Import generated module
         Write-Verbose "Importing modules"
-        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwaggerUtility" | `
-                       Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
                        Join-Path -ChildPath "Generated.PSMetadataTest.Module")
         if ($global:PSSwaggerTest_EnableTracing -and $script:EnableTracer) {

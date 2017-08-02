@@ -659,10 +659,10 @@ function New-SwaggerPath
                     }
                     # If the service is specified to not issue authentication challenges, we can't rely on HttpClientHandler
                     if ($PowerShellCodeGen['NoAuthChallenge'] -and ($PowerShellCodeGen['NoAuthChallenge'] -eq $true)) {
-                        $authFunctionCall = 'PSSwaggerUtility\Get-AutoRestCredential -Credential $Credential'
+                        $authFunctionCall = 'Get-AutoRestCredential -Credential $Credential'
                     } else {
                         # Use an empty service client credentials object because we're using HttpClientHandler instead
-                        $authFunctionCall = 'PSSwaggerUtility\Get-AutoRestCredential'
+                        $authFunctionCall = 'Get-AutoRestCredential'
                         $httpClientHandlerCall = '$httpClientHandler = New-HttpClientHandler -Credential $Credential'
                     }
                 } elseif ($type -eq 'apiKey') {
@@ -697,7 +697,7 @@ function New-SwaggerPath
                         Parameter = $credentialParameter
                         IsConflictingWithOperationParameter = $false
                     }
-                    $authFunctionCall = "PSSwaggerUtility\Get-AutoRestCredential -APIKey `$APIKey -Location '$in' -Name '$name'"
+                    $authFunctionCall = "Get-AutoRestCredential -APIKey `$APIKey -Location '$in' -Name '$name'"
                 } else {
                     Write-Warning -Message ($LocalizedData.UnsupportedAuthenticationType -f ($type))
                 }
@@ -707,7 +707,7 @@ function New-SwaggerPath
 
     if (-not $authFunctionCall) {
         # At this point, there was no supported security object or overridden auth function, so assume no auth
-        $authFunctionCall = 'PSSwaggerUtility\Get-AutoRestCredential'
+        $authFunctionCall = 'Get-AutoRestCredential'
     }
 
     $clientArgumentList = $clientArgumentListNoHandler
