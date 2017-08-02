@@ -125,7 +125,7 @@ function $commandName
     {
 	    $dependencyInitFunction
         `$tracerObject = `$null
-        if (`$MyInvocation.BoundParameters.ContainsKey('Debug') -and `$MyInvocation.BoundParameters.Debug -and `$PSVersionTable.PSVersion -ge '5.1') {
+        if (('continue' -eq `$DebugPreference) -or ('inquire' -eq `$DebugPreference)) {
             `$oldDebugPreference = `$global:DebugPreference
 			`$global:DebugPreference = "continue"
             `$tracerObject = PSSwaggerUtility\New-PSSwaggerClientTracing
