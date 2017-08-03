@@ -4,8 +4,6 @@
 #
 # Licensed under the MIT license.
 #
-# PSSwagger Module
-#
 #########################################################################################
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 

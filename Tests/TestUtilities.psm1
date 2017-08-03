@@ -151,7 +151,7 @@ function Start-JsonServer {
 
     # Wait for local json-server to start 
     Write-Verbose -Message "Waiting for server to start..."
-    while (-not ((Test-NetConnection -ComputerName localhost -Port 3000).TcpTestSucceeded)) {
+    while (-not (Test-Connection -ComputerName localhost -Port 3000)) {
         Start-Sleep -s 1
     }
 
@@ -182,7 +182,7 @@ function Test-Connection {
     )
 
     if ('Core' -ne $PSEdition) {
-        return Test-NetConnection -ComputerName localhost -Port 3000
+        return (Test-NetConnection -ComputerName localhost -Port 3000).TcpTestSucceeded
     } else {
         $conn = New-Object -TypeName System.Net.Sockets.TcpClient
         $task = $conn.ConnectAsync($ComputerName, $Port)

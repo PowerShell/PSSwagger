@@ -27,6 +27,11 @@ $parameterDefaultValueString = ' = $parameterDefaultValue'
 $RootModuleContents = @'
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename $Name.Resources.psd1
+# If the user supplied -Prefix to Import-Module, that applies to the nested module as well
+# Force import the nested module again without -Prefix
+if (-not (Get-Command Get-OperatingSystemInfo -Module PSSwaggerUtility -ErrorAction Ignore)) {
+    Import-Module PSSwaggerUtility -Force
+}
 
 if ((Get-OperatingSystemInfo).IsCore) {
     $testCoreModuleRequirements`$clr = 'coreclr'
@@ -84,7 +89,6 @@ if (-not (Test-Path -Path `$dllFullName)) {
 
 
 Get-ChildItem -Path (Join-Path -Path "`$PSScriptRoot" -ChildPath "ref" | Join-Path -ChildPath "`$clr" | Join-Path -ChildPath "*.dll") -File | ForEach-Object { Add-Type -Path `$_.FullName -ErrorAction SilentlyContinue }
-
 Get-ChildItem -Path "`$PSScriptRoot\$GeneratedCommandsName\*.ps1" -Recurse -File | ForEach-Object { . `$_.FullName}
 '@
 
@@ -128,7 +132,7 @@ function $commandName
         if (('continue' -eq `$DebugPreference) -or ('inquire' -eq `$DebugPreference)) {
             `$oldDebugPreference = `$global:DebugPreference
 			`$global:DebugPreference = "continue"
-            `$tracerObject = PSSwaggerUtility\New-PSSwaggerClientTracing
+            `$tracerObject = New-PSSwaggerClientTracing
             Register-PSSwaggerClientTracing -TracerObject `$tracerObject
         }
 	}

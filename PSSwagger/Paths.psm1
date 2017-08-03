@@ -408,7 +408,7 @@ function New-SwaggerPath
     $modulePostfix = $info['infoName']
     $clientName = '$' + $modulePostfix
     $UseAzureCsharpGenerator = $SwaggerMetaDict['UseAzureCsharpGenerator']
-
+    
     $description = ''
     $paramBlock = ''
     $paramHelp = ''
