@@ -124,7 +124,8 @@ if ($EnableTracing) {
     $executeTestsCommand += ";`$global:PSSwaggerTest_EnableTracing=`$true"
 }
 
-$executeTestsCommand += ";`$verbosepreference=`"continue`";Invoke-Pester -ExcludeTag KnownIssue -OutputFormat NUnitXml -OutputFile ScenarioTestResults.xml -Verbose"
+$srcPath = Join-Path -Path $PSScriptRoot -ChildPath .. | Join-Path -ChildPath PSSwagger
+$executeTestsCommand += ";`$verbosepreference=`"continue`";`$env:PSModulePath=`"$srcPath;`$env:PSModulePath`";Invoke-Pester -ExcludeTag KnownIssue -OutputFormat NUnitXml -OutputFile ScenarioTestResults.xml -Verbose"
 
 # Set up Pester params
 $pesterParams = @{'ExcludeTag' = 'KnownIssue'; 'OutputFormat' = 'NUnitXml'; 'OutputFile' = 'TestResults.xml'}

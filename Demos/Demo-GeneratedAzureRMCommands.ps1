@@ -39,30 +39,29 @@ $param = @{
 }
 
 # AzureRM.Resources
-$param['SwaggerSpecUri'] = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-resources/resources/2015-11-01/swagger/resources.json'
+$param['SpecificationUri'] = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-resources/resources/2015-11-01/swagger/resources.json'
 $param['Name']           = 'Generated.AzureRM.Resources'
 New-PSSwaggerModule @param
 
 # AzureRM.Storage
-$param['SwaggerSpecUri'] = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-storage/2015-06-15/swagger/storage.json'
+$param['SpecificationUri'] = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-storage/2015-06-15/swagger/storage.json'
 $param['Name']           = 'Generated.AzureRM.Storage'
 New-PSSwaggerModule @param
 
 # AzureRM.Network
-$param['SwaggerSpecUri'] = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-network/2015-06-15/swagger/network.json'
+$param['SpecificationUri'] = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-network/2015-06-15/swagger/network.json'
 $param['Name']           = 'Generated.AzureRM.Network'
 New-PSSwaggerModule @param
 
 # AzureRM.Compute
-$param['SwaggerSpecUri'] = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-compute/2015-06-15/swagger/compute.json'
+$param['SpecificationUri'] = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-compute/2015-06-15/swagger/compute.json'
 $param['Name']           = 'Generated.AzureRM.Compute'
 New-PSSwaggerModule @param
 
 #endregion Generate AzureRM commands
 
 #region initialization
-Import-Module "$PSSwaggerClonePath\PSSwagger\PSSwagger.Common.Helpers\PSSwagger.Common.Helpers.psd1" -verbose -force
-Import-Module "$PSSwaggerClonePath\PSSwagger\PSSwagger.Azure.Helpers\PSSwagger.Azure.Helpers.psd1" -verbose -force
+Import-Module "$PSSwaggerClonePath\PSSwagger\PSSwaggerUtility\PSSwaggerUtility.psd1" -verbose -force
 Import-Module $TargetPath\Generated.AzureRM.Resources -WarningAction SilentlyContinue
 Import-Module $TargetPath\Generated.AzureRM.Storage -WarningAction SilentlyContinue
 Import-Module $TargetPath\Generated.AzureRM.Network -WarningAction SilentlyContinue

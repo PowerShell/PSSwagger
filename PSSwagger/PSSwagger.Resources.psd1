@@ -9,7 +9,7 @@
 ConvertFrom-StringData @'
 ###PSLOC
 
-    ConvertingSwaggerSpecToGithubContent=Converting SwaggerSpecUri to raw github content '{0}'
+    ConvertingSwaggerSpecToGithubContent=Converting SpecificationUri to raw github content '{0}'
     SwaggerSpecDownloadedTo=Swagger spec from '{0}' is downloaded to '{1}'
     ExpandDefinition=Trying to expand the '{0}' defnition.
     UnableToExpandDefinition=Unable to expand the '{0}' definition in current iteration.

@@ -31,7 +31,15 @@ function Test-Package {
         $requiredVersion = ""
     )
 
-    $package = Get-Package $packageName -ProviderName $providerName -ErrorAction Ignore | Select-Object -First 1
+    $getParams = @{
+        Name = $packageName
+        ProviderName = $providerName
+        ErrorAction = 'Ignore'
+    }
+    if ($requiredVersion) {
+        $getParams['RequiredVersion'] = $requiredVersion
+    }
+    $package = Get-Package @getParams | Select-Object -First 1
     if ($package -eq $null) {
         Write-Verbose "Trying to install missing package $packageName from source $packageSourceName"
         $installParams = @{
@@ -45,7 +53,7 @@ function Test-Package {
         }
 		
         $null = Install-Package @installParams
-        $package = Get-Package $packageName -ProviderName $providerName
+        $package = Get-Package @getParams | Select-Object -First 1
     }
 
     $package
@@ -82,13 +90,13 @@ function Initialize-Test {
     if((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
         & "powershell.exe" -command "& {`$env:PSModulePath=`$env:PSModulePath_Backup;
             Import-Module (Join-Path `"$PsSwaggerPath`" `"PSSwagger.psd1`") -Force;
-            Import-Module (Join-Path `"$PsSwaggerPath`" `"PSSwagger.Common.Helpers`") -Force;
+            Import-Module (Join-Path `"$PsSwaggerPath`" `"PSSwaggerUtility`") -Force;
             Initialize-PSSwaggerDependencies -AllFrameworks -AcceptBootstrap -Azure:`$$UseAzureCSharpGenerator;
-            New-PSSwaggerModule -SwaggerSpecPath (Join-Path -Path `"$testCaseDataLocation`" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Verbose -NoAssembly -UseAzureCSharpGenerator:`$$UseAzureCSharpGenerator -ConfirmBootstrap;
+            New-PSSwaggerModule -SpecificationPath (Join-Path -Path `"$testCaseDataLocation`" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Verbose -NoAssembly -UseAzureCSharpGenerator:`$$UseAzureCSharpGenerator -ConfirmBootstrap;
         }"
     } else {
         Import-Module (Join-Path "$PsSwaggerPath" "PSSwagger.psd1") -Force
-        New-PSSwaggerModule -SwaggerSpecPath (Join-Path -Path "$testCaseDataLocation" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Verbose -NoAssembly -UseAzureCSharpGenerator:$UseAzureCSharpGenerator -ConfirmBootstrap
+        New-PSSwaggerModule -SpecificationPath (Join-Path -Path "$testCaseDataLocation" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Verbose -NoAssembly -UseAzureCSharpGenerator:$UseAzureCSharpGenerator -ConfirmBootstrap
     }
     
     if ($TestDataFileName) {
@@ -134,7 +142,7 @@ function Start-JsonServer {
         $argList += " $CustomServerParameters"
     }
 
-    Write-Host -Message "Starting json-server: $PSScriptRoot\NodeModules\json-server.cmd $argList"
+    Write-Host "Starting json-server: $PSScriptRoot\NodeModules\json-server.cmd $argList"
     if ('Core' -eq $PSEdition) {
         $jsonServerProcess = Start-Process -FilePath "$PSScriptRoot\NodeModules\json-server.cmd" -ArgumentList $argList -PassThru
     } else {
@@ -143,7 +151,7 @@ function Start-JsonServer {
 
     # Wait for local json-server to start 
     Write-Verbose -Message "Waiting for server to start..."
-    while (-not ((Test-NetConnection -ComputerName localhost -Port 3000).TcpTestSucceeded)) {
+    while (-not (Test-Connection -ComputerName localhost -Port 3000)) {
         Start-Sleep -s 1
     }
 
@@ -174,7 +182,7 @@ function Test-Connection {
     )
 
     if ('Core' -ne $PSEdition) {
-        return Test-NetConnection -ComputerName localhost -Port 3000
+        return (Test-NetConnection -ComputerName localhost -Port 3000).TcpTestSucceeded
     } else {
         $conn = New-Object -TypeName System.Net.Sockets.TcpClient
         $task = $conn.ConnectAsync($ComputerName, $Port)

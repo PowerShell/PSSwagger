@@ -27,14 +27,13 @@ $param = @{
 }
 
 # AzureRM.Resources
-$param['SwaggerSpecUri'] = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-resources/resources/2015-11-01/swagger/resources.json'
+$param['SpecificationUri'] = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-resources/resources/2015-11-01/swagger/resources.json'
 $param['Name']           = 'Generated.AzureRM.Resources'
 New-PSSwaggerModule @param
 #endregion Generate AzureRM commands
 
 
-Import-Module "$PSSwaggerClonePath\PSSwagger\PSSwagger.Common.Helpers\PSSwagger.Common.Helpers.psd1" -verbose -force
-Import-Module "$PSSwaggerClonePath\PSSwagger\PSSwagger.Azure.Helpers\PSSwagger.Azure.Helpers.psd1" -verbose -force
+Import-Module "$PSSwaggerClonePath\PSSwagger\PSSwaggerUtility\PSSwaggerUtility.psd1" -verbose -force
 
 Import-Module $TargetPath\Generated.AzureRM.Resources -WarningAction SilentlyContinue
 

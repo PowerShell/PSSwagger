@@ -2,7 +2,7 @@
 
 // Licensed under the MIT license.
 
-// PSSwagger.Common.Helpers Module
+// PSSwaggerUtility Module
 namespace Microsoft.PowerShell.Commands.PSSwagger
 {
 	using Microsoft.Rest;

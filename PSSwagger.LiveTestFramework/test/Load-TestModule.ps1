@@ -12,5 +12,5 @@ if (-not $topLevel) {
 }
 
 Write-Verbose -Message "Git repo root: $topLevel"
-Import-Module (Join-Path -Path $topLevel -ChildPath PSSwagger | Join-Path -ChildPath PSSwagger.Common.Helpers) -Force
+Import-Module (Join-Path -Path $topLevel -ChildPath PSSwagger | Join-Path -ChildPath PSSwaggerUtility) -Force
 Import-Module (Join-Path -Path $topLevel -ChildPath PSSwagger.LiveTestFramework | Join-Path -ChildPath test | Join-Path -ChildPath PSSwagger.LiveTestFramework.Tests.psd1) -Force

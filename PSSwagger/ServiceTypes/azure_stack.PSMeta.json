@@ -1,8 +1,8 @@
 {
   "info": {
     "x-ps-code-generation-settings": {
-		"customAuthCommand": "PSSwagger.Azure.Helpers\\Get-AzServiceCredential",
-		"hostOverrideCommand": "PSSwagger.Azure.Helpers\\Get-AzResourceManagerUrl"
+		"customAuthCommand": "Get-AzServiceCredential",
+		"hostOverrideCommand": "Get-AzResourceManagerUrl"
 	}
   }
 }

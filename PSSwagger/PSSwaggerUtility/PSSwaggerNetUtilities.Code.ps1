@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 
 // Licensed under the MIT license.
+
+// PSSwaggerUtility Module
 namespace Microsoft.PowerShell.Commands.PSSwagger
 {
 	using Microsoft.Rest;

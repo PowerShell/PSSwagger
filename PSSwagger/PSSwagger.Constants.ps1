@@ -27,12 +27,17 @@ $parameterDefaultValueString = ' = $parameterDefaultValue'
 $RootModuleContents = @'
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename $Name.Resources.psd1
+# If the user supplied -Prefix to Import-Module, that applies to the nested module as well
+# Force import the nested module again without -Prefix
+if (-not (Get-Command Get-OperatingSystemInfo -Module PSSwaggerUtility -ErrorAction Ignore)) {
+    Import-Module PSSwaggerUtility -Force
+}
 
 if ((Get-OperatingSystemInfo).IsCore) {
-    `$clr = 'coreclr'
+    $testCoreModuleRequirements`$clr = 'coreclr'
     `$framework = 'netstandard1'
 } else {
-    `$clr = 'fullclr'
+    $testFullModuleRequirements`$clr = 'fullclr'
     `$framework = 'net4'
 }
 
@@ -62,7 +67,7 @@ if (-not (Test-Path -Path `$dllFullName)) {
     }
 
     `$dependencies = Get-PSSwaggerExternalDependencies -Azure:`$isAzureCSharp -Framework `$framework
-    `$consent = Initialize-PSSwaggerLocalTools -Azure:`$isAzureCSharp -Framework `$framework
+    `$consent = Initialize-PSSwaggerLocalTool -Azure:`$isAzureCSharp -Framework `$framework
     `$microsoftRestClientRuntimeAzureRequiredVersion = ''
     if (`$dependencies.ContainsKey('Microsoft.Rest.ClientRuntime.Azure')) {
         `$microsoftRestClientRuntimeAzureRequiredVersion = `$dependencies['Microsoft.Rest.ClientRuntime.Azure'].RequiredVersion
@@ -71,7 +76,7 @@ if (-not (Test-Path -Path `$dllFullName)) {
     `$microsoftRestClientRuntimeRequiredVersion = `$dependencies['Microsoft.Rest.ClientRuntime'].RequiredVersion
     `$newtonsoftJsonRequiredVersion = `$dependencies['Newtonsoft.Json'].RequiredVersion
 
-    `$success = Invoke-PSSwaggerAssemblyCompilation -CSharpFiles `$allCSharpFiles -NewtonsoftJsonRequiredVersion `$newtonsoftJsonRequiredVersion -MicrosoftRestClientRuntimeRequiredVersion `$microsoftRestClientRuntimeRequiredVersion -MicrosoftRestClientRuntimeAzureRequiredVersion "`$microsoftRestClientRuntimeAzureRequiredVersion" -ClrPath `$clrPath -BootstrapConsent:`$consent -CodeCreatedByAzureGenerator:`$isAzureCSharp
+    `$success = Add-PSSwaggerClientType -CSharpFiles `$allCSharpFiles -NewtonsoftJsonRequiredVersion `$newtonsoftJsonRequiredVersion -MicrosoftRestClientRuntimeRequiredVersion `$microsoftRestClientRuntimeRequiredVersion -MicrosoftRestClientRuntimeAzureRequiredVersion "`$microsoftRestClientRuntimeAzureRequiredVersion" -ClrPath `$clrPath -BootstrapConsent:`$consent -CodeCreatedByAzureGenerator:`$isAzureCSharp
     if (-not `$success) {
         `$message = `$LocalizedData.CompilationFailed -f (`$dllFullName)
         throw `$message
@@ -84,7 +89,6 @@ if (-not (Test-Path -Path `$dllFullName)) {
 
 
 Get-ChildItem -Path (Join-Path -Path "`$PSScriptRoot" -ChildPath "ref" | Join-Path -ChildPath "`$clr" | Join-Path -ChildPath "*.dll") -File | ForEach-Object { Add-Type -Path `$_.FullName -ErrorAction SilentlyContinue }
-
 Get-ChildItem -Path "`$PSScriptRoot\$GeneratedCommandsName\*.ps1" -Recurse -File | ForEach-Object { . `$_.FullName}
 '@
 
@@ -110,6 +114,7 @@ $AsJobParameterString = @'
 
 
 $advFnSignatureForPath = @'
+Import-Module -Name (Join-Path -Path `$PSScriptRoot -ChildPath .. | Join-Path -ChildPath .. | Join-Path -ChildPath "GeneratedHelpers.psm1")
 <#
 $commandHelp
 $paramHelp
@@ -122,13 +127,27 @@ function $commandName
 
     Begin 
     {
-	    $helperModule\Initialize-PSSwaggerDependencies
+	    $dependencyInitFunction
+        `$tracerObject = `$null
+        if (('continue' -eq `$DebugPreference) -or ('inquire' -eq `$DebugPreference)) {
+            `$oldDebugPreference = `$global:DebugPreference
+			`$global:DebugPreference = "continue"
+            `$tracerObject = New-PSSwaggerClientTracing
+            Register-PSSwaggerClientTracing -TracerObject `$tracerObject
+        }
 	}
 
     Process {
     $body
 
     $PathFunctionBody
+    }
+
+    End {
+        if (`$tracerObject) {
+            `$global:DebugPreference = `$oldDebugPreference
+            Unregister-PSSwaggerClientTracing -TracerObject `$tracerObject
+        }
     }
 }
 '@
@@ -319,7 +338,7 @@ Write-Verbose -Message "Waiting for the operation to complete."
         }
     }
 
-    `$PSCommonParameters = Get-PSCommonParameters -CallerPSBoundParameters `$PSBoundParameters
+    `$PSCommonParameters = Get-PSCommonParameter -CallerPSBoundParameters `$PSBoundParameters
 
     if(`$AsJob)
     {
@@ -328,7 +347,7 @@ Write-Verbose -Message "Waiting for the operation to complete."
         `$ScriptBlockParameters['AsJob'] = `$AsJob
         `$PSCommonParameters.GetEnumerator() | ForEach-Object { `$ScriptBlockParameters[`$_.Name] = `$_.Value }
 
-        Invoke-SwaggerCommandUtility -ScriptBlock `$PSSwaggerJobScriptBlock ``
+        Start-PSSwaggerJobHelper -ScriptBlock `$PSSwaggerJobScriptBlock ``
                                      -CallerPSBoundParameters `$ScriptBlockParameters ``
                                      -CallerPSCmdlet `$PSCmdlet ``
                                      @PSCommonParameters

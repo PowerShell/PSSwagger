@@ -12,7 +12,7 @@ Creates PowerShell Metadata json file with PowerShell Extensions for the specifi
 ## SYNTAX
 
 ```
-New-PSSwaggerMetadataFile [-SwaggerSpecPath] <String> [-Force] [-WhatIf] [-Confirm]
+New-PSSwaggerMetadataFile [-SpecificationPath] <String> [-Force] [-WhatIf] [-Confirm]
 ```
 
 ## DESCRIPTION
@@ -26,21 +26,21 @@ This \<SwaggerSpecFileName\>.psmeta.json file gets created under the same locati
 
 ### -------------------------- EXAMPLE 1 --------------------------
 ```
-New-PSSwaggerMetadataFile -SwaggerSpecPath 'C:\SwaggerSpecs\BatchManagement.json'
+New-PSSwaggerMetadataFile -SpecificationPath 'C:\SwaggerSpecs\BatchManagement.json'
 ```
 
 Generates 'C:\SwaggerSpecs\BatchManagement.psmeta.json' file with PowerShell extensions for customizing the PowerShell related metadata.
 
 ### -------------------------- EXAMPLE 2 --------------------------
 ```
-New-PSSwaggerMetadataFile -SwaggerSpecPath 'C:\SwaggerSpecs\BatchManagement.json' -Force
+New-PSSwaggerMetadataFile -SpecificationPath 'C:\SwaggerSpecs\BatchManagement.json' -Force
 ```
 
 Regenerates 'C:\SwaggerSpecs\BatchManagement.psmeta.json' file with PowerShell extensions for customizing the PowerShell related metadata.
 
 ## PARAMETERS
 
-### -SwaggerSpecPath
+### -SpecificationPath
 Full Path to a Swagger based JSON spec.
 
 ```yaml
