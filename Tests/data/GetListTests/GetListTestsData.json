@@ -1,0 +1,68 @@
+{
+  "cupcakes": [
+    {
+      "id": "1",
+      "flavor": "chocolate"
+    },
+    {
+      "id": "2",
+      "flavor": "vanilla"
+    }
+  ],
+  "dogs": [
+    {
+      "id": "1",
+      "name": "dog1",
+      "owner": "owner1",
+      "size": "small"
+    },
+    {
+      "id": "2",
+      "name": "dog2",
+      "owner": "owner1",
+      "size": "medium"
+    },
+    {
+      "id": "3",
+      "name": "dog3",
+      "owner": "owner2",
+      "size": "small"
+    }
+  ],
+  "cats": [
+    {
+      "id": "1",
+      "name": "cat1",
+      "owner": "owner1",
+      "size": "small"
+    },
+    {
+      "id": "2",
+      "name": "cat2",
+      "owner": "owner1",
+      "size": "medium"
+    },
+    {
+      "id": "3",
+      "name": "cat3",
+      "owner": "owner2",
+      "size": "small"
+    },
+    {
+      "id": "4",
+      "name": "cat4",
+      "owner": "owner1",
+      "size": "small"
+    }
+  ],
+  "tags": [
+    {
+      "id": "1",
+      "name": "tag1"
+    },
+    {
+      "id": "2",
+      "name": "tag2"
+    }
+  ]
+}

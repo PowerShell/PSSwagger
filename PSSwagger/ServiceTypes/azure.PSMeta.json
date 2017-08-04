@@ -1,0 +1,7 @@
+{
+  "info": {
+    "x-ps-code-generation-settings": {
+		"customAuthCommand": "Get-AzServiceCredential"
+	}
+  }
+}

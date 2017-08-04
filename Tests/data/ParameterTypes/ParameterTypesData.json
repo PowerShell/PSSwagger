@@ -1,0 +1,58 @@
+{
+  "cupcakes": [
+    {
+      "id": "1",
+      "flavor": "mint-chocolate",
+      "ageInYears": 1,
+      "ageInDays": 365,
+      "price": 9.99,
+      "priceInEuros": 9.25,
+      "matrixIdentity": "YQ==",
+      "matrixCode": "dGVzdA==",
+      "madeOn": "2017-03-22",
+      "madeOnDateTime": "2017-03-22T13:25:43.511Z",
+      "password": "test",
+      "poisoned": false
+    },
+    {
+      "id": "2",
+      "flavor": "chocolate",
+      "ageInYears": 2,
+      "ageInDays": 730,
+      "price": 15.95,
+      "priceInEuros": 14.75,
+      "matrixIdentity": "YQ==",
+      "matrixCode": "dGVzdA==",
+      "madeOn": "2017-03-23",
+      "madeOnDateTime": "2017-03-23T13:25:43.511Z",
+      "password": "test2",
+      "poisoned": true
+    },
+    {
+      "id": "3",
+      "flavor": "chocolate",
+      "ageInYears": 2,
+      "ageInDays": 730,
+      "price": 15.95,
+      "priceInEuros": 14.75,
+      "matrixIdentity": "YQ==",
+      "matrixCode": "dGVzdA==",
+      "madeOn": "2017-03-23",
+      "madeOnDateTime": "2017-03-23T13:25:43.511Z",
+      "password": "test2",
+      "poisoned": true
+    }
+  ],
+  "dinosaurs": [
+    {
+      "id": "1",
+      "api-version": "test",
+      "TestGlobalParameter": "test"
+    },
+    {
+      "id": "2",
+      "api-version": "2017-03-24",
+      "TestGlobalParameter": "test"
+    }
+  ]
+}

@@ -1,0 +1,180 @@
+#########################################################################################
+#
+# Copyright (c) Microsoft Corporation. All rights reserved.
+#
+# Licensed under the MIT license.
+#
+# PSSwagger Tests
+#
+#########################################################################################
+[CmdletBinding()]
+param(
+    [ValidateSet("All","UnitTest","ScenarioTest")]
+    [string[]]$TestSuite = "All",
+    [string[]]$TestName,
+    [ValidateSet("net452", "netstandard1.7")]
+    [string]$TestFramework = "net452",
+    [switch]$EnableTracing
+)
+
+$executeTestsCommand = ""
+
+# Import test utilities
+Import-Module "$PSScriptRoot\TestUtilities.psm1" -Force
+$nugetPackageSource = Test-NugetPackageSource
+
+$testRunGuid = [guid]::NewGuid().GUID
+Write-Verbose -message "Test run GUID: $testRunGuid"
+$nodeModuleVersions = @{}
+# Set up scenario test requirements
+if ($TestSuite.Contains("All") -or $TestSuite.Contains("ScenarioTest")) {
+    # Ensure node.js is installed
+    $nodejsModule = Test-Package -packageName "Node.JS" -packageSourceName $nugetPackageSource.Name
+    if ($nodejsModule -eq $null) {
+        throw "Node.JS failed to install."
+    }
+
+    $nodejsInstallPath = Split-Path -Path $nodejsModule.Source
+    # Ensure npm is installed
+    $npmModule = Test-Package -packageName "Npm" -packageSourceName $nugetPackageSource.Name
+    if ($npmModule -eq $null) {
+        throw "NPM failed to install."
+    }
+    $nodeModuleVersions['npm'] = $npmModule.Version
+
+    $npmInstallPath = Split-Path -Path $npmModule.Source
+
+    # Ensure the location exists where we keep node and node modules
+    $nodeModulePath = Join-Path -Path $PSScriptRoot -ChildPath "NodeModules"
+    $nodeExePath = Join-Path -Path $nodeModulePath -ChildPath "node.exe"
+    $jsonServerPath = Join-Path -Path $nodeModulePath -ChildPath "json-server.cmd"
+    if (-not (Test-Path $nodeModulePath)) {
+        Write-Verbose "Creating local node modules directory $nodeModulePath"
+        New-Item -Path $nodeModulePath -ItemType Directory -Force 
+    }
+
+    # Let's copy node.exe to the other directory so we can keep everything in one place
+    if (-not (Test-Path $nodeExePath)) {
+        Write-Verbose "Copying node.exe from NuGet package to $nodeExePath"
+        Copy-Item -Path (Join-Path -Path $nodejsInstallPath -ChildPath "node.exe") -Destination $nodeExePath
+    }
+
+    # Ensure we have json-server
+    if (-not (Test-Path $jsonServerPath)) {
+        Write-Verbose "Couldn't find $jsonServerPath. Running npm install -g json-server."
+        & $nodeExePath (Join-Path -Path $npmInstallPath -ChildPath "node_modules\npm\bin\npm-cli.js") "install" "-g" "json-server@0.9.6"
+    }
+    $nodeModuleVersions['json-server'] = & $nodeExePath (Join-Path -Path $npmInstallPath -ChildPath "node_modules\npm\bin\npm-cli.js") 'list' '-g' 'json-server'
+
+    # For these node modules, it's easier on the middleware script devs to just install the modules locally instead of globally
+    # Ensure we have request (for easy HTTP request creation for some test middlewares)
+    if (-not (Test-Path (Join-Path $PSScriptRoot "node_modules" | Join-Path -ChildPath "request"))) {
+        Write-Verbose "Couldn't find request module. Running npm install request."
+        & $nodeExePath (Join-Path -Path $npmInstallPath -ChildPath "node_modules\npm\bin\npm-cli.js") "install" "request"
+    }
+
+    # Ensure we have async (for HTTP request resolution synchronously in some test middlewares)
+    if (-not (Test-Path (Join-Path $PSScriptRoot "node_modules" | Join-Path -ChildPath "async"))) {
+        Write-Verbose "Couldn't find async module. Running npm install async."
+        & $nodeExePath (Join-Path -Path $npmInstallPath -ChildPath "node_modules\npm\bin\npm-cli.js") "install" "async"
+    }
+
+    $executeTestsCommand += ";`$env:Path+=`";$nodeModulePath`""
+    $executeTestsCommand += ";`$global:testRunGuid=`"$testRunGuid`""
+
+    # Set up the common generated modules location
+    $generatedModulesPath = Join-Path -Path "$PSScriptRoot" -ChildPath "Generated"
+    if (-not (Test-Path $generatedModulesPath)) {
+        $null = New-Item -Path $generatedModulesPath -ItemType Directory
+    }
+    if (-not (Test-Path $nodeExePath)) {
+        Write-Verbose "Copying node.exe from NuGet package to $nodeExePath"
+        Copy-Item -Path (Join-Path -Path $nodejsInstallPath -ChildPath "node.exe") -Destination $nodeExePath
+    }
+}
+
+# Set up AutoRest
+$autoRestModule = Test-Package -packageName "AutoRest" -packageSourceName $nugetPackageSource.Name -requiredVersion 0.17.3
+$autoRestInstallPath = Split-Path -Path $autoRestModule.Source
+$executeTestsCommand += ";`$env:Path+=`";$autoRestInstallPath\tools`""
+
+# AzureRM.Profile requirement
+$azureRmProfile = Get-Package -Name AzureRM.Profile -Provider PowerShellGet -ErrorAction Ignore
+if (-not $azureRmProfile) {
+    if (-not (Get-PackageSource -Name PSGallery -ErrorAction Ignore)) {
+        Register-PackageSource -Name PSGallery -ProviderName PowerShellGet
+    }
+
+    $azureRmProfile = Install-Package -Name AzureRM.Profile -Provider PowerShellGet -Source PSGallery -Force | Where-Object { $_.Name -eq 'AzureRM.Profile' }
+}
+
+$powershellFolder = $null
+if ("netstandard1.7" -eq $TestFramework) {
+    # beta > alpha
+    $powershellCore = Get-Package PowerShell* -ProviderName msi | Sort-Object -Property Name -Descending | Select-Object -First 1
+    if ($null -eq $powershellCore) {
+        throw "PowerShellCore not found on this machine. Run: tools\Get-PowerShellCore"
+    }
+    $psVersion = $powershellCore.Name.Substring(11)
+    $powershellFolder = "$Env:ProgramFiles\PowerShell\$($psVersion)"
+    $executeTestsCommand += ";`$env:PSModulePath_Backup=`"$env:PSModulePath`""
+}
+
+if ($EnableTracing) {
+    $executeTestsCommand += ";`$global:PSSwaggerTest_EnableTracing=`$true"
+}
+
+$srcPath = Join-Path -Path $PSScriptRoot -ChildPath .. | Join-Path -ChildPath PSSwagger
+$executeTestsCommand += ";`$verbosepreference=`"continue`";`$env:PSModulePath=`"$srcPath;`$env:PSModulePath`";Invoke-Pester -ExcludeTag KnownIssue -OutputFormat NUnitXml -OutputFile ScenarioTestResults.xml -Verbose"
+
+# Set up Pester params
+$pesterParams = @{'ExcludeTag' = 'KnownIssue'; 'OutputFormat' = 'NUnitXml'; 'OutputFile' = 'TestResults.xml'}
+if ($PSBoundParameters.ContainsKey('TestName')) {
+    $executeTestsCommand += " -TestName `"$TestName`""
+}
+
+if ($TestSuite.Contains("All")) {
+    Write-Verbose "Invoking all tests."
+} else {
+    Write-Verbose "Running only tests with tag: $TestSuite"
+    $executeTestsCommand += " -Tag $TestSuite"
+}
+
+
+
+# Clean up generated test assemblies
+Write-Verbose "Cleaning old test assemblies, if any."
+Get-ChildItem -Path (Join-Path "$PSScriptRoot" "PSSwagger.TestUtilities") -Filter *.dll | Remove-Item -Force
+Get-ChildItem -Path (Join-Path "$PSScriptRoot" "PSSwagger.TestUtilities") -Filter *.pdb | Remove-Item -Force
+
+Write-Verbose "Dependency versions:"
+Write-Verbose " -- AzureRM.Profile: $($azureRmProfile.Version)"
+Write-Verbose " -- Pester: $((get-command invoke-pester).Version)"
+if ($autoRestModule) {
+    Write-Verbose " -- AutoRest: $($autoRestModule.Version)"
+}
+foreach ($entry in $nodeModuleVersions.GetEnumerator()) {
+    Write-Verbose " -- $($entry.Key): $($entry.Value)"
+}
+Write-Verbose "Executing: $executeTestsCommand"
+$executeTestsCommand | Out-File pesterCommand.ps1
+
+if ($TestFramework -eq "netstandard1.7") {
+    try {
+        $null = Get-CimInstance Win32_OperatingSystem
+        Write-Verbose -Message "Invoking PowerShell Core at: $powershellFolder"
+        & "$powershellFolder\powershell" -command .\pesterCommand.ps1
+    } catch {
+        # For non-Windows, keep using the basic command
+        powershell -command .\pesterCommand.ps1
+    }
+} else {
+    powershell -command .\pesterCommand.ps1
+}
+
+# Verify output
+$x = [xml](Get-Content -raw "ScenarioTestResults.xml")
+if ([int]$x.'test-results'.failures -gt 0)
+{
+    throw "$($x.'test-results'.failures) tests failed"
+}

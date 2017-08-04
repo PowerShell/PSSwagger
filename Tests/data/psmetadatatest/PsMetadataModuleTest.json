@@ -1,0 +1,175 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "title": "AzureExtensions",
+        "description": "API that tests known AutoRest Azure extensions",
+        "version": "2017-03-30"
+    },
+    "host": "localhost:3000",
+    "schemes": [
+        "http"
+    ],
+    "basePath": "/",
+    "produces": [
+        "application/json"
+    ],
+    "paths": {
+        "/cupcakes": {
+            "get": {
+                "summary": "Get all cupcakes",
+                "operationId": "Cupcake_List",
+                "description": "List all cupcakes.",
+                "parameters": [],
+                "tags": [
+                    "Cupcakes"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "All cupcake entities.",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Cupcake"
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                },
+                "x-ps-cmdlet-infos": [{
+                    "name": "List-Cupcakes"
+                }]
+            }
+        }
+    },
+    "definitions": {
+        "CupcakeBatch": {
+            "type": "object",
+            "properties": {
+                "properties": {
+                    "x-ms-client-flatten": true,
+                    "$ref": "#/definitions/Cupcake"
+                }
+            }
+        },
+        "Cupcake": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "Unique identifier"
+                },
+                "flavor": {
+                    "type": "string",
+                    "description": "Flavor"
+                }
+            }
+        },
+        "VirtualMachine": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "Unique identifier"
+                },
+                "sku": {
+                    "x-ms-client-name": "ClientNameForSku",
+                    "type": "string",
+                    "description": "SKU"
+                }
+            }
+        },
+        "CheckNameAvailabilityInput": {
+            "type": "object",
+            "required": [
+                "name",
+                "type"
+            ],
+            "properties": {
+                "name": {
+                    "description": "The Search service name to validate. Search service names must only contain lowercase letters, digits or dashes, cannot use dash as the first two or last one characters, cannot contain consecutive dashes, and must be between 2 and 60 characters in length.",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "The type of the resource whose name is to be validated. This value must always be 'searchServices'.",
+                    "type": "string",
+                    "enum": [
+                        "searchServices"
+                    ],
+                    "x-ms-enum": {
+                        "name": "ResourceType",
+                        "modelAsString": false
+                    }
+                }
+            },
+            "description": "Input of check name availability API.",
+            "example": {
+                "name": "your-service-name-here",
+                "type": "searchServices"
+            }
+        },
+        "CheckNameAvailabilityOutput": {
+            "type": "object",
+            "properties": {
+                "nameAvailable": {
+                    "x-ms-client-name": "IsNameAvailable",
+                    "description": "A value indicating whether the name is available.",
+                    "type": "boolean",
+                    "readOnly": true
+                },
+                "reason": {
+                    "description": "The reason why the name is not available. 'Invalid' indicates the name provided does not match the naming requirements (incorrect length, unsupported characters, etc.). 'AlreadyExists' indicates that the name is already in use and is therefore unavailable.",
+                    "type": "string",
+                    "readOnly": true,
+                    "enum": [
+                        "Invalid",
+                        "AlreadyExists"
+                    ],
+                    "x-ms-enum": {
+                        "name": "UnavailableNameReason",
+                        "modelAsString": true
+                    }
+                },
+                "message": {
+                    "description": "A message that explains why the name is invalid and provides resource naming requirements. Available only if 'Invalid' is returned in the 'reason' property.",
+                    "type": "string",
+                    "readOnly": true
+                }
+            },
+            "description": "Output of check name availability API."
+        },
+        "Error": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "description": "Error code"
+                },
+                "message": {
+                    "type": "string",
+                    "description": "Message"
+                }
+            }
+        }
+    },
+    "parameters": {
+        "SubscriptionIdParameter": {
+            "name": "subscriptionId",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "A unique identifier of a Microsoft Azure subscription. The subscription ID forms part of the URI for every service call."
+        },
+        "ApiVersionParameter": {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to be used with the HTTP request."
+        }
+    }
+}

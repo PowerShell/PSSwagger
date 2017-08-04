@@ -1,0 +1,82 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "title": "BasicAuthTest",
+        "description": "Spec to test basic auth.",
+        "version": "2017-05-09",
+        "contact":{
+            "name": "API Support",
+            "url": "http://www.swagger.io/support",
+            "email": "support@swagger.io"
+        },
+        "license":{
+            "name": "Apache 2.0",
+            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+        },
+		"x-ps-code-generation-settings": {
+			"noAuthChallenge": true
+		}
+    },
+	"securityDefinitions": {
+		"auth": {
+			"type": "basic",
+			"description": "Test"
+		}
+	},
+	"security": [
+		{
+			"auth": []
+		}
+	],
+    "host": "localhost:3000",
+    "schemes": [
+        "http"
+    ],
+    "basePath": "/",
+    "produces": [
+        "application/json"
+    ],
+    "paths": {
+        "/Responses": {
+            "get": {
+                "summary": "Get a response",
+                "operationId": "Response_GetUnchallenged",
+                "description": "Gets responses",
+                "parameters": [
+                    {
+                        "name": "Property",
+                        "in": "query",
+                        "description": "Test query parameter",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "tags": [
+                    "Responses"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A response entity",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/definitions/Response"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "Response": {
+            "type": "object",
+            "properties": {
+				"Property": {
+					"type": "string",
+                    "description": "anything"
+				}
+            }
+        }
+    },
+    "parameters": {
+    }
+}

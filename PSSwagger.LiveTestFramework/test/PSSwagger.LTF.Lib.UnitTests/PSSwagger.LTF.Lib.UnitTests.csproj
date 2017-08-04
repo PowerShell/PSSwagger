@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
+  <Import Project="..\project-xunittest.proj" />
+  <PropertyGroup>
+    <TargetFramework>net452;netcoreapp2.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\PSSwagger.LTF.Lib\PSSwagger.LTF.Lib.csproj" />
+  </ItemGroup>
+  <Import Project="..\..\netcoreapp20.proj" />
+</Project>

@@ -1,0 +1,160 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "title": "OperationTypes",
+        "description": "API that iterates simple versions of all known operation types.",
+        "version": "2017-03-09"
+    },
+    "host": "localhost:3000",
+    "schemes": [
+        "http"
+    ],
+    "basePath": "/",
+    "produces": [
+        "application/json"
+    ],
+    "paths": {
+        "/guitars/{id}": {
+            "get": {
+                "summary": "Simple get",
+                "operationId": "Guitar_Get",
+                "description": "Test",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID of guitar",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "tags": [
+                    "Guitars"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Guitar entity with matching ID.",
+                        "schema": {
+                            "$ref": "#/definitions/Guitar"
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Simple put",
+                "operationId": "Guitar_CreateOrUpdate",
+                "description": "Test",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID of guitar",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "guitar",
+                        "in": "body",
+                        "description": "test",
+                        "schema":{
+                            "$ref": "#/definitions/Guitar"
+                        }
+                    }
+                ],
+                "tags": [
+                    "Guitars"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Guitar entity with matching ID.",
+                        "schema": {
+                            "$ref": "#/definitions/Guitar"
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "Instrument": {
+            "type": "object",
+            "discriminator": "id",
+            "required": [
+                "id", "isTuned"
+            ],
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "Unique identifier"
+                },
+                "isTuned": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "Guitar": {
+            "allOf": [
+                {
+                "$ref": "#/definitions/Instrument"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "numberOfStrings": {
+                            "type": "integer"
+                        }
+                    }
+                }
+            ]
+        },
+        "Error": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "description": "Error code"
+                },
+                "message": {
+                    "type": "string",
+                    "description": "Message"
+                }
+            }
+        }
+    },
+    "parameters": {
+        "SubscriptionIdParameter": {
+            "name": "subscriptionId",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "A unique identifier of a Microsoft Azure subscription. The subscription ID forms part of the URI for every service call."
+        },
+        "ApiVersionParameter": {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to be used with the HTTP request."
+        },
+        "CupcakeIdParameter": {
+            "name": "Id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "ID of cupcake",
+            "x-ms-parameter-location": "method"
+        }
+    }
+}

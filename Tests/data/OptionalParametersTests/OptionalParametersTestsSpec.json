@@ -1,0 +1,247 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "title": "OptionalParametersTestsSpec",
+        "description": "API that contains tests for optional parameter behavior",
+        "version": "2017-03-20"
+    },
+    "host": "localhost:3000",
+    "schemes": [
+        "http"
+    ],
+    "basePath": "/",
+    "produces": [
+        "application/json"
+    ],
+    "paths": {
+        "/cupcakes": {
+            "get": {
+                "summary": "List all cupcakes matching parameters",
+                "operationId": "Cupcakes_List",
+                "description": "Make a cupcake or update an existing one.",
+                "parameters": [
+                    {
+                        "name": "flavor",
+                        "in": "query",
+                        "description": "Flavor of cupcake",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "name": "maker",
+                        "in": "query",
+                        "description": "Baker of cupcake",
+                        "required": false,
+                        "type": "string"
+                    }
+                ],
+                "tags": [
+                    "Cupcakes"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "All cupcake entities",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Cupcake"
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/cupcakes/{maker}/{flavor}": {
+            "get": {
+                "summary": "List all cupcakes matching parameters",
+                "operationId": "Cupcakes_ListByMaker",
+                "description": "Make a cupcake or update an existing one.",
+                "parameters": [
+                    {
+                        "name": "flavor",
+                        "in": "path",
+                        "description": "Flavor of cupcake",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "name": "maker",
+                        "in": "path",
+                        "description": "Baker of cupcake",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "tags": [
+                    "Cupcakes"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "All cupcake entities",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Cupcake"
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/cupcakes/{maker}": {
+            "get": {
+                "summary": "List all cupcakes matching parameters",
+                "operationId": "Cupcakes_ListWithDefault",
+                "description": "Make a cupcake or update an existing one.",
+                "parameters": [
+                    {
+                        "name": "flavor",
+                        "in": "query",
+                        "description": "Flavor of cupcake",
+                        "required": false,
+                        "default": "chocolate",
+                        "type": "string"
+                    },
+                    {
+                        "name": "maker",
+                        "in": "path",
+                        "description": "Baker of cupcake",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "tags": [
+                    "Cupcakes"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "All cupcake entities",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Cupcake"
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/letters": {
+            "get": {
+                "summary": "Get with DateTime parameter as optional with default value",
+                "operationId": "Letters_List",
+                "description": "Gets letters",
+                "parameters": [
+                    {
+                        "name": "sentDate",
+                        "in": "query",
+                        "description": "Sent date of letter",
+                        "required": false,
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                ],
+                "tags": [
+                    "Letters"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Letters.",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Letter"
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "Cupcake": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "Unique identifier"
+                },
+                "flavor": {
+                    "type": "string",
+                    "description": "Flavor"
+                },
+                "maker": {
+                    "type": "string",
+                    "description": "Name of the baker maker"
+                }
+            }
+        },
+        "Letter": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "Unique identifier"
+                },
+                "sentDate": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Letter"
+                }
+            }
+        },
+        "Error": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "description": "Error code"
+                },
+                "message": {
+                    "type": "string",
+                    "description": "Message"
+                }
+            }
+        }
+    },
+    "parameters": {
+        "SubscriptionIdParameter": {
+            "name": "subscriptionId",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "A unique identifier of a Microsoft Azure subscription. The subscription ID forms part of the URI for every service call."
+        },
+        "ApiVersionParameter": {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to be used with the HTTP request."
+        }
+    }
+}

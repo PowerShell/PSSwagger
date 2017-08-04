@@ -1,0 +1,564 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "title": "ParameterTypesSpec",
+        "description": "API that contains tests for all known parameter types",
+        "version": "2017-03-24"
+    },
+    "host": "localhost:3000",
+    "schemes": [
+        "http"
+    ],
+    "basePath": "/",
+    "produces": [
+        "application/json"
+    ],
+    "paths": {
+        "/cupcakes": {
+            "get": {
+                "summary": "List all cupcakes matching parameters",
+                "operationId": "Cupcake_List",
+                "description": "Make a cupcake or update an existing one.",
+                "parameters": [
+                    {
+                        "name": "flavor",
+                        "in": "query",
+                        "description": "Flavor of cupcake",
+                        "required": false,
+                        "type": "string",
+                        "default": "mint-chocolate"
+                    },
+                    {
+                        "name": "ageInYears",
+                        "in": "query",
+                        "description": "Test",
+                        "required": false,
+                        "type": "integer",
+                        "default": 1
+                    },
+                    {
+                        "name": "ageInDays",
+                        "in": "query",
+                        "description": "Test",
+                        "required": false,
+                        "type": "integer",
+                        "default": 365
+                    },
+                    {
+                        "name": "price",
+                        "in": "query",
+                        "description": "Test",
+                        "required": false,
+                        "type": "number",
+                        "format": "float",
+                        "default": 9.99
+                    },
+                    {
+                        "name": "priceInEuros",
+                        "in": "query",
+                        "description": "Test",
+                        "required": false,
+                        "type": "number",
+                        "format": "double",
+                        "default": 9.25
+                    },
+                    {
+                        "name": "matrixIdentity",
+                        "in": "query",
+                        "description": "Test",
+                        "required": false,
+                        "type": "string",
+                        "format": "byte"
+                    },
+                    {
+                        "name": "matrixCode",
+                        "in": "query",
+                        "description": "Test",
+                        "required": false,
+                        "type": "string",
+                        "format": "byte"
+                    },
+                    {
+                        "name": "madeOn",
+                        "in": "query",
+                        "description": "Test",
+                        "required": false,
+                        "type": "string",
+                        "format": "date"
+                    },
+                    {
+                        "name": "madeOnDateTime",
+                        "in": "query",
+                        "description": "Test",
+                        "required": false,
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    {
+                        "name": "password",
+                        "in": "query",
+                        "description": "Test",
+                        "required": false,
+                        "type": "string",
+                        "format": "password"
+                    },
+                    {
+                        "name": "poisoned",
+                        "in": "query",
+                        "description": "Test",
+                        "required": false,
+                        "type": "boolean",
+                        "default": false
+                    },
+                    {
+                        "name": "enumparameter",
+                        "in": "query",
+                        "required": false,
+                        "type": "string",
+                        "enum": [
+                            "resourceType eq 'Test.Namespace/ServiceNameA'",
+                            "resourceType eq 'Test.Namespace/ServiceNameZ'",
+                            "OtherValidValue"
+                        ],
+                        "description": "The filter to apply on the operation."
+                    },
+                    {
+                        "name": "$filter",
+                        "in": "query",
+                        "description": "OData test",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "name": "$expand",
+                        "in": "query",
+                        "description": "OData test",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "name": "$select",
+                        "in": "query",
+                        "description": "OData test",
+                        "required": false,
+                        "type": "string"
+                    }
+                ],
+                "tags": [
+                    "Cupcakes"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "All cupcake entities",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Cupcake"
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                },
+                "x-ms-odata": "#/definitions/Cupcake"
+            }
+        },
+        "/dinosaurs": {
+            "get": {
+                "summary": "List all dinosaurs matching parameters",
+                "operationId": "Dinosaur_Get",
+                "description": "List all dinosaurs matching parameters",
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/ApiVersionParameter"
+                    },
+                    {
+                        "$ref": "#/parameters/SubscriptionIdParameter"
+                    },
+                    {
+                        "$ref": "#/parameters/TestGlobalParameter"
+                    }
+                ],
+                "tags": [
+                    "Dinosaurs"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "All dinosaur entities",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Dinosaur"
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/cookiesPathWithDummyRef": {
+            "get": {
+                "summary": "List all dinosaurs matching parameters",
+                "operationId": "OpWithDummyRef_Get",
+                "description": "List all dinosaurs matching parameters",
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/ApiVersionParameter"
+                    },
+                    {
+                        "$ref": "#/parameters/SubscriptionIdParameter"
+                    },
+                    {
+                        "name": "parameters",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/DefWithDummyRef"
+                        },
+                        "description": "Group filtering parameters."
+                    }
+                ],
+                "tags": [
+                    "Dinosaurs"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Object"
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/PathWithReservedKeywordTypes": {
+            "get": {
+                "summary": "List all dinosaurs matching parameters",
+                "operationId": "PathWithReservedKeywordTypes_Get",
+                "description": "List all dinosaurs matching parameters",
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/ApiVersionParameter"
+                    },
+                    {
+                        "$ref": "#/parameters/SubscriptionIdParameter"
+                    },
+                    {
+                        "name": "parameters",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/NamespaceList"
+                        },
+                        "description": "Group filtering parameters."
+                    },
+                    {
+                        "name": "parameterWithReservedKeywordType",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/Namespace"
+                        },
+                        "description": "Group filtering parameters."
+                    }
+                ],
+                "tags": [
+                    "Dinosaurs"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Namespace"
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "Cupcake": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "Unique identifier"
+                },
+                "flavor": {
+                    "type": "string",
+                    "description": "String test",
+                    "default": "mint-chocolate"
+                },
+                "ageInYears": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Int32 test"
+                },
+                "ageInDays": {
+                    "type": "integer",
+                    "format": "int64",
+                    "description": "Int64 test"
+                },
+                "price": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "float test"
+                },
+                "priceInEuros": {
+                    "type": "number",
+                    "format": "double",
+                    "description": "double test"
+                },
+                "matrixIdentity": {
+                    "type": "string",
+                    "format": "byte",
+                    "description": "byte test"
+                },
+                "matrixCode": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Int32 test"
+                },
+                "madeOn": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "date test"
+                },
+                "madeOnDateTime": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "date-time test"
+                },
+                "password": {
+                    "type": "string",
+                    "format": "password",
+                    "description": "password test"
+                },
+                "poisoned": {
+                    "type": "boolean",
+                    "description": "boolean test"
+                }
+            }
+        },
+        "Dinosaur": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "Unique identifier"
+                },
+                "api-version": {
+                    "type": "string",
+                    "description": "API version"
+                },
+                "TestGlobalParameter": {
+                    "type": "string",
+                    "description": "Something"
+                }
+            }
+        },
+        "Error": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "description": "Error code"
+                },
+                "message": {
+                    "type": "string",
+                    "description": "Message"
+                }
+            }
+        },
+        "DefWithDummyRef": {
+            "type": "object",
+            "properties": {
+                "createdTime": {
+                    "type": "string",
+                    "format": "date-time",
+                    "readOnly": true,
+                    "description": "Gets the created time."
+                },
+                "definition": {
+                    "$ref": "#/definitions/Object",
+                    "description": "The definition."
+                }
+            },
+            "description": "The workflow properties."
+        },
+        "Object": {
+            "type": "object",
+            "properties": {}
+        },
+        "Namespace": {
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "readOnly": true,
+                    "description": "Resource name"
+                },
+                "provisioningState": {
+                    "type": "string",
+                    "readOnly": true,
+                    "x-nullable": false,
+                    "description": "The provisioned state of the resource",
+                    "enum": [
+                        "Invalid",
+                        "Creating",
+                        "Deleting",
+                        "Succeeded",
+                        "Failed",
+                        "Cancelled"
+                    ],
+                    "x-ms-enum": {
+                        "name": "enum",
+                        "modelAsString": false
+                    }
+                },
+                "createdTime": {
+                    "type": "string",
+                    "format": "date-time",
+                    "readOnly": true,
+                    "description": "Gets the created time."
+                },
+                "NamespaceNestedTypeParam": {
+                    "$ref": "#/definitions/NamespaceNestedType",
+                    "description": "Description of NamespaceNestedTypeParam."
+                },
+                "keyCredentials": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/KeyCredential"
+                    },
+                    "description": "Gets or sets the list of KeyCredential objects"
+                },
+                "fieldDefinitions": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/FieldDefinition"
+                    },
+                    "description": "Gets or sets the field definitions of the connection type."
+                }
+            },
+            "description": "Description of a namespace resource."
+        },
+        "FieldDefinition": {
+            "properties": {
+                "isEncrypted": {
+                    "type": "boolean",
+                    "description": "Gets or sets the isEncrypted flag of the connection field definition."
+                },
+                "isOptional": {
+                    "type": "boolean",
+                    "description": "Gets or sets the isOptional flag of the connection field definition."
+                },
+                "type": {
+                    "type": "string",
+                    "description": "Gets or sets the type of the connection field definition."
+                }
+            },
+            "required": [
+                "type"
+            ],
+            "description": "Definition of the connection fields."
+        },
+        "KeyCredential": {
+            "properties": {
+                "startDate": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Start date."
+                },
+                "endDate": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "End date."
+                },
+                "value": {
+                    "type": "string",
+                    "description": "Key value."
+                },
+                "keyId": {
+                    "type": "string",
+                    "description": "Key ID."
+                },
+                "usage": {
+                    "type": "string",
+                    "description": "Usage. Acceptable values are 'Verify' and 'Sign'."
+                },
+                "type": {
+                    "type": "string",
+                    "description": "Type. Acceptable values are 'AsymmetricX509Cert' and 'Symmetric'."
+                }
+            },
+            "description": "Active Directory Key Credential information."
+        },
+        "NamespaceNestedType": {
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "readOnly": true,
+                    "description": "Resource name"
+                }
+            },
+            "description": "Description of a NamespaceNestedType resource."
+        },
+        "NamespaceList": {
+            "properties": {
+                "value": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Namespace"
+                    },
+                    "description": "Result of the List Namespace operation."
+                }
+            },
+            "description": "The response of the List Namespace operation."
+        }
+    },
+    "parameters": {
+        "SubscriptionIdParameter": {
+            "name": "subscriptionId",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "A unique identifier of a Microsoft Azure subscription. The subscription ID forms part of the URI for every service call."
+        },
+        "ApiVersionParameter": {
+            "name": "api-version",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "The API version to be used with the HTTP request."
+        },
+        "TestGlobalParameter": {
+            "name": "TestGlobalParameter",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "Stuff",
+            "default": "defaultValue"
+        }
+    }
+}

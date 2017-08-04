@@ -1,0 +1,729 @@
+{
+  "info": {
+    "x-ps-code-generation-settings": {
+      "codeGenerator": "CSharp",
+      "nameSpacePrefix": "Microsoft.PowerShell.",
+      "noAssembly": false,
+      "powerShellCorePath": "",
+      "includeCoreFxAssembly": false,
+      "testBuild": false,
+      "confirmBootstrap": false,
+      "path": ".",
+      "symbolPath": ".",
+      "serviceType": "",
+      "customAuthCommand": "",
+      "hostOverrideCommand": "",
+      "noAuthChallenge": ""
+    },
+    "x-ps-module-info": {
+      "name": "DocumentDB",
+      "moduleVersion": "0.0.1",
+      "guid": "bc9f3d58-555f-4773-85ba-37741f3dc2d1",
+      "description": "Azure DocumentDB Database Service Resource Provider REST API",
+      "author": "support@swagger.io",
+      "companyName": "",
+      "CopyRight": "Apache 2.0",
+      "licenseUri": "http://www.apache.org/licenses/LICENSE-2.0.html",
+      "projectUri": "http://www.swagger.io/support",
+      "helpInfoUri": "",
+      "iconUri": "",
+      "releaseNotes": "",
+      "defaultCommandPrefix": "",
+      "tags": [
+        
+      ]
+    }
+  },
+  "paths": {
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.DocumentDB/databaseAccounts/{accountName}": {
+      "parameters": {
+        "EndpointLevelQuotaParameter": {
+          "x-ps-parameter-info": {
+            "name": "EndpointLevelQuotaParameter",
+            "description": "parameter description",
+            "flatten": true
+          }
+        },
+        "EndpointCommonParameter": {
+          "x-ps-parameter-info": {
+            "name": "EndpointCommonParameter",
+            "description": "Common parameter for all operations of an individual endpoint.",
+            "flatten": false
+          }
+        }
+      },
+      "put": {
+        "x-ps-cmdlet-infos": [
+          {
+            "name": "New-DatabaseAccount",
+            "description": "Creates or updates an Azure DocumentDB database account.",
+            "defaultParameterSet": "DatabaseAccounts_CreateOrUpdate",
+            "generateCommand": true
+          },
+          {
+            "name": "Set-DatabaseAccount",
+            "description": "Creates or updates an Azure DocumentDB database account.",
+            "defaultParameterSet": "DatabaseAccounts_CreateOrUpdate",
+            "generateCommand": true
+          }
+        ],
+        "parameters": {
+          "createUpdateParameters": {
+            "x-ps-parameter-info": {
+              "name": "CreateUpdateParameters",
+              "description": "The parameters to provide for the current database account.",
+              "flatten": false
+            }
+          }
+        }
+      },
+      "get": {
+        "x-ps-cmdlet-infos": [
+          {
+            "name": "Get-PSMetaExtendedDatabaseAccount",
+            "description": "Retrieves the properties of an existing Azure DocumentDB database account.",
+            "defaultParameterSet": "DatabaseAccounts_List",
+            "generateCommand": true
+          }
+        ],
+        "parameters": {
+          "DatabaseAccountsGetParameter": {
+            "x-ps-parameter-info": {
+              "name": "DatabaseAccountsGetParameter",
+              "description": "Parameter description.",
+              "flatten": true
+            }
+          }
+        }
+      },
+      "patch": {
+        "x-ps-cmdlet-infos": [
+          {
+            "name": "Update-DatabaseAccount",
+            "description": "Patches the properties of an existing Azure DocumentDB database account.",
+            "defaultParameterSet": "DatabaseAccounts_Patch",
+            "generateCommand": true
+          }
+        ],
+        "parameters": {
+          "updateParameters": {
+            "x-ps-parameter-info": {
+              "name": "UpdateParameters",
+              "description": "The tags parameter to patch for the current database account.",
+              "flatten": false
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/providers/Microsoft.DocumentDB/databaseAccounts": {
+      "get": {
+        "x-ps-cmdlet-infos": [
+          {
+            "name": "Get-PSMetaExtendedDatabaseAccount",
+            "description": "Lists all the Azure DocumentDB database accounts available under the subscription.",
+            "defaultParameterSet": "DatabaseAccounts_List",
+            "generateCommand": true
+          }
+        ],
+        "parameters": {
+          "DatabaseAccountsListParameter": {
+            "x-ps-parameter-info": {
+              "name": "DatabaseAccountsListParameter",
+              "description": "Parameter description.",
+              "flatten": true
+            }
+          }
+        }
+      }
+    },
+    "/flatcupcakes": {
+      "get": {
+        "x-ps-cmdlet-infos": [
+          {
+            "name": "Get-FlatCupcake",
+            "description": "Make a flatcupcake or update an existing one.",
+            "defaultParameterSet": "FlatCupcake_List",
+            "generateCommand": true
+          }
+        ],
+        "parameters": {
+          "FlatCupcakeAgeParameter": {
+            "x-ps-parameter-info": {
+              "name": "FlatCupcakeAgeParameter",
+              "description": "parameter description",
+              "flatten": true
+            }
+          },
+          "flavor": {
+            "x-ps-parameter-info": {
+              "name": "Flavor",
+              "description": "Flavor of flatcupcake",
+              "flatten": false
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "CommonDefinitionForEndpoint": {
+      "x-ps-cmdlet-infos": [
+        {
+          "name": "New-CommonDefinitionForEndpointObject",
+          "description": "",
+          "defaultParameterSet": "CommonDefinitionForEndpoint",
+          "generateCommand": true,
+          "generateOutputFormat": true
+        }
+      ],
+      "properties": {
+        "CommonDefParam2": {
+          "x-ps-parameter-info": {
+            "name": "CommonDefParam2",
+            "description": ""
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 0,
+            "width": 10
+          }
+        },
+        "CommonDefParam1": {
+          "x-ps-parameter-info": {
+            "name": "CommonDefParam1",
+            "description": ""
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 1,
+            "width": 10
+          }
+        }
+      }
+    },
+    "Tags": {
+      "x-ps-cmdlet-infos": [
+        {
+          "name": "New-TagsObject",
+          "description": "Tags are a list of key-value pairs that describe the resource. These tags can be used in viewing and grouping this resource (across resource groups). A maximum of 15 tags can be provided for a resource. Each tag must have a key no greater than 128 characters and value no greater than 256 characters.",
+          "defaultParameterSet": "Tags",
+          "generateCommand": false,
+          "generateOutputFormat": false
+        }
+      ],
+      "properties": {
+        
+      }
+    },
+    "IPRangeFilter": {
+      "x-ps-cmdlet-infos": [
+        {
+          "name": "New-IPRangeFilterObject",
+          "description": "DocumentDB Firewall Support: This value specifies the set of IP addresses or IP address ranges in CIDR form to be included as the allowed list of client IPs for a given database account. IP addresses/ranges must be comma separated and must not contain any spaces.",
+          "defaultParameterSet": "IPRangeFilter",
+          "generateCommand": false,
+          "generateOutputFormat": false
+        }
+      ],
+      "properties": {
+        
+      }
+    },
+    "DatabaseAccountsListResult": {
+      "x-ps-cmdlet-infos": [
+        {
+          "name": "New-DatabaseAccountsListResultObject",
+          "description": "The List operation response, that contains the database accounts and their properties.",
+          "defaultParameterSet": "DatabaseAccountsListResult",
+          "generateCommand": true,
+          "generateOutputFormat": true
+        }
+      ],
+      "properties": {
+        "value": {
+          "x-ps-parameter-info": {
+            "name": "Value",
+            "description": "List of database account and their properties."
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 0,
+            "width": 10
+          }
+        }
+      }
+    },
+    "DatabaseAccountRegenerateKeyParameters": {
+      "x-ps-cmdlet-infos": [
+        {
+          "name": "New-DatabaseAccountRegenerateKeyParametersObject",
+          "description": "Parameters to regenerate the keys within the database account.",
+          "defaultParameterSet": "DatabaseAccountRegenerateKeyParameters",
+          "generateCommand": true,
+          "generateOutputFormat": true
+        }
+      ],
+      "properties": {
+        "keyKind": {
+          "x-ps-parameter-info": {
+            "name": "KeyKind",
+            "description": "The access key to regenerate."
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 0,
+            "width": 10
+          }
+        },
+        "RegenerateReason": {
+          "x-ps-parameter-info": {
+            "name": "RegenerateReason",
+            "description": "Parameter description."
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 1,
+            "width": 10
+          }
+        }
+      }
+    },
+    "FlatCupcakeAge": {
+      "x-ps-cmdlet-infos": [
+        {
+          "name": "New-FlatCupcakeAgeObject",
+          "description": "",
+          "defaultParameterSet": "FlatCupcakeAge",
+          "generateCommand": true,
+          "generateOutputFormat": true
+        }
+      ],
+      "properties": {
+        "ageInYears": {
+          "x-ps-parameter-info": {
+            "name": "AgeInYears",
+            "description": "Int32 test"
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 0,
+            "width": 10
+          }
+        },
+        "ageInDays": {
+          "x-ps-parameter-info": {
+            "name": "AgeInDays",
+            "description": "Int64 test"
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 1,
+            "width": 10
+          }
+        }
+      }
+    },
+    "StorageQuota": {
+      "x-ps-cmdlet-infos": [
+        {
+          "name": "New-StorageQuotaObject",
+          "description": "",
+          "defaultParameterSet": "StorageQuota",
+          "generateCommand": true,
+          "generateOutputFormat": true
+        }
+      ],
+      "properties": {
+        "NumberOfStorageAccounts": {
+          "x-ps-parameter-info": {
+            "name": "NumberOfStorageAccounts",
+            "description": ""
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 0,
+            "width": 10
+          }
+        },
+        "CapacityInGB": {
+          "x-ps-parameter-info": {
+            "name": "CapacityInGB",
+            "description": ""
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 1,
+            "width": 10
+          }
+        }
+      }
+    },
+    "DatabaseAccountPatchParameters": {
+      "x-ps-cmdlet-infos": [
+        {
+          "name": "New-DatabaseAccountPatchParametersObject",
+          "description": "Parameters for patching Azure DocumentDB database account properties.",
+          "defaultParameterSet": "DatabaseAccountPatchParameters",
+          "generateCommand": true,
+          "generateOutputFormat": true
+        }
+      ],
+      "properties": {
+        "tags": {
+          "x-ps-parameter-info": {
+            "name": "Tags",
+            "description": ""
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 0,
+            "width": 10
+          }
+        }
+      }
+    },
+    "QuotaParameters": {
+      "x-ps-cmdlet-infos": [
+        {
+          "name": "New-QuotaParametersObject",
+          "description": "",
+          "defaultParameterSet": "QuotaParameters",
+          "generateCommand": true,
+          "generateOutputFormat": true
+        }
+      ],
+      "properties": {
+        
+      }
+    },
+    "FlatCupcake": {
+      "x-ps-cmdlet-infos": [
+        {
+          "name": "New-FlatCupcakeObject",
+          "description": "",
+          "defaultParameterSet": "FlatCupcake",
+          "generateCommand": true,
+          "generateOutputFormat": true
+        }
+      ],
+      "properties": {
+        "ageInYears": {
+          "x-ps-parameter-info": {
+            "name": "AgeInYears",
+            "description": "Int32 test"
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 0,
+            "width": 10
+          }
+        },
+        "ageInDays": {
+          "x-ps-parameter-info": {
+            "name": "AgeInDays",
+            "description": "Int64 test"
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 1,
+            "width": 10
+          }
+        },
+        "id": {
+          "x-ps-parameter-info": {
+            "name": "Id",
+            "description": "Unique identifier"
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 2,
+            "width": 10
+          }
+        },
+        "flavor": {
+          "x-ps-parameter-info": {
+            "name": "Flavor",
+            "description": "String test"
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 3,
+            "width": 10
+          }
+        }
+      }
+    },
+    "DatabaseAccountCreateUpdateParameters": {
+      "x-ps-cmdlet-infos": [
+        {
+          "name": "New-DatabaseAccountCreateUpdateParametersObject",
+          "description": "Parameters to create and update DocumentDB database accounts.",
+          "defaultParameterSet": "DatabaseAccountCreateUpdateParameters",
+          "generateCommand": true,
+          "generateOutputFormat": true
+        }
+      ],
+      "properties": {
+        "kind": {
+          "x-ps-parameter-info": {
+            "name": "Kind",
+            "description": "Indicates the type of database account. This can only be set at database account creation."
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 0,
+            "width": 10
+          }
+        }
+      }
+    },
+    "DatabaseAccountCreateUpdateProperties": {
+      "x-ps-cmdlet-infos": [
+        {
+          "name": "New-DatabaseAccountCreateUpdatePropertiesObject",
+          "description": "Properties to create and update Azure DocumentDB database accounts.",
+          "defaultParameterSet": "DatabaseAccountCreateUpdateProperties",
+          "generateCommand": true,
+          "generateOutputFormat": true
+        }
+      ],
+      "properties": {
+        "ipRangeFilter": {
+          "x-ps-parameter-info": {
+            "name": "IpRangeFilter",
+            "description": "DocumentDB Firewall Support: This value specifies the set of IP addresses or IP address ranges in CIDR form to be included as the allowed list of client IPs for a given database account. IP addresses/ranges must be comma separated and must not contain any spaces."
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 0,
+            "width": 10
+          }
+        },
+        "consistencyPolicy": {
+          "x-ps-parameter-info": {
+            "name": "ConsistencyPolicy",
+            "description": "The consistency policy for the DocumentDB account."
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 1,
+            "width": 10
+          }
+        }
+      }
+    },
+    "DatabaseAccount": {
+      "x-ps-cmdlet-infos": [
+        {
+          "name": "New-DatabaseAccountObject",
+          "description": "A DocumentDB database account.",
+          "defaultParameterSet": "DatabaseAccount",
+          "generateCommand": true,
+          "generateOutputFormat": true
+        }
+      ],
+      "properties": {
+        "kind": {
+          "x-ps-parameter-info": {
+            "name": "Kind",
+            "description": "Indicates the type of database account. This can only be set at database account creation."
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 0,
+            "width": 10
+          }
+        }
+      }
+    },
+    "ConsistencyPolicy": {
+      "x-ps-cmdlet-infos": [
+        {
+          "name": "New-ConsistencyPolicyObject",
+          "description": "The consistency policy for the DocumentDB database account.",
+          "defaultParameterSet": "ConsistencyPolicy",
+          "generateCommand": true,
+          "generateOutputFormat": true
+        }
+      ],
+      "properties": {
+        "maxIntervalInSeconds": {
+          "x-ps-parameter-info": {
+            "name": "MaxIntervalInSeconds",
+            "description": "When used with the Bounded Staleness consistency level, this value represents the time amount of staleness (in seconds) tolerated. Accepted range for this value is 1 - 100. Required when defaultConsistencyPolicy is set to \u0027BoundedStaleness\u0027."
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 0,
+            "width": 10
+          }
+        },
+        "maxStalenessPrefix": {
+          "x-ps-parameter-info": {
+            "name": "MaxStalenessPrefix",
+            "description": "When used with the Bounded Staleness consistency level, this value represents the number of stale requests tolerated. Accepted range for this value is 1 - 2,147,483,647. Required when defaultConsistencyPolicy is set to \u0027BoundedStaleness\u0027."
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 1,
+            "width": 10
+          }
+        },
+        "defaultConsistencyLevel": {
+          "x-ps-parameter-info": {
+            "name": "DefaultConsistencyLevel",
+            "description": "The default consistency level and configuration settings of the DocumentDB account."
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 2,
+            "width": 10
+          }
+        }
+      }
+    },
+    "Error": {
+      "x-ps-cmdlet-infos": [
+        {
+          "name": "New-ErrorObject",
+          "description": "",
+          "defaultParameterSet": "Error",
+          "generateCommand": true,
+          "generateOutputFormat": true
+        }
+      ],
+      "properties": {
+        "code": {
+          "x-ps-parameter-info": {
+            "name": "Code",
+            "description": "Error code"
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 0,
+            "width": 10
+          }
+        },
+        "message": {
+          "x-ps-parameter-info": {
+            "name": "Message",
+            "description": "Message"
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 1,
+            "width": 10
+          }
+        }
+      }
+    },
+    "Resource": {
+      "x-ps-cmdlet-infos": [
+        {
+          "name": "New-ResourceObject",
+          "description": "A database account resource.",
+          "defaultParameterSet": "Resource",
+          "generateCommand": true,
+          "generateOutputFormat": true
+        }
+      ],
+      "properties": {
+        "tags": {
+          "x-ps-parameter-info": {
+            "name": "Tags",
+            "description": ""
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 0,
+            "width": 10
+          }
+        },
+        "name": {
+          "x-ps-parameter-info": {
+            "name": "Name",
+            "description": "The name of the database account."
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 1,
+            "width": 10
+          }
+        },
+        "location": {
+          "x-ps-parameter-info": {
+            "name": "Location",
+            "description": "The location of the resource group to which the resource belongs."
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 2,
+            "width": 10
+          }
+        }
+      }
+    },
+    "DatabaseAccountProperties": {
+      "x-ps-cmdlet-infos": [
+        {
+          "name": "New-DatabaseAccountPropertiesObject",
+          "description": "Properties for the database account.",
+          "defaultParameterSet": "DatabaseAccountProperties",
+          "generateCommand": true,
+          "generateOutputFormat": true
+        }
+      ],
+      "properties": {
+        "consistencyPolicy": {
+          "x-ps-parameter-info": {
+            "name": "ConsistencyPolicy",
+            "description": "The consistency policy for the DocumentDB database account."
+          },
+          "x-ps-output-format-info": {
+            "include": true,
+            "position": 0,
+            "width": 10
+          }
+        }
+      }
+    }
+  },
+  "parameters": {
+    "accountNameParameter": {
+      "x-ps-parameter-info": {
+        "name": "AccountName",
+        "description": "DocumentDB database account name.",
+        "flatten": false
+      }
+    },
+    "StorageQuotaParameter": {
+      "x-ps-parameter-info": {
+        "name": "QuotaParameters",
+        "description": "parameters used to create or update storage quota",
+        "flatten": true
+      }
+    },
+    "resourceGroupNameParameter": {
+      "x-ps-parameter-info": {
+        "name": "ResourceGroupName",
+        "description": "Name of an Azure resource group.",
+        "flatten": false
+      }
+    },
+    "subscriptionIdParameter": {
+      "x-ps-parameter-info": {
+        "name": "SubscriptionId",
+        "description": "Azure subscription ID.",
+        "flatten": false
+      }
+    },
+    "apiVersionParameter": {
+      "x-ps-parameter-info": {
+        "name": "Apiversion",
+        "description": "Version of the API to be used with the client request. The current version is 2015-04-08.",
+        "flatten": false
+      }
+    }
+  }
+}

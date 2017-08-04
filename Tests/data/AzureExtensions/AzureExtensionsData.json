@@ -1,0 +1,18 @@
+{
+  "cupcakes": [
+    {
+      "id": "1",
+      "flavor": "chocolate"
+    },
+    {
+      "id": "2",
+      "flavor": "vanilla"
+    }
+  ],
+  "cupcakeBatches": [
+    {
+      "id": "1",
+      "flavor": "chocolate"
+    }
+  ]
+}

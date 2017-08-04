@@ -1,0 +1,114 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{D2E4CBA1-BA97-4C60-9645-317666DF6C9F}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>PSSwagger.LTF.Lib</RootNamespace>
+    <AssemblyName>PSSwagger.LTF.Lib</AssemblyName>
+    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Newtonsoft.Json, Version=10.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>packages\Newtonsoft.Json.10.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\LiveTestServer.cs" />
+    <Compile Include="..\GeneratedModule.cs" />
+    <Compile Include="..\Interfaces\IOutputPipe.cs">
+      <Link>Interfaces\IOutputPipe.cs</Link>
+    </Compile>
+    <Compile Include="..\Interfaces\IInputPipe.cs">
+      <Link>Interfaces\IInputPipe.cs</Link>
+    </Compile>
+    <Compile Include="..\Interfaces\ICommandBuilder.cs">
+      <Link>Interfaces\ICommandBuilder.cs</Link>
+    </Compile>
+    <Compile Include="..\Interfaces\IRunspaceManager.cs">
+      <Link>Interfaces\IRunspaceManager.cs</Link>
+    </Compile>
+    <Compile Include="..\IO\JsonBlockPipe.cs">
+      <Link>IO\JsonBlockPipe.cs</Link>
+    </Compile>
+    <Compile Include="..\IO\StandardInputPipe.cs">
+      <Link>IO\StandardInputPipe.cs</Link>
+    </Compile>
+    <Compile Include="..\IO\StandardOutputPipe.cs">
+      <Link>IO\StandardOutputPipe.cs</Link>
+    </Compile>
+    <Compile Include="..\IO\NamedPipeClient.cs">
+      <Link>IO\NamedPipeClient.cs</Link>
+    </Compile>
+    <Compile Include="..\IO\NamedPipeServer.cs">
+      <Link>IO\NamedPipeServer.cs</Link>
+    </Compile>
+    <Compile Include="..\IO\NullPipe.cs">
+      <Link>IO\NullPipe.cs</Link>
+    </Compile>
+    <Compile Include="..\Messages\JsonRpcBase.cs">
+      <Link>Messages\JsonRpcBase.cs</Link>
+    </Compile>
+    <Compile Include="..\Messages\LiveTestRequest.cs">
+      <Link>Messages\LiveTestRequest.cs</Link>
+    </Compile>
+    <Compile Include="..\Messages\LiveTestResponse.cs">
+      <Link>Messages\LiveTestResponse.cs</Link>
+    </Compile>
+    <Compile Include="..\Messages\LiveTestResult.cs">
+      <Link>Messages\LiveTestResult.cs</Link>
+    </Compile>
+    <Compile Include="..\Messages\LiveTestError.cs">
+      <Link>Messages\LiveTestError.cs</Link>
+    </Compile>
+    <Compile Include="..\Logging\Logger.cs">
+      <Link>Logging\Logger.cs</Link>
+    </Compile>
+    <Compile Include="..\PowerShell\PowerShellCommand.cs">
+      <Link>PowerShell\PowerShellCommand.cs</Link>
+    </Compile>
+    <Compile Include="..\PowerShell\PowerShellRunspace.cs">
+      <Link>PowerShell\PowerShellRunspace.cs</Link>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

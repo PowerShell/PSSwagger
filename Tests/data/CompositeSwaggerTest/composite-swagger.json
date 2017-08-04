@@ -1,0 +1,10 @@
+{
+  "info": {
+    "title": "CompositeSwaggerModule",
+    "description": "Swagger description."
+  },
+  "documents": [
+    "./swagger-1.json",
+    "./swagger-2.json"
+  ]  
+}

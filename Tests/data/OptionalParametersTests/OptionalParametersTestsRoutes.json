@@ -1,0 +1,4 @@
+{
+    "/cupcakes/:maker": "/cupcakes?maker=:maker",
+    "/cupcakes/:maker/:flavor": "/cupcakes?flavor=:flavor&maker=:maker"
+}
