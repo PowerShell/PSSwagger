@@ -22,7 +22,7 @@ NestedModules = @(
 
 FileList = @(
              'Definitions.psm1',
-             'Generated.Resources.psd',
+             'Generated.Resources.psd1',
              'Paths.psm1',
              'PSSwagger.Constants.ps1',
              'PSSwagger.psd1',
