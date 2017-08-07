@@ -1,6 +1,6 @@
 ﻿@{
 RootModule = 'PSSwaggerUtility.psm1'
-ModuleVersion = '0.1.0'
+ModuleVersion = '0.2.0'
 GUID = '49b0a58f-c657-49a1-8c16-e48031f5e2e4'
 Author = 'Microsoft Corporation'
 CompanyName = 'Microsoft Corporation'
