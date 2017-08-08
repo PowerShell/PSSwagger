@@ -1,6 +1,6 @@
 ﻿@{
 RootModule = 'PSSwagger.psm1'
-ModuleVersion = '0.2.0'
+ModuleVersion = '0.3.0'
 PowerShellVersion = '5.1'
 GUID = '6c925abf-49bc-49f4-8a47-12b95c9a8b37'
 Author = 'Microsoft Corporation'
