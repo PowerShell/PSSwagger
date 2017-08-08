@@ -32,11 +32,11 @@ A PowerShell module with commands to generate the PowerShell commands for a give
 ## Dependencies
 | Dependency       | Version   | Description              |             
 | ----------------| ----------- | -------------------------- |
-| AutoRest | 0.17.3 | Tool to generate C# SDK from Swagger spec |
+| AutoRest | 0.17.3 or newer | Tool to generate C# SDK from Swagger spec |
 | Newtonsoft.Json | Full CLR: 6.0.8, Core CLR: 9.0.1 | NuGet package containing Newtonsoft.Json assembly, required for all modules |
-| Microsoft.Rest.ClientRuntime | 2.3.4 | NuGet package containing Microsoft.Rest.ClientRuntime assembly, required for all modules |
-| Microsoft.Rest.ClientRuntime.Azure | 3.3.4 | NuGet package containing Microsoft.Rest.ClientRuntime.Azure assembly, required for Microsoft Azure modules |
-| AzureRM.Profile | * | Module containing authentication helpers, required for Microsoft Azure modules on PowerShell |
+| Microsoft.Rest.ClientRuntime | 2.3.4 or newer | NuGet package containing Microsoft.Rest.ClientRuntime assembly, required for all modules |
+| Microsoft.Rest.ClientRuntime.Azure | 3.3.4 or newer | NuGet package containing Microsoft.Rest.ClientRuntime.Azure assembly, required for Microsoft Azure modules |
+| AzureRM.Profile | 2.0.0 or newer | Module containing authentication helpers, required for Microsoft Azure modules on PowerShell |
 | AzureRM.Profile.NetCore.Preview | * | Module containing authentication helpers, required for Microsoft Azure modules on PowerShell Core |
 
 ## Usage
@@ -45,17 +45,16 @@ A PowerShell module with commands to generate the PowerShell commands for a give
   ```code
   git clone https://github.com/PowerShell/PSSwagger.git
   ```
-
-2. Ensure you AutoRest version 0.17.3 installed
-  ```powershell
-  Install-Package -Name AutoRest -Source https://www.nuget.org/api/v2 -RequiredVersion 0.17.3 -Scope CurrentUser
-  ```   
-
-3. Ensure AutoRest.exe is in $env:Path
-  ```powershell
-  $env:path += ";$env:localappdata\PackageManagement\NuGet\Packages\AutoRest.0.17.3\tools"
-  ```
-
+2. Install latest AutoRest version using NPM
+  - Follow the instructions provided at [AutoRest github repository](https://github.com/Azure/Autorest#installing-autorest).
+  - Ensure AutoRest.cmd path is in $env:Path.
+    ```powershell
+    $env:path += ";$env:APPDATA\npm"
+    ```
+  - Create or Update the generator plugins to the latest stable version
+    ```
+    autorest --reset
+    ```
 4. If you plan on precompiling the generated assembly, ensure you have the module AzureRM.Profile or AzureRM.NetCore.Preview available to PackageManagement if you are on PowerShell or PowerShell Core, respectively.
 
 5. Run the following in a PowerShell console from the directory where you cloned PSSwagger in

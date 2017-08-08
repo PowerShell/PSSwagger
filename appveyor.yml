@@ -5,6 +5,12 @@ configuration: Release
 platform: Any CPU
 install: 
     - cinst -y pester
+    - ps: Install-Product node ''
+    - npm install
+    - node --version
+    - npm --version
+    - npm install -g autorest
+    - autorest --reset
 build: off
 test_script:
  - ps: |

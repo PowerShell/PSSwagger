@@ -16,6 +16,7 @@
 # Tests related files and folders
 /Tests/Generated/
 /Tests/NodeModules/
+/Tests/package-lock.json
 /Tests/ScenarioTestResults.xml
 /Tests/pesterCommand.ps1
 /Tests/dotnet-install.*
