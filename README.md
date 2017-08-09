@@ -41,7 +41,7 @@ A PowerShell module with commands to generate the PowerShell commands for a give
 | AzureRM.Profile.NetCore.Preview | * | Module containing authentication helpers, required for Microsoft Azure modules on PowerShell Core |
 
 ## Usage
-NOTE: In the short term, for best performance, the operation IDs in your Open API specifications should be of the form "<Noun>.<Verb><Suffix>". For example, the operation ID "Resource_GetByName" gets a resource named Resource by name.
+NOTE: In the short term, for best performance, the operation IDs in your Open API specifications should be of the form "<Noun>_<Verb><Suffix>". For example, the operation ID "Resource_GetByName" gets a resource named Resource by name.
 1. Get PSSwagger!
     * Install from PowerShellGallery.com:
        ```powershell
