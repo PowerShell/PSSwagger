@@ -23,10 +23,11 @@ A PowerShell module with commands to generate the PowerShell commands for a give
 ## Supported Platforms
 | Usage | Platforms |
 | ----------------| ------------------------------------- |
-| Developer       | Windows, Any full PowerShell version, PowerShell Core (NOTE: AzureRM.Profile is currently broken on beta.1, but a new module should be released soon) |
-| Module Publisher| Any full PowerShell version |
-| Module Consumer | Any full PowerShell version, PowerShell Core Alpha11 or older  |
+| Developer       | Windows, PowerShell 5.1+, Latest PowerShell Core |
+| Module Publisher| PowerShell 5.1+ |
+| Module Consumer | PowerShell 5.1+, Latest PowerShell Core  |
 
+**Future note**: We plan on supporting PowerShell 4+ for module consumers in the future; that scenario is untested currently.
 **Testing note**: While any full PowerShell version is fine for development, we recommend using PowerShell 5.1+ to enable testing our implementation of Get-FileHash.
 
 ## Dependencies
@@ -40,11 +41,16 @@ A PowerShell module with commands to generate the PowerShell commands for a give
 | AzureRM.Profile.NetCore.Preview | * | Module containing authentication helpers, required for Microsoft Azure modules on PowerShell Core |
 
 ## Usage
-
-1. Git clone this repository.
-  ```code
-  git clone https://github.com/PowerShell/PSSwagger.git
-  ```
+NOTE: In the short term, for best performance, the operation IDs in your Open API specifications should be of the form "<Noun>_<Verb><Suffix>". For example, the operation ID "Resource_GetByName" gets a resource named Resource by name.
+1. Get PSSwagger!
+    * Install from PowerShellGallery.com:
+       ```powershell
+       Install-Module -Name PSSwagger
+       ```
+    * Clone the repository
+        ```powershell
+        git clone https://github.com/PowerShell/PSSwagger.git
+       ```
 
 2. Ensure you AutoRest version 0.17.3 installed
   ```powershell
@@ -53,40 +59,38 @@ A PowerShell module with commands to generate the PowerShell commands for a give
 
 3. Ensure AutoRest.exe is in $env:Path
   ```powershell
-  $env:path += ";$env:localappdata\PackageManagement\NuGet\Packages\AutoRest.0.17.3\tools"
+  $package = Get-Package -Name AutoRest -RequiredVersion 0.17.3
+  $env:path += ";$(Split-Path $package.Source -Parent)\tools"
   ```
 
 4. If you plan on precompiling the generated assembly, ensure you have the module AzureRM.Profile or AzureRM.NetCore.Preview available to PackageManagement if you are on PowerShell or PowerShell Core, respectively.
 
 5. Run the following in a PowerShell console from the directory where you cloned PSSwagger in
-  ```powershell
-  Import-Module .\PSSwagger\PSSwagger.psd1
-  $param = @{
-    SpecificationUri = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-batch/2015-12-01/swagger/BatchManagement.json'
-    Path           = 'C:\GeneratedModules\'
-    Name           = 'AzBatchManagement'
-    UseAzureCsharpGenerator = $true
-  }
-  New-PSSwaggerModule @param
-  ```
 
-After step 5, the module will be in `C:\Temp\GeneratedModule\Generated.AzureRM.BatchManagement ($param.Path)` folder.
+    ```powershell
+    Import-Module .\PSSwagger\PSSwagger.psd1
+    $param = @{
+      # Download the Open API v2 Specification from this location
+      SpecificationUri = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-batch/2015-12-01/swagger/BatchManagement.json'
+      # Output the generated module to this path
+      Path           = 'C:\GeneratedModules\'
+      # Name of the generated module
+      Name           = 'AzBatchManagement'
+      # This specification is for a Microsoft Azure service, so use Azure-specific functionality
+      UseAzureCsharpGenerator = $true
+    }
+    # You may be prompted to download missing dependencies
+    New-PSSwaggerModule @param
+    ```
+    The generated module will be in the `C:\Temp\GeneratedModule\Generated.AzureRM.BatchManagement` folder.
+    For more New-PSSwaggerModule options, check out the [documentation](/docs/commands/New-PSSwaggerModule.md).
+6. Your generated module is now ready! For production modules (i.e. modules you will publish to PowerShellGallery.com), we recommend using the -IncludeCoreFxAssembly option to generate the Core CLR assembly, strong name signing assemblies in the generated module, and authenticode signing the module. Optionally, you can remove the generated C# code (under the Generated.CSharp folder) for even more security.
 
-Before importing that module and using it, you need to import `PSSwaggerUtility` module which is under PSSwagger folder.
-    
-```powershell
-Import-Module .\PSSwagger\PSSwaggerUtility
-Import-Module "$($param.Path)\$($param.Name)"
-Get-Command -Module $param.Name
-```
+## Metadata Generation
+There are many cases where module generation doesn't result in the most optimal names for things like parameters or commands. To enable this and many other customization options, we've introduced additional PowerShell-specific Open API extensions that can be specified separately from your main specification. For more information, check out [PowerShell Extensions](/docs/extensions/readme.md) and [New-PSSwaggerMetadataFile](/docs/commands/New-PSSwaggerMetadataFile.md).
 
 ## Dynamic generation of C# assembly
-When importing the module for the first time, the packaged C# files will be automatically compiled if the expected assembly doesn't exist. 
-If the module's script files are signed, regardless of your script execution policy, the catalog file's signing will be checked for validity. 
-If the generated module is not signed, the catalog file's signing will not be checked. However, the catalog file's hashed contents will always be checked.
-
-## Distribution of module
-Because of the dynamic compilation feature, it is highly recommended that publishers of a generated module Authenticode sign the module and strong name sign both precompiled assemblies (full CLR and core CLR).
+When importing the module for the first time, the packaged C# files will be automatically compiled if the expected assembly doesn't exist.
 
 ## Microsoft.Rest.ServiceClientTracing support
 To enable Microsoft.Rest.ServiceClientTracing support, pass -Debug into any generated command.
