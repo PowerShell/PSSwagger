@@ -140,13 +140,6 @@ if ($TestSuite.Contains("All")) {
     $executeTestsCommand += " -Tag $TestSuite"
 }
 
-
-
-# Clean up generated test assemblies
-Write-Verbose "Cleaning old test assemblies, if any."
-Get-ChildItem -Path (Join-Path "$PSScriptRoot" "PSSwagger.TestUtilities") -Filter *.dll | Remove-Item -Force
-Get-ChildItem -Path (Join-Path "$PSScriptRoot" "PSSwagger.TestUtilities") -Filter *.pdb | Remove-Item -Force
-
 Write-Verbose "Dependency versions:"
 Write-Verbose " -- AzureRM.Profile: $($azureRmProfile.Version)"
 Write-Verbose " -- Pester: $((get-command invoke-pester).Version)"

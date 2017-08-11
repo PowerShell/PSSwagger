@@ -371,9 +371,9 @@ $PagingBlockStrFunctionCallWithTop = @'
     
         Write-Verbose -Message 'Flattening paged results.'
         # Get the next page iff 1) there is a next page and 2) any result in the next page would be returned
-        while (`$result -and `$result.NextPageLink -and ((`$Top -eq -1) -or (`$returnedCount -lt `$Top))) {
-            Write-Debug -Message "Retrieving next page: `$(`$result.NextPageLink)"
-            `$taskResult = $clientName$pagingOperations.$pagingOperationName(`$result.NextPageLink)
+        while (`$result -and (Get-Member -InputObject `$result -Name $NextLinkName) -and `$result.$NextLinkName -and ((`$Top -eq -1) -or (`$returnedCount -lt `$Top))) {
+            Write-Debug -Message "Retrieving next page: `$(`$result.$NextLinkName)"
+            `$taskResult = $clientName$pagingOperations.$pagingOperationName(`$result.$NextLinkName)
              $getTaskResult
         }
 '@
@@ -381,9 +381,9 @@ $PagingBlockStrFunctionCallWithTop = @'
 $PagingBlockStrFunctionCall = @'
     
         Write-Verbose -Message 'Flattening paged results.'
-        while (`$result -and `$result.NextPageLink) {
-            Write-Debug -Message "Retrieving next page: `$(`$result.NextPageLink)"
-            `$taskResult = $clientName$pagingOperations.$pagingOperationName(`$result.NextPageLink)
+        while (`$result -and (Get-Member -InputObject `$result -Name $NextLinkName) -and `$result.$NextLinkName) {
+            Write-Debug -Message "Retrieving next page: `$(`$result.$NextLinkName)"
+            `$taskResult = $clientName$pagingOperations.$pagingOperationName(`$result.$NextLinkName)
              $getTaskResult
         }
 '@
@@ -393,8 +393,8 @@ $PagingBlockStrCmdletCallWithTop = @'
     
         Write-Verbose -Message 'Flattening paged results.'
         # Get the next page iff 1) there is a next page and 2) any result in the next page would be returned
-        while (`$result -and `$result.NextPageLink -and ((`$Top -eq -1) -or (`$returnedCount -lt `$Top))) {
-            Write-Debug -Message "Retrieving next page: `$(`$result.NextPageLink)"
+        while (`$result -and (Get-Member -InputObject `$result -Name $NextLinkName) -and `$result.$NextLinkName -and ((`$Top -eq -1) -or (`$returnedCount -lt `$Top))) {
+            Write-Debug -Message "Retrieving next page: `$(`$result.$NextLinkName)"
             $Cmdlet $CmdletArgs
         }
 '@
@@ -402,8 +402,8 @@ $PagingBlockStrCmdletCallWithTop = @'
 $PagingBlockStrCmdletCall = @'
     
         Write-Verbose -Message 'Flattening paged results.'
-        while (`$result -and `$result.NextPageLink) {
-            Write-Debug -Message "Retrieving next page: `$(`$result.NextPageLink)"
+        while (`$result -and (Get-Member -InputObject `$result -Name $NextLinkName) -and `$result.$NextLinkName) {
+            Write-Debug -Message "Retrieving next page: `$(`$result.$NextLinkName)"
             $Cmdlet $CmdletArgs
         }
 '@

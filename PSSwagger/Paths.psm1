@@ -539,6 +539,7 @@ function New-SwaggerPath
     $skipParameterToAdd = $null
     $pagingBlock = ''
     $pagingOperationName = ''
+    $NextLinkName = 'NextLink'
     $pagingOperations = ''
     $Cmdlet = ''
     $CmdletParameter = ''
@@ -556,6 +557,10 @@ function New-SwaggerPath
         } else {
             $Cmdlet = $x_ms_pageableObject.Cmdlet
             $CmdletArgs = $x_ms_pageableObject.CmdletArgsPaging
+        }
+
+        if ($x_ms_pageableObject.ContainsKey('NextLinkName') -and $x_ms_pageableObject.NextLinkName) {
+            $NextLinkName = $x_ms_pageableObject.NextLinkName
         }
 
         $topParameterToAdd = @{
