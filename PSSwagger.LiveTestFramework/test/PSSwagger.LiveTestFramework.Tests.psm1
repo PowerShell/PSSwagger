@@ -99,51 +99,79 @@ function Initialize-Dependencies {
 function Start-Run {
     [CmdletBinding()]
     param(
-        [ValidateSet("net452","netcoreapp2.0")]
-        [Parameter(Mandatory=$false)]
+        [ValidateSet('Pester','CSharp','All')]
         [string]
-        $Framework = 'net452'
+        $TestType = 'All'
     )
 
+    # Currently running PowerShell in-process isn't supported in PowerShell Core, so we currently only support full CLR
+    $Framework = 'net452'
     Write-Host "Test run for framework: $Framework" -BackgroundColor DarkYellow
     Initialize-Dependencies
 
+    $runCSharp = ($TestType -eq 'All') -or ($TestType -eq 'CSharp')
+    $runPester = ($TestType -eq 'All') -or ($TestType -eq 'Pester')
+
     # Ensure C# files exist
+    $wasCSharp = $false
     Write-Host "Transforming code files into C# before executing unit tests"
     pushd (Join-Path -Path $PSScriptRoot -ChildPath .. | Join-Path -ChildPath 'src')
+    if (Get-ChildItem -Path (Join-Path -Path . -ChildPath "*.cs") -Recurse -File) {
+        Write-Verbose "Original files were C# files"
+        $wasCSharp = $true
+    }
     .\ConvertTo-CSharpFiles.ps1
     popd
-    Write-Host "Discovering and running C# projects"
     $trxLogs = @()
     $pesterLogs = @()
-    Get-ChildItem -Path (Join-Path -Path . -ChildPath "*.csproj") -File -Recurse | ForEach-Object {
-        # Execute only if it's a Microsoft.NET.SDK project
-        if ((Get-Content -Path $_.FullName | Out-String).Contains("<Project Sdk=`"Microsoft.NET.Sdk`"")) {
-            Write-Verbose "Executing test project: $($_.FullName)"
-            pushd $_.DirectoryName
-            $trxLogPath = Join-Path -Path $_.DirectoryName -ChildPath "Results" | Join-Path -ChildPath $Framework
-            if (-not (Test-Path -Path $trxLogPath)) {
-                $null = New-Item -Path $trxLogPath -ItemType Container -Force
-            }
+    if ($runCSharp)
+    {
+        Write-Host "Discovering and running C# projects"
+        Get-ChildItem -Path (Join-Path -Path $PSScriptRoot -ChildPath "*.csproj") -File -Recurse | ForEach-Object {
+            # Execute only if it's a Microsoft.NET.SDK project
+            if ((Get-Content -Path $_.FullName | Out-String).Contains("<Project Sdk=`"Microsoft.NET.Sdk`"")) {
+                Write-Verbose "Executing test project: $($_.FullName)"
+                pushd $_.DirectoryName
+                $trxLogPath = Join-Path -Path $_.DirectoryName -ChildPath "Results" | Join-Path -ChildPath $Framework
+                if (-not (Test-Path -Path $trxLogPath)) {
+                    $null = New-Item -Path $trxLogPath -ItemType Container -Force
+                }
 
-            $trxLogFile = Join-Path -Path $trxLogPath -ChildPath "$($_.BaseName).trx"
-            if (Test-Path -Path $trxLogFile) {
-                $null = Remove-Item -Path $trxLogFile
-            }
+                $trxLogFile = Join-Path -Path $trxLogPath -ChildPath "$($_.BaseName).trx"
+                if (Test-Path -Path $trxLogFile) {
+                    $null = Remove-Item -Path $trxLogFile
+                }
 
-            $trxLogs += $trxLogFile
-            dotnet restore
-            dotnet build --framework $Framework
-            dotnet test --framework $Framework --logger "trx;LogFileName=$trxLogFile"
-            popd
+                $trxLogs += $trxLogFile
+                dotnet restore
+                dotnet build --framework $Framework
+                dotnet publish --framework $Framework
+                dotnet test --framework $Framework --logger "trx;LogFileName=$trxLogFile"
+                popd
+            }
         }
     }
 
-    Write-Host "Running tests under Pester folder"
-    pushd (Join-Path -Path $PSScriptRoot -ChildPath Pester)
-    Invoke-Pester -ExcludeTag KnownIssue -OutputFormat NUnitXml -OutputFile PesterResults.xml
-    $pesterLogs += (Get-Item -Path PesterResults.xml).FullName
-    popd
+    if ($runPester)
+    {
+        # Transform back into .Code.ps1 for the PowerShell module
+        Write-Host "Transforming C# into code files before executing PowerShell tests"
+        pushd (Join-Path -Path $PSScriptRoot -ChildPath .. | Join-Path -ChildPath 'src')
+        .\ConvertFrom-CSharpFiles.ps1
+        popd
+        Write-Host "Running tests under Pester folder"
+        pushd (Join-Path -Path $PSScriptRoot -ChildPath Pester)
+        powershell -command "& {Invoke-Pester -ExcludeTag KnownIssue -OutputFormat NUnitXml -OutputFile PesterResults.xml}"
+        $pesterLogs += (Get-Item -Path PesterResults.xml).FullName
+        popd
+    }
+
+    if ($wasCSharp) {
+        pushd (Join-Path -Path $PSScriptRoot -ChildPath .. | Join-Path -ChildPath 'src')
+        .\ConvertTo-CSharpFiles.ps1
+        popd
+    }
+    
     Write-Host "`n`n"
     Write-Host "Test result files:"
     $totalTests = 0
@@ -190,7 +218,7 @@ function Start-Run {
             [xml]$xml = Get-Content -Path $logFile
             $totalTests += $xml.'test-results'.total
             $executedTests += $xml.'test-results'.total
-            $passedTests += $xml.'test-results'.total - $xml.'test-results'.failures - $xml.'test-results'.failures - $xml.'test-results'.errors - $xml.'test-results'.'not-run' `
+            $passedTests += $xml.'test-results'.total - $xml.'test-results'.failures - $xml.'test-results'.errors - $xml.'test-results'.'not-run' `
                 - $xml.'test-results'.inconclusive - $xml.'test-results'.ignored - $xml.'test-results'.skipped - $xml.'test-results'.invalid
             $failedTests += $xml.'test-results'.failures
             $failedTests += $xml.'test-results'.errors

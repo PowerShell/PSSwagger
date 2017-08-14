@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+
+// Licensed under the MIT license.
 namespace PSSwagger.LTF.Lib.Interfaces
 {
     using System.Threading.Tasks;
@@ -11,13 +14,13 @@ namespace PSSwagger.LTF.Lib.Interfaces
         /// Write a single character.
         /// </summary>
         /// <param name="b">Character to write.</param>
-        void Write(char b);
+        Task Write(char b);
 
         /// <summary>
         /// Write the given string then a new line.
         /// </summary>
         /// <param name="line">Line to write, not including new line.</param>
-        void WriteLine(string line);
+        Task WriteLine(string line);
 
         /// <summary>
         /// Serialize and write the given block.
@@ -25,6 +28,6 @@ namespace PSSwagger.LTF.Lib.Interfaces
         /// <typeparam name="T">Block type to write.</typeparam>
         /// <param name="msg">Block to write.</param>
         /// <returns>Async task.</returns>
-        Task WriteBlockAsync<T>(T msg) where T : class;
+        Task WriteBlock<T>(T msg) where T : class;
     }
 }

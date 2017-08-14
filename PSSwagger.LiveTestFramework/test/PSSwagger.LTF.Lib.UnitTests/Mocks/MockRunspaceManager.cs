@@ -1,9 +1,10 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+
+// Licensed under the MIT license.
 namespace PSSwagger.LTF.Lib.UnitTests.Mocks
 {
-    using System.Collections;
-    using Messages;
     using Interfaces;
-    using System;
+    using Models;
     using System.Collections.Generic;
 
     /// <summary>
@@ -11,19 +12,31 @@ namespace PSSwagger.LTF.Lib.UnitTests.Mocks
     /// </summary>
     public class MockRunspaceManager : IRunspaceManager
     {
+        private int commandBuilderIndex = 0;
         public Dictionary<string, GeneratedModule> ModuleMocks { get; private set; }
-        public MockCommandBuilder Builder { get; private set; }
+        public IList<MockCommandBuilder> CommandBuilders { get; private set; }
         public bool GetModuleInfoCalled { get; private set; }
-
+        public IList<object> InvokeHistory { get; private set; }
         public MockRunspaceManager()
         {
             this.ModuleMocks = new Dictionary<string, GeneratedModule>();
-            this.Builder = new MockCommandBuilder();
+            this.CommandBuilders = new List<MockCommandBuilder>();
+            this.InvokeHistory = new List<object>();
         }
 
         public ICommandBuilder CreateCommand()
         {
-            return this.Builder;
+            MockCommandBuilder builder;
+            if (this.CommandBuilders.Count <= commandBuilderIndex)
+            {
+                builder = new MockCommandBuilder(this);
+                this.CommandBuilders.Add(builder);
+            } else
+            {
+                builder = this.CommandBuilders[commandBuilderIndex++];
+            }
+
+            return builder;
         }
 
         public GeneratedModule GetModuleInfo(string modulePath)
@@ -37,14 +50,10 @@ namespace PSSwagger.LTF.Lib.UnitTests.Mocks
             return null;
         }
 
-        public IEnumerable Invoke(string script)
+        public CommandExecutionResult Invoke(object script)
         {
-            throw new NotImplementedException();
-        }
-
-        public void SetSessionVariable(string variableName, object variableValue)
-        {
-            throw new NotImplementedException();
+            this.InvokeHistory.Add(script);
+            return null;
         }
     }
 }

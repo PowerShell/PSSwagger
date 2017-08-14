@@ -105,6 +105,10 @@ function Add-PSSwaggerLiveTestLibType {
 
         [Parameter(Mandatory=$false)]
         [string]
+        $OutputLibraryIOFileName = "PSSwagger.LTF.IO.Lib.dll",
+
+        [Parameter(Mandatory=$false)]
+        [string]
         $DebugSymbolDirectory,
 
         [Parameter(Mandatory=$false)]
@@ -122,6 +126,7 @@ function Add-PSSwaggerLiveTestLibType {
 
     $osInfo = PSSwaggerUtility\Get-OperatingSystemInfo
     $codeFilePaths = @()
+    $ioCodeFilePaths = @()
     $systemRefs = @()
     $packageDependencies = @{}
     # TODO: Fill in system and package refs for both CLR
@@ -133,10 +138,43 @@ function Add-PSSwaggerLiveTestLibType {
         $clr = 'fullclr'
         # TODO: Fill in system and package refs for full CLR
         $systemRefs += 'System.dll'
+        $systemRefs += [System.Management.Automation.ActionPreference].Assembly.Location
+        $systemRefs += 'System.Core.dll'
+        $systemRefs += 'Microsoft.CSharp.dll'
+        $systemRefs += 'System.Data.dll'
+        $systemRefs += 'System.Data.DataSetExtensions.dll'
+        $systemRefs += 'System.Net.Http.dll'
+        $systemRefs += 'System.Xml.dll'
+        $systemRefs += 'System.Xml.Linq.dll'
+        $packageDependencies['Newtonsoft.Json'] = @{
+                                                       PackageName = 'Newtonsoft.Json'
+                                                       References = @('Newtonsoft.Json.dll')
+                                                       Framework = 'net452'
+                                                       RequiredVersion = ''
+                                                       LoadOrder = 0
+                                                   }
+        $packageDependencies['Microsoft.Rest.ClientRuntime'] = @{
+                                                       PackageName = 'Microsoft.Rest.ClientRuntime'
+                                                       References = @('Microsoft.Rest.ClientRuntime.dll')
+                                                       Framework = 'net452'
+                                                       RequiredVersion = '2.3.4'
+                                                       LoadOrder = 0
+                                                   }
     }
 
     if (-not $OutputDirectory) {
         $OutputDirectory = Join-Path -Path $PSScriptRoot -ChildPath "bin" | Join-Path -ChildPath $clr
+    }
+
+    foreach ($item in (Get-ChildItem -Path (Join-Path -Path $PSScriptRoot -ChildPath "src" | Join-Path -ChildPath "PSSwagger.LTF.IO.Lib" | Join-Path -ChildPath "*.Code.ps1") -Recurse -File)) {
+        if ($osInfo.IsWindows) {
+            $sig = Get-AuthenticodeSignature -FilePath $item.FullName
+            if (('Valid' -ne $sig.Status) -and ('NotSigned' -ne $sig.Status) -and ('UnknownError' -ne $sig.Status)) {
+                throw ($LocalizedData.CodeFileSignatureValidationFailed -f ($item.FullName))
+            }
+        }
+
+        $ioCodeFilePaths += $item.FullName
     }
 
     foreach ($item in (Get-ChildItem -Path (Join-Path -Path $PSScriptRoot -ChildPath "src" | Join-Path -ChildPath "PSSwagger.LTF.Lib" | Join-Path -ChildPath "*.Code.ps1") -Recurse -File)) {
@@ -149,6 +187,13 @@ function Add-PSSwaggerLiveTestLibType {
 
         $codeFilePaths += $item.FullName
     }
+
+    Add-PSSwaggerLiveTestTypeGeneric -CodeFilePaths $ioCodeFilePaths -OutputDirectory $OutputDirectory -OutputFileName $OutputLibraryIOFileName `
+                                     -DebugSymbolDirectory $DebugSymbolDirectory -SystemReferences $systemRefs `
+                                     -PackageDependencies $PackageDependencies -AllUsers:$AllUsers `
+                                     -BootstrapConsent:$BootstrapConsent -SaveAssembly:$SaveAssembly
+
+    $systemRefs += (Join-Path -Path $OutputDirectory -ChildPath $OutputLibraryIOFileName)
 
     Add-PSSwaggerLiveTestTypeGeneric -CodeFilePaths $codeFilePaths -OutputDirectory $OutputDirectory -OutputFileName $OutputFileName `
                                      -DebugSymbolDirectory $DebugSymbolDirectory -SystemReferences $systemRefs `
@@ -191,6 +236,14 @@ function Add-PSSwaggerLiveTestServerType {
 
         [Parameter(Mandatory=$false)]
         [string]
+        $OutputLibraryFileName = "PSSwagger.LTF.Lib.dll",
+
+        [Parameter(Mandatory=$false)]
+        [string]
+        $OutputIOLibraryFileName = "PSSwagger.LTF.IO.Lib.dll",
+
+        [Parameter(Mandatory=$false)]
+        [string]
         $DebugSymbolDirectory,
 
         [Parameter(Mandatory=$false)]
@@ -217,13 +270,30 @@ function Add-PSSwaggerLiveTestServerType {
         $systemRefs += 'System.dll'
     } else {
         $clr = 'fullclr'
-        # TODO: Fill in system and package refs for full CLR
         $systemRefs += 'System.dll'
+        $systemRefs += [System.Management.Automation.ActionPreference].Assembly.Location
+        $systemRefs += 'System.Core.dll'
+        $systemRefs += 'Microsoft.CSharp.dll'
+        $systemRefs += 'System.Data.dll'
+        $systemRefs += 'System.Data.DataSetExtensions.dll'
+        $systemRefs += 'System.Net.Http.dll'
+        $systemRefs += 'System.Xml.dll'
+        $systemRefs += 'System.Xml.Linq.dll'
+        $packageDependencies['Newtonsoft.Json'] = @{
+                                                       PackageName = 'Newtonsoft.Json'
+                                                       References = @('Newtonsoft.Json.dll')
+                                                       Framework = 'net452'
+                                                       RequiredVersion = ''
+                                                       LoadOrder = 0
+                                                   }
     }
 
     if (-not $OutputDirectory) {
         $OutputDirectory = Join-Path -Path $PSScriptRoot -ChildPath "bin" | Join-Path -ChildPath $clr
     }
+
+    $systemRefs += (Join-Path -Path $OutputDirectory -ChildPath $OutputIOLibraryFileName)
+    $systemRefs += (Join-Path -Path $OutputDirectory -ChildPath $OutputLibraryFileName)
 
     foreach ($item in (Get-ChildItem -Path (Join-Path -Path $PSScriptRoot -ChildPath "src" | Join-Path -ChildPath "PSSwagger.LTF.ConsoleServer" | Join-Path -ChildPath "*.Code.ps1") -Recurse -File)) {
         if ($osInfo.IsWindows) {

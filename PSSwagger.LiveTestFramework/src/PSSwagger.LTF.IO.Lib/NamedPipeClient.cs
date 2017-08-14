@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+
+// Licensed under the MIT license.
 namespace PSSwagger.LTF.Lib.IO
 {
     using Interfaces;
@@ -35,6 +38,24 @@ namespace PSSwagger.LTF.Lib.IO
         }
 
         /// <summary>
+        /// Gets if the named pipe client has more inbound data.
+        /// </summary>
+        public bool HasMoreData
+        {
+            get
+            {
+                try
+                {
+                    return this.stream.InBufferSize > 0;
+                } catch (Exception)
+                {
+                    return false;
+                }
+            }
+        }
+
+
+        /// <summary>
         /// Create a named pipe client on the local machine.
         /// </summary>
         /// <param name="pipeName">Name of pipe.</param>
@@ -60,12 +81,15 @@ namespace PSSwagger.LTF.Lib.IO
         /// </summary>
         public void BeginProcessing()
         {
-            new Thread(() =>
+            new Thread(async () =>
             {
                 while (this.stream.IsConnected)
                 {
-                    string line = this.ReadLine();
-                    OnDataReceived?.Invoke(line);
+                    string line = await this.ReadLine();
+                    if (OnDataReceived != null)
+                    {
+                        OnDataReceived.Invoke(line);
+                    }
                 }
             }){ IsBackground = true }.Start();
         }
@@ -75,9 +99,18 @@ namespace PSSwagger.LTF.Lib.IO
         /// </summary>
         public void Dispose()
         {
-            this.reader?.Dispose();
-            this.writer?.Dispose();
-            this.stream?.Dispose();
+            if (this.reader != null)
+            {
+                this.reader.Dispose();
+            }
+            if (this.writer != null)
+            {
+                this.writer.Dispose();
+            }
+            if (this.stream != null)
+            {
+                this.stream.Dispose();
+            }
         }
 
         /// <summary>
@@ -92,7 +125,7 @@ namespace PSSwagger.LTF.Lib.IO
         /// Read a single character.
         /// </summary>
         /// <returns>Character read.</returns>
-        public char ReadChar()
+        public async Task<char> ReadChar()
         {
             return (char)this.reader.Read();
         }
@@ -115,27 +148,32 @@ namespace PSSwagger.LTF.Lib.IO
             this.writer.WriteLine(line);
         }
 
-        /// <summary>
-        /// Read until the next new line character.
-        /// </summary>
-        /// <returns>All text input up to but not including the new line character.</returns>
-        public string ReadLine()
+        public async Task<string> ReadLine()
         {
             return this.reader.ReadLine();
         }
 
-        /// <summary>
-        /// NotImplemented
-        /// </summary>
-        public Task<T> ReadBlockAsync<T>() where T : class
+        public Task<T> ReadBlock<T>() where T : class
         {
             throw new NotImplementedException();
         }
 
-        /// <summary>
-        /// NotImplemented
-        /// </summary>
-        public Task WriteBlockAsync<T>(T msg) where T : class
+        Task IOutputPipe.Write(char b)
+        {
+            throw new NotImplementedException();
+        }
+
+        Task IOutputPipe.WriteLine(string line)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task WriteBlock<T>(T msg) where T : class
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<byte> ReadByte()
         {
             throw new NotImplementedException();
         }
