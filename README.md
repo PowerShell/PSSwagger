@@ -61,15 +61,29 @@ NOTE: In the short term, for best performance, the operation IDs in your Open AP
   ```powershell
   $package = Get-Package -Name AutoRest -RequiredVersion 0.17.3
   $env:path += ";$(Split-Path $package.Source -Parent)\tools"
+  Get-Command -Name AutoRest
   ```
 
-4. If you plan on precompiling the generated assembly, ensure you have the module AzureRM.Profile or AzureRM.NetCore.Preview available to PackageManagement if you are on PowerShell or PowerShell Core, respectively.
+4. If you plan on pre-compiling the generated assembly, ensure you have the module AzureRM.Profile or AzureRM.NetCore.Preview available to PackageManagement if you are on PowerShell or PowerShell Core, respectively.
 
 5. Run the following in a PowerShell console from the directory where you cloned PSSwagger in
 
     ```powershell
-    Import-Module .\PSSwagger\PSSwagger.psd1
-    $param = @{
+    # Import PSSwagger module
+    Import-Module PSSwagger
+
+    # If you are trying from a clone of this repository, follow below steps to import the PSSwagger module.
+    # Ensure PSSwaggerUtility module is available in $env:PSModulePath
+    $PSSwaggerFolderPath = Resolve-Path '.\PSSwagger'
+    $env:PSModulePath = "$PSSwaggerFolderPath;$env:PSModulePath"
+    Import-Module .\PSSwagger
+
+    # Ensure PSSwagger module is loaded into the current session
+    Get-Module PSSwagger
+
+    # Prepare input parameters for cmdlet generation
+    $null = New-Item -ItemType Directory -Path C:\GeneratedModules -Force
+    $params = @{
       # Download the Open API v2 Specification from this location
       SpecificationUri = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-batch/2015-12-01/swagger/BatchManagement.json'
       # Output the generated module to this path
@@ -79,9 +93,11 @@ NOTE: In the short term, for best performance, the operation IDs in your Open AP
       # This specification is for a Microsoft Azure service, so use Azure-specific functionality
       UseAzureCsharpGenerator = $true
     }
+    
     # You may be prompted to download missing dependencies
-    New-PSSwaggerModule @param
+    New-PSSwaggerModule @params
     ```
+
     The generated module will be in the `C:\Temp\GeneratedModule\Generated.AzureRM.BatchManagement` folder.
     For more New-PSSwaggerModule options, check out the [documentation](/docs/commands/New-PSSwaggerModule.md).
 6. Your generated module is now ready! For production modules (i.e. modules you will publish to PowerShellGallery.com), we recommend using the -IncludeCoreFxAssembly option to generate the Core CLR assembly, strong name signing assemblies in the generated module, and authenticode signing the module. Optionally, you can remove the generated C# code (under the Generated.CSharp folder) for even more security.
