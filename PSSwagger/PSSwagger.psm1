@@ -663,8 +663,7 @@ function ConvertTo-CsharpCode
         Export-CliXml -InputObject $PathFunctionDetails -Path $cliXmlTmpPath
         $dependencies = Get-PSSwaggerExternalDependencies -Azure:$codeCreatedByAzureGenerator -Framework 'net4'
         $microsoftRestClientRuntimeAzureRequiredVersion = if ($dependencies.ContainsKey('Microsoft.Rest.ClientRuntime.Azure')) { $dependencies['Microsoft.Rest.ClientRuntime.Azure'].RequiredVersion } else { '' }
-        $command = "Import-Module '$PSScriptRoot\PSSwaggerUtility';
-                    Add-PSSwaggerClientType  -OutputAssemblyName '$outAssembly' ``
+        $command = "PSSwaggerUtility\Add-PSSwaggerClientType  -OutputAssemblyName '$outAssembly' ``
                                                 -ClrPath '$clrPath' ``
                                                 -CSharpFiles $allCSharpFilesArrayString ``
                                                 -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator ``
