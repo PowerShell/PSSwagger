@@ -28,7 +28,7 @@ if(-not (Get-OperatingSystemInfo).IsCore)
         Add-Type -AssemblyName System.Data.Entity.Design
     }
 
-    $script:PluralizationService = [System.Data.Entity.Design.PluralizationServices.PluralizationService]::CreateService([System.Globalization.CultureInfo]::CurrentCulture)
+    $script:PluralizationService = [System.Data.Entity.Design.PluralizationServices.PluralizationService]::CreateService([System.Globalization.CultureInfo]::GetCultureInfo('en-US'))
 
     $PluralToSingularMapPath = Join-Path -Path $PSScriptRoot -ChildPath 'PluralToSingularMap.json'
     if(Test-Path -Path $PluralToSingularMapPath -PathType Leaf)
