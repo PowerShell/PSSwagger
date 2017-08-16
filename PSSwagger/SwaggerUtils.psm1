@@ -941,7 +941,8 @@ function Get-ParamType
             {
                 #  #<...>/parameters/<PARAMETERNAME>
                 $GlobalParameters = $SwaggerDict['Parameters']
-                $GlobalParamDetails = $GlobalParameters[$ReferenceParts[-1]]
+                # Cloning the common parameters object so that some values can be updated without impacting other operations.
+                $GlobalParamDetails = $GlobalParameters[$ReferenceParts[-1]].Clone()
 
                 # Get the definition name of the global parameter so that 'New-<DefinitionName>Object' can be generated.
                 if($GlobalParamDetails.Type -and $GlobalParamDetails.Type -match '[.]') {
