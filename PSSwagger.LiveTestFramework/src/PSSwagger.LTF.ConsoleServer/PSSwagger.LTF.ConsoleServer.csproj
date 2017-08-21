@@ -1,6 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
   <PropertyGroup>
+    <TargetFrameworks>net452</TargetFrameworks>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>net452;netcoreapp2.0</TargetFrameworks>
   </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\PSSwagger.LTF.Lib\PSSwagger.LTF.Lib.csproj" />
+    <ProjectReference Include="..\PSSwagger.LTF.IO.Lib\PSSwagger.LTF.IO.Lib.csproj" />
+  </ItemGroup>
+  <ItemGroup Condition=" '$(TargetFramework)' == 'net452' ">
+    <PackageReference Include="System.Management.Automation" Version="6.0.0-alpha17" />
+    <PackageReference Include="Microsoft.CSharp" Version="4.4.0-preview2-25405-01" />
+  </ItemGroup>
 </Project>
