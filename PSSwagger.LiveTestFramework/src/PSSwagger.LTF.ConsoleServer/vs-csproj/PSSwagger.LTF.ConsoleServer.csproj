@@ -44,6 +44,16 @@
   <ItemGroup>
     <Compile Include="..\Program.cs" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\PSSwagger.LTF.IO.Lib\vs-csproj\PSSwagger.LTF.IO.Lib.csproj">
+      <Project>{6C53850A-7758-452C-8C02-CBAA894B814E}</Project>
+      <Name>PSSwagger.LTF.IO.Lib</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\PSSwagger.LTF.Lib\vs-csproj\PSSwagger.LTF.Lib.csproj">
+      <Project>{D2E4CBA1-BA97-4C60-9645-317666DF6C9F}</Project>
+      <Name>PSSwagger.LTF.Lib</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
