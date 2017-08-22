@@ -4,7 +4,7 @@ Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 .DESCRIPTION
   Ensures all dependencies required for running tests are present on the current machine.
 #>
-function Initialize-Dependencies {
+function Initialize-BuildDependency {
     [CmdletBinding()]
     param()
 
@@ -57,7 +57,7 @@ function Invoke-Build {
         $CleanOutputDirectory
     )
 
-    Initialize-Dependencies
+    Initialize-BuildDependency
     if ($OutputDirectory -and $CleanOutputDirectory -and (Test-Path -Path $OutputDirectory -PathType Container)) {
         Remove-Item -Path $OutputDirectory -Recurse
     }
@@ -66,31 +66,30 @@ function Invoke-Build {
         $null = New-Item -Path $OutputDirectory -ItemType Directory
     }
 
-    Get-ChildItem -Path (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "src" | Join-Path -ChildPath "*.csproj") -File -Recurse | ForEach-Object {
+    $cache = @{}
+    Get-ChildItem -Path (Split-Path -Path $PSScriptRoot -Parent | Join-Path -ChildPath "src" | Join-Path -ChildPath "*.csproj") -File -Recurse | ForEach-Object {
         # Execute only if it's a Microsoft.NET.SDK project
         if ((Get-Content -Path $_.FullName | Out-String).Contains("<Project Sdk=`"Microsoft.NET.Sdk`"")) {
-            $cache = @{}
-            Build-DotNetProject -Project $_ -Framework $Framework -Configuration $Configuration `
-                               -OutputDirectory $OutputDirectory `
+            $built = Start-BuildDotNetProject -Project $_ -Framework $Framework -Configuration $Configuration `
                                -ProjectCache $cache `
                                -Clean -Publish
-            if ($OutputDirectory) {
+            if ($built -and $OutputDirectory) {
                 $src = (Join-Path -Path $_.DirectoryName -ChildPath "bin" | 
                     Join-Path -ChildPath $Configuration |
                     Join-Path -ChildPath $Framework |
                     Join-Path -ChildPath "publish" |
                     Join-Path -ChildPath "*")
                 Write-Verbose -Message "Copying files from '$src' to '$OutputDirectory'"
-                Copy-Item -Path $src -Destination $OutputDirectory
+                Copy-Item -Path $src -Destination $OutputDirectory -Force
             }
         }
     }
 }
 
-function Build-DotNetProject {
+function Start-BuildDotNetProject {
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$true)]
         [System.IO.FileInfo]
         $Project,
 
@@ -103,10 +102,6 @@ function Build-DotNetProject {
         [string]
         [ValidateSet('Debug','Release')]
         $Configuration = 'Debug',
-
-        [Parameter(Mandatory=$false)]
-        [string]
-        $OutputDirectory,
 
         [Parameter(Mandatory=$false)]
         [switch]
@@ -129,36 +124,45 @@ function Build-DotNetProject {
         $ProjectCache
     )
 
-    Write-Verbose -Message "Building project: $Project"
+    Write-Verbose -Message "Building project: $($Project.FullName)"
+    $build = $true
     pushd $Project.DirectoryName
     if ($ProjectCache) {
-        if ($ProjectCache.ContainsKey($Project.FullName)) {
-            return
+        if ($ProjectCache.ContainsKey("$($Project.FullName)")) {
+            Write-Verbose -Message "Skipping project (already built)"
+            $build = $false
         }
-
-        $projectRefs = Select-Xml -Path $Project.FullName -XPath "/Project/ItemGroup/ProjectReference" | 
-            Select-Object -ExpandProperty Node |
-            Select-Object -ExpandProperty Include |
-            Resolve-Path
-        foreach ($projectRef in $projectRefs) {
-            $ProjectCache[$projectRef] = $true
+        if ($build) {
+            $projectRefs = Select-Xml -Path $Project.FullName -XPath "/Project/ItemGroup/ProjectReference" | 
+                Select-Object -ExpandProperty Node |
+                Select-Object -ExpandProperty Include |
+                Resolve-Path
+            foreach ($projectRef in $projectRefs) {
+                Write-Verbose -Message "Skipping this project in the future (will still build in this pass): $projectRef"
+                $ProjectCache["$projectRef"] = $true
+            }
         }
     }
 
-    dotnet clean
-    dotnet restore
-    dotnet build --framework $Framework
-    if ($Publish) {
-        dotnet publish --framework $Framework
-    }
-    if ($Test) {
-        if ($TestLogger) {
-            dotnet test --framework $Framework --logger $TestLogger
-        } else {
-            dotnet test --framework $Framework
+    if ($build) {
+        if ($Clean) {
+            dotnet clean | Write-Verbose
+        }
+        dotnet restore | Write-Verbose
+        dotnet build --framework $Framework | Write-Verbose
+        if ($Publish) {
+            dotnet publish --framework $Framework | Write-Verbose
+        }
+        if ($Test) {
+            if ($TestLogger) {
+                dotnet test --framework $Framework --logger $TestLogger | Write-Verbose
+            } else {
+                dotnet test --framework $Framework | Write-Verbose
+            }
         }
     }
     popd
+    return $build
 }
 
 function Setup-PSSwaggerUtility {
@@ -166,15 +170,15 @@ function Setup-PSSwaggerUtility {
     param()
 
     if (-not (Get-Module -Name PSSwaggerUtility -ListAvailable)) {
-        $p = Find-Package -Name PSSwaggerUtility
+        $p = Find-Package -Name PSSwaggerUtility -Source PSGallery -ProviderName PowerShellGet
         if (-not $p) {
-            Write-Error -Message "Couldn't find PSSwaggerUtility package. Run 'Find-Package PSSwaggerUtility' to see error messages or recommended actions."
+            Write-Error -Message "Couldn't find PSSwaggerUtility package. Run 'Find-Package PSSwaggerUtility -Source PSGallery -ProviderName PowerShellGet' to see error messages or recommended actions."
             return $true
         }
 
         $p | Install-Package -Scope CurrentUser
         if (-not (Get-Module -Name PSSwaggerUtility -ListAvailable)) {
-            Write-Error -Message "Couldn't install PSSwaggerUtility package. Run 'Install-Package PSSwaggerUtility' to see error messages or recommended actions."
+            Write-Error -Message "Couldn't install PSSwaggerUtility package. Run 'Install-Package PSSwaggerUtility -Source PSGallery -ProviderName PowerShellGet -Scope CurrentUser' to see error messages or recommended actions."
             return $true
         }
     }
@@ -335,4 +339,4 @@ function script:Start-NativeExecution([scriptblock]$sb, [switch]$IgnoreExitcode)
     }
 }
 
-Export-ModuleMember -Function Initialize-Dependencies,Invoke-Build,Build-DotNetProject
+Export-ModuleMember -Function Initialize-BuildDependency,Invoke-Build,Start-BuildDotNetProject

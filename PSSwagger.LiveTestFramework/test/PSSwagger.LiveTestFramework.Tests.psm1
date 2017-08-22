@@ -4,7 +4,7 @@ Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 .DESCRIPTION
   Ensures all dependencies required for running tests are present on the current machine.
 #>
-function Initialize-Dependencies {
+function Initialize-TestDependency {
     [CmdletBinding()]
     param()
 
@@ -41,8 +41,8 @@ function Initialize-Dependencies {
         Write-Verbose -Message "Pester already installed: $((Get-Module Pester -ListAvailable | Select-Object -First 1).Version)"
     }
 
-    Import-Module -Name (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "build" | Join-Path -ChildPath "PSSwagger.LiveTestFramework.Build.psd1") -Force
-    $failed = PSSwagger.LiveTestFramework.Build\Initialize-LTFBuildDependencies
+    Import-Module -Name (Split-Path -Path $PSScriptRoot -Parent | Join-Path -ChildPath "build" | Join-Path -ChildPath "PSSwagger.LiveTestFramework.Build.psd1") -Force
+    $failed = $failed -or PSSwagger.LiveTestFramework.Build\Initialize-LTFBuildDependency
     if ($failed) {
         Write-Error -Message 'One or more dependencies failed to intialize.'
     } else {
@@ -56,14 +56,14 @@ function Initialize-Dependencies {
 .DESCRIPTION
   Initiates a test run. Also calls Initialize-Dependencies
 #>
-function Start-Run {
+function Start-TestRun {
     [CmdletBinding()]
     param()
 
     # Currently running PowerShell in-process isn't supported in PowerShell Core, so we currently only support full CLR
     $Framework = 'net452'
     Write-Host "Test run for framework: $Framework" -BackgroundColor DarkYellow
-    Initialize-Dependencies
+    Initialize-TestDependency
 
     $trxLogs = @()
     Write-Host "Discovering and running C# test projects"
@@ -243,4 +243,4 @@ function script:Start-NativeExecution([scriptblock]$sb, [switch]$IgnoreExitcode)
     }
 }
 
-Export-ModuleMember -Function Initialize-Dependencies,Start-Run
+Export-ModuleMember -Function Initialize-TestDependency,Start-TestRun
