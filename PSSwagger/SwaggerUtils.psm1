@@ -71,6 +71,11 @@ function ConvertTo-SwaggerDictionary {
         $DefaultCommandPrefix,
 
         [Parameter(Mandatory = $false)]
+        [AllowEmptyString()]
+        [string]
+        $Header,
+
+        [Parameter(Mandatory = $false)]
         [switch]
         $AzureSpec,
 
@@ -117,6 +122,7 @@ function ConvertTo-SwaggerDictionary {
     }
     $swaggerDict['Info'] = Get-SwaggerInfo @GetSwaggerInfo_params
     $swaggerDict['Info']['DefaultCommandPrefix'] = $DefaultCommandPrefix
+    $swaggerDict['Info']['Header'] = $Header
 
     $SwaggerParameters = @{}
     $SwaggerDefinitions = @{}

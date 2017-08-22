@@ -186,5 +186,58 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
                 Get-XDGDirectory -DirectoryType Config | should beexactly $expectedPath
             }
         }
+
+        Context "Get-HeaderContent Unit Tests" {
+            BeforeAll {
+                $moduleInfo = Get-Module -Name PSSwagger
+                $DefaultGeneratedFileHeaderString = $DefaultGeneratedFileHeader -f $moduleInfo.Version
+                
+                $InvalidHeaderFileExtensionPath = Join-Path -Path $PSScriptRoot -ChildPath '*.ps1'
+                $UnavailableHeaderFilePath = Join-Path -Path $PSScriptRoot -ChildPath 'NotExistingHeaderFile.txt'
+                
+                $FolderPathEndingWithDotTxt = Join-Path -Path $PSScriptRoot -ChildPath 'TestFoldeName.txt'
+                $null = New-Item -Path $FolderPathEndingWithDotTxt -ItemType Directory -Force
+                
+                $ValidHeaderFilePath = Join-Path -Path $PSScriptRoot -ChildPath 'TestHeader.txt'
+                Out-File -FilePath $ValidHeaderFilePath -InputObject 'Content from Header file' -Force -WhatIf:$false -Confirm:$false
+                $HeaderFileContent = Get-Content -Path $ValidHeaderFilePath -Raw
+            }
+
+            AfterAll {
+                Get-Item -Path $FolderPathEndingWithDotTxt -ErrorAction SilentlyContinue | Remove-Item -Force
+                Get-Item -Path $ValidHeaderFilePath -ErrorAction SilentlyContinue | Remove-Item -Force                
+            }
+
+            It "Get-HeaderContent should return null when header value is 'NONE'" {
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = 'NONE'}} | Should BeNullOrEmpty
+            }
+
+            It "Get-HeaderContent should return default header content when header value is empty" {
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = ''}} | Should BeExactly $DefaultGeneratedFileHeaderString
+            }
+
+            It "Get-HeaderContent should return default header content when header value is null" {
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = $null}} | Should BeExactly $DefaultGeneratedFileHeaderString
+            }
+            
+            It "Get-HeaderContent should throw when the specified header file path is invalid" {
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = $InvalidHeaderFileExtensionPath}} -ErrorVariable ev -ErrorAction SilentlyContinue | Should BeNullOrEmpty
+                $ev[0].FullyQualifiedErrorId | Should BeExactly 'InvalidHeaderFileExtension,Get-HeaderContent'
+            }
+            
+            It "Get-HeaderContent should throw when the specified header file path is not found" {
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = $UnavailableHeaderFilePath}} -ErrorVariable ev -ErrorAction SilentlyContinue | Should BeNullOrEmpty
+                $ev[0].FullyQualifiedErrorId | Should BeExactly 'HeaderFilePathNotFound,Get-HeaderContent'
+            }
+            
+            It "Get-HeaderContent should throw when the specified header file path is not a file path" {
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = $FolderPathEndingWithDotTxt}} -ErrorVariable ev -ErrorAction SilentlyContinue | Should BeNullOrEmpty
+                $ev[0].FullyQualifiedErrorId | Should BeExactly 'InvalidHeaderFilePath,Get-HeaderContent'
+            }
+
+            It "Get-HeaderContent should return content from the header file" {
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = $ValidHeaderFilePath}} | Should BeExactly $HeaderFileContent
+            }
+        }
     }
 }

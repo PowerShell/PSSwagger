@@ -276,7 +276,12 @@ function New-SwaggerSpecPathCommand
 
         [Parameter(Mandatory=$true)]
         [hashtable]
-        $DefinitionFunctionsDetails
+        $DefinitionFunctionsDetails,
+
+        [Parameter(Mandatory=$false)]
+        [AllowEmptyString()]
+        [string]
+        $PSHeaderComment
     )
     
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -288,7 +293,8 @@ function New-SwaggerSpecPathCommand
                                               -SwaggerMetaDict $SwaggerMetaDict `
                                               -SwaggerDict $SwaggerDict `
                                               -PathFunctionDetails $PathFunctionDetails `
-                                              -DefinitionFunctionsDetails $DefinitionFunctionsDetails
+                                              -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
+                                              -PSHeaderComment $PSHeaderComment
     }
 
     return $FunctionsToExport
@@ -393,7 +399,12 @@ function New-SwaggerPath
 
         [Parameter(Mandatory=$true)]
         [hashtable]
-        $DefinitionFunctionsDetails
+        $DefinitionFunctionsDetails,
+        
+        [Parameter(Mandatory=$false)]
+        [AllowEmptyString()]
+        [string]
+        $PSHeaderComment
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -984,7 +995,7 @@ function New-SwaggerPath
     }
 
     $CommandFilePath = Join-Path -Path $GeneratedCommandsPath -ChildPath "$commandName.ps1"
-    Out-File -InputObject $CommandString -FilePath $CommandFilePath -Encoding ascii -Force -Confirm:$false -WhatIf:$false
+    Out-File -InputObject @($PSHeaderComment, $CommandString) -FilePath $CommandFilePath -Encoding ascii -Force -Confirm:$false -WhatIf:$false
 
     Write-Verbose -Message ($LocalizedData.GeneratedPathCommand -f $commandName)
 

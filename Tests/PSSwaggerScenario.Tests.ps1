@@ -787,3 +787,40 @@ Describe "PSMetadataTests" -Tag @('PSMetadata','ScenarioTest')  {
         }
     }
 }
+
+Describe "Header scenario tests" -Tag @('Header','ScenarioTest')  {
+    BeforeAll {
+        $PsSwaggerPath = Split-Path -Path $PSScriptRoot -Parent | Join-Path -ChildPath "PSSwagger"
+        Import-Module $PsSwaggerPath -Force
+    }
+    
+    It "Validate custom header content in the PSSwagger generated files" {
+        $SwaggerSpecPath = Join-Path -Path $PSScriptRoot -ChildPath 'Data' | Join-Path -ChildPath 'ParameterTypes' | Join-Path -ChildPath 'ParameterTypesSpec.json'
+        $GeneratedPath = Join-Path -Path $PSScriptRoot -ChildPath 'Generated'
+        $ModuleName = 'HeaderScenarioTestModule'
+        $ModuleVersion = '1.1.1.1'
+        $GeneratedModuleBase = Join-Path -Path $GeneratedPath -ChildPath $ModuleName
+        if (Test-Path -Path $GeneratedModuleBase -PathType Container) {
+            Remove-Item -Path $GeneratedModuleBase -Recurse -Force
+        }
+        $GeneratedModuleVersionPath = Join-Path -Path $GeneratedModuleBase -ChildPath $ModuleVersion
+
+        $Header = '__Custom_HEADER_Content__'
+        if((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
+            & "powershell.exe" -command "& {`$env:PSModulePath=`$env:PSModulePath_Backup;
+                Import-Module '$PsSwaggerPath' -Force -ArgumentList `$true;
+                New-PSSwaggerModule -SpecificationPath '$SwaggerSpecPath' -Name $ModuleName -Version '$ModuleVersion' -UseAzureCsharpGenerator -Path '$GeneratedPath' -NoAssembly -Verbose -ConfirmBootstrap -Header '$Header';
+            }"
+        } else {
+            New-PSSwaggerModule -SpecificationPath $SwaggerSpecPath -Name $ModuleName -Version $ModuleVersion -UseAzureCsharpGenerator -Path $GeneratedPath -NoAssembly -Verbose -ConfirmBootstrap -Header $Header
+        }
+
+        Test-Path -Path $GeneratedModuleVersionPath -PathType Container | Should Be $true
+        $FileList = Get-ChildItem -Path $GeneratedModuleVersionPath -File
+        $GeneratedPowerShellCommandsPath = Join-Path -Path $GeneratedModuleVersionPath -ChildPath 'Generated.PowerShell.Commands'
+        $FileList += Get-ChildItem -Path $GeneratedPowerShellCommandsPath -File -Recurse
+        $FileList | ForEach-Object {
+            (Get-Content -Path $_.FullName) -contains $Header | Should Be $true
+        }
+    }
+}

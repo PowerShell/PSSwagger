@@ -565,10 +565,23 @@ function New-SwaggerDefinitionCommand
 
         [Parameter(Mandatory = $true)]
         [string]
-        $Models
+        $Models,
+        
+        [Parameter(Mandatory=$false)]
+        [AllowEmptyString()]
+        [string]
+        $HeaderContent
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+
+    $PSHeaderComment = $null
+    $XmlHeaderComment = $null
+
+    if($HeaderContent) {
+        $PSHeaderComment = ($PSCommentFormatString -f $HeaderContent)
+        $XmlHeaderComment = ($XmlCommentFormatString -f $HeaderContent)
+    }
 
     $FunctionsToExport = @()
     $GeneratedCommandsPath = Join-Path -Path $SwaggerMetaDict['outputDirectory'] -ChildPath $GeneratedCommandsName
@@ -584,13 +597,15 @@ function New-SwaggerDefinitionCommand
             if ($FunctionDetails.ContainsKey('GenerateDefinitionCmdlet') -and ($FunctionDetails['GenerateDefinitionCmdlet'] -eq $true)) {
                 $FunctionsToExport += New-SwaggerSpecDefinitionCommand -FunctionDetails $FunctionDetails `
                                                                     -GeneratedCommandsPath $SwaggerDefinitionCommandsPath `
-                                                                    -ModelsNamespace "$Namespace.$Models"
+                                                                    -ModelsNamespace "$Namespace.$Models" `
+                                                                    -PSHeaderComment $PSHeaderComment
             }
 
             New-SwaggerDefinitionFormatFile -FunctionDetails $FunctionDetails `
                                             -FormatFilesPath $FormatFilesPath `
                                             -Namespace $NameSpace `
-                                            -Models $Models
+                                            -Models $Models `
+                                            -XmlHeaderComment $XmlHeaderComment
         }
     }
 
@@ -774,7 +789,12 @@ function New-SwaggerSpecDefinitionCommand
 
         [Parameter(Mandatory=$true)]
         [string] 
-        $ModelsNamespace
+        $ModelsNamespace,
+        
+        [Parameter(Mandatory=$false)]
+        [AllowEmptyString()]
+        [string]
+        $PSHeaderComment
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -824,7 +844,7 @@ function New-SwaggerSpecDefinitionCommand
     }
 
     $CommandFilePath = Join-Path -Path $GeneratedCommandsPath -ChildPath "$CommandName.ps1"
-    Out-File -InputObject $CommandString -FilePath $CommandFilePath -Encoding ascii -Force -Confirm:$false -WhatIf:$false
+    Out-File -InputObject @($PSHeaderComment, $CommandString) -FilePath $CommandFilePath -Encoding ascii -Force -Confirm:$false -WhatIf:$false
 
     Write-Verbose -Message ($LocalizedData.GeneratedDefinitionCommand -f ($commandName, $FunctionDetails.Name))
 
@@ -853,7 +873,12 @@ function New-SwaggerDefinitionFormatFile
 
         [Parameter(Mandatory=$true)]
         [string]
-        $Models
+        $Models,
+        
+        [Parameter(Mandatory=$false)]
+        [AllowEmptyString()]
+        [string]
+        $XmlHeaderComment
     )
     
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -883,7 +908,7 @@ function New-SwaggerDefinitionFormatFile
 
     $TableColumnHeaders = $null
     $TableColumnItems = $TableColumnItemsList -join "`r`n"
-    $FormatViewDefinition = $FormatViewDefinitionStr -f ($ViewName, $ViewTypeName, $TableColumnHeaders, $TableColumnItems)
+    $FormatViewDefinition = $FormatViewDefinitionStr -f ($ViewName, $ViewTypeName, $TableColumnHeaders, $TableColumnItems, $XmlHeaderComment)
 
     if(-not (Test-Path -Path $FormatFilesPath -PathType Container))
     {

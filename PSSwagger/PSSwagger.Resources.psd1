@@ -84,5 +84,7 @@ ConvertFrom-StringData @'
     ServiceTypeMetadataFileNotFound=The service type metadata file '{0}' does not exist.
     UnknownPSMetadataProperty=Unknown '{0}' property: '{1}'.
     InvalidPSMetaFlattenParameter=Flatten property is specified as 'true' for an invalid parameter '{0}' with type '{1}'.
+    InvalidHeaderFileExtension=Header '{0}' file extension should be '.txt'.
+    InvalidHeaderFilePath=The specified value '{0}' for Header parameter is should be a valid file path.
 ###PSLOC
 '@

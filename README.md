@@ -74,7 +74,8 @@ NOTE: In the short term, for best performance, the operation IDs in your Open AP
 
     # If you are trying from a clone of this repository, follow below steps to import the PSSwagger module.
     # Ensure PSSwaggerUtility module is available in $env:PSModulePath
-    $PSSwaggerFolderPath = Resolve-Path '.\PSSwagger'
+    # Please note the trialing back slash ('\') to ensure PSSwaggerUtility module is available.
+    $PSSwaggerFolderPath = Resolve-Path '.\PSSwagger\'
     $env:PSModulePath = "$PSSwaggerFolderPath;$env:PSModulePath"
     Import-Module .\PSSwagger
 
