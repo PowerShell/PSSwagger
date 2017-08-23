@@ -58,6 +58,11 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwa
 .PARAMETER  DefaultCommandPrefix
     Prefix value to be prepended to cmdlet noun or to cmdlet name without verb.
 
+.PARAMETER  Header
+    Text to include as a header comment in the PSSwagger generated files.
+    It also can be a path to a .txt file with the content to be added as header in the PSSwagger generated files.
+    Specify 'NONE' to suppress the default header.
+
 .PARAMETER  NoAssembly
     Switch to disable saving the precompiled module assembly and instead enable dynamic compilation.
 
@@ -119,6 +124,10 @@ function New-PSSwaggerModule
         [Parameter(Mandatory = $false)]
         [string]
         $DefaultCommandPrefix,
+
+        [Parameter(Mandatory = $false)]
+        [string[]]
+        $Header,
 
         [Parameter()]
         [switch]
@@ -346,6 +355,7 @@ function New-PSSwaggerModule
         HostOverrideCommand = ""
         NoAuthChallenge = $false
         NameSpacePrefix = ''
+        Header = ''
     }
 
     # Parse the JSON and populate the dictionary
@@ -354,6 +364,7 @@ function New-PSSwaggerModule
         ModuleName = $Name
         ModuleVersion = $Version
         DefaultCommandPrefix = $DefaultCommandPrefix
+        Header = $($Header -join "`r`n")
         SwaggerSpecFilePaths = $SwaggerSpecFilePaths
         DefinitionFunctionsDetails = $DefinitionFunctionsDetails
         AzureSpec = $UseAzureCsharpGenerator
@@ -470,16 +481,27 @@ function New-PSSwaggerModule
     # Need to expand the definitions early as parameter flattening feature requires the parameters list of the definition/model types.
     Expand-SwaggerDefinition -DefinitionFunctionsDetails $DefinitionFunctionsDetails -NameSpace $NameSpace -Models $Models
 
+    $HeaderContent = Get-HeaderContent -SwaggerDict $SwaggerDict -ErrorVariable ev
+    if($ev) {
+        return
+    }
+    $PSHeaderComment = $null
+    if($HeaderContent) {
+        $PSHeaderComment = ($PSCommentFormatString -f $HeaderContent)
+    }
+
     $FunctionsToExport = @()
     $FunctionsToExport += New-SwaggerSpecPathCommand -PathFunctionDetails $PathFunctionDetails `
                                                      -SwaggerMetaDict $swaggerMetaDict `
                                                      -SwaggerDict $swaggerDict `
-                                                     -DefinitionFunctionsDetails $DefinitionFunctionsDetails
+                                                     -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
+                                                     -PSHeaderComment $PSHeaderComment
 
     $FunctionsToExport += New-SwaggerDefinitionCommand -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
                                                        -SwaggerMetaDict $swaggerMetaDict `
                                                        -NameSpace $nameSpace `
-                                                       -Models $models
+                                                       -Models $models `
+                                                       -HeaderContent $HeaderContent
 
     $RootModuleFilePath = Join-Path $outputDirectory "$Name.psm1"
     $testCoreModuleRequirements = ''
@@ -490,7 +512,7 @@ function New-PSSwaggerModule
     }
 
     Out-File -FilePath $RootModuleFilePath `
-             -InputObject $ExecutionContext.InvokeCommand.ExpandString($RootModuleContents)`
+             -InputObject @($PSHeaderComment, $ExecutionContext.InvokeCommand.ExpandString($RootModuleContents))`
              -Encoding ascii `
              -Force `
              -Confirm:$false `
@@ -498,12 +520,21 @@ function New-PSSwaggerModule
 
     New-ModuleManifestUtility -Path $outputDirectory `
                               -FunctionsToExport $FunctionsToExport `
-                              -Info $swaggerDict['info']
+                              -Info $swaggerDict['info'] `
+                              -PSHeaderComment $PSHeaderComment
 
-    Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Generated.Resources.psd1") (Join-Path -Path "$outputDirectory" -ChildPath "$Name.Resources.psd1") -Force
-    Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "GeneratedHelpers.psm1") (Join-Path -Path "$outputDirectory" -ChildPath "GeneratedHelpers.psm1") -Force
-    Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Test-CoreRequirements.ps1") (Join-Path -Path "$outputDirectory" -ChildPath "Test-CoreRequirements.ps1") -Force
-    Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Test-FullRequirements.ps1") (Join-Path -Path "$outputDirectory" -ChildPath "Test-FullRequirements.ps1") -Force
+    $CopyFilesMap = [ordered]@{
+        'Generated.Resources.psd1' = "$Name.Resources.psd1"
+        'GeneratedHelpers.psm1' = 'GeneratedHelpers.psm1'
+        'Test-CoreRequirements.ps1' = 'Test-CoreRequirements.ps1'
+        'Test-FullRequirements.ps1' = 'Test-FullRequirements.ps1'
+    }
+
+    $CopyFilesMap.GetEnumerator() | ForEach-Object {
+        Copy-PSFileWithHeader -SourceFilePath (Join-Path -Path "$PSScriptRoot" -ChildPath $_.Name) `
+            -DestinationFilePath (Join-Path -Path "$outputDirectory" -ChildPath $_.Value) `
+            -PSHeaderComment $PSHeaderComment
+    }
 
     Write-Verbose -Message ($LocalizedData.SuccessfullyGeneratedModule -f $Name,$outputDirectory)
 }
@@ -790,15 +821,21 @@ function New-ModuleManifestUtility
 
         [Parameter(Mandatory=$true)]
         [hashtable]
-        $Info
+        $Info,
+        
+        [Parameter(Mandatory=$false)]
+        [AllowEmptyString()]
+        [string]
+        $PSHeaderComment
     )
 
     $FormatsToProcess = Get-ChildItem -Path "$Path\$GeneratedCommandsName\FormatFiles\*.ps1xml" `
                                       -File `
                                       -ErrorAction Ignore | Foreach-Object { $_.FullName.Replace($Path, '.') }
-
+                                      
+    $ModuleManifestFilePath = "$(Join-Path -Path $Path -ChildPath $Info.ModuleName).psd1"
     $NewModuleManifest_params = @{
-        Path = "$(Join-Path -Path $Path -ChildPath $Info.ModuleName).psd1"
+        Path = $ModuleManifestFilePath
         ModuleVersion = $Info.Version
         Description = $Info.Description
         CopyRight = $info.LicenseName
@@ -810,6 +847,7 @@ function New-ModuleManifestUtility
         CmdletsToExport = @()
         AliasesToExport = @()
         VariablesToExport = @()
+        PassThru = $true
     }
 
     if($Info.DefaultCommandPrefix)
@@ -831,7 +869,95 @@ function New-ModuleManifestUtility
         }
     }
 
-    New-ModuleManifest @NewModuleManifest_params
+    $PassThruContent = New-ModuleManifest @NewModuleManifest_params
+    
+    # Add header comment
+    if ($PSHeaderComment) {
+        Out-File -FilePath $ModuleManifestFilePath `
+            -InputObject @($PSHeaderComment, $PassThruContent)`
+            -Encoding ascii `
+            -Force `
+            -Confirm:$false `
+            -WhatIf:$false
+    }
+}
+
+function Get-HeaderContent {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]
+        $SwaggerDict
+    )
+
+    $Header = $swaggerDict['Info'].Header
+    $HeaderContent = ($DefaultGeneratedFileHeader -f $MyInvocation.MyCommand.Module.Version)
+    if ($Header) {
+        $HeaderFilePath = Resolve-Path -Path $Header -ErrorAction Ignore
+        if ($HeaderFilePath) {
+            # Selecting the first path when multiple paths are returned by Resolve-Path cmdlet.
+            if ($HeaderFilePath.PSTypeNames -contains 'System.Array') {
+                $HeaderFilePath = $HeaderFilePath[0]
+            }
+
+            if (-not $HeaderFilePath.Path.EndsWith('.txt', [System.StringComparison]::OrdinalIgnoreCase)) {
+                $message = ($LocalizedData.InvalidHeaderFileExtension -f $Header)
+                Write-Error -Message $message -ErrorId 'InvalidHeaderFileExtension' -Category InvalidArgument
+                return
+            }
+
+            if (-not (Test-Path -LiteralPath $HeaderFilePath -PathType Leaf)) {
+                $message = ($LocalizedData.InvalidHeaderFilePath -f $Header)
+                Write-Error -Message $message -ErrorId 'InvalidHeaderFilePath' -Category InvalidArgument
+                return    
+            }
+            
+            $HeaderContent = Get-Content -LiteralPath $HeaderFilePath -Raw
+        }
+        elseif ($Header.EndsWith('.txt', [System.StringComparison]::OrdinalIgnoreCase)) {
+            # If this is an existing '.txt' file above Resolve-Path returns a valid header file path
+            $message = ($LocalizedData.PathNotFound -f $Header)
+            Write-Error -Message $message -ErrorId 'HeaderFilePathNotFound' -Category InvalidArgument
+            return
+        }
+        elseif ($Header -eq 'NONE') {
+            $HeaderContent = $null
+        }
+        else {
+            $HeaderContent = $Header
+        }
+    }
+
+    return $HeaderContent
+}
+
+function Copy-PSFileWithHeader {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]
+        $SourceFilePath,
+
+        [Parameter(Mandatory = $true)]
+        [string]
+        $DestinationFilePath,
+
+        [Parameter(Mandatory = $false)]
+        [AllowEmptyString()]
+        [string]
+        $PSHeaderComment
+    )
+
+    if (-not (Test-Path -Path $SourceFilePath -PathType Leaf)) {
+        Throw ($LocalizedData.PathNotFound -f $SourceFilePath)
+    }
+
+    $FileContent = Get-Content -Path $SourceFilePath -Raw
+    Out-File -FilePath $DestinationFilePath `
+        -InputObject @($PSHeaderComment, $FileContent)`
+        -Encoding ascii `
+        -Force `
+        -Confirm:$false `
+        -WhatIf:$false
 }
 
 #endregion

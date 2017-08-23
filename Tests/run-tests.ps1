@@ -99,7 +99,7 @@ $autoRestInstallPath = Split-Path -Path $autoRestModule.Source
 $executeTestsCommand += ";`$env:Path+=`";$autoRestInstallPath\tools`""
 
 # AzureRM.Profile requirement
-$azureRmProfile = Get-Package -Name AzureRM.Profile -Provider PowerShellGet -ErrorAction Ignore
+$azureRmProfile = Get-Module -Name AzureRM.Profile -ListAvailable | Select-Object -First 1 -ErrorAction Ignore
 if (-not $azureRmProfile) {
     if (-not (Get-PackageSource -Name PSGallery -ErrorAction Ignore)) {
         Register-PackageSource -Name PSGallery -ProviderName PowerShellGet
@@ -125,6 +125,7 @@ if ($EnableTracing) {
 }
 
 $srcPath = Join-Path -Path $PSScriptRoot -ChildPath .. | Join-Path -ChildPath PSSwagger
+$srcPath += [System.IO.Path]::DirectorySeparatorChar
 $executeTestsCommand += ";`$verbosepreference=`"continue`";`$env:PSModulePath=`"$srcPath;`$env:PSModulePath`";Invoke-Pester -ExcludeTag KnownIssue -OutputFormat NUnitXml -OutputFile ScenarioTestResults.xml -Verbose"
 
 # Set up Pester params

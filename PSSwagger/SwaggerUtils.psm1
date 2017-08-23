@@ -71,6 +71,11 @@ function ConvertTo-SwaggerDictionary {
         $DefaultCommandPrefix,
 
         [Parameter(Mandatory = $false)]
+        [AllowEmptyString()]
+        [string]
+        $Header,
+
+        [Parameter(Mandatory = $false)]
         [switch]
         $AzureSpec,
 
@@ -117,6 +122,9 @@ function ConvertTo-SwaggerDictionary {
     }
     $swaggerDict['Info'] = Get-SwaggerInfo @GetSwaggerInfo_params
     $swaggerDict['Info']['DefaultCommandPrefix'] = $DefaultCommandPrefix
+    if($Header) {
+        $swaggerDict['Info']['Header'] = $Header
+    }
 
     $SwaggerParameters = @{}
     $SwaggerDefinitions = @{}
@@ -192,6 +200,7 @@ function Get-SwaggerInfo {
     $NameSpace = ''
     $codeGenFileRequired = $false
     $modelsName = 'Models'
+    $Header = ''    
     if(Get-Member -InputObject $Info -Name 'x-ms-code-generation-settings') {
         $prop = Test-PropertyWithAliases -InputObject $Info.'x-ms-code-generation-settings' -Aliases @('ClientName', 'Name')
         if ($prop) {
@@ -221,6 +230,11 @@ function Get-SwaggerInfo {
             $NameSpace = $Info.'x-ms-code-generation-settings'.$prop
             # Warn the user that custom namespaces are not recommended
             Write-Warning -Message $LocalizedData.CustomNamespaceNotRecommended
+        }
+
+        $prop = Test-PropertyWithAliases -InputObject $Info.'x-ms-code-generation-settings' -Aliases @('Header', 'h')
+        if ($prop) {
+            $Header = $Info.'x-ms-code-generation-settings'.$prop
         }
 
         # When the following values are specified, the property will be overwritten by PSSwagger using a CodeGenSettings file
@@ -324,6 +338,7 @@ function Get-SwaggerInfo {
         CodeOutputDirectory = $CodeOutputDirectory
         CodeGenFileRequired = $codeGenFileRequired
         Models = $modelsName
+        Header = $Header
     }
 }
 

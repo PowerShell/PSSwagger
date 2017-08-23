@@ -3,7 +3,10 @@
     "info": {
         "title": "ParameterTypesSpec",
         "description": "API that contains tests for all known parameter types",
-        "version": "2017-03-24"
+        "version": "2017-03-24",
+        "x-ms-code-generation-settings": {
+            "Header": "Header content from swagger spec"
+        }
     },
     "host": "localhost:3000",
     "schemes": [

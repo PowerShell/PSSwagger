@@ -14,15 +14,17 @@ PowerShell command to generate the PowerShell commands for a given RESTful Web S
 ### SwaggerPath
 ```
 New-PSSwaggerModule -SpecificationPath <String> -Path <String> -Name <String> [-Version <Version>]
- [-DefaultCommandPrefix <String>] [-UseAzureCsharpGenerator] [-NoAssembly] [-PowerShellCorePath <String>]
- [-IncludeCoreFxAssembly] [-InstallToolsForAllUsers] [-TestBuild] [-SymbolPath <String>] [-ConfirmBootstrap]
+ [-DefaultCommandPrefix <String>] [-Header <String[]>] [-UseAzureCsharpGenerator] [-NoAssembly]
+ [-PowerShellCorePath <String>] [-IncludeCoreFxAssembly] [-InstallToolsForAllUsers] [-TestBuild]
+ [-SymbolPath <String>] [-ConfirmBootstrap]
 ```
 
 ### SwaggerURI
 ```
 New-PSSwaggerModule -SpecificationUri <Uri> -Path <String> -Name <String> [-Version <Version>]
- [-DefaultCommandPrefix <String>] [-UseAzureCsharpGenerator] [-NoAssembly] [-PowerShellCorePath <String>]
- [-IncludeCoreFxAssembly] [-InstallToolsForAllUsers] [-TestBuild] [-SymbolPath <String>] [-ConfirmBootstrap]
+ [-DefaultCommandPrefix <String>] [-Header <String[]>] [-UseAzureCsharpGenerator] [-NoAssembly]
+ [-PowerShellCorePath <String>] [-IncludeCoreFxAssembly] [-InstallToolsForAllUsers] [-TestBuild]
+ [-SymbolPath <String>] [-ConfirmBootstrap]
 ```
 
 ## DESCRIPTION
@@ -127,6 +129,23 @@ Prefix value to be prepended to cmdlet noun or to cmdlet name without verb.
 
 ```yaml
 Type: String
+Parameter Sets: (All)
+Aliases: 
+
+Required: False
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -Header
+Text to include as a header comment in the PSSwagger generated files.
+It also can be a path to a .txt file with the content to be added as header in the PSSwagger generated files.
+Specify 'NONE' to suppress the default header.
+
+```yaml
+Type: String[]
 Parameter Sets: (All)
 Aliases: 
 
