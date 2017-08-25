@@ -25,6 +25,7 @@ ConvertFrom-StringData @'
     SamePropertyName=Same property name '{0}' is defined in a definition '{1}' with AllOf inheritance.
     DataTypeNotImplemented=Please get an implementation of '{0}' for '{1}'
     AutoRestNotInPath=Unable to find AutoRest in PATH environment. Ensure the PATH is updated.
+    CscExeNotInPath=Unable to find CSC.exe in PATH environment. Ensure the PATH is updated with CSC.exe location.
     AutoRestError=AutoRest resulted in an error
     SwaggerParamsMissing=No parameters in the Swagger
     SwaggerDefinitionsMissing=No definitions in the Swagger
