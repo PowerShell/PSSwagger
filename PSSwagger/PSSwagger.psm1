@@ -585,8 +585,8 @@ function ConvertTo-CsharpCode
     Write-Verbose -Message $LocalizedData.GenerateCodeUsingAutoRest
     $info = $SwaggerDict['Info']
 
-    $autoRestExePath = "AutoRest"
-    if (-not (get-command -name $autoRestExePath)) {
+    $AutoRestCommand = Get-Command -Name AutoRest -ErrorAction Ignore | Select-Object -First 1 -ErrorAction Ignore
+    if (-not $AutoRestCommand) {
         throw $LocalizedData.AutoRestNotInPath
     }
 
@@ -631,31 +631,67 @@ function ConvertTo-CsharpCode
     }
 
     $tempCodeGenSettingsPath = ''
+    # Latest AutoRest inconsistently appends 'Client' to the specified infoName to generated the client name.
+    # We need to override the client name to ensure that generated PowerShell cmdlets work fine.
+    $ClientName = $info['infoName']
     try {
         if ($info.ContainsKey('CodeGenFileRequired') -and $info.CodeGenFileRequired) {
             # Some settings need to be overwritten
             # Write the following parameters: AddCredentials, CodeGenerator, Modeler
             $tempCodeGenSettings = @{
                 AddCredentials = $true
-                CodeGenerator = $codeGenerator
-                Modeler = $swaggerMetaDict['AutoRestModeler']
+                CodeGenerator  = $codeGenerator
+                Modeler        = $swaggerMetaDict['AutoRestModeler']
+                ClientName     = $ClientName
             }
 
             $tempCodeGenSettingsPath = "$(Join-Path -Path (Get-XDGDirectory -DirectoryType Cache) -ChildPath (Get-Random)).json"
             $tempCodeGenSettings | ConvertTo-Json | Out-File -FilePath $tempCodeGenSettingsPath
 
             $autoRestParams = @('-Input', $swaggerMetaDict['SwaggerSpecPath'], '-OutputDirectory', $generatedCSharpPath, '-Namespace', $NameSpace, '-CodeGenSettings', $tempCodeGenSettingsPath)
-        } else {
+        }
+        elseif ( ($AutoRestCommand.Name -eq 'AutoRest.exe') -or 
+            ($swaggerMetaDict['AutoRestModeler'] -eq 'CompositeSwagger')) {
             # None of the PSSwagger-required params are being overwritten, just call the CLI directly to avoid the extra disk op
-            $autoRestParams = @('-Input', $swaggerMetaDict['SwaggerSpecPath'], '-OutputDirectory', $generatedCSharpPath, '-Namespace', $NameSpace, '-AddCredentials', $true, '-CodeGenerator', $codeGenerator, '-Modeler', $swaggerMetaDict['AutoRestModeler'])
+            $autoRestParams = @('-Input', $swaggerMetaDict['SwaggerSpecPath'], 
+                '-OutputDirectory', $generatedCSharpPath, 
+                '-Namespace', $NameSpace, 
+                '-AddCredentials', $true, 
+                '-CodeGenerator', $codeGenerator, 
+                '-ClientName', $ClientName
+                '-Modeler', $swaggerMetaDict['AutoRestModeler'] 
+            )
+        }
+        else {
+            # See https://aka.ms/autorest/cli for AutoRest.cmd options.
+            $autoRestParams = @(
+                "--input-file=$($swaggerMetaDict['SwaggerSpecPath'])",
+                "--output-folder=$generatedCSharpPath",
+                "--namespace=$NameSpace",
+                '--add-credentials',
+                '--clear-output-folder=true',
+                "--override-client-name=$ClientName"
+                '--verbose',
+                '--csharp'
+            )
+
+            if ($codeGenerator -eq 'Azure.CSharp') {
+                $autoRestParams += '--azure-arm'
+            }
+
+            if (('continue' -eq $DebugPreference) -or 
+                ('inquire' -eq $DebugPreference)) {
+                $autoRestParams += '--debug'
+            }            
         }
 
         Write-Verbose -Message $LocalizedData.InvokingAutoRestWithParams
-        for ($i = 0; $i -lt $autoRestParams.Length; $i += 2) {
-            Write-Verbose -Message ($LocalizedData.AutoRestParam -f ($autoRestParams[$i], $autoRestParams[$i+1]))
+        Write-Verbose -Message $($autoRestParams | Out-String)
+        
+        $autorestMessages = & AutoRest $autoRestParams
+        if ($autorestMessages) {
+            Write-Verbose -Message $($autorestMessages | Out-String)
         }
-
-        $null = & $autoRestExePath $autoRestParams
         if ($LastExitCode)
         {
             throw $LocalizedData.AutoRestError
@@ -691,9 +727,7 @@ function ConvertTo-CsharpCode
 
     # As of 3/2/2017, there's a version mismatch between the latest Microsoft.Rest.ClientRuntime.Azure package and the latest AzureRM.Profile package
     # So we have to hardcode Microsoft.Rest.ClientRuntime.Azure to at most version 3.3.4
-    $modulePostfix = $info['infoName']
-    $NameSpace = $info.namespace
-    $fullModuleName = $Namespace + '.' + $modulePostfix
+    $fullModuleName = $Namespace + '.' + $ClientName
     $cliXmlTmpPath = Get-TemporaryCliXmlFilePath -FullModuleName $fullModuleName
     try {
         Export-CliXml -InputObject $PathFunctionDetails -Path $cliXmlTmpPath

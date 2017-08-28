@@ -33,17 +33,18 @@ A PowerShell module with commands to generate the PowerShell commands for a give
 ## Dependencies
 | Dependency       | Version   | Description              |             
 | ----------------| ----------- | -------------------------- |
-| AutoRest | 0.17.3 | Tool to generate C# SDK from Swagger spec |
+| AutoRest | 0.17.3 or newer | Tool to generate C# SDK from Swagger spec |
+| CSC.exe (Microsoft.Net.Compilers) | 2.3.1 or newer | C# Compiler to generate C# SDK assembly on Windows PowerShell |
 | Newtonsoft.Json | Full CLR: 6.0.8, Core CLR: 9.0.1 | NuGet package containing Newtonsoft.Json assembly, required for all modules |
-| Microsoft.Rest.ClientRuntime | 2.3.4 | NuGet package containing Microsoft.Rest.ClientRuntime assembly, required for all modules |
-| Microsoft.Rest.ClientRuntime.Azure | 3.3.4 | NuGet package containing Microsoft.Rest.ClientRuntime.Azure assembly, required for Microsoft Azure modules |
-| AzureRM.Profile | * | Module containing authentication helpers, required for Microsoft Azure modules on PowerShell |
+| Microsoft.Rest.ClientRuntime | 2.3.4 or newer | NuGet package containing Microsoft.Rest.ClientRuntime assembly, required for all modules |
+| Microsoft.Rest.ClientRuntime.Azure | 3.3.4 or newer | NuGet package containing Microsoft.Rest.ClientRuntime.Azure assembly, required for Microsoft Azure modules |
+| AzureRM.Profile | 2.0.0 or newer | Module containing authentication helpers, required for Microsoft Azure modules on PowerShell |
 | AzureRM.Profile.NetCore.Preview | * | Module containing authentication helpers, required for Microsoft Azure modules on PowerShell Core |
 
 ## Usage
 NOTE: In the short term, for best performance, the operation IDs in your Open API specifications should be of the form "<Noun>_<Verb><Suffix>". For example, the operation ID "Resource_GetByName" gets a resource named Resource by name.
 1. Get PSSwagger!
-    * Install from PowerShellGallery.com:
+    * Install from PowerShellGallery.com
        ```powershell
        Install-Module -Name PSSwagger
        ```
@@ -53,17 +54,12 @@ NOTE: In the short term, for best performance, the operation IDs in your Open AP
        ```
 
 2. Ensure AutoRest is installed and available in $env:PATH
-    - Install AutoRest version 0.17.3
+    - Follow the instructions provided at [AutoRest github repository](https://github.com/Azure/Autorest#installing-autorest).
+    - Ensure AutoRest.cmd path is in $env:Path
         ```powershell
-        Install-Package -Name AutoRest -Source https://www.nuget.org/api/v2 -RequiredVersion 0.17.3 -Scope CurrentUser
-        ```
-    - Add AutoRest.exe path to $env:Path
-        ```powershell
-        $package = Get-Package -Name AutoRest -RequiredVersion 0.17.3
-        $env:path += ";$(Split-Path $package.Source -Parent)\tools"
+        $env:path += ";$env:APPDATA\npm"
         Get-Command -Name AutoRest
         ```
-
 3. Ensure CSC.exe is installed and available in $env:PATH
     - If CSC.exe is not installed already, install Microsoft.Net.Compilers package
         ```powershell
