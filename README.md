@@ -52,17 +52,29 @@ NOTE: In the short term, for best performance, the operation IDs in your Open AP
         git clone https://github.com/PowerShell/PSSwagger.git
        ```
 
-2. Ensure you AutoRest version 0.17.3 installed
-  ```powershell
-  Install-Package -Name AutoRest -Source https://www.nuget.org/api/v2 -RequiredVersion 0.17.3 -Scope CurrentUser
-  ```   
+2. Ensure AutoRest is installed and available in $env:PATH
+    - Install AutoRest version 0.17.3
+        ```powershell
+        Install-Package -Name AutoRest -Source https://www.nuget.org/api/v2 -RequiredVersion 0.17.3 -Scope CurrentUser
+        ```
+    - Add AutoRest.exe path to $env:Path
+        ```powershell
+        $package = Get-Package -Name AutoRest -RequiredVersion 0.17.3
+        $env:path += ";$(Split-Path $package.Source -Parent)\tools"
+        Get-Command -Name AutoRest
+        ```
 
-3. Ensure AutoRest.exe is in $env:Path
-  ```powershell
-  $package = Get-Package -Name AutoRest -RequiredVersion 0.17.3
-  $env:path += ";$(Split-Path $package.Source -Parent)\tools"
-  Get-Command -Name AutoRest
-  ```
+3. Ensure CSC.exe is installed and available in $env:PATH
+    - If CSC.exe is not installed already, install Microsoft.Net.Compilers package
+        ```powershell
+        Install-Package -Name Microsoft.Net.Compilers -Source https://www.nuget.org/api/v2 -Scope CurrentUser
+        ```
+    - Add CSC.exe path to $env:Path
+        ```powershell
+        $package = Get-Package -Name Microsoft.Net.Compilers
+        $env:path += ";$(Split-Path $package.Source -Parent)\tools"
+        Get-Command -Name CSC.exe
+        ```
 
 4. If you plan on pre-compiling the generated assembly, ensure you have the module AzureRM.Profile or AzureRM.NetCore.Preview available to PackageManagement if you are on PowerShell or PowerShell Core, respectively.
 

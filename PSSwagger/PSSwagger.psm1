@@ -587,7 +587,12 @@ function ConvertTo-CsharpCode
 
     $autoRestExePath = "AutoRest"
     if (-not (get-command -name $autoRestExePath)) {
-            throw $LocalizedData.AutoRestNotInPath
+        throw $LocalizedData.AutoRestNotInPath
+    }
+
+    if (-not (Get-OperatingSystemInfo).IsCore -and 
+        (-not (Get-Command -Name 'Csc.Exe' -ErrorAction Ignore))) {
+        throw $LocalizedData.CscExeNotInPath
     }
 
     $outputDirectory = $SwaggerMetaDict['outputDirectory']
@@ -718,7 +723,7 @@ function ConvertTo-CsharpCode
                                                 -CliXmlTmpPath $cliXmlTmpPath"
 
         $success = & "powershell" -command "& {$command}"
-        
+
         $codeReflectionResult = Import-CliXml -Path $cliXmlTmpPath
         if ($codeReflectionResult.ContainsKey('VerboseMessages') -and $codeReflectionResult.VerboseMessages -and ($codeReflectionResult.VerboseMessages.Count -gt 0)) {
             $verboseMessages = $codeReflectionResult.VerboseMessages -Join [Environment]::NewLine
@@ -773,8 +778,7 @@ function ConvertTo-CsharpCode
         }
         $dependencies = Get-PSSwaggerExternalDependencies -Azure:$codeCreatedByAzureGenerator -Framework 'netstandard1'
         $microsoftRestClientRuntimeAzureRequiredVersion = if ($dependencies.ContainsKey('Microsoft.Rest.ClientRuntime.Azure')) { $dependencies['Microsoft.Rest.ClientRuntime.Azure'].RequiredVersion } else { '' }
-        $command = "Import-Module '$PSScriptRoot\PSSwaggerUtility';
-                    Add-PSSwaggerClientType -OutputAssemblyName '$outAssembly' ``
+        $command = "PSSwaggerUtility\Add-PSSwaggerClientType -OutputAssemblyName '$outAssembly' ``
                                                -ClrPath '$clrPath' ``
                                                -CSharpFiles $allCSharpFilesArrayString ``
                                                -MicrosoftRestClientRuntimeAzureRequiredVersion '$microsoftRestClientRuntimeAzureRequiredVersion' ``

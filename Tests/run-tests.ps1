@@ -98,6 +98,11 @@ $autoRestModule = Test-Package -packageName "AutoRest" -packageSourceName $nuget
 $autoRestInstallPath = Split-Path -Path $autoRestModule.Source
 $executeTestsCommand += ";`$env:Path+=`";$autoRestInstallPath\tools`""
 
+# Set up Microsoft.Net.Compilers
+$MicrosoftNetCompilers = Test-Package -PackageName Microsoft.Net.Compilers -PackageSourceName $nugetPackageSource.Name
+$MicrosoftNetCompilersInstallPath = Split-Path -Path $MicrosoftNetCompilers.Source
+$executeTestsCommand += ";`$env:Path+=`";$MicrosoftNetCompilersInstallPath\tools`""
+
 # AzureRM.Profile requirement
 $azureRmProfile = Get-Module -Name AzureRM.Profile -ListAvailable | Select-Object -First 1 -ErrorAction Ignore
 if (-not $azureRmProfile) {
