@@ -10,6 +10,7 @@ namespace PSSwagger.LTF.ConsoleServer
     using Lib.Models;
     using Lib.PowerShell;
     using Lib.ServiceTracing;
+    using Newtonsoft.Json;
     using System;
     using System.Collections.Generic;
     using System.Globalization;
@@ -20,7 +21,7 @@ namespace PSSwagger.LTF.ConsoleServer
     {
         static void Main(string[] args)
         {
-            ServerArgs serverArgs = new ServerArgs(args);
+            ServerArgs serverArgs = new ServerArgs().Parse("config.json").Parse(args).Validate();
             NamedPipeServer namedPipe = new NamedPipeServer(serverArgs.LogPipeName);
             Logger logger = new Logger(namedPipe, namedPipe);
             if (serverArgs.Errors.Count > 0)
@@ -77,7 +78,7 @@ namespace PSSwagger.LTF.ConsoleServer
             }
         }
     }
-
+    
     class ServerArgs
     {
         public List<string> SpecificationPaths { get; set; }
@@ -86,13 +87,19 @@ namespace PSSwagger.LTF.ConsoleServer
         public string LogPipeName { get; set; }
         public List<string> Errors { get; set; }
 
-        public ServerArgs(string[] args)
+        public ServerArgs()
         {
-            this.LogPipeName = "psswagger-ltf-consoleserver";
-            string lastArg = String.Empty;
+            this.Errors = new List<string>();
             this.SpecificationPaths = new List<string>();
             this.ExternalModules = new List<string>();
-            this.Errors = new List<string>();
+            this.LogPipeName = "psswagger-ltf-consoleserver";
+        }
+
+        public ServerArgs Parse(string[] args)
+        {
+            string lastArg = String.Empty;
+            bool resetSpecificationPaths = false;
+            bool resetExternalModules = false;
             foreach (string arg in args)
             {
                 if (!arg.StartsWith("/"))
@@ -103,15 +110,29 @@ namespace PSSwagger.LTF.ConsoleServer
                             if (!arg.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
                             {
                                 this.Errors.Add("Specification file is not a .json file.");
-                            } else if (!File.Exists(arg))
+                            }
+                            else if (!File.Exists(arg))
                             {
                                 this.Errors.Add(String.Format(CultureInfo.CurrentCulture, "Specification file does not exist: {0}", arg));
-                            } else
+                            }
+                            else
                             {
+                                if (!resetSpecificationPaths)
+                                {
+                                    resetSpecificationPaths = true;
+                                    this.SpecificationPaths.Clear();
+                                }
+
                                 this.SpecificationPaths.Add(arg);
                             }
                             break;
                         case "extmodule":
+                            if (!resetExternalModules)
+                            {
+                                resetExternalModules = true;
+                                this.ExternalModules.Clear();
+                            }
+
                             this.ExternalModules.Add(arg);
                             break;
                         case "testmodule":
@@ -125,16 +146,38 @@ namespace PSSwagger.LTF.ConsoleServer
                             break;
                     }
                     lastArg = String.Empty;
-                } else
+                }
+                else
                 {
                     lastArg = arg.Substring(1);
                 }
             }
 
+            return this;
+        }
+
+        public ServerArgs Parse(string jsonFilePath)
+        {
+            ServerArgs ret;
+            if (File.Exists(jsonFilePath))
+            {
+                ret = JsonConvert.DeserializeObject<ServerArgs>(File.ReadAllText(jsonFilePath));
+            } else
+            {
+                ret = new ServerArgs();
+            }
+
+            return ret;
+        }
+
+        public ServerArgs Validate()
+        {
             if (String.IsNullOrEmpty(this.ModulePath))
             {
                 this.Errors.Add("No test module path specified.");
             }
+
+            return this;
         }
     }
 }
