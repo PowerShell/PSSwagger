@@ -17,10 +17,12 @@ param(
     [switch]$EnableTracing
 )
 
+Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 $executeTestsCommand = "Set-Location -Path '$PSScriptRoot'"
 
 # Import test utilities
 Import-Module "$PSScriptRoot\TestUtilities.psm1" -Force
+$nugetPackageSource = Test-NugetPackageSource
 
 $nodeModuleVersions = @{}
 $NodeJSVersion = '8.4.0'
@@ -169,9 +171,6 @@ else {
 Write-Verbose "Dependency versions:"
 Write-Verbose " -- AzureRM.Profile: $($azureRmProfile.Version)"
 Write-Verbose " -- Pester: $((get-command invoke-pester).Version)"
-if ($autoRestModule) {
-    Write-Verbose " -- AutoRest: $($autoRestModule.Version)"
-}
 foreach ($entry in $nodeModuleVersions.GetEnumerator()) {
     Write-Verbose " -- $($entry.Key): $($entry.Value)"
 }
