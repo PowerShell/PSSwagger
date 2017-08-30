@@ -25,7 +25,7 @@ Import-Module "$PSScriptRoot\TestUtilities.psm1" -Force
 $nugetPackageSource = Test-NugetPackageSource
 
 $nodeModuleVersions = @{}
-$NodeJSVersion = '8.4.0'
+$NodeJSVersion = '7.10.0'
 $NodeJSPackageName = "node-v$NodeJSVersion-win-x64"
 
 # Note: If we use the $PSScriptRoot, Expand-Archive cmdlet is failing with path too long error (260 characters limit). 
