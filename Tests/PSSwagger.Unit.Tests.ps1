@@ -239,5 +239,19 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
                 Get-HeaderContent -SwaggerDict @{Info = @{Header = $ValidHeaderFilePath}} | Should BeExactly $HeaderFileContent
             }
         }
+        
+        Context "Get-CSharpModelName Unit Tests" {
+            It "Get-CSharpModelNamee should remove special characters" {
+                Get-CSharpModelName -Name @"
+                    SomeTypeWithSpecialCharacters ~!@#$%^&*()_+|}{:"<>?,./;'][\=-``
+"@  | Should BeExactly 'SomeTypeWithSpecialCharacters'
+            }
+            It "Get-CSharpModelNamee should replace [] with Sequence" {
+                Get-CSharpModelName -Name 'foo[]'  | Should BeExactly 'FooSequence'
+            }
+            It "Get-CSharpModelNamee should append 'Model' for C# reserved words" {
+                Get-CSharpModelName -Name 'break'  | Should BeExactly 'BreakModel'
+            }
+        }
     }
 }

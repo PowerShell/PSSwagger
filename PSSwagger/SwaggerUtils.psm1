@@ -42,6 +42,26 @@ if(-not (Get-OperatingSystemInfo).IsCore)
 
 $script:IgnoredAutoRestParameters = @(@('Modeler', 'm'), @('AddCredentials'), @('CodeGenerator', 'g'))
 $script:PSSwaggerDefaultNamespace = "Microsoft.PowerShell"
+$script:CSharpReservedWords = @(
+    'abstract', 'as', 'async', 'await', 'base',
+    'bool', 'break', 'byte', 'case', 'catch',
+    'char', 'checked', 'class', 'const', 'continue',
+    'decimal', 'default', 'delegate', 'do', 'double',
+    'dynamic', 'else', 'enum', 'event', 'explicit',
+    'extern', 'false', 'finally', 'fixed', 'float',
+    'for', 'foreach', 'from', 'global', 'goto',
+    'if', 'implicit', 'in', 'int', 'interface',
+    'internal', 'is', 'lock', 'long', 'namespace',
+    'new', 'null', 'object', 'operator', 'out',
+    'override', 'params', 'private', 'protected', 'public',
+    'readonly', 'ref', 'return', 'sbyte', 'sealed',
+    'short', 'sizeof', 'stackalloc', 'static', 'string',
+    'struct', 'switch', 'this', 'throw', 'true',
+    'try', 'typeof', 'uint', 'ulong', 'unchecked',
+    'unsafe', 'ushort', 'using', 'virtual', 'void',
+    'volatile', 'while', 'yield', 'var'
+)
+
 
 function ConvertTo-SwaggerDictionary {
     [CmdletBinding()]
@@ -1641,42 +1661,6 @@ function Get-Response
     
     return $responseBody, $outputType
 }
-
-<#
-
-    Get-ToolsPath
-
-#>
-function Get-ToolsPath {
-        [string]$AutoRestToolsPath = $null
-
-        # Note: DLLs are automatically downloaded and extracted into the folder 
-        # "$env:USERPROFILE/.autorest/plugins/autorest/$VERSION" if they do not 
-        # exist for newer versions of autorest.
-        [string]$basePath = Join-Path -Path $env:USERPROFILE -ChildPath ".autorest" | Join-Path -ChildPath "plugins" | Join-Path -ChildPath "autorest"
-
-        
-        if(Test-Path $basePath) { # Try to load newer version of autorest
-            $versions = @(Get-ChildItem -Directory $basePath | ForEach-Object {[System.Version]$_.Name} | Sort-Object -Descending)
-            
-            if($versions.Length -ne 0) {
-                [string]$version = $versions[0] # Get newest
-                $AutoRestToolsPath = Join-Path -Path $basePath -ChildPath $version
-            }
-        } else { # Fallback to old version of autorest
-            $AutoRestToolsPath = Get-Command -Name 'AutoRest.exe' | 
-                Select-Object -First 1 -ErrorAction Ignore | 
-                    ForEach-Object {Split-Path -LiteralPath $_.Source}
-        }
-
-        if (-not ($AutoRestToolsPath))
-        {
-            throw $LocalizedData.AutoRestNotInPath
-        }
-
-        return $AutoRestToolsPath
-}
-
 function Get-CSharpModelName
 {
     param(
@@ -1685,34 +1669,17 @@ function Get-CSharpModelName
         $Name
     )
 
-    if (-not $script:CSharpCodeNamerLoadAttempted) {
-        $script:CSharpCodeNamerLoadAttempted = $true
-        $script:CSharpCodeNamer = New-ObjectFromDependency -TypeNames @('AutoRest.CSharp.CodeNamerCs', 'AutoRest.CSharp.CSharpCodeNamer') -AssemblyName 'AutoRest.CSharp.dll' -AssemblyResolver {
-            param(
-                [string]
-                $AssemblyName
-            )
-   
-            [string]$AutoRestToolsPath = Get-ToolsPath
+    # Below logic is as per AutoRest
+    $Name = $Name -replace '[[]]','Sequence'
+    # Remove special characters
+    $Name = $Name -replace '[^a-zA-Z0-9_-]',''
 
-            $AssemblyFilePath = Join-Path -Path $AutoRestToolsPath -ChildPath $AssemblyName
-            if(-not $AssemblyFilePath -or -not (Test-Path -LiteralPath $AssemblyFilePath -PathType Leaf))
-            {
-                throw ($LocalizedData.PathNotFound -f $AssemblyFilePath)
-            }
-
-            Add-Type -LiteralPath $AssemblyFilePath
-        }
+    # AutoRest appends 'Model' to the definition name when it is a C# reserved word.
+    if($script:CSharpReservedWords -contains $Name) {        
+        $Name += 'Model'
     }
 
-    if($script:CSharpCodeNamer)
-    {
-        return $script:CSharpCodeNamer.GetTypeName($Name)
-    }
-    else
-    {
-        return $Name.Replace('[','').Replace(']','')
-    }
+    return Get-PascalCasedString -Name $Name
 }
 
 <# Create an object from an external dependency with possible type name changes. Optionally resolve the external dependency using a delegate.
