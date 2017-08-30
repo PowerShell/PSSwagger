@@ -35,7 +35,7 @@ namespace PSSwagger.LTF.Lib.Logging
         /// Log a single message to output pipe.
         /// </summary>
         /// <param name="message">Message to log.</param>
-        public void Log(string message)
+        public virtual void Log(string message)
         {
             if (this.stdout != null)
             {
@@ -48,7 +48,7 @@ namespace PSSwagger.LTF.Lib.Logging
         /// </summary>
         /// <param name="message">Message with format parameters.</param>
         /// <param name="objs">Objects to serialize.</param>
-        public async Task LogAsync(string message, params object[] objs)
+        public virtual async Task LogAsync(string message, params object[] objs)
         {
             string[] objSerialized = new string[objs.Length];
             for (int i = 0; i < objs.Length; i++)
@@ -74,7 +74,7 @@ namespace PSSwagger.LTF.Lib.Logging
         /// Log a single message to error pipe.
         /// </summary>
         /// <param name="message"></param>
-        public void LogError(string message)
+        public virtual void LogError(string message)
         {
             if (this.stderr != null)
             {

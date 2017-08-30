@@ -15,15 +15,36 @@ namespace PSSwagger.LTF.ConsoleServer
     using System.Collections.Generic;
     using System.Globalization;
     using System.IO;
+    using System.Reflection;
     using System.Threading;
 
     class Program
     {
         static void Main(string[] args)
         {
-            ServerArgs serverArgs = new ServerArgs().Parse("config.json").Parse(args).Validate();
-            NamedPipeServer namedPipe = new NamedPipeServer(serverArgs.LogPipeName);
-            Logger logger = new Logger(namedPipe, namedPipe);
+            ServerArgs serverArgs = new ServerArgs().Parse(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "config.json")).Parse(args).Validate();
+            
+            EventLogOutputPipe eventLogOutputPipe = new EventLogOutputPipe();
+            CompositeLogger logger = new CompositeLogger();
+            if (serverArgs.EnableEventLog)
+            {
+                logger.AddLogger(new Logger(eventLogOutputPipe, eventLogOutputPipe));
+            }
+
+            if (serverArgs.EnablePipeLog)
+            {
+                try
+                {
+                    NamedPipeServer namedPipe = new NamedPipeServer(serverArgs.LogPipeName);
+                    Logger namedPipeLogger = new Logger(namedPipe, namedPipe);
+                    logger.AddLogger(namedPipeLogger);
+                }
+                catch (Exception e)
+                {
+                    logger.LogError("Failed to initialize named pipe logger: " + e.Message);
+                }
+            }
+            
             if (serverArgs.Errors.Count > 0)
             {
                 logger.LogError("Server arguments had errors.");
@@ -86,6 +107,8 @@ namespace PSSwagger.LTF.ConsoleServer
         public string ModulePath { get; set; }
         public string LogPipeName { get; set; }
         public List<string> Errors { get; set; }
+        public bool EnablePipeLog { get; set; }
+        public bool EnableEventLog { get; set; }
 
         public ServerArgs()
         {
@@ -93,6 +116,8 @@ namespace PSSwagger.LTF.ConsoleServer
             this.SpecificationPaths = new List<string>();
             this.ExternalModules = new List<string>();
             this.LogPipeName = "psswagger-ltf-consoleserver";
+            this.EnablePipeLog = true;
+            this.EnableEventLog = false;
         }
 
         public ServerArgs Parse(string[] args)
@@ -150,6 +175,17 @@ namespace PSSwagger.LTF.ConsoleServer
                 else
                 {
                     lastArg = arg.Substring(1);
+                    switch (lastArg.ToLowerInvariant())
+                    {
+                        case "enablepipelog":
+                            lastArg = String.Empty;
+                            this.EnablePipeLog = true;
+                            break;
+                        case "enableeventlog":
+                            lastArg = String.Empty;
+                            this.EnableEventLog = true;
+                            break;
+                    }
                 }
             }
 
