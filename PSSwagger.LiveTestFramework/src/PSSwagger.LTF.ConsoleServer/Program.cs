@@ -158,16 +158,31 @@ namespace PSSwagger.LTF.ConsoleServer
 
         public ServerArgs Parse(string jsonFilePath)
         {
-            ServerArgs ret;
             if (File.Exists(jsonFilePath))
             {
-                ret = JsonConvert.DeserializeObject<ServerArgs>(File.ReadAllText(jsonFilePath));
-            } else
-            {
-                ret = new ServerArgs();
+                ServerArgs fromFile = JsonConvert.DeserializeObject<ServerArgs>(File.ReadAllText(jsonFilePath));
+                if (!String.IsNullOrWhiteSpace(fromFile.ModulePath))
+                {
+                    this.ModulePath = fromFile.ModulePath;
+                }
+
+                if (!String.IsNullOrWhiteSpace(fromFile.LogPipeName))
+                {
+                    this.LogPipeName = fromFile.LogPipeName;
+                }
+
+                if (fromFile.ExternalModules != null && fromFile.ExternalModules.Count > 0)
+                {
+                    this.ExternalModules = fromFile.ExternalModules;
+                }
+
+                if (fromFile.SpecificationPaths != null && fromFile.SpecificationPaths.Count > 0)
+                {
+                    this.SpecificationPaths = fromFile.SpecificationPaths;
+                }
             }
 
-            return ret;
+            return this;
         }
 
         public ServerArgs Validate()
