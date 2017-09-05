@@ -35,11 +35,17 @@ namespace PSSwagger.LTF.Lib.Logging
         /// Log a single message to output pipe.
         /// </summary>
         /// <param name="message">Message to log.</param>
-        public virtual void Log(string message)
+        public virtual void Log(string message, params object[] args)
         {
             if (this.stdout != null)
             {
-                this.stdout.WriteLine(FormatMessage(message, "info"));
+                string msg = message;
+                if (args != null && args.Length > 0)
+                {
+                    msg = String.Format(message, args);
+                }
+
+                this.stdout.WriteLine(FormatMessage(msg, "info"));
             }
         }
 

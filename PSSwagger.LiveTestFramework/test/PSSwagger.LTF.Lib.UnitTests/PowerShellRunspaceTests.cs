@@ -77,9 +77,12 @@ namespace PSSwagger.LTF.Lib.UnitTests
                             Type = new RuntimeTypeData(typeof(string))
                         }
                     }
+                },
+                ResponseType = new ResponseTypeData()
+                {
+                    ModuleData = new RuntimeTypeData(typeof(string))
                 }
             });
-            AssertModuleContainsOperation(result, new OperationData("Guitar_Get", "Get-Guitar"));
         }
 
         /// <summary>
@@ -203,19 +206,30 @@ namespace PSSwagger.LTF.Lib.UnitTests
             PipelineVariable */
             Assert.True(result.Operations.ContainsKey(expectedOperation.OperationId.ToLowerInvariant()));
             Assert.Equal(expectedOperation.Parameters.Count, result.Operations[expectedOperation.OperationId.ToLowerInvariant()].Parameters.Count-11);
-
+            OperationData actualOperation = result.Operations[expectedOperation.OperationId.ToLowerInvariant()];
             foreach (string parmName in expectedOperation.Parameters.Keys)
             {
-                Assert.True(result.Operations[expectedOperation.OperationId.ToLowerInvariant()].Parameters.ContainsKey(parmName), parmName);
-                Assert.NotNull(result.Operations[expectedOperation.OperationId.ToLowerInvariant()].Parameters[parmName].Type);
-                Assert.Equal(expectedOperation.Parameters[parmName].Type.Type, result.Operations[expectedOperation.OperationId.ToLowerInvariant()].Parameters[parmName].Type.Type);
-                Assert.Equal(expectedOperation.Parameters[parmName].Type.Properties.Count, result.Operations[expectedOperation.OperationId.ToLowerInvariant()].Parameters[parmName].Type.Properties.Count);
+                Assert.True(actualOperation.Parameters.ContainsKey(parmName), parmName);
+                Assert.NotNull(actualOperation.Parameters[parmName].Type);
+                Assert.Equal(expectedOperation.Parameters[parmName].Type.Type, actualOperation.Parameters[parmName].Type.Type);
+                Assert.Equal(expectedOperation.Parameters[parmName].Type.Properties.Count, actualOperation.Parameters[parmName].Type.Properties.Count);
                 foreach (string propertyName in expectedOperation.Parameters[parmName].Type.Properties.Keys)
                 {
-                    Assert.Equal(expectedOperation.Parameters[parmName].Type.Properties[propertyName].Type, result.Operations[expectedOperation.OperationId.ToLowerInvariant()].Parameters[parmName].Type.Properties[propertyName].Type);
-                    Assert.Equal(expectedOperation.Parameters[parmName].Type.Properties[propertyName].Name, result.Operations[expectedOperation.OperationId.ToLowerInvariant()].Parameters[parmName].Type.Properties[propertyName].Name);
-                    Assert.Equal(expectedOperation.Parameters[parmName].Type.Properties[propertyName].JsonName, result.Operations[expectedOperation.OperationId.ToLowerInvariant()].Parameters[parmName].Type.Properties[propertyName].JsonName);
+                    Assert.Equal(expectedOperation.Parameters[parmName].Type.Properties[propertyName].Type, actualOperation.Parameters[parmName].Type.Properties[propertyName].Type);
+                    Assert.Equal(expectedOperation.Parameters[parmName].Type.Properties[propertyName].Name, actualOperation.Parameters[parmName].Type.Properties[propertyName].Name);
+                    Assert.Equal(expectedOperation.Parameters[parmName].Type.Properties[propertyName].JsonName, actualOperation.Parameters[parmName].Type.Properties[propertyName].JsonName);
                 }
+            }
+
+            if (expectedOperation.ResponseType != null)
+            {
+                Assert.NotNull(actualOperation.ResponseType);
+                Assert.NotNull(actualOperation.ResponseType.ModuleData);
+                Assert.Equal(expectedOperation.ResponseType.ModuleData.Type, actualOperation.ResponseType.ModuleData.Type);
+            }
+            else
+            {
+                Assert.Null(actualOperation.ResponseType);
             }
         }
     }

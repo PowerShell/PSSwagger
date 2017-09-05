@@ -78,7 +78,7 @@ namespace PSSwagger.LTF.Lib.UnitTests
             JsonPathFinder finder = new JsonPathFinder(json);
             JsonPathFinder childFinder = finder.Find("..sub").SingleOrDefault();
             Assert.NotNull(childFinder);
-            Assert.Equal("test", childFinder.Key);
+            Assert.Equal("sub", childFinder.Key);
         }
 
         [Fact]
@@ -88,7 +88,7 @@ namespace PSSwagger.LTF.Lib.UnitTests
             JsonPathFinder finder = new JsonPathFinder(json);
             JsonPathFinder childFinder = finder.Find("..sub").SingleOrDefault();
             Assert.NotNull(childFinder);
-            Assert.Equal("test", childFinder.Key);
+            Assert.Equal("sub", childFinder.Key);
         }
 
         [Fact]
@@ -98,7 +98,7 @@ namespace PSSwagger.LTF.Lib.UnitTests
             JsonPathFinder finder = new JsonPathFinder(json);
             JsonPathFinder childFinder = finder.Find("..sub").SingleOrDefault();
             Assert.NotNull(childFinder);
-            Assert.Equal("test", childFinder.Key);
+            Assert.Equal("sub", childFinder.Key);
         }
     }
 }

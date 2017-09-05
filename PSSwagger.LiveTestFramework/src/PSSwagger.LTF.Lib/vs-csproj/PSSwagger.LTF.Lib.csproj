@@ -91,6 +91,9 @@
     <Compile Include="..\Json\*.cs">
       <Link>Json\%(FileName).cs</Link>
     </Compile>
+    <Compile Include="..\PostProcessors\*.cs">
+      <Link>PostProcessors\%(FileName).cs</Link>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />

@@ -75,7 +75,8 @@ namespace PSSwagger.LTF.Lib.PowerShell
                     requiredModuleInfo.ModulePath = requiredModule.Name;
                     module.RequiredModules.Add(requiredModuleInfo);
                 }
-            } else
+            }
+            else
             {
                 // Otherwise assume the input is a module name instead of a path and attempt a direct load
                 moduleName = modulePath;
@@ -106,10 +107,18 @@ namespace PSSwagger.LTF.Lib.PowerShell
             foreach (string entry in moduleInfo.ExportedFunctions.Keys)
             {
                 FunctionInfo commandInfo = moduleInfo.ExportedFunctions[entry] as FunctionInfo;
+                PSTypeName outputTypeName = null;
+                if (commandInfo.OutputType != null && commandInfo.OutputType.Count > 0)
+                {
+                    // For now PSSwagger only takes the first response
+                    outputTypeName = commandInfo.OutputType.First();
+                }
+
                 if (this.logger != null)
                 {
                     this.logger.LogAsync("Parsing command: " + entry);
                 }
+
                 if (commandInfo != null)
                 {
                     foreach (CommandParameterSetInfo parameterSet in commandInfo.ParameterSets)
@@ -125,6 +134,14 @@ namespace PSSwagger.LTF.Lib.PowerShell
                             parameterData.Name = commandParameterInfo.Name.ToLowerInvariant();
                             parameterData.Type = new RuntimeTypeData(commandParameterInfo.ParameterType);
                             operationData.Parameters.Add(parameterData.Name.ToLowerInvariant(), parameterData);
+                        }
+
+                        if (outputTypeName != null)
+                        {
+                            operationData.ResponseType = new ResponseTypeData()
+                            {
+                                ModuleData = new RuntimeTypeData(outputTypeName.Type)
+                            };
                         }
 
                         module.Operations[operationData.OperationId.ToLowerInvariant()] = operationData;
@@ -154,7 +171,8 @@ namespace PSSwagger.LTF.Lib.PowerShell
                         if (fieldInfo != null && !(bool)fieldInfo.GetValue(psObj))
                         {
                             return psObj.ImmediateBaseObject;
-                        } else
+                        }
+                        else
                         {
                             return psObj;
                         }
@@ -164,7 +182,8 @@ namespace PSSwagger.LTF.Lib.PowerShell
                     {
                         errors = pipeline.Error.ReadToEnd().AsEnumerable<object>();
                     }
-                } catch (Exception e)
+                }
+                catch (Exception e)
                 {
                     if (this.logger != null)
                     {

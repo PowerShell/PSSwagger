@@ -89,7 +89,24 @@ namespace PSSwagger.LTF.Lib.Converters
                     if ((val != null) || serializer.NullValueHandling == NullValueHandling.Include)
                     {
                         string propertyName = pi.Name.ToLowerInvariant();
-                        if (this.typeData.Properties.ContainsKey(propertyName) && !String.IsNullOrEmpty(this.typeData.Properties[propertyName].JsonName))
+                        if (this.typeData.Properties.ContainsKey(propertyName) && !String.IsNullOrEmpty(this.typeData.Properties[propertyName].SubNodeName))
+                        {
+                            // AutoRest's TransformationJsonConverter expects these properties to be inside a "properties" object
+                            ParameterData subObjectPropertyInfo = this.typeData.Properties[propertyName];
+                            propertyName = this.typeData.Properties[propertyName].SubNodeName; // This is "properties"
+                            Dictionary<string, object> subObjectNode;
+                            if (dict.ContainsKey(propertyName))
+                            {
+                                subObjectNode = (Dictionary<string, object>)dict[propertyName];
+                            } else
+                            {
+                                subObjectNode = new Dictionary<string, object>();
+                            }
+
+                            subObjectNode[subObjectPropertyInfo.RawJsonName] = val;
+                            val = subObjectNode;
+                        }
+                        else if (this.typeData.Properties.ContainsKey(propertyName) && !String.IsNullOrEmpty(this.typeData.Properties[propertyName].JsonName))
                         {
                             propertyName = this.typeData.Properties[propertyName].JsonName;
                         }

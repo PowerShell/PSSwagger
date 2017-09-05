@@ -17,6 +17,7 @@ function New-Guitar
 function Get-Guitar
 {
     [CmdletBinding(DefaultParameterSetName='Guitar_Get')]
+	[OutputType([System.String])]
     param(    
         [Parameter(Mandatory = $true, ParameterSetName = 'Guitar_GetById')]
         [System.String]

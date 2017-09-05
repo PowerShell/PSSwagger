@@ -34,11 +34,11 @@ namespace PSSwagger.LTF.Lib.Logging
         /// Log a single message to output pipe.
         /// </summary>
         /// <param name="message">Message to log.</param>
-        public override void Log(string message)
+        public override void Log(string message, params object[] args)
         {
             foreach (Logger logger in this.InternalLoggers)
             {
-                logger.Log(message);
+                logger.Log(message, args);
             }
         }
 

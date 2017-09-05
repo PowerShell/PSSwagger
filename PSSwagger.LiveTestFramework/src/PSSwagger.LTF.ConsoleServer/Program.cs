@@ -95,7 +95,7 @@ namespace PSSwagger.LTF.ConsoleServer
             // Wait until server exits (usually means the server ran into an internal error)
             while (server.IsRunning)
             {
-                Thread.Sleep(1);
+                Thread.Sleep(2);
             }
         }
     }

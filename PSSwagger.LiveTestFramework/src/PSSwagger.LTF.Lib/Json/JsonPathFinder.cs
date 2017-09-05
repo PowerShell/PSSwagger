@@ -7,6 +7,7 @@ namespace PSSwagger.LTF.Lib.Json
     using Newtonsoft.Json.Linq;
     using System;
     using System.Collections.Generic;
+    using System.Linq;
 
     /// <summary>
     /// Provides parsing for a JSON file.
@@ -14,7 +15,23 @@ namespace PSSwagger.LTF.Lib.Json
     public class JsonPathFinder
     {
         private JToken root;
+        private string rootPath = null;
 
+        public virtual string Path
+        {
+            get
+            {
+                if (String.IsNullOrEmpty(this.rootPath))
+                {
+                    System.Text.StringBuilder sb = new System.Text.StringBuilder();
+                    sb.Append("#/");
+                    sb.Append(this.root.Path.Replace(".", "/").ToLowerInvariant());
+                    this.rootPath = sb.ToString();
+                }
+
+                return this.rootPath;
+            }
+        }
         public virtual JsonPathFinder Parent
         {
             get
@@ -35,7 +52,7 @@ namespace PSSwagger.LTF.Lib.Json
                 string[] dotSplit = this.root.Path.Split(new char[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
                 if (dotSplit.Length > 1)
                 {
-                    return dotSplit[dotSplit.Length - 2];
+                    return dotSplit[dotSplit.Length - 1];
                 }
 
                 return null;
@@ -72,6 +89,11 @@ namespace PSSwagger.LTF.Lib.Json
             this.root = jToken;
         }
 
+        public virtual JsonPathFinder OpenContainer()
+        {
+            return this.Children().Single();
+        }
+
         public virtual IEnumerable<JsonPathFinder> Find(JsonQueryBuilder queryBuilder)
         {
             return Find(queryBuilder.ToQuery());
@@ -80,6 +102,14 @@ namespace PSSwagger.LTF.Lib.Json
         public virtual IEnumerable<JsonPathFinder> Find(string jsonQuery)
         {
             foreach (JToken token in this.root.SelectTokens(jsonQuery))
+            {
+                yield return new JsonPathFinder(token);
+            }
+        }
+
+        public virtual IEnumerable<JsonPathFinder> Children()
+        {
+            foreach (JToken token in this.root.Children())
             {
                 yield return new JsonPathFinder(token);
             }

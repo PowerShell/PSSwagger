@@ -268,7 +268,7 @@ namespace PSSwagger.LTF.Lib.UnitTests
             Dictionary<string, object> headers = (Dictionary<string, object>)response.Error.Data.Headers;
             Assert.Equal(1, headers.Count);
             Assert.True(headers.ContainsKey("x-ms-header"));
-            Assert.Equal("value", headers["x-ms-header"]);
+            Assert.Equal(new string[] { "value" }, headers["x-ms-header"]);
 
             Assert.Equal((long)System.Net.HttpStatusCode.BadGateway, response.Error.Data.StatusCode);
         }
@@ -294,7 +294,7 @@ namespace PSSwagger.LTF.Lib.UnitTests
             Dictionary<string, object> headers = (Dictionary<string, object>)response.Result.Headers;
             Assert.Equal(1, headers.Count);
             Assert.True(headers.ContainsKey("x-ms-header"));
-            Assert.Equal("value", headers["x-ms-header"]);
+            Assert.Equal(new string[] { "value" }, headers["x-ms-header"]);
 
             Assert.Equal((long)System.Net.HttpStatusCode.Accepted, response.Result.StatusCode);
         }
