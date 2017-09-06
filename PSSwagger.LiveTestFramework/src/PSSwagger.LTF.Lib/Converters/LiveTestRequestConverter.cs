@@ -191,7 +191,7 @@ namespace PSSwagger.LTF.Lib.Converters
 
         private void Log(string msg, params object[] args)
         {
-            if (this.module.Logger != null)
+            if (this.module.Logger != null && !String.IsNullOrEmpty(msg))
             {
                 this.module.Logger.Log(msg, args);
             }

@@ -26,6 +26,11 @@ namespace PSSwagger.LTF.Lib.Logging
 
         public CompositeLogger AddLogger(Logger logger)
         {
+            if (logger == null)
+            {
+                throw new ArgumentNullException("logger");
+            }
+
             this.InternalLoggers.Add(logger);
             return this;
         }
@@ -36,6 +41,11 @@ namespace PSSwagger.LTF.Lib.Logging
         /// <param name="message">Message to log.</param>
         public override void Log(string message, params object[] args)
         {
+            if (String.IsNullOrEmpty(message))
+            {
+                return;
+            }
+
             foreach (Logger logger in this.InternalLoggers)
             {
                 logger.Log(message, args);
@@ -49,6 +59,11 @@ namespace PSSwagger.LTF.Lib.Logging
         /// <param name="objs">Objects to serialize.</param>
         public override async Task LogAsync(string message, params object[] objs)
         {
+            if (String.IsNullOrEmpty(message))
+            {
+                return;
+            }
+
             foreach (Logger logger in this.InternalLoggers)
             {
                 logger.LogAsync(message);
@@ -61,6 +76,11 @@ namespace PSSwagger.LTF.Lib.Logging
         /// <param name="message"></param>
         public void LogError(string message)
         {
+            if (String.IsNullOrEmpty(message))
+            {
+                return;
+            }
+
             foreach (Logger logger in this.InternalLoggers)
             {
                 logger.LogError(message);
