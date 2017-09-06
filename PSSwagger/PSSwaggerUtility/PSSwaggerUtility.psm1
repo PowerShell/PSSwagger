@@ -806,7 +806,6 @@ function Get-CscParameters {
     $CscParameter = @(
         $SourceCodeFilePath
         '/nologo',
-        '/langversion:latest',
         '/checked',
         '/warn:3',
         '/debug:full',
