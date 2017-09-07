@@ -61,7 +61,15 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwa
 .PARAMETER  Header
     Text to include as a header comment in the PSSwagger generated files.
     It also can be a path to a .txt file with the content to be added as header in the PSSwagger generated files.
-    Specify 'NONE' to suppress the default header.
+
+    Supported predefined license header values:
+    - NONE: Suppresses the default header.
+    - MICROSOFT_MIT: Adds predefined Microsoft MIT license text with default PSSwagger code generation header content.
+    - MICROSOFT_MIT_NO_VERSION: Adds predefined Microsoft MIT license text with default PSSwagger code generation header content without version.
+    - MICROSOFT_MIT_NO_CODEGEN: Adds predefined Microsoft MIT license text without default PSSwagger code generation header content.
+    - MICROSOFT_APACHE: Adds predefined Microsoft Apache license text with default PSSwagger code generation header content.
+    - MICROSOFT_APACHE_NO_VERSION: Adds predefined Microsoft Apache license text with default PSSwagger code generation header content without version.
+    - MICROSOFT_APACHE_NO_CODEGEN: Adds predefined Microsoft Apache license text without default PSSwagger code generation header content.
 
 .PARAMETER  NoAssembly
     Switch to disable saving the precompiled module assembly and instead enable dynamic compilation.
@@ -931,6 +939,30 @@ function Get-HeaderContent {
     $Header = $swaggerDict['Info'].Header
     $HeaderContent = ($DefaultGeneratedFileHeader -f $MyInvocation.MyCommand.Module.Version)
     if ($Header) {
+        switch ($Header) {
+            'MICROSOFT_MIT' {
+                return $MicrosoftMitLicenseHeader + [Environment]::NewLine + [Environment]::NewLine + $HeaderContent
+            }
+            'MICROSOFT_MIT_NO_VERSION' {
+                return $MicrosoftMitLicenseHeader + [Environment]::NewLine + [Environment]::NewLine + $DefaultGeneratedFileHeaderWithoutVersion
+            }
+            'MICROSOFT_MIT_NO_CODEGEN' {
+                return $MicrosoftMitLicenseHeader
+            }
+            'MICROSOFT_APACHE' {
+                return $MicrosoftApacheLicenseHeader + [Environment]::NewLine + [Environment]::NewLine + $HeaderContent
+            }
+            'MICROSOFT_APACHE_NO_VERSION' {
+                return $MicrosoftApacheLicenseHeader + [Environment]::NewLine + [Environment]::NewLine + $DefaultGeneratedFileHeaderWithoutVersion
+            }
+            'MICROSOFT_APACHE_NO_CODEGEN' {
+                return $MicrosoftApacheLicenseHeader
+            }
+            'NONE' {
+                return ''
+            }
+        }
+        
         $HeaderFilePath = Resolve-Path -Path $Header -ErrorAction Ignore
         if ($HeaderFilePath) {
             # Selecting the first path when multiple paths are returned by Resolve-Path cmdlet.
@@ -957,9 +989,6 @@ function Get-HeaderContent {
             $message = ($LocalizedData.PathNotFound -f $Header)
             Write-Error -Message $message -ErrorId 'HeaderFilePathNotFound' -Category InvalidArgument
             return
-        }
-        elseif ($Header -eq 'NONE') {
-            $HeaderContent = $null
         }
         else {
             $HeaderContent = $Header

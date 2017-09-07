@@ -142,7 +142,15 @@ Accept wildcard characters: False
 ### -Header
 Text to include as a header comment in the PSSwagger generated files.
 It also can be a path to a .txt file with the content to be added as header in the PSSwagger generated files.
-Specify 'NONE' to suppress the default header.
+
+Supported predefined license header values:
+- NONE: Suppresses the default header.
+- MICROSOFT_MIT: Adds predefined Microsoft MIT license text with default PSSwagger code generation header content.
+- MICROSOFT_MIT_NO_VERSION: Adds predefined Microsoft MIT license text with default PSSwagger code generation header content without version.
+- MICROSOFT_MIT_NO_CODEGEN: Adds predefined Microsoft MIT license text without default PSSwagger code generation header content.
+- MICROSOFT_APACHE: Adds predefined Microsoft Apache license text with default PSSwagger code generation header content.
+- MICROSOFT_APACHE_NO_VERSION: Adds predefined Microsoft Apache license text with default PSSwagger code generation header content without version.
+- MICROSOFT_APACHE_NO_CODEGEN: Adds predefined Microsoft Apache license text without default PSSwagger code generation header content.
 
 ```yaml
 Type: String[]
