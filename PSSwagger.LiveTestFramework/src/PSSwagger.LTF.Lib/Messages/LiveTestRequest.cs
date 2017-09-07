@@ -92,14 +92,8 @@ namespace PSSwagger.LTF.Lib.Messages
                     foreach (KeyValuePair<string, IEnumerable<string>> header in responseMessage.Headers)
                     {
                         string[] headerValues = header.Value.ToArray();
-                        if (headerValues.Length == 1)
-                        {
-                            headersDictionary[header.Key] = headerValues[0];
-                        }
-                        else if (headerValues.Length > 1)
-                        {
-                            headersDictionary[header.Key] = headerValues;
-                        }
+                        // Microsoft.Rest.ClientRuntime.Test expects all headers as arrays
+                        headersDictionary[header.Key] = headerValues;
                     }
 
                     result.Headers = headersDictionary;

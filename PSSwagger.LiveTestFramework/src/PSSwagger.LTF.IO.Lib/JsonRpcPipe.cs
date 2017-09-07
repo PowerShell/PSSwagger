@@ -76,7 +76,7 @@ namespace PSSwagger.LTF.Lib.IO
                     bytes[i] = await this.characterReader.ReadByte();
                 }
 
-                string jsonString = Encoding.ASCII.GetString(bytes);
+                string jsonString = Encoding.UTF8.GetString(bytes);
 
                 if (jsonString.StartsWith("["))
                 {

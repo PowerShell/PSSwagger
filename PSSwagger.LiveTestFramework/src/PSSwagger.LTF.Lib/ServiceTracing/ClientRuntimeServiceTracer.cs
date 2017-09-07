@@ -48,7 +48,9 @@ namespace PSSwagger.LTF.Lib.ServiceTracing
 
         public void ReceiveResponse(string invocationId, HttpResponseMessage response)
         {
-            if (this.invocationId.Equals(invocationId))
+            // InvocationId check is currently disabled due to the multi-request nature of some AutoRest functions
+            // This means that, for now, tracing is not thread safe
+            //if (this.invocationId.Equals(invocationId))
             {
                 if (this.logger != null)
                 {
@@ -61,7 +63,9 @@ namespace PSSwagger.LTF.Lib.ServiceTracing
 
         public void SendRequest(string invocationId, HttpRequestMessage request)
         {
-            if (this.invocationId.Equals(invocationId))
+            // InvocationId check is currently disabled due to the multi-request nature of some AutoRest functions
+            // This means that, for now, tracing is not thread safe
+            //if (this.invocationId.Equals(invocationId))
             {
                 if (this.logger != null)
                 {

@@ -99,27 +99,6 @@ namespace PSSwagger.LTF.Lib
             // Retrieve all module information using the current runspace manager
             this.currentModule = this.parameters.RunspaceManager.GetModuleInfo(this.parameters.ModulePath);
             this.currentModule.Logger = this.parameters.Logger;
-            
-            // For JSON-RPC pipe input/output, add Newtonsoft.Json converters
-            if (this.Input is JsonRpcPipe)
-            {
-                JsonRpcPipe jsonRpcPipe = (JsonRpcPipe)this.Input;
-                new LiveTestRequestConverter(this.currentModule).RegisterSelf(jsonRpcPipe.JsonSerializerSettings);
-                if (this.parameters.Logger != null)
-                {
-                    this.parameters.Logger.JsonSerializerSettings = jsonRpcPipe.JsonSerializerSettings;
-                }
-            }
-
-            if (this.Output is JsonRpcPipe)
-            {
-                JsonRpcPipe jsonRpcPipe = (JsonRpcPipe)this.Output;
-                new LiveTestRequestConverter(this.currentModule).RegisterSelf(jsonRpcPipe.JsonSerializerSettings);
-                if (this.parameters.Logger != null)
-                {
-                    this.parameters.Logger.JsonSerializerSettings = jsonRpcPipe.JsonSerializerSettings;
-                }
-            }
 
             // Parse specifications/metadata files for extra information, e.g. parameter renaming
             if (this.parameters.SpecificationPaths != null)
@@ -130,12 +109,41 @@ namespace PSSwagger.LTF.Lib
                     {
                         this.parameters.Logger.LogAsync("Loading specification file: " + specificationPath);
                     }
-                        Json.JsonPathFinder jsonFinder = new Json.JsonPathFinder(File.ReadAllText(specificationPath));
-                        if (this.parameters.Logger != null)
-                        {
-                            this.parameters.Logger.LogAsync("Parsing specification file: " + specificationPath);
-                        }
-                        this.currentModule.LoadMetadataFromSpecification(jsonFinder);
+                    Json.JsonPathFinder jsonFinder = new Json.JsonPathFinder(File.ReadAllText(specificationPath));
+                    if (this.parameters.Logger != null)
+                    {
+                        this.parameters.Logger.LogAsync("Parsing specification file: " + specificationPath);
+                    }
+                    this.currentModule.LoadMetadataFromSpecification(jsonFinder);
+                }
+            }
+
+            this.currentModule.CompleteMetadataLoad();
+
+            // For JSON-RPC pipe input/output, add Newtonsoft.Json converters
+            Newtonsoft.Json.JsonSerializerSettings inputSerializerSettings = null;
+            if (this.Input is JsonRpcPipe)
+            {
+                JsonRpcPipe jsonRpcPipe = (JsonRpcPipe)this.Input;
+                inputSerializerSettings = jsonRpcPipe.JsonSerializerSettings;
+                new LiveTestRequestConverter(this.currentModule).RegisterSelf(jsonRpcPipe.JsonSerializerSettings);
+                if (this.parameters.Logger != null)
+                {
+                    this.parameters.Logger.JsonSerializerSettings = jsonRpcPipe.JsonSerializerSettings;
+                }
+            }
+
+            if (this.Output is JsonRpcPipe)
+            {
+                JsonRpcPipe jsonRpcPipe = (JsonRpcPipe)this.Output;
+                // Double check this is a different object than the input pipe, if any.
+                if (inputSerializerSettings == null || inputSerializerSettings != jsonRpcPipe.JsonSerializerSettings)
+                {
+                    new LiveTestRequestConverter(this.currentModule).RegisterSelf(jsonRpcPipe.JsonSerializerSettings);
+                    if (this.parameters.Logger != null)
+                    {
+                        this.parameters.Logger.JsonSerializerSettings = jsonRpcPipe.JsonSerializerSettings;
+                    }
                 }
             }
 
@@ -190,7 +198,8 @@ namespace PSSwagger.LTF.Lib
                                     }
 
                                     response = msg.MakeResponse(exRequest, InternalError);
-                                } finally
+                                }
+                                finally
                                 {
                                     if (response != null)
                                     {

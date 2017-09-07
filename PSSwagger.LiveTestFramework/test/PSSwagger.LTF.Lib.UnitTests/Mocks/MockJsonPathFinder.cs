@@ -4,6 +4,7 @@
 namespace PSSwagger.LTF.Lib.UnitTests.Mocks
 {
     using Json;
+    using System;
     using System.Collections.Generic;
 
     /// <summary>
@@ -14,7 +15,9 @@ namespace PSSwagger.LTF.Lib.UnitTests.Mocks
         public JsonPathFinder ParentMock { get; set; }
         public string KeyMock { get; set; }
         public object ValueMock { get; set; }
-        public Dictionary<string, List<JsonPathFinder>> QueryMocks { get; }
+        public string PathMock { get; set; }
+        public Dictionary<string, List<JsonPathFinder>> QueryMocks { get; set; }
+        public IList<JsonPathFinder> ChildrenMocks { get; set; }
         public override JsonPathFinder Parent
         {
             get
@@ -39,17 +42,37 @@ namespace PSSwagger.LTF.Lib.UnitTests.Mocks
         public MockJsonPathFinder()
         {
             this.QueryMocks = new Dictionary<string, List<JsonPathFinder>>();
+            this.ChildrenMocks = new List<JsonPathFinder>();
         }
 
         public MockJsonPathFinder MakeDummyParent(int depth = 1)
         {
             MockJsonPathFinder currentLowestParent = new MockJsonPathFinder() { ParentMock = this };
+            this.ChildrenMocks.Add(currentLowestParent);
             while (--depth > 0)
             {
-                currentLowestParent = new MockJsonPathFinder() { ParentMock = currentLowestParent };
+                MockJsonPathFinder nextLowestParent = new MockJsonPathFinder() { ParentMock = currentLowestParent };
+                currentLowestParent.ChildrenMocks.Add(nextLowestParent);
+                currentLowestParent = nextLowestParent;
             }
 
             return currentLowestParent;
+        }
+
+        public MockJsonPathFinder Container(int depth = 1)
+        {
+            MockJsonPathFinder currentHighestParent = new MockJsonPathFinder();
+            currentHighestParent.ChildrenMocks.Add(this);
+            this.ParentMock = currentHighestParent;
+            while (--depth > 0)
+            {
+                MockJsonPathFinder nextHighestParent = new MockJsonPathFinder();
+                nextHighestParent.ChildrenMocks.Add(this);
+                currentHighestParent.ParentMock = nextHighestParent;
+                currentHighestParent = nextHighestParent;
+            }
+
+            return currentHighestParent;
         }
 
         public override IEnumerable<JsonPathFinder> Find(string jsonQuery)
@@ -59,7 +82,23 @@ namespace PSSwagger.LTF.Lib.UnitTests.Mocks
                 return this.QueryMocks[jsonQuery];
             }
 
-            return null;
+            return new List<JsonPathFinder>();
+        }
+
+        public override IEnumerable<JsonPathFinder> Children()
+        {
+            foreach (JsonPathFinder child in this.ChildrenMocks)
+            {
+                yield return child;
+            }
+        }
+
+        public override string Path
+        {
+            get
+            {
+                return this.PathMock;
+            }
         }
     }
 }

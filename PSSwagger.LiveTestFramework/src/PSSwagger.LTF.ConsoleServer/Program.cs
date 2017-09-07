@@ -10,19 +10,41 @@ namespace PSSwagger.LTF.ConsoleServer
     using Lib.Models;
     using Lib.PowerShell;
     using Lib.ServiceTracing;
+    using Newtonsoft.Json;
     using System;
     using System.Collections.Generic;
     using System.Globalization;
     using System.IO;
+    using System.Reflection;
     using System.Threading;
 
     class Program
     {
         static void Main(string[] args)
         {
-            ServerArgs serverArgs = new ServerArgs(args);
-            NamedPipeServer namedPipe = new NamedPipeServer(serverArgs.LogPipeName);
-            Logger logger = new Logger(namedPipe, namedPipe);
+            ServerArgs serverArgs = new ServerArgs().Parse(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "config.json")).Parse(args).Validate();
+            
+            EventLogOutputPipe eventLogOutputPipe = new EventLogOutputPipe();
+            CompositeLogger logger = new CompositeLogger();
+            if (serverArgs.EnableEventLog)
+            {
+                logger.AddLogger(new Logger(eventLogOutputPipe, eventLogOutputPipe));
+            }
+
+            if (serverArgs.EnablePipeLog)
+            {
+                try
+                {
+                    NamedPipeServer namedPipe = new NamedPipeServer(serverArgs.LogPipeName);
+                    Logger namedPipeLogger = new Logger(namedPipe, namedPipe);
+                    logger.AddLogger(namedPipeLogger);
+                }
+                catch (Exception e)
+                {
+                    logger.LogError("Failed to initialize named pipe logger: " + e.Message);
+                }
+            }
+            
             if (serverArgs.Errors.Count > 0)
             {
                 logger.LogError("Server arguments had errors.");
@@ -73,11 +95,11 @@ namespace PSSwagger.LTF.ConsoleServer
             // Wait until server exits (usually means the server ran into an internal error)
             while (server.IsRunning)
             {
-                Thread.Sleep(1);
+                Thread.Sleep(2);
             }
         }
     }
-
+    
     class ServerArgs
     {
         public List<string> SpecificationPaths { get; set; }
@@ -85,14 +107,24 @@ namespace PSSwagger.LTF.ConsoleServer
         public string ModulePath { get; set; }
         public string LogPipeName { get; set; }
         public List<string> Errors { get; set; }
+        public bool EnablePipeLog { get; set; }
+        public bool EnableEventLog { get; set; }
 
-        public ServerArgs(string[] args)
+        public ServerArgs()
         {
-            this.LogPipeName = "psswagger-ltf-consoleserver";
-            string lastArg = String.Empty;
+            this.Errors = new List<string>();
             this.SpecificationPaths = new List<string>();
             this.ExternalModules = new List<string>();
-            this.Errors = new List<string>();
+            this.LogPipeName = "psswagger-ltf-consoleserver";
+            this.EnablePipeLog = true;
+            this.EnableEventLog = false;
+        }
+
+        public ServerArgs Parse(string[] args)
+        {
+            string lastArg = String.Empty;
+            bool resetSpecificationPaths = false;
+            bool resetExternalModules = false;
             foreach (string arg in args)
             {
                 if (!arg.StartsWith("/"))
@@ -103,15 +135,29 @@ namespace PSSwagger.LTF.ConsoleServer
                             if (!arg.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
                             {
                                 this.Errors.Add("Specification file is not a .json file.");
-                            } else if (!File.Exists(arg))
+                            }
+                            else if (!File.Exists(arg))
                             {
                                 this.Errors.Add(String.Format(CultureInfo.CurrentCulture, "Specification file does not exist: {0}", arg));
-                            } else
+                            }
+                            else
                             {
+                                if (!resetSpecificationPaths)
+                                {
+                                    resetSpecificationPaths = true;
+                                    this.SpecificationPaths.Clear();
+                                }
+
                                 this.SpecificationPaths.Add(arg);
                             }
                             break;
                         case "extmodule":
+                            if (!resetExternalModules)
+                            {
+                                resetExternalModules = true;
+                                this.ExternalModules.Clear();
+                            }
+
                             this.ExternalModules.Add(arg);
                             break;
                         case "testmodule":
@@ -125,16 +171,64 @@ namespace PSSwagger.LTF.ConsoleServer
                             break;
                     }
                     lastArg = String.Empty;
-                } else
+                }
+                else
                 {
                     lastArg = arg.Substring(1);
+                    switch (lastArg.ToLowerInvariant())
+                    {
+                        case "enablepipelog":
+                            lastArg = String.Empty;
+                            this.EnablePipeLog = true;
+                            break;
+                        case "enableeventlog":
+                            lastArg = String.Empty;
+                            this.EnableEventLog = true;
+                            break;
+                    }
                 }
             }
 
+            return this;
+        }
+
+        public ServerArgs Parse(string jsonFilePath)
+        {
+            if (File.Exists(jsonFilePath))
+            {
+                ServerArgs fromFile = JsonConvert.DeserializeObject<ServerArgs>(File.ReadAllText(jsonFilePath));
+                if (!String.IsNullOrWhiteSpace(fromFile.ModulePath))
+                {
+                    this.ModulePath = fromFile.ModulePath;
+                }
+
+                if (!String.IsNullOrWhiteSpace(fromFile.LogPipeName))
+                {
+                    this.LogPipeName = fromFile.LogPipeName;
+                }
+
+                if (fromFile.ExternalModules != null && fromFile.ExternalModules.Count > 0)
+                {
+                    this.ExternalModules = fromFile.ExternalModules;
+                }
+
+                if (fromFile.SpecificationPaths != null && fromFile.SpecificationPaths.Count > 0)
+                {
+                    this.SpecificationPaths = fromFile.SpecificationPaths;
+                }
+            }
+
+            return this;
+        }
+
+        public ServerArgs Validate()
+        {
             if (String.IsNullOrEmpty(this.ModulePath))
             {
                 this.Errors.Add("No test module path specified.");
             }
+
+            return this;
         }
     }
 }

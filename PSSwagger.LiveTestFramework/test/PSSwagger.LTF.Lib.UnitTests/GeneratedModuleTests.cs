@@ -269,28 +269,74 @@ namespace PSSwagger.LTF.Lib.UnitTests
             GeneratedModule expectedModule, testModule;
             GetLoadMetadataFromSpecificationTestData(out expectedModule, out testModule);
 
-            // Root document
-            MockJsonPathFinder rootFinder = new MockJsonPathFinder();
-            // Operation's "operationId" property
-            MockJsonPathFinder operationIdFinder = new MockJsonPathFinder();
-            operationIdFinder.ValueMock = "operationid";
-            // Operation node
-            MockJsonPathFinder operationFinder = new MockJsonPathFinder();
-            operationFinder.QueryMocks["operationId"] = new List<JsonPathFinder>() { operationIdFinder };
-            // Parameter's "name" property
-            MockJsonPathFinder parameterNameFinder = new MockJsonPathFinder();
-            parameterNameFinder.ValueMock = "nameFromSpec";
-            // Parameter node
-            MockJsonPathFinder parameterFinder = new MockJsonPathFinder();
-            parameterFinder.QueryMocks["name"] = new List<JsonPathFinder>() { parameterNameFinder };
-            parameterFinder.ParentMock = operationFinder.MakeDummyParent(2);
-            // Parameter's "x-ms-client-name" property
-            MockJsonPathFinder clientNameFinder = new MockJsonPathFinder();
-            clientNameFinder.ValueMock = "psParameterName";
-            clientNameFinder.ParentMock = parameterFinder.MakeDummyParent();
-
-            // The root will be queried for x-ms-client-name nodes
-            rootFinder.QueryMocks["paths..x-ms-client-name"] = new List<JsonPathFinder>() { clientNameFinder };
+            MockJsonPathFinder rootFinder = new MockJsonPathFinder()
+            {
+                KeyMock = "root",
+                QueryMocks = new Dictionary<string, List<JsonPathFinder>>()
+                {
+                    { "paths", new List<JsonPathFinder>()
+                    {
+                        new MockJsonPathFinder()
+                        {
+                            KeyMock = "paths",
+                            ChildrenMocks = new List<JsonPathFinder>()
+                            {
+                                new MockJsonPathFinder()
+                                {
+                                    KeyMock = "pathItem",
+                                    ChildrenMocks = new List<JsonPathFinder>()
+                                    {
+                                        new MockJsonPathFinder()
+                                        {
+                                            KeyMock = "getOperation",
+                                            QueryMocks = new Dictionary<string, List<JsonPathFinder>>()
+                                            {
+                                                { "operationId", new List<JsonPathFinder>()
+                                                {
+                                                    new MockJsonPathFinder()
+                                                    {
+                                                        ValueMock = "operationid"
+                                                    }
+                                                } },
+                                                { "parameters", new List<JsonPathFinder>()
+                                                {
+                                                    new MockJsonPathFinder()
+                                                    {
+                                                        ChildrenMocks = new List<JsonPathFinder>()
+                                                        {
+                                                            new MockJsonPathFinder()
+                                                            {
+                                                                PathMock = "dummy",
+                                                                QueryMocks = new Dictionary<string, List<JsonPathFinder>>()
+                                                                {
+                                                                    { "name", new List<JsonPathFinder>()
+                                                                    {
+                                                                        new MockJsonPathFinder()
+                                                                        {
+                                                                            ValueMock = "nameFromSpec"
+                                                                        }
+                                                                    } },
+                                                                    { "x-ms-client-name", new List<JsonPathFinder>()
+                                                                    {
+                                                                        new MockJsonPathFinder()
+                                                                        {
+                                                                            ValueMock = "psParameterName"
+                                                                        }
+                                                                    } }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                } }
+                                            }
+                                        }.Container()
+                                    }
+                                }.Container()
+                            }
+                        }
+                    } }
+                }
+            };
 
             testModule.LoadMetadataFromSpecification(rootFinder);
 
@@ -303,28 +349,74 @@ namespace PSSwagger.LTF.Lib.UnitTests
             GeneratedModule expectedModule, testModule;
             GetLoadMetadataFromSpecificationTestData(out expectedModule, out testModule);
 
-            // Root document
-            MockJsonPathFinder rootFinder = new MockJsonPathFinder();
-            // Operation's "operationId" property
-            MockJsonPathFinder operationIdFinder = new MockJsonPathFinder();
-            operationIdFinder.ValueMock = "operationid";
-            // Operation node
-            MockJsonPathFinder operationFinder = new MockJsonPathFinder();
-            operationFinder.QueryMocks["operationId"] = new List<JsonPathFinder>() { operationIdFinder };
-            // Parameter's "name" property
-            MockJsonPathFinder parameterNameFinder = new MockJsonPathFinder();
-            parameterNameFinder.ValueMock = "nameFromSpec";
-            // Parameter node
-            MockJsonPathFinder parameterFinder = new MockJsonPathFinder();
-            parameterFinder.QueryMocks["name"] = new List<JsonPathFinder>() { parameterNameFinder };
-            parameterFinder.ParentMock = operationFinder.MakeDummyParent(2);
-            // Parameter's "x-ms-client-name" property
-            MockJsonPathFinder clientNameFinder = new MockJsonPathFinder();
-            clientNameFinder.ValueMock = "psParameterName";
-            clientNameFinder.ParentMock = parameterFinder.MakeDummyParent();
-
-            // The root will be queried for x-ms-client-name nodes
-            rootFinder.QueryMocks["x-ms-paths..x-ms-client-name"] = new List<JsonPathFinder>() { clientNameFinder };
+            MockJsonPathFinder rootFinder = new MockJsonPathFinder()
+            {
+                KeyMock = "root",
+                QueryMocks = new Dictionary<string, List<JsonPathFinder>>()
+                {
+                    { "x-ms-paths", new List<JsonPathFinder>()
+                    {
+                        new MockJsonPathFinder()
+                        {
+                            KeyMock = "x-ms-paths",
+                            ChildrenMocks = new List<JsonPathFinder>()
+                            {
+                                new MockJsonPathFinder()
+                                {
+                                    KeyMock = "pathItem",
+                                    ChildrenMocks = new List<JsonPathFinder>()
+                                    {
+                                        new MockJsonPathFinder()
+                                        {
+                                            KeyMock = "getOperation",
+                                            QueryMocks = new Dictionary<string, List<JsonPathFinder>>()
+                                            {
+                                                { "operationId", new List<JsonPathFinder>()
+                                                {
+                                                    new MockJsonPathFinder()
+                                                    {
+                                                        ValueMock = "operationid"
+                                                    }
+                                                } },
+                                                { "parameters", new List<JsonPathFinder>()
+                                                {
+                                                    new MockJsonPathFinder()
+                                                    {
+                                                        ChildrenMocks = new List<JsonPathFinder>()
+                                                        {
+                                                            new MockJsonPathFinder()
+                                                            {
+                                                                PathMock = "dummy",
+                                                                QueryMocks = new Dictionary<string, List<JsonPathFinder>>()
+                                                                {
+                                                                    { "name", new List<JsonPathFinder>()
+                                                                    {
+                                                                        new MockJsonPathFinder()
+                                                                        {
+                                                                            ValueMock = "nameFromSpec"
+                                                                        }
+                                                                    } },
+                                                                    { "x-ms-client-name", new List<JsonPathFinder>()
+                                                                    {
+                                                                        new MockJsonPathFinder()
+                                                                        {
+                                                                            ValueMock = "psParameterName"
+                                                                        }
+                                                                    } }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                } }
+                                            }
+                                        }.Container()
+                                    }
+                                }.Container()
+                            }
+                        }
+                    } }
+                }
+            };
 
             testModule.LoadMetadataFromSpecification(rootFinder);
 
@@ -337,36 +429,114 @@ namespace PSSwagger.LTF.Lib.UnitTests
             GeneratedModule expectedModule, testModule;
             GetLoadMetadataFromSpecificationTestData(out expectedModule, out testModule);
 
-            // Root document
-            MockJsonPathFinder rootFinder = new MockJsonPathFinder();
-            // Operation's "operationId" property
-            MockJsonPathFinder operationIdFinder = new MockJsonPathFinder();
-            operationIdFinder.ValueMock = "operationid";
-            // Operation node
-            MockJsonPathFinder operationFinder = new MockJsonPathFinder();
-            operationFinder.QueryMocks["operationId"] = new List<JsonPathFinder>() { operationIdFinder };
-            // Parameter's "schema.$ref" property
-            MockJsonPathFinder schemaRefFinder = new MockJsonPathFinder();
-            schemaRefFinder.ValueMock = "#/definitions/object";
-            // Parameter node
-            MockJsonPathFinder parameterFinder = new MockJsonPathFinder();
-            parameterFinder.QueryMocks["schema.$ref"] = new List<JsonPathFinder>() { schemaRefFinder };
-            parameterFinder.ParentMock = operationFinder.MakeDummyParent(2);
-            // Parameter's "x-ms-client-flatten" property
-            MockJsonPathFinder clientFlattenFinder = new MockJsonPathFinder();
-            clientFlattenFinder.ValueMock = true;
-            clientFlattenFinder.ParentMock = parameterFinder.MakeDummyParent();
-            // DefinitionProperty's "x-ms-client-name" property
-            MockJsonPathFinder clientNameFinder = new MockJsonPathFinder();
-            clientNameFinder.ValueMock = "psParameterName";
-            clientNameFinder.KeyMock = "nameFromSpec";
-            MockJsonPathFinder objectDefinitionFinder = new MockJsonPathFinder();
-            // The object definition will be queried for x-ms-client-name
-            objectDefinitionFinder.QueryMocks["..x-ms-client-name"] = new List<JsonPathFinder>() { clientNameFinder };
-            // The root will be queried for x-ms-client-flatten nodes
-            rootFinder.QueryMocks["paths..x-ms-client-flatten"] = new List<JsonPathFinder>() { clientFlattenFinder };
-            // The root will be queried for definitions
-            rootFinder.QueryMocks["$.definitions.object"] = new List<JsonPathFinder>() { objectDefinitionFinder };
+            MockJsonPathFinder rootFinder = new MockJsonPathFinder()
+            {
+                KeyMock = "root",
+                QueryMocks = new Dictionary<string, List<JsonPathFinder>>()
+                {
+                    { "paths", new List<JsonPathFinder>()
+                    {
+                        new MockJsonPathFinder()
+                        {
+                            KeyMock = "paths",
+                            ChildrenMocks = new List<JsonPathFinder>()
+                            {
+                                new MockJsonPathFinder()
+                                {
+                                    KeyMock = "pathItem",
+                                    ChildrenMocks = new List<JsonPathFinder>()
+                                    {
+                                        new MockJsonPathFinder()
+                                        {
+                                            KeyMock = "getOperation",
+                                            QueryMocks = new Dictionary<string, List<JsonPathFinder>>()
+                                            {
+                                                { "operationId", new List<JsonPathFinder>()
+                                                {
+                                                    new MockJsonPathFinder()
+                                                    {
+                                                        ValueMock = "operationid"
+                                                    }
+                                                } },
+                                                { "parameters", new List<JsonPathFinder>()
+                                                {
+                                                    new MockJsonPathFinder()
+                                                    {
+                                                        ChildrenMocks = new List<JsonPathFinder>()
+                                                        {
+                                                            new MockJsonPathFinder()
+                                                            {
+                                                                PathMock = "dummy",
+                                                                QueryMocks = new Dictionary<string, List<JsonPathFinder>>()
+                                                                {
+                                                                    { "x-ms-client-flatten", new List<JsonPathFinder>()
+                                                                    {
+                                                                        new MockJsonPathFinder()
+                                                                        {
+                                                                            ValueMock = true
+                                                                        }
+                                                                    } },
+                                                                    { "..$ref", new List<JsonPathFinder>()
+                                                                    {
+                                                                        new MockJsonPathFinder()
+                                                                        {
+                                                                            ValueMock = "#/definitions/object"
+                                                                        }
+                                                                    } }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                } }
+                                            }
+                                        }.Container()
+                                    }
+                                }.Container()
+                            }
+                        }
+                    } },
+                    { "definitions", new List<JsonPathFinder>()
+                    {
+                        new MockJsonPathFinder()
+                        {
+                            ChildrenMocks = new List<JsonPathFinder>()
+                            {
+                                new MockJsonPathFinder()
+                                {
+                                    KeyMock = "object",
+                                    PathMock = "#/definitions/object",
+                                    QueryMocks = new Dictionary<string, List<JsonPathFinder>>()
+                                    {
+                                        { "properties", new List<JsonPathFinder>()
+                                        {
+                                            new MockJsonPathFinder()
+                                            {
+                                                ChildrenMocks = new List<JsonPathFinder>()
+                                                {
+                                                    new MockJsonPathFinder()
+                                                    {
+                                                        KeyMock = "nameFromSpec",
+                                                        QueryMocks = new Dictionary<string, List<JsonPathFinder>>()
+                                                        {
+                                                            { "x-ms-client-name", new List<JsonPathFinder>()
+                                                            {
+                                                                new MockJsonPathFinder()
+                                                                {
+                                                                    ValueMock = "psParameterName"
+                                                                }
+                                                            } }
+                                                        }
+                                                    }.Container()
+                                                }
+                                            }
+                                        } }
+                                    }
+                                }.Container()
+                            }
+                        }
+                    } }
+                }
+            };
 
             testModule.LoadMetadataFromSpecification(rootFinder);
 
@@ -379,52 +549,155 @@ namespace PSSwagger.LTF.Lib.UnitTests
             GeneratedModule expectedModule, testModule;
             GetLoadMetadataFromSpecificationTestData(out expectedModule, out testModule);
 
-            // Root document
-            MockJsonPathFinder rootFinder = new MockJsonPathFinder();
-            // Operation's "operationId" property
-            MockJsonPathFinder operationIdFinder = new MockJsonPathFinder();
-            operationIdFinder.ValueMock = "operationid";
-            // Operation node
-            MockJsonPathFinder operationFinder = new MockJsonPathFinder();
-            operationFinder.QueryMocks["operationId"] = new List<JsonPathFinder>() { operationIdFinder };
-            // Parameter's "schema.$ref" property
-            MockJsonPathFinder schemaRefFinder = new MockJsonPathFinder();
-            schemaRefFinder.ValueMock = "#/definitions/object";
-            // Parameter node
-            MockJsonPathFinder parameterFinder = new MockJsonPathFinder();
-            parameterFinder.QueryMocks["schema.$ref"] = new List<JsonPathFinder>() { schemaRefFinder };
-            parameterFinder.ParentMock = operationFinder.MakeDummyParent(2);
-            // Parameter's "x-ms-client-flatten" property
-            MockJsonPathFinder clientFlattenFinder = new MockJsonPathFinder();
-            clientFlattenFinder.ValueMock = true;
-            clientFlattenFinder.ParentMock = parameterFinder.MakeDummyParent();
-            // DefinitionProperty's "$ref" property
-            MockJsonPathFinder definitionPropertyRefFinder = new MockJsonPathFinder();
-            definitionPropertyRefFinder.ValueMock = "#/definitions/nestedObject";
-            // DefinitionProperty node
-            MockJsonPathFinder definitionPropertyFinder = new MockJsonPathFinder();
-            definitionPropertyFinder.QueryMocks["$ref"] = new List<JsonPathFinder>() { definitionPropertyRefFinder };
-            // DefinitionProperty's "x-ms-client-flatten" property
-            MockJsonPathFinder definitionClientFlattenFinder = new MockJsonPathFinder();
-            definitionClientFlattenFinder.ValueMock = true;
-            definitionClientFlattenFinder.ParentMock = definitionPropertyFinder.MakeDummyParent();
-            // object's node
-            MockJsonPathFinder objectDefinitionFinder = new MockJsonPathFinder();
-            // The object definition will be queried for x-ms-client-flatten
-            objectDefinitionFinder.QueryMocks["..x-ms-client-flatten"] = new List<JsonPathFinder>() { definitionClientFlattenFinder };
-            // NestedDefinitionProperty's "x-ms-client-name" property
-            MockJsonPathFinder clientNameFinder = new MockJsonPathFinder();
-            clientNameFinder.ValueMock = "psParameterName";
-            clientNameFinder.KeyMock = "nameFromSpec";
-            // nestedObject's node
-            MockJsonPathFinder nestedObjectDefinitionFinder = new MockJsonPathFinder();
-            // The object definition will be queried for x-ms-client-name
-            nestedObjectDefinitionFinder.QueryMocks["..x-ms-client-name"] = new List<JsonPathFinder>() { clientNameFinder };
-            // The root will be queried for x-ms-client-flatten nodes
-            rootFinder.QueryMocks["paths..x-ms-client-flatten"] = new List<JsonPathFinder>() { clientFlattenFinder };
-            // The root will be queried for definitions
-            rootFinder.QueryMocks["$.definitions.object"] = new List<JsonPathFinder>() { objectDefinitionFinder };
-            rootFinder.QueryMocks["$.definitions.nestedObject"] = new List<JsonPathFinder>() { nestedObjectDefinitionFinder };
+            MockJsonPathFinder rootFinder = new MockJsonPathFinder()
+            {
+                KeyMock = "root",
+                QueryMocks = new Dictionary<string, List<JsonPathFinder>>()
+                {
+                    { "paths", new List<JsonPathFinder>()
+                    {
+                        new MockJsonPathFinder()
+                        {
+                            KeyMock = "paths",
+                            ChildrenMocks = new List<JsonPathFinder>()
+                            {
+                                new MockJsonPathFinder()
+                                {
+                                    KeyMock = "pathItem",
+                                    ChildrenMocks = new List<JsonPathFinder>()
+                                    {
+                                        new MockJsonPathFinder()
+                                        {
+                                            KeyMock = "getOperation",
+                                            QueryMocks = new Dictionary<string, List<JsonPathFinder>>()
+                                            {
+                                                { "operationId", new List<JsonPathFinder>()
+                                                {
+                                                    new MockJsonPathFinder()
+                                                    {
+                                                        ValueMock = "operationid"
+                                                    }
+                                                } },
+                                                { "parameters", new List<JsonPathFinder>()
+                                                {
+                                                    new MockJsonPathFinder()
+                                                    {
+                                                        ChildrenMocks = new List<JsonPathFinder>()
+                                                        {
+                                                            new MockJsonPathFinder()
+                                                            {
+                                                                PathMock = "dummy",
+                                                                QueryMocks = new Dictionary<string, List<JsonPathFinder>>()
+                                                                {
+                                                                    { "x-ms-client-flatten", new List<JsonPathFinder>()
+                                                                    {
+                                                                        new MockJsonPathFinder()
+                                                                        {
+                                                                            ValueMock = true
+                                                                        }
+                                                                    } },
+                                                                    { "..$ref", new List<JsonPathFinder>()
+                                                                    {
+                                                                        new MockJsonPathFinder()
+                                                                        {
+                                                                            ValueMock = "#/definitions/object"
+                                                                        }
+                                                                    } }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                } }
+                                            }
+                                        }.Container()
+                                    }
+                                }.Container()
+                            }
+                        }
+                    } },
+                    { "definitions", new List<JsonPathFinder>()
+                    {
+                        new MockJsonPathFinder()
+                        {
+                            ChildrenMocks = new List<JsonPathFinder>()
+                            {
+                                new MockJsonPathFinder()
+                                {
+                                    KeyMock = "object",
+                                    PathMock = "#/definitions/object",
+                                    QueryMocks = new Dictionary<string, List<JsonPathFinder>>()
+                                    {
+                                        { "properties", new List<JsonPathFinder>()
+                                        {
+                                            new MockJsonPathFinder()
+                                            {
+                                                ChildrenMocks = new List<JsonPathFinder>()
+                                                {
+                                                    new MockJsonPathFinder()
+                                                    {
+                                                        KeyMock = "properties",
+                                                        QueryMocks = new Dictionary<string, List<JsonPathFinder>>()
+                                                        {
+                                                            { "x-ms-client-flatten", new List<JsonPathFinder>()
+                                                            {
+                                                                new MockJsonPathFinder()
+                                                                {
+                                                                    ValueMock = true
+                                                                }
+                                                            } },
+                                                            { "$ref", new List<JsonPathFinder>()
+                                                            {
+                                                                new MockJsonPathFinder()
+                                                                {
+                                                                    ValueMock = "#/definitions/nestedObject"
+                                                                }
+                                                            } }
+                                                        }
+                                                    }.Container()
+                                                }
+                                            }
+                                        } }
+                                    }
+                                }.Container()
+                            }
+                        }
+                    } },
+                    { "$.definitions.nestedObject", new List<JsonPathFinder>()
+                    {
+                        new MockJsonPathFinder()
+                        {
+                            KeyMock = "nestedObject",
+                            PathMock = "#/definitions/nestedObject",
+                            QueryMocks = new Dictionary<string, List<JsonPathFinder>>()
+                                {
+                                    { "properties", new List<JsonPathFinder>()
+                                    {
+                                        new MockJsonPathFinder()
+                                        {
+                                            ChildrenMocks = new List<JsonPathFinder>()
+                                            {
+                                                new MockJsonPathFinder()
+                                                {
+                                                    KeyMock = "nameFromSpec",
+                                                    QueryMocks = new Dictionary<string, List<JsonPathFinder>>()
+                                                    {
+                                                        { "x-ms-client-name", new List<JsonPathFinder>()
+                                                        {
+                                                            new MockJsonPathFinder()
+                                                            {
+                                                                ValueMock = "psParameterName"
+                                                            }
+                                                        } }
+                                                    }
+                                                }.Container()
+                                            }
+                                        }
+                                    } }
+                                }
+                        } }
+                    }
+                }
+            };
 
             testModule.LoadMetadataFromSpecification(rootFinder);
 
@@ -460,8 +733,28 @@ namespace PSSwagger.LTF.Lib.UnitTests
                              JsonName = "namefromspec"
                         }
                     }
+                },
+                ResponseType = new ResponseTypeData()
+                {
+                    ModuleData = new RuntimeTypeData()
+                    {
+                        Type = typeof(GeneratedModuleTestsSubObject)
+                    }
                 }
             };
+            expectedModule.Operations["operationid"].ResponseType.SpecificationData.Add(new RuntimeTypeData()
+            {
+                Properties = new Dictionary<string, ParameterData>()
+                        {
+                            { "pspropertyname", new ParameterData()
+                                {
+                                     Name = "pspropertyname",
+                                     JsonName = "propertynamefromspec"
+                                }
+                            }
+                        }
+            });
+            expectedModule.Operations["operationid"].ResponseType.Complete();
 
             testModule = new GeneratedModule(runspace);
             testModule.Operations["operationid"] = new OperationData("operationid", "command")
@@ -472,6 +765,13 @@ namespace PSSwagger.LTF.Lib.UnitTests
                         {
                              Name = "psparametername"
                         }
+                    }
+                },
+                ResponseType = new ResponseTypeData()
+                {
+                    ModuleData = new RuntimeTypeData()
+                    {
+                        Type = typeof(GeneratedModuleTestsSubObject)
                     }
                 }
             };

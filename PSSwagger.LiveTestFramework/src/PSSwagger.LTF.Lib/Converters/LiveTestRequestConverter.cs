@@ -41,13 +41,20 @@ namespace PSSwagger.LTF.Lib.Converters
                 {
                     RegisterTypeConverter(parameter.Type, settings);
                 }
+                
+                // Don't bother registering the ResponseType for a page response
+                if (operation.ResponseType != null)
+                {
+                    RegisterTypeConverter(operation.ResponseType.TypeData, settings);
+                }
             }
         }
 
         private void RegisterTypeConverter(RuntimeTypeData typeData, JsonSerializerSettings settings)
         {
-            if (typeData != null && typeData.Type != null && typeData.Type.GetConstructor(new Type[] { }) != null)
+            if (typeData != null && typeData.Type != null && typeData.Type.GetConstructor(new Type[] { }) != null && typeData.Properties.Count > 0)
             {
+                Log("Registering JSON converter for type: {0}", typeData.Type.FullName);
                 settings.Converters.Add(new DynamicTypedObjectConverter(typeData));
                 foreach (ParameterData property in typeData.Properties.Values)
                 {
@@ -180,6 +187,14 @@ namespace PSSwagger.LTF.Lib.Converters
             }
 
             return success;
+        }
+
+        private void Log(string msg, params object[] args)
+        {
+            if (this.module.Logger != null && !String.IsNullOrEmpty(msg))
+            {
+                this.module.Logger.Log(msg, args);
+            }
         }
     }
 }

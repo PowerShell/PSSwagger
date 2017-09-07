@@ -42,7 +42,7 @@ function Initialize-TestDependency {
     }
 
     Import-Module -Name (Split-Path -Path $PSScriptRoot -Parent | Join-Path -ChildPath "build" | Join-Path -ChildPath "PSSwagger.LiveTestFramework.Build.psd1") -Force
-    $failed = $failed -or PSSwagger.LiveTestFramework.Build\Initialize-LTFBuildDependency
+    $failed = $failed -or (PSSwagger.LiveTestFramework.Build\Initialize-LTFBuildDependency)
     if ($failed) {
         Write-Error -Message 'One or more dependencies failed to intialize.'
     } else {
@@ -83,7 +83,7 @@ function Start-TestRun {
             }
 
             $trxLogs += $trxLogFile
-            PSSwagger.LiveTestFramework.Build\Build-LTFBuildDotNetProject -Project $_ -Framework $Framework `
+            PSSwagger.LiveTestFramework.Build\Start-LTFBuildDotNetProject -Project $_ -Framework $Framework `
                                                                           -Publish -Test -TestLogger "trx;LogFileName=$trxLogFile"
         }
     }
