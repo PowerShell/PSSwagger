@@ -238,6 +238,34 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
             It "Get-HeaderContent should return content from the header file" {
                 Get-HeaderContent -SwaggerDict @{Info = @{Header = $ValidHeaderFilePath}} | Should BeExactly $HeaderFileContent
             }
+
+            It "Get-HeaderContent should return MICROSOFT_MIT header content with '-Header MICROSOFT_MIT'" {
+                $ExpectedHeaderContent = $MicrosoftMitLicenseHeader + [Environment]::NewLine + [Environment]::NewLine + $DefaultGeneratedFileHeaderString
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = 'MICROSOFT_MIT'}} | Should BeExactly $ExpectedHeaderContent
+            }
+
+            It "Get-HeaderContent should return MICROSOFT_MIT_NO_VERSION header content with '-Header MICROSOFT_MIT_NO_VERSION'" {
+                $ExpectedHeaderContent = $MicrosoftMitLicenseHeader + [Environment]::NewLine + [Environment]::NewLine + $DefaultGeneratedFileHeaderWithoutVersion
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = 'MICROSOFT_MIT_NO_VERSION'}} | Should BeExactly $ExpectedHeaderContent
+            }
+
+            It "Get-HeaderContent should return MICROSOFT_MIT_NO_CODEGEN header content with '-Header MICROSOFT_MIT_NO_CODEGEN'" {
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = 'MICROSOFT_MIT_NO_CODEGEN'}} | Should BeExactly $MicrosoftMitLicenseHeader
+            }
+
+            It "Get-HeaderContent should return MICROSOFT_APACHE header content with '-Header MICROSOFT_APACHE'" {
+                $ExpectedHeaderContent = $MicrosoftApacheLicenseHeader + [Environment]::NewLine + [Environment]::NewLine + $DefaultGeneratedFileHeaderString
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = 'MICROSOFT_APACHE'}} | Should BeExactly $ExpectedHeaderContent
+            }
+
+            It "Get-HeaderContent should return MICROSOFT_APACHE_NO_VERSION header content with '-Header MICROSOFT_APACHE_NO_VERSION'" {
+                $ExpectedHeaderContent = $MicrosoftApacheLicenseHeader + [Environment]::NewLine + [Environment]::NewLine + $DefaultGeneratedFileHeaderWithoutVersion
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = 'MICROSOFT_APACHE_NO_VERSION'}} | Should BeExactly $ExpectedHeaderContent
+            }
+
+            It "Get-HeaderContent should return MICROSOFT_APACHE_NO_CODEGEN header content with '-Header MICROSOFT_APACHE_NO_CODEGEN'" {
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = 'MICROSOFT_APACHE_NO_CODEGEN'}} | Should BeExactly $MicrosoftApacheLicenseHeader
+            }
         }
         
         Context "Get-CSharpModelName Unit Tests" {
