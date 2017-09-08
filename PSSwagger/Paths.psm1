@@ -416,8 +416,7 @@ function New-SwaggerPath
     $info = $SwaggerDict['Info']
     $namespace = $info['NameSpace']
     $models = $info['Models']
-    $modulePostfix = $info['infoName']
-    $clientName = '$' + $modulePostfix
+    $clientName = '$' + $info['ClientTypeName']
     $UseAzureCsharpGenerator = $SwaggerMetaDict['UseAzureCsharpGenerator']
     
     $description = ''
@@ -1352,10 +1351,10 @@ function Get-TemporaryCliXmlFilePath {
     param(
         [Parameter(Mandatory=$true)]
         [string]
-        $FullModuleName
+        $FullClientTypeName
     )
 
     $random = [Guid]::NewGuid().Guid
-    $filePath = Join-Path -Path (Get-XDGDirectory -DirectoryType Cache) -ChildPath "$FullModuleName.$random.xml"
+    $filePath = Join-Path -Path (Get-XDGDirectory -DirectoryType Cache) -ChildPath "$FullClientTypeName.$random.xml"
     return $filePath
 }

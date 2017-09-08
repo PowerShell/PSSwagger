@@ -4,8 +4,6 @@
 #
 # Licensed under the MIT license.
 #
-# PSSwagger Module
-#
 #########################################################################################
 
 ConvertFrom-StringData @'

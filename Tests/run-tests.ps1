@@ -116,7 +116,7 @@ if ($TestSuite.Contains("All") -or $TestSuite.Contains("ScenarioTest")) {
     if (Test-Path -Path $generatedModulesPath -PathType Container) {
         Remove-Item -Path $generatedModulesPath -Recurse -Force
     }
-    $null = New-Item -Path $generatedModulesPath -ItemType Directory
+    $null = New-Item -Path $generatedModulesPath -ItemType Directory -Force
 }
 
 # Set up Microsoft.Net.Compilers
@@ -152,8 +152,11 @@ if ($EnableTracing) {
 
 $srcPath = Join-Path -Path $PSScriptRoot -ChildPath .. | Join-Path -ChildPath PSSwagger
 $srcPath += [System.IO.Path]::DirectorySeparatorChar
-$executeTestsCommand += ";`$verbosepreference=`"continue`";`$env:PSModulePath=`"$srcPath;`$env:PSModulePath`";Invoke-Pester -ExcludeTag KnownIssue -OutputFormat NUnitXml -OutputFile ScenarioTestResults.xml -Verbose"
-
+$executeTestsCommand += @"
+    ;`$verbosepreference=`'continue`';
+    `$env:PSModulePath=`"$srcPath;`$env:PSModulePath`";
+    Invoke-Pester -Script `'$PSScriptRoot`' -ExcludeTag KnownIssue -OutputFormat NUnitXml -OutputFile ScenarioTestResults.xml -Verbose;
+"@
 # Set up Pester params
 $pesterParams = @{'ExcludeTag' = 'KnownIssue'; 'OutputFormat' = 'NUnitXml'; 'OutputFile' = 'TestResults.xml'}
 if ($PSBoundParameters.ContainsKey('TestName')) {
@@ -194,7 +197,7 @@ else {
 }
 
 # Verify output
-$x = [xml](Get-Content -raw "ScenarioTestResults.xml")
+$x = [xml](Get-Content -Raw (Join-Path -Path $PSScriptRoot -ChildPath 'ScenarioTestResults.xml'))
 if ([int]$x.'test-results'.failures -gt 0) {
     throw "$($x.'test-results'.failures) tests failed"
 }
