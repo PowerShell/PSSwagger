@@ -248,20 +248,20 @@ $getTaskResultBlock = @'
         {
             Write-Verbose -Message 'Operation failed.'
             if (`$taskResult.Exception)
-			{
-				if ((Get-Member -InputObject `$taskResult.Exception -Name 'InnerExceptions') -and `$taskResult.Exception.InnerExceptions)
-				{
-					foreach (`$ex in `$taskResult.Exception.InnerExceptions)
-					{
-						Write-Error -Exception `$ex
-					}
-				} elseif ((Get-Member -InputObject `$taskResult.Exception -Name 'InnerException') -and `$taskResult.Exception.InnerException)
-				{
-					Write-Error -Exception `$taskResult.Exception.InnerException
-				} else {
+            {
+                if ((Get-Member -InputObject `$taskResult.Exception -Name 'InnerExceptions') -and `$taskResult.Exception.InnerExceptions)
+                {
+                    foreach (`$ex in `$taskResult.Exception.InnerExceptions)
+                    {
+                        Write-Error -Exception `$ex
+                    }
+                } elseif ((Get-Member -InputObject `$taskResult.Exception -Name 'InnerException') -and `$taskResult.Exception.InnerException)
+                {
+                    Write-Error -Exception `$taskResult.Exception.InnerException
+                } else {
                     Write-Error -Exception `$taskResult.Exception
                 }
-			}
+            }
         } 
         elseif (`$taskResult.IsCanceled)
         {
