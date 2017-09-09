@@ -59,6 +59,10 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwa
     if client type namespace is different from the specified namespace in the specification.
     It is recommended to specify the fully qualified client type name.
 
+.PARAMETER  ModelsName
+    Models name if it is different from default value 'Models'.
+    It is recommended to specify the custom models name in using x-ms-code-generation-settings extension in specification.
+
 .PARAMETER  Path
     Full Path to a file where the commands are exported to.
 
@@ -145,6 +149,11 @@ function New-PSSwaggerModule
         [Parameter(Mandatory = $false, ParameterSetName = 'SdkAssemblyWithSpecificationUri')]
         [string]
         $ClientTypeName,
+
+        [Parameter(Mandatory = $false, ParameterSetName = 'SdkAssemblyWithSpecificationPath')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SdkAssemblyWithSpecificationUri')]
+        [string]
+        $ModelsName,
 
         [Parameter(Mandatory = $true)]
         [string]
@@ -417,6 +426,7 @@ function New-PSSwaggerModule
         PowerShellCodeGen          = $PowerShellCodeGen
         PSMetaJsonObject           = $PSMetaJsonObject
         ClientTypeName             = $ClientTypeName
+        ModelsName                 = $ModelsName
     }
     $swaggerDict = ConvertTo-SwaggerDictionary @ConvertToSwaggerDictionary_params
 

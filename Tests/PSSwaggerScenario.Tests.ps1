@@ -848,10 +848,6 @@ Describe "Header scenario tests" -Tag @('Header','ScenarioTest')  {
 }
 
 Describe "Pre-compiled SDK Assmebly scenario tests" -Tag @('SDKAssembly','ScenarioTest')  {    
-    # As of today 9/7/2017, PSSwagger is not supported on PowerShell Core.
-    if((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
-        return
-    }
     BeforeAll {
         $PsSwaggerPath = Split-Path -Path $PSScriptRoot -Parent | Join-Path -ChildPath "PSSwagger"
         Import-Module $PsSwaggerPath -Force
@@ -866,9 +862,19 @@ Describe "Pre-compiled SDK Assmebly scenario tests" -Tag @('SDKAssembly','Scenar
         # Generating the first version, so that PSSwagger generated the SDK Assembly, 
         # later this assembly will be used for testing the precompiled SDK assembly scenarios.
         $ModuleVersion = '1.1.1.1'
-        New-PSSwaggerModule -SpecificationPath $SwaggerSpecPath -Name $ModuleName -Version $ModuleVersion -UseAzureCsharpGenerator -Path $GeneratedPath -ConfirmBootstrap -Verbose
+        $params = @{
+            SpecificationPath       = $SwaggerSpecPath
+            Name                    = $ModuleName
+            Version                 = $ModuleVersion
+            UseAzureCsharpGenerator = $true
+            Path                    = $GeneratedPath
+            ConfirmBootstrap        = $true
+            Verbose                 = $true
+        }
+        Invoke-NewPSSwaggerModuleCommand -NewPSSwaggerModuleParameters $params -IncludeAssembly
 
-        $GeneratedModuleFullClrPath = Join-Path -Path $GeneratedModuleBase -ChildPath $ModuleVersion | Join-Path -ChildPath ref | Join-Path -ChildPath fullclr
+        $GeneratedModuleRefPath = Join-Path -Path $GeneratedModuleBase -ChildPath $ModuleVersion | Join-Path -ChildPath ref
+        $GeneratedModuleFullClrPath = Join-Path -Path $GeneratedModuleRefPath -ChildPath fullclr
         $NameSpace = "Microsoft.PowerShell.$ModuleName.v$("$ModuleVersion" -replace '\.','')"
         $ClientTypeName = 'ParameterTypesSpec'
         $AssemblyName = "$NameSpace.dll"
@@ -883,23 +889,22 @@ Describe "Pre-compiled SDK Assmebly scenario tests" -Tag @('SDKAssembly','Scenar
             Remove-Item -Path $GeneratedModuleVersionPath -Recurse -Force
         }
 
-        $CurrentVersionRefPath = Join-Path -Path $GeneratedModuleVersionPath -ChildPath ref
-        $null = New-Item -Path $CurrentVersionRefPath -Type Directory -Force
-        Copy-Item -Path $GeneratedModuleFullClrPath -Destination $CurrentVersionRefPath -Recurse -Force
+        $null = New-Item -Path $GeneratedModuleVersionPath -Type Directory -Force
+        Copy-Item -Path $GeneratedModuleRefPath -Destination $GeneratedModuleVersionPath -Recurse -Force
 
         $NewPSSwaggerModule_params = @{
             SpecificationPath       = $SwaggerSpecPath
             AssemblyFileName        = $AssemblyName
             ClientTypeName          = "$NameSpace.$ClientTypeName"
+            ModelsName              = 'Models'
             Name                    = $ModuleName
             Version                 = $ModuleVersion
             UseAzureCsharpGenerator = $true
             Path                    = $GeneratedPath
             Verbose                 = $true
-            ErrorVariable           = 'ev'
-            ErrorAction             = 'SilentlyContinue'
         }
-        New-PSSwaggerModule @NewPSSwaggerModule_params
+        Invoke-NewPSSwaggerModuleCommand -NewPSSwaggerModuleParameters $NewPSSwaggerModule_params -ErrorVariable 'ev' -ErrorAction 'SilentlyContinue'
+
         $ev | Where-Object {$_.PSTypeNames -contains 'System.Management.Automation.ErrorRecord'} | Should BeNullOrEmpty
         
         # Test module manifest
@@ -920,10 +925,8 @@ Describe "Pre-compiled SDK Assmebly scenario tests" -Tag @('SDKAssembly','Scenar
             UseAzureCsharpGenerator = $true
             Path                    = $GeneratedPath
             Verbose                 = $true
-            ErrorVariable           = 'ev'
-            ErrorAction             = 'SilentlyContinue'
         }
-        New-PSSwaggerModule @NewPSSwaggerModule_params
+        Invoke-NewPSSwaggerModuleCommand -NewPSSwaggerModuleParameters $NewPSSwaggerModule_params -ErrorVariable 'ev' -ErrorAction 'SilentlyContinue'
         $ev | Where-Object {$_.PSTypeNames -contains 'System.Management.Automation.ErrorRecord'} | Should BeNullOrEmpty
         
         # Test module manifest
@@ -945,10 +948,8 @@ Describe "Pre-compiled SDK Assmebly scenario tests" -Tag @('SDKAssembly','Scenar
             UseAzureCsharpGenerator = $true
             Path                    = $GeneratedPath
             Verbose                 = $true
-            ErrorVariable           = 'ev'
-            ErrorAction             = 'SilentlyContinue'
         }
-        New-PSSwaggerModule @NewPSSwaggerModule_params
+        Invoke-NewPSSwaggerModuleCommand -NewPSSwaggerModuleParameters $NewPSSwaggerModule_params -ErrorVariable 'ev' -ErrorAction 'SilentlyContinue'
         $ev | Where-Object {$_.PSTypeNames -contains 'System.Management.Automation.ErrorRecord'} | Should BeNullOrEmpty
         
         # Test module manifest
@@ -970,10 +971,8 @@ Describe "Pre-compiled SDK Assmebly scenario tests" -Tag @('SDKAssembly','Scenar
             UseAzureCsharpGenerator = $true
             Path                    = $GeneratedPath
             Verbose                 = $true
-            ErrorVariable           = 'ev'
-            ErrorAction             = 'SilentlyContinue'
         }
-        New-PSSwaggerModule @NewPSSwaggerModule_params
+        Invoke-NewPSSwaggerModuleCommand -NewPSSwaggerModuleParameters $NewPSSwaggerModule_params -ErrorVariable 'ev' -ErrorAction 'SilentlyContinue'
         $ev.FullyQualifiedErrorId | Should Be 'AssemblyNotFound,New-PSSwaggerModule'
     }
 
@@ -998,10 +997,8 @@ Describe "Pre-compiled SDK Assmebly scenario tests" -Tag @('SDKAssembly','Scenar
             UseAzureCsharpGenerator = $true
             Path                    = $GeneratedPath
             Verbose                 = $true
-            ErrorVariable           = 'ev'
-            ErrorAction             = 'SilentlyContinue'
         }
-        New-PSSwaggerModule @NewPSSwaggerModule_params
+        Invoke-NewPSSwaggerModuleCommand -NewPSSwaggerModuleParameters $NewPSSwaggerModule_params -ErrorVariable 'ev' -ErrorAction 'SilentlyContinue'
         $ev.FullyQualifiedErrorId | Should Be 'UnableToExtractDetailsFromSdkAssembly,Update-PathFunctionDetails'
     }
 
@@ -1026,10 +1023,8 @@ Describe "Pre-compiled SDK Assmebly scenario tests" -Tag @('SDKAssembly','Scenar
             UseAzureCsharpGenerator = $true
             Path                    = $GeneratedPath
             Verbose                 = $true
-            ErrorVariable           = 'ev'
-            ErrorAction             = 'SilentlyContinue'
         }
-        New-PSSwaggerModule @NewPSSwaggerModule_params
+        Invoke-NewPSSwaggerModuleCommand -NewPSSwaggerModuleParameters $NewPSSwaggerModule_params -ErrorVariable 'ev' -ErrorAction 'SilentlyContinue'
         $ev.FullyQualifiedErrorId | Should Be 'UnableToExtractDetailsFromSdkAssembly,Update-PathFunctionDetails'
     }
 
@@ -1054,10 +1049,8 @@ Describe "Pre-compiled SDK Assmebly scenario tests" -Tag @('SDKAssembly','Scenar
             UseAzureCsharpGenerator = $true
             Path                    = $GeneratedPath
             Verbose                 = $true
-            ErrorVariable           = 'ev'
-            ErrorAction             = 'SilentlyContinue'
         }
-        New-PSSwaggerModule @NewPSSwaggerModule_params
+        Invoke-NewPSSwaggerModuleCommand -NewPSSwaggerModuleParameters $NewPSSwaggerModule_params -ErrorVariable 'ev' -ErrorAction 'SilentlyContinue'
         $ev.FullyQualifiedErrorId | Should Be 'UnableToExtractDetailsFromSdkAssembly,Update-PathFunctionDetails'
     }
 }

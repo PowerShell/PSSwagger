@@ -22,15 +22,15 @@ New-PSSwaggerModule -SpecificationPath <String> -Path <String> -Name <String> [-
 ### SdkAssemblyWithSpecificationPath
 ```
 New-PSSwaggerModule -SpecificationPath <String> -Path <String> -AssemblyFileName <String>
- [-ClientTypeName <String>] -Name <String> [-Version <Version>] [-DefaultCommandPrefix <String>]
- [-Header <String[]>] [-UseAzureCsharpGenerator]
+ [-ClientTypeName <String>] [-ModelsName <String>] -Name <String> [-Version <Version>]
+ [-DefaultCommandPrefix <String>] [-Header <String[]>] [-UseAzureCsharpGenerator]
 ```
 
 ### SdkAssemblyWithSpecificationUri
 ```
 New-PSSwaggerModule -SpecificationUri <Uri> -Path <String> -AssemblyFileName <String>
- [-ClientTypeName <String>] -Name <String> [-Version <Version>] [-DefaultCommandPrefix <String>]
- [-Header <String[]>] [-UseAzureCsharpGenerator]
+ [-ClientTypeName <String>] [-ModelsName <String>] -Name <String> [-Version <Version>]
+ [-DefaultCommandPrefix <String>] [-Header <String[]>] [-UseAzureCsharpGenerator]
 ```
 
 ### SpecificationUri
@@ -131,6 +131,22 @@ Client type name in the pre-compiled SDK assembly.
 Specify if client type name is different from the value of 'Title' field from the input specification, or
 if client type namespace is different from the specified namespace in the specification.
 It is recommended to specify the fully qualified client type name.
+
+```yaml
+Type: String
+Parameter Sets: SdkAssemblyWithSpecificationPath, SdkAssemblyWithSpecificationUri
+Aliases: 
+
+Required: False
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -ModelsName
+Models name if it is different from default value 'Models'.
+It is recommended to specify the custom models name in using x-ms-code-generation-settings extension in specification.
 
 ```yaml
 Type: String

@@ -91,6 +91,11 @@ function ConvertTo-SwaggerDictionary {
         [string]
         $ClientTypeName,
 
+        [Parameter(Mandatory=$false)]
+        [AllowEmptyString()]
+        [string]
+        $ModelsName,
+
         [Parameter(Mandatory = $false)]
         [string]
         $DefaultCommandPrefix,
@@ -147,6 +152,9 @@ function ConvertTo-SwaggerDictionary {
     }
     if($ClientTypeName) {
         $GetSwaggerInfo_params['ClientTypeName'] = $ClientTypeName
+    }
+    if($ModelsName) {
+        $GetSwaggerInfo_params['ModelsName'] = $ModelsName
     }
     $swaggerDict['Info'] = Get-SwaggerInfo @GetSwaggerInfo_params
     $swaggerDict['Info']['DefaultCommandPrefix'] = $DefaultCommandPrefix
@@ -216,7 +224,11 @@ function Get-SwaggerInfo {
 
         [Parameter(Mandatory=$false)]
         [string]
-        $ClientTypeName
+        $ClientTypeName,
+
+        [Parameter(Mandatory=$false)]
+        [string]
+        $ModelsName
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -231,7 +243,10 @@ function Get-SwaggerInfo {
     $infoName = ''
     $NameSpace = ''
     $codeGenFileRequired = $false
-    $modelsName = 'Models'
+    if(-not $ModelsName) {
+        $modelsName = 'Models'
+    }
+
     $Header = ''    
     if(Get-Member -InputObject $Info -Name 'x-ms-code-generation-settings') {
         $prop = Test-PropertyWithAliases -InputObject $Info.'x-ms-code-generation-settings' -Aliases @('ClientName', 'Name')
@@ -250,10 +265,12 @@ function Get-SwaggerInfo {
             }
         }
 
-        $prop = Test-PropertyWithAliases -InputObject $Info.'x-ms-code-generation-settings' -Aliases @('ModelsName', 'mname')
-        if ($prop) {
-            # When ModelsName is specified, this changes the subnamespace of the models from 'Models' to whatever is specified
-            $modelsName = $Info.'x-ms-code-generation-settings'.$prop
+        if(-not $PSBoundParameters.ContainsKey('ModelsName')) {
+            $prop = Test-PropertyWithAliases -InputObject $Info.'x-ms-code-generation-settings' -Aliases @('ModelsName', 'mname')
+            if ($prop) {
+                # When ModelsName is specified, this changes the subnamespace of the models from 'Models' to whatever is specified
+                $modelsName = $Info.'x-ms-code-generation-settings'.$prop
+            }
         }
 
         $prop = Test-PropertyWithAliases -InputObject $Info.'x-ms-code-generation-settings' -Aliases @('Namespace', 'n')
