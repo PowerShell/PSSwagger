@@ -11,7 +11,7 @@ PowerShell command to generate the PowerShell commands for a given RESTful Web S
 
 ## SYNTAX
 
-### SwaggerPath
+### SpecificationPath (Default)
 ```
 New-PSSwaggerModule -SpecificationPath <String> -Path <String> -Name <String> [-Version <Version>]
  [-DefaultCommandPrefix <String>] [-Header <String[]>] [-UseAzureCsharpGenerator] [-NoAssembly]
@@ -19,7 +19,21 @@ New-PSSwaggerModule -SpecificationPath <String> -Path <String> -Name <String> [-
  [-SymbolPath <String>] [-ConfirmBootstrap]
 ```
 
-### SwaggerURI
+### SdkAssemblyWithSpecificationPath
+```
+New-PSSwaggerModule -SpecificationPath <String> -Path <String> -AssemblyFileName <String>
+ [-ClientTypeName <String>] [-ModelsName <String>] -Name <String> [-Version <Version>]
+ [-DefaultCommandPrefix <String>] [-Header <String[]>] [-UseAzureCsharpGenerator]
+```
+
+### SdkAssemblyWithSpecificationUri
+```
+New-PSSwaggerModule -SpecificationUri <Uri> -Path <String> -AssemblyFileName <String>
+ [-ClientTypeName <String>] [-ModelsName <String>] -Name <String> [-Version <Version>]
+ [-DefaultCommandPrefix <String>] [-Header <String[]>] [-UseAzureCsharpGenerator]
+```
+
+### SpecificationUri
 ```
 New-PSSwaggerModule -SpecificationUri <Uri> -Path <String> -Name <String> [-Version <Version>]
  [-DefaultCommandPrefix <String>] [-Header <String[]>] [-UseAzureCsharpGenerator] [-NoAssembly]
@@ -53,7 +67,7 @@ Full Path to a Swagger based JSON spec.
 
 ```yaml
 Type: String
-Parameter Sets: SwaggerPath
+Parameter Sets: SpecificationPath, SdkAssemblyWithSpecificationPath
 Aliases: 
 
 Required: True
@@ -68,7 +82,7 @@ Uri to a Swagger based JSON spec.
 
 ```yaml
 Type: Uri
-Parameter Sets: SwaggerURI
+Parameter Sets: SdkAssemblyWithSpecificationUri, SpecificationUri
 Aliases: 
 
 Required: True
@@ -87,6 +101,59 @@ Parameter Sets: (All)
 Aliases: 
 
 Required: True
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -AssemblyFileName
+File name of the pre-compiled SDK assembly.
+This assembly along with its dependencies should be available in '.\ref\fullclr\' folder under the target module version base path ($Path\$Name\$Version\\).
+If your generated module needs to work on PowerShell Core, place the coreclr assembly along with its depdencies under '.\ref\coreclr\' folder under the target module version base path ($Path\$Name\$Version\\).
+For FullClr, the specified assembly should be available at "$Path\$Name\$Version\ref\fullclr\$AssemblyFileName".
+For CoreClr, the specified assembly should be available at "$Path\$Name\$Version\ref\coreclr\$AssemblyFileName".
+
+```yaml
+Type: String
+Parameter Sets: SdkAssemblyWithSpecificationPath, SdkAssemblyWithSpecificationUri
+Aliases: 
+
+Required: True
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -ClientTypeName
+Client type name in the pre-compiled SDK assembly.
+Specify if client type name is different from the value of 'Title' field from the input specification, or
+if client type namespace is different from the specified namespace in the specification.
+It is recommended to specify the fully qualified client type name.
+
+```yaml
+Type: String
+Parameter Sets: SdkAssemblyWithSpecificationPath, SdkAssemblyWithSpecificationUri
+Aliases: 
+
+Required: False
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -ModelsName
+Models name if it is different from default value 'Models'.
+It is recommended to specify the custom models name in using x-ms-code-generation-settings extension in specification.
+
+```yaml
+Type: String
+Parameter Sets: SdkAssemblyWithSpecificationPath, SdkAssemblyWithSpecificationUri
+Aliases: 
+
+Required: False
 Position: Named
 Default value: None
 Accept pipeline input: False
@@ -185,7 +252,7 @@ Switch to disable saving the precompiled module assembly and instead enable dyna
 
 ```yaml
 Type: SwitchParameter
-Parameter Sets: (All)
+Parameter Sets: SpecificationPath, SpecificationUri
 Aliases: 
 
 Required: False
@@ -201,7 +268,7 @@ Only required if PowerShell Core not installed via MSI in the default path.
 
 ```yaml
 Type: String
-Parameter Sets: (All)
+Parameter Sets: SpecificationPath, SpecificationUri
 Aliases: 
 
 Required: False
@@ -216,7 +283,7 @@ Switch to additionally compile the module's binary component for Core CLR.
 
 ```yaml
 Type: SwitchParameter
-Parameter Sets: (All)
+Parameter Sets: SpecificationPath, SpecificationUri
 Aliases: 
 
 Required: False
@@ -231,7 +298,7 @@ User wants to install local tools for all users.
 
 ```yaml
 Type: SwitchParameter
-Parameter Sets: (All)
+Parameter Sets: SpecificationPath, SpecificationUri
 Aliases: 
 
 Required: False
@@ -246,7 +313,7 @@ Switch to disable optimizations during build of full CLR binary component.
 
 ```yaml
 Type: SwitchParameter
-Parameter Sets: (All)
+Parameter Sets: SpecificationPath, SpecificationUri
 Aliases: 
 
 Required: False
@@ -262,7 +329,7 @@ Defaults to $Path\symbols.
 
 ```yaml
 Type: String
-Parameter Sets: (All)
+Parameter Sets: SpecificationPath, SpecificationUri
 Aliases: 
 
 Required: False
@@ -277,7 +344,7 @@ Automatically consent to downloading nuget.exe or NuGet packages as required.
 
 ```yaml
 Type: SwitchParameter
-Parameter Sets: (All)
+Parameter Sets: SpecificationPath, SpecificationUri
 Aliases: 
 
 Required: False

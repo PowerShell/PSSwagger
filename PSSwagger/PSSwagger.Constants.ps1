@@ -24,9 +24,17 @@ $parameterDefString = @'
 
 $parameterDefaultValueString = ' = $parameterDefaultValue'
 
+$DynamicAssemblyGenerationBlock = @'
+`$dllFullName = Join-Path -Path `$ClrPath -ChildPath '$DllFileName'
+if(-not (Test-Path -Path `$dllFullName -PathType Leaf)) {
+    . (Join-Path -Path `$PSScriptRoot -ChildPath 'AssemblyGenerationHelpers.ps1')
+    New-SDKAssembly -AssemblyFileName '$DllFileName' -IsAzureSDK:`$$UseAzureCSharpGenerator
+}
+'@
+
 $RootModuleContents = @'
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
-Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename $Name.Resources.psd1
+
 # If the user supplied -Prefix to Import-Module, that applies to the nested module as well
 # Force import the nested module again without -Prefix
 if (-not (Get-Command Get-OperatingSystemInfo -Module PSSwaggerUtility -ErrorAction Ignore)) {
@@ -35,61 +43,20 @@ if (-not (Get-Command Get-OperatingSystemInfo -Module PSSwaggerUtility -ErrorAct
 
 if ((Get-OperatingSystemInfo).IsCore) {
     $testCoreModuleRequirements`$clr = 'coreclr'
-    `$framework = 'netstandard1'
-} else {
+}
+else {
     $testFullModuleRequirements`$clr = 'fullclr'
-    `$framework = 'net4'
 }
 
-`$clrPath = Join-Path -Path `$PSScriptRoot -ChildPath 'ref' | Join-Path -ChildPath `$clr
-`$dllFullName = Join-Path -Path `$clrPath -ChildPath '$Namespace.dll'
-`$isAzureCSharp = `$$UseAzureCSharpGenerator
-`$consent = `$false
-if (-not (Test-Path -Path `$dllFullName)) {
-    `$message = `$LocalizedData.CompilingBinaryComponent -f (`$dllFullName)
-    Write-Verbose -Message `$message
-    `$generatedCSharpFilePath = (Join-Path -Path "`$PSScriptRoot" -ChildPath "Generated.Csharp")
-    if (-not (Test-Path -Path `$generatedCSharpFilePath)) {
-        throw `$LocalizedData.CSharpFilesNotFound -f (`$generatedCSharpFilePath)
-    }
+`$ClrPath = Join-Path -Path `$PSScriptRoot -ChildPath 'ref' | Join-Path -ChildPath `$clr
+$DynamicAssemblyGenerationCode
+`$allDllsPath = Join-Path -Path `$ClrPath -ChildPath '*.dll'
+Get-ChildItem -Path `$allDllsPath -File | ForEach-Object { Add-Type -Path `$_.FullName -ErrorAction SilentlyContinue }
 
-    `$allCSharpFiles = Get-ChildItem -Path (Join-Path -Path `$generatedCSharpFilePath -ChildPath "*.Code.ps1") -Recurse -Exclude Program.cs,TemporaryGeneratedFile* -File | Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*'
-    if ((Get-OperatingSystemInfo).IsWindows) {
-        `$allCSharpFiles | ForEach-Object {
-            `$sig = Get-AuthenticodeSignature -FilePath `$_.FullName 
-            if (('NotSigned' -ne `$sig.Status) -and ('Valid' -ne `$sig.Status)) {
-                throw `$LocalizedData.HashValidationFailed
-            }
-        }
+. (Join-Path -Path `$PSScriptRoot -ChildPath 'GeneratedHelpers.ps1')
 
-        `$message = `$LocalizedData.HashValidationSuccessful
-        Write-Verbose -Message `$message -Verbose
-    }
-
-    `$dependencies = Get-PSSwaggerExternalDependencies -Azure:`$isAzureCSharp -Framework `$framework
-    `$consent = Initialize-PSSwaggerLocalTool -Azure:`$isAzureCSharp -Framework `$framework
-    `$microsoftRestClientRuntimeAzureRequiredVersion = ''
-    if (`$dependencies.ContainsKey('Microsoft.Rest.ClientRuntime.Azure')) {
-        `$microsoftRestClientRuntimeAzureRequiredVersion = `$dependencies['Microsoft.Rest.ClientRuntime.Azure'].RequiredVersion
-    }
-    
-    `$microsoftRestClientRuntimeRequiredVersion = `$dependencies['Microsoft.Rest.ClientRuntime'].RequiredVersion
-    `$newtonsoftJsonRequiredVersion = `$dependencies['Newtonsoft.Json'].RequiredVersion
-
-    `$success = Add-PSSwaggerClientType -CSharpFiles `$allCSharpFiles -NewtonsoftJsonRequiredVersion `$newtonsoftJsonRequiredVersion -MicrosoftRestClientRuntimeRequiredVersion `$microsoftRestClientRuntimeRequiredVersion -MicrosoftRestClientRuntimeAzureRequiredVersion "`$microsoftRestClientRuntimeAzureRequiredVersion" -ClrPath `$clrPath -BootstrapConsent:`$consent -CodeCreatedByAzureGenerator:`$isAzureCSharp
-    if (-not `$success) {
-        `$message = `$LocalizedData.CompilationFailed -f (`$dllFullName)
-        throw `$message
-    }
-
-    `$message = `$LocalizedData.CompilationFailed -f (`$dllFullName)
-    Write-Verbose -Message `$message
-}
-
-
-
-Get-ChildItem -Path (Join-Path -Path "`$PSScriptRoot" -ChildPath "ref" | Join-Path -ChildPath "`$clr" | Join-Path -ChildPath "*.dll") -File | ForEach-Object { Add-Type -Path `$_.FullName -ErrorAction SilentlyContinue }
-Get-ChildItem -Path "`$PSScriptRoot\$GeneratedCommandsName\*.ps1" -Recurse -File | ForEach-Object { . `$_.FullName}
+`$allPs1FilesPath = Join-Path -Path `$PSScriptRoot -ChildPath '$GeneratedCommandsName' | Join-Path -ChildPath '*.ps1'
+Get-ChildItem -Path `$allPs1FilesPath -Recurse -File | ForEach-Object { . `$_.FullName}
 '@
 
 $advFnSignatureForDefintion = @'
@@ -114,7 +81,6 @@ $AsJobParameterString = @'
 
 
 $advFnSignatureForPath = @'
-Import-Module -Name (Join-Path -Path `$PSScriptRoot -ChildPath .. | Join-Path -ChildPath .. | Join-Path -ChildPath "GeneratedHelpers.psm1")
 <#
 $commandHelp
 $paramHelp
@@ -193,7 +159,7 @@ $functionBodyStr = @'
     `$ErrorActionPreference = 'Stop'
     $securityBlock
 
-    $clientName = New-Object -TypeName $fullModuleName -ArgumentList $clientArgumentList$apiVersion
+    $clientName = New-Object -TypeName $FullClientTypeName -ArgumentList $clientArgumentList$apiVersion
     $overrideBaseUriBlock
     $GlobalParameterBlock
     $oDataExpressionBlock

@@ -59,6 +59,50 @@ function Test-Package {
     $package
 }
 
+function Invoke-NewPSSwaggerModuleCommand {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]
+        $NewPSSwaggerModuleParameters,
+
+        [Parameter(Mandatory = $false)]
+        [switch]
+        $IncludeAssembly
+    )
+
+    Initialize-PSSwaggerDependencies -AllFrameworks -AcceptBootstrap -Azure
+    
+    $NewPSSwaggerModuleParameters['ErrorAction'] = 'SilentlyContinue'
+    if ($IncludeAssembly) {
+        $NewPSSwaggerModuleParameters['NoAssembly'] = $false
+        $NewPSSwaggerModuleParameters['ConfirmBootstrap'] = $true
+    }
+
+    if ((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
+        if ($IncludeAssembly) {
+            $NewPSSwaggerModuleParameters['IncludeCoreFxAssembly'] = $true
+            $NewPSSwaggerModuleParameters['PowerShellCorePath'] = Join-Path -Path $PSHOME -ChildPath 'PowerShell.exe'
+        }
+
+        $ParametersString = ''
+        $NewPSSwaggerModuleParameters.GetEnumerator() | ForEach-Object {
+            if ($_.Value -eq $true) {
+                $ParametersString += " -$($_.Name)"
+            }
+            elseif ($_.Value -ne $false) {
+                $ParametersString += " -$($_.Name) '$($_.Value)'"
+            }
+        } 
+        & "powershell.exe" -command "& {
+            `$env:PSModulePath=`$env:PSModulePath_Backup;
+            New-PSSwaggerModule $ParametersString
+        }"
+    }
+    else {
+        New-PSSwaggerModule @NewPSSwaggerModuleParameters
+    }
+}
 function Initialize-Test {
     [CmdletBinding()]
     param(

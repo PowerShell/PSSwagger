@@ -86,6 +86,16 @@ function ConvertTo-SwaggerDictionary {
         [Version]
         $ModuleVersion = '0.0.1',
 
+        [Parameter(Mandatory=$false)]
+        [AllowEmptyString()]
+        [string]
+        $ClientTypeName,
+
+        [Parameter(Mandatory=$false)]
+        [AllowEmptyString()]
+        [string]
+        $ModelsName,
+
         [Parameter(Mandatory = $false)]
         [string]
         $DefaultCommandPrefix,
@@ -139,6 +149,12 @@ function ConvertTo-SwaggerDictionary {
     if($ModuleName)
     {
         $GetSwaggerInfo_params['ModuleName'] = $ModuleName
+    }
+    if($ClientTypeName) {
+        $GetSwaggerInfo_params['ClientTypeName'] = $ClientTypeName
+    }
+    if($ModelsName) {
+        $GetSwaggerInfo_params['ModelsName'] = $ModelsName
     }
     $swaggerDict['Info'] = Get-SwaggerInfo @GetSwaggerInfo_params
     $swaggerDict['Info']['DefaultCommandPrefix'] = $DefaultCommandPrefix
@@ -204,7 +220,15 @@ function Get-SwaggerInfo {
 
         [Parameter(Mandatory=$false)]
         [Version]
-        $ModuleVersion = '0.0.1'
+        $ModuleVersion = '0.0.1',
+
+        [Parameter(Mandatory=$false)]
+        [string]
+        $ClientTypeName,
+
+        [Parameter(Mandatory=$false)]
+        [string]
+        $ModelsName
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -219,7 +243,10 @@ function Get-SwaggerInfo {
     $infoName = ''
     $NameSpace = ''
     $codeGenFileRequired = $false
-    $modelsName = 'Models'
+    if(-not $ModelsName) {
+        $modelsName = 'Models'
+    }
+
     $Header = ''    
     if(Get-Member -InputObject $Info -Name 'x-ms-code-generation-settings') {
         $prop = Test-PropertyWithAliases -InputObject $Info.'x-ms-code-generation-settings' -Aliases @('ClientName', 'Name')
@@ -238,10 +265,12 @@ function Get-SwaggerInfo {
             }
         }
 
-        $prop = Test-PropertyWithAliases -InputObject $Info.'x-ms-code-generation-settings' -Aliases @('ModelsName', 'mname')
-        if ($prop) {
-            # When ModelsName is specified, this changes the subnamespace of the models from 'Models' to whatever is specified
-            $modelsName = $Info.'x-ms-code-generation-settings'.$prop
+        if(-not $PSBoundParameters.ContainsKey('ModelsName')) {
+            $prop = Test-PropertyWithAliases -InputObject $Info.'x-ms-code-generation-settings' -Aliases @('ModelsName', 'mname')
+            if ($prop) {
+                # When ModelsName is specified, this changes the subnamespace of the models from 'Models' to whatever is specified
+                $modelsName = $Info.'x-ms-code-generation-settings'.$prop
+            }
         }
 
         $prop = Test-PropertyWithAliases -InputObject $Info.'x-ms-code-generation-settings' -Aliases @('Namespace', 'n')
@@ -336,16 +365,29 @@ function Get-SwaggerInfo {
         $NameSpace = "$script:PSSwaggerDefaultNamespace.$ModuleName.$NamespaceVersionSuffix"
     }
 
-    # AutoRest generates client name with 'Client' appended to info title when a NameSpace part is same as the info name.
-    if($NameSpace.Split('.', [System.StringSplitOptions]::RemoveEmptyEntries) -contains $infoName)
-    {
-        $infoName = $infoName + 'Client'
+    if($ClientTypeName) {        
+        # Get the namespace from namespace qualified client type name.
+        $LastDotIndex = $ClientTypeName.LastIndexOf('.')        
+        if($LastDotIndex -ne -1){
+            $NameSpace = $ClientTypeName.Substring(0, $LastDotIndex)
+            $ClientTypeName = $ClientTypeName.Substring($LastDotIndex+1)
+        }
+    }
+    else {
+        # AutoRest generates client name with 'Client' appended to info title when a NameSpace part is same as the info name.
+        if($NameSpace.Split('.', [System.StringSplitOptions]::RemoveEmptyEntries) -contains $infoName) {
+            $ClientTypeName = $infoName + 'Client'
+        }
+        else {
+            $ClientTypeName = $infoName
+        }
     }
 
     return @{
         InfoVersion = $infoVersion
         InfoTitle = $infoTitle
         InfoName = $infoName
+        ClientTypeName = $ClientTypeName
         Version = $ModuleVersion
         NameSpace = $NameSpace
         ModuleName = $ModuleName
@@ -1369,10 +1411,9 @@ function Get-PathFunctionBody
     $DefinitionList = $swaggerDict['Definitions']
     $UseAzureCsharpGenerator = $SwaggerMetaDict['UseAzureCsharpGenerator']
     $infoVersion = $Info['infoVersion']
-    $modulePostfix = $Info['infoName']
-    $clientName = '$' + $modulePostfix
+    $clientName = '$' + $Info['ClientTypeName']
     $NameSpace = $info.namespace
-    $fullModuleName = $Namespace + '.' + $modulePostfix
+    $FullClientTypeName = $Namespace + '.' + $Info['ClientTypeName']
     $apiVersion = $null
     $SubscriptionId = $null
     $BaseUri = $null
