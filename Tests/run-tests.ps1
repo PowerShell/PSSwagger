@@ -135,6 +135,8 @@ if (-not $azureRmProfile) {
 }
 
 $powershellFolder = $null
+$srcPath = Join-Path -Path $PSScriptRoot -ChildPath .. | Join-Path -ChildPath PSSwagger
+$srcPath += [System.IO.Path]::DirectorySeparatorChar
 if ("netstandard1.7" -eq $TestFramework) {
     # beta > alpha
     $powershellCore = Get-Package -Name PowerShell* -ProviderName msi | Sort-Object -Property Name -Descending | Select-Object -First 1 -ErrorAction Ignore
@@ -143,7 +145,8 @@ if ("netstandard1.7" -eq $TestFramework) {
     }
     $psVersion = $powershellCore.Name.Substring(11)
     $powershellFolder = "$Env:ProgramFiles\PowerShell\$($psVersion)"
-    $executeTestsCommand += ";`$env:PSModulePath_Backup=`"$env:PSModulePath`""
+    $fullPowerShellPath = Split-Path (Get-Command powershell).Path -Parent
+    $executeTestsCommand += ";`$env:PSModulePath_Backup=`"$srcPath;$env:PSModulePath`";`$global:fullPowerShellPath=`"$fullPowerShellPath`""
 }
 
 if ($EnableTracing) {

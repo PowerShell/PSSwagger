@@ -926,6 +926,7 @@ function ConvertTo-CsharpCode
         $microsoftRestClientRuntimeAzureRequiredVersion = if ($dependencies.ContainsKey('Microsoft.Rest.ClientRuntime.Azure')) { $dependencies['Microsoft.Rest.ClientRuntime.Azure'].RequiredVersion } else { '' }
 
         $command = @"
+		    `$env:PSModulePath = `"$env:PSModulePath`";
             `$AddPSSwaggerClientType_params = @{
                 OutputAssemblyName                             = '$outAssembly'
                 ClrPath                                        = '$clrPath'

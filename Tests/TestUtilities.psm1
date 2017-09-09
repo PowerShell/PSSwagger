@@ -132,9 +132,8 @@ function Initialize-Test {
     # Module generation part needs to happen in full powershell
     Write-Verbose "Generating module"
     if((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
-        & "powershell.exe" -command "& {`$env:PSModulePath=`$env:PSModulePath_Backup;
+        & "$global:fullPowerShellPath\powershell.exe" -command "& {`$env:Path = '$global:fullPowerShellPath;$env:Path';`$env:PSModulePath=`$env:PSModulePath_Backup;
             Import-Module (Join-Path `"$PsSwaggerPath`" `"PSSwagger.psd1`") -Force;
-            Import-Module (Join-Path `"$PsSwaggerPath`" `"PSSwaggerUtility`") -Force;
             Initialize-PSSwaggerDependencies -AllFrameworks -AcceptBootstrap -Azure:`$$UseAzureCSharpGenerator;
             New-PSSwaggerModule -SpecificationPath (Join-Path -Path `"$testCaseDataLocation`" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Verbose -NoAssembly -UseAzureCSharpGenerator:`$$UseAzureCSharpGenerator -ConfirmBootstrap;
         }"
