@@ -53,6 +53,7 @@ $DynamicAssemblyGenerationCode
 `$allDllsPath = Join-Path -Path `$ClrPath -ChildPath '*.dll'
 Get-ChildItem -Path `$allDllsPath -File | ForEach-Object { Add-Type -Path `$_.FullName -ErrorAction SilentlyContinue }
 
+. (Join-Path -Path `$PSScriptRoot -ChildPath 'New-ServiceClient.ps1')
 . (Join-Path -Path `$PSScriptRoot -ChildPath 'GeneratedHelpers.ps1')
 
 `$allPs1FilesPath = Join-Path -Path `$PSScriptRoot -ChildPath '$GeneratedCommandsName' | Join-Path -ChildPath '*.ps1'
@@ -159,7 +160,7 @@ $functionBodyStr = @'
     `$ErrorActionPreference = 'Stop'
     $securityBlock
 
-    $clientName = New-Object -TypeName $FullClientTypeName -ArgumentList $clientArgumentList$apiVersion
+    $clientName = New-ServiceClient -FullClientTypeName $FullClientTypeName -ArgumentList $clientArgumentList$apiVersion
     $overrideBaseUriBlock
     $GlobalParameterBlock
     $oDataExpressionBlock

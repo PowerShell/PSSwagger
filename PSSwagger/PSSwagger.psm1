@@ -612,9 +612,10 @@ function New-PSSwaggerModule
         -PSHeaderComment $PSHeaderComment
 
     $CopyFilesMap = [ordered]@{
-        'GeneratedHelpers.ps1'     = 'GeneratedHelpers.ps1'
+        'GeneratedHelpers.ps1'      = 'GeneratedHelpers.ps1'
         'Test-CoreRequirements.ps1' = 'Test-CoreRequirements.ps1'
         'Test-FullRequirements.ps1' = 'Test-FullRequirements.ps1'
+        'New-ServiceClient.ps1'     = 'New-ServiceClient.ps1'
     }
 
     if (-not $AssemblyFileName) {
