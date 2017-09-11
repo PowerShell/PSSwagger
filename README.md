@@ -20,6 +20,9 @@ A PowerShell module with commands to generate the PowerShell commands for a give
 ## Customizing PowerShell Metadata
 - [PowerShell Extensions](/docs/extensions/readme.md)
 
+## Testing generated module
+- [Mocking New-ServiceClient utility](/docs/testing/NewServiceClient.md)
+
 ## Supported Platforms
 | Usage | Platforms |
 | ----------------| ------------------------------------- |
