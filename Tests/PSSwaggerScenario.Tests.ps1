@@ -521,6 +521,11 @@ Describe "Composite Swagger Tests" -Tag @('Composite','ScenarioTest') {
             }
         
             $ModulePath = Join-Path -Path $Path -ChildPath $ModuleName
+            # Destroy the full and core CLR requirements so that AzureRM modules aren't required
+            # For now, composite swagger specs don't work without the -UseAzureCsharpGenerator flag because of AutoRest naming inconsistency
+            "" | Out-File -FilePath (Join-Path -Path $ModulePath -ChildPath "0.0.1" | Join-Path -ChildPath "Test-CoreRequirements.ps1")
+            "" | Out-File -FilePath (Join-Path -Path $ModulePath -ChildPath "0.0.1" | Join-Path -ChildPath "Test-FullRequirements.ps1")
+
             Get-Module -ListAvailable -Name $ModulePath | Should BeOfType 'System.Management.Automation.PSModuleInfo'
 
             # Import generated module
@@ -973,7 +978,7 @@ Describe "Pre-compiled SDK Assmebly scenario tests" -Tag @('SDKAssembly','Scenar
             Verbose                 = $true
         }
         Invoke-NewPSSwaggerModuleCommand -NewPSSwaggerModuleParameters $NewPSSwaggerModule_params -ErrorVariable 'ev' -ErrorAction 'SilentlyContinue'
-        $ev.FullyQualifiedErrorId | Should Be 'AssemblyNotFound,New-PSSwaggerModule'
+        (Remove-TestErrorId -FullyQualifiedErrorId $ev.FullyQualifiedErrorId) | Should Be 'AssemblyNotFound,New-PSSwaggerModule'
     }
 
     It 'Should fail when client type name is not found in pre-compiled SDK assembly scenario' {
@@ -999,7 +1004,7 @@ Describe "Pre-compiled SDK Assmebly scenario tests" -Tag @('SDKAssembly','Scenar
             Verbose                 = $true
         }
         Invoke-NewPSSwaggerModuleCommand -NewPSSwaggerModuleParameters $NewPSSwaggerModule_params -ErrorVariable 'ev' -ErrorAction 'SilentlyContinue'
-        $ev.FullyQualifiedErrorId | Should Be 'UnableToExtractDetailsFromSdkAssembly,Update-PathFunctionDetails'
+        (Remove-TestErrorId -FullyQualifiedErrorId $ev.FullyQualifiedErrorId) | Should Be 'UnableToExtractDetailsFromSdkAssembly,Update-PathFunctionDetails'
     }
 
     It 'Should fail when incorrect namespace in client type name is specified in pre-compiled SDK assembly scenario' {
@@ -1025,7 +1030,7 @@ Describe "Pre-compiled SDK Assmebly scenario tests" -Tag @('SDKAssembly','Scenar
             Verbose                 = $true
         }
         Invoke-NewPSSwaggerModuleCommand -NewPSSwaggerModuleParameters $NewPSSwaggerModule_params -ErrorVariable 'ev' -ErrorAction 'SilentlyContinue'
-        $ev.FullyQualifiedErrorId | Should Be 'UnableToExtractDetailsFromSdkAssembly,Update-PathFunctionDetails'
+        (Remove-TestErrorId -FullyQualifiedErrorId $ev.FullyQualifiedErrorId) | Should Be 'UnableToExtractDetailsFromSdkAssembly,Update-PathFunctionDetails'
     }
 
     It 'Should fail when incorrect client type name is specified in pre-compiled SDK assembly scenario' {
@@ -1051,6 +1056,6 @@ Describe "Pre-compiled SDK Assmebly scenario tests" -Tag @('SDKAssembly','Scenar
             Verbose                 = $true
         }
         Invoke-NewPSSwaggerModuleCommand -NewPSSwaggerModuleParameters $NewPSSwaggerModule_params -ErrorVariable 'ev' -ErrorAction 'SilentlyContinue'
-        $ev.FullyQualifiedErrorId | Should Be 'UnableToExtractDetailsFromSdkAssembly,Update-PathFunctionDetails'
+        (Remove-TestErrorId -FullyQualifiedErrorId $ev.FullyQualifiedErrorId) | Should Be 'UnableToExtractDetailsFromSdkAssembly,Update-PathFunctionDetails'
     }
 }

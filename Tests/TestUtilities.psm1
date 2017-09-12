@@ -93,15 +93,76 @@ function Invoke-NewPSSwaggerModuleCommand {
             elseif ($_.Value -ne $false) {
                 $ParametersString += " -$($_.Name) '$($_.Value)'"
             }
-        } 
-        & "powershell.exe" -command "& {
+        }
+        # For now this hides Exception and ErrorObject
+        $command = "& {
+            `$env:Path = '$global:fullPowerShellPath;$env:Path';
             `$env:PSModulePath=`$env:PSModulePath_Backup;
-            New-PSSwaggerModule $ParametersString
+            New-PSSwaggerModule $ParametersString -ErrorVariable evtemp
+            foreach (`$ev in `$evtemp) {
+                `$returnEv = `$false
+                `$evEncoded = 'ErrorVariable: '
+                if (`$ev.FullyQualifiedErrorId) {
+                    `$evEncoded += 'ErrorId='
+                    `$evEncoded += `$ev.FullyQualifiedErrorId
+                    `$evEncoded += ';'
+                    `$returnEv = `$true
+                }
+
+                if (`$ev.CategoryInfo) {
+                    `$evEncoded += 'ErrorCategory='
+                    `$evEncoded += `$ev.CategoryInfo.Category
+                    `$evEncoded += ';'
+                    `$returnEv = `$true
+                }
+
+                if (`$returnEv) {
+                    `$evEncoded
+                }
+            }
         }"
+        $result = & "$global:fullPowerShellPath\powershell.exe" -command $command
+        if ($PSBoundParameters.ContainsKey("ErrorVariable")) {
+            foreach ($resultLine in $result) {
+                if ($resultLine.StartsWith("ErrorVariable: ")) {
+                    $errorVariableInfoTokenPairs = $resultLine.Substring(15).Split(';')
+                    $errorId = ''
+                    $errorCategory = ''
+                    for ($i = 0; $i -lt $errorVariableInfoTokenPairs.Length; $i++) {
+                        $errorVariableInfoTokens = $errorVariableInfoTokenPairs[$i].Split('=')
+                        if ($errorVariableInfoTokens[0] -eq 'ErrorId') {
+                            $errorId = $errorVariableInfoTokens[1]
+                        } elseif ($errorVariableInfoTokens[0] -eq 'ErrorCategory') {
+                            $errorCategory = $errorVariableInfoTokens[1]
+                        }
+                    }
+
+                    Write-Error -Message 'New-PSSwaggerModule remote error' -ErrorId $errorId -Category $errorCategory
+                }
+            }
+        }
+        $result
     }
     else {
         New-PSSwaggerModule @NewPSSwaggerModuleParameters
     }
+}
+
+function Remove-TestErrorId {
+    [CmdletBinding()]
+    param(
+        [string]$FullyQualifiedErrorId
+    )
+
+    $errorIds = $FullyQualifiedErrorId.Split(',')
+    $NewFullyQualifiedErrorId = ''
+    for ($i = 0; $i -lt $errorIds.Length; $i++) {
+        if ($errorIds[$i] -ne 'Invoke-NewPSSwaggerModuleCommand') {
+            $NewFullyQualifiedErrorId += "$($errorIds[$i]),"
+        }
+    }
+
+    return $NewFullyQualifiedErrorId.Substring(0, $NewFullyQualifiedErrorId.Length - 1)
 }
 function Initialize-Test {
     [CmdletBinding()]

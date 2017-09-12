@@ -779,6 +779,7 @@ function ConvertTo-CsharpCode
     $tempCodeGenSettingsPath = ''
     # Latest AutoRest inconsistently appends 'Client' to the specified infoName to generated the client name.
     # We need to override the client name to ensure that generated PowerShell cmdlets work fine.
+    # Note: -ClientName doesn't seem to work for legacy invocation
     $ClientName = $info['ClientTypeName']
     try {
         if ($info.ContainsKey('CodeGenFileRequired') -and $info.CodeGenFileRequired) {
@@ -833,7 +834,6 @@ function ConvertTo-CsharpCode
 
         Write-Verbose -Message $LocalizedData.InvokingAutoRestWithParams
         Write-Verbose -Message $($autoRestParams | Out-String)
-        
         $autorestMessages = & AutoRest $autoRestParams
         if ($autorestMessages) {
             Write-Verbose -Message $($autorestMessages | Out-String)
@@ -925,6 +925,7 @@ function ConvertTo-CsharpCode
         $dependencies = Get-PSSwaggerExternalDependencies -Azure:$codeCreatedByAzureGenerator -Framework 'netstandard1'
         $microsoftRestClientRuntimeAzureRequiredVersion = if ($dependencies.ContainsKey('Microsoft.Rest.ClientRuntime.Azure')) { $dependencies['Microsoft.Rest.ClientRuntime.Azure'].RequiredVersion } else { '' }
 
+        # In some cases, PSCore doesn't inherit this process's PSModulePath
         $command = @"
 		    `$env:PSModulePath = `"$env:PSModulePath`";
             `$AddPSSwaggerClientType_params = @{
@@ -937,6 +938,7 @@ function ConvertTo-CsharpCode
                 CodeCreatedByAzureGenerator                    = `$$codeCreatedByAzureGenerator
                 BootstrapConsent                               = `$$UserConsent
             }
+            `$env:PSModulePath += '$env:PSModulePath'
             PSSwaggerUtility\Add-PSSwaggerClientType @AddPSSwaggerClientType_params
 "@
         $success = & "$PowerShellCorePath" -command "& {$command}"

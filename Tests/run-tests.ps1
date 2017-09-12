@@ -137,6 +137,8 @@ if (-not $azureRmProfile) {
 $powershellFolder = $null
 $srcPath = Join-Path -Path $PSScriptRoot -ChildPath .. | Join-Path -ChildPath PSSwagger
 $srcPath += [System.IO.Path]::DirectorySeparatorChar
+$modulePath = Join-Path -Path $PSScriptRoot -ChildPath ..
+$modulePath += [System.IO.Path]::DirectorySeparatorChar
 if ("netstandard1.7" -eq $TestFramework) {
     # beta > alpha
     $powershellCore = Get-Package -Name PowerShell* -ProviderName msi | Sort-Object -Property Name -Descending | Select-Object -First 1 -ErrorAction Ignore
@@ -146,7 +148,7 @@ if ("netstandard1.7" -eq $TestFramework) {
     $psVersion = $powershellCore.Name.Substring(11)
     $powershellFolder = "$Env:ProgramFiles\PowerShell\$($psVersion)"
     $fullPowerShellPath = Split-Path (Get-Command powershell).Path -Parent
-    $executeTestsCommand += ";`$env:PSModulePath_Backup=`"$srcPath;$env:PSModulePath`";`$global:fullPowerShellPath=`"$fullPowerShellPath`""
+    $executeTestsCommand += ";`$env:PSModulePath_Backup=`"$srcPath;$modulePath;$env:PSModulePath`";`$global:fullPowerShellPath=`"$fullPowerShellPath`""
 }
 
 if ($EnableTracing) {
@@ -157,7 +159,7 @@ $srcPath = Join-Path -Path $PSScriptRoot -ChildPath .. | Join-Path -ChildPath PS
 $srcPath += [System.IO.Path]::DirectorySeparatorChar
 $executeTestsCommand += @"
     ;`$verbosepreference=`'continue`';
-    `$env:PSModulePath=`"$srcPath;`$env:PSModulePath`";
+    `$env:PSModulePath=`"$srcPath;$modulePath;`$env:PSModulePath`";
     Invoke-Pester -Script `'$PSScriptRoot`' -ExcludeTag KnownIssue -OutputFormat NUnitXml -OutputFile ScenarioTestResults.xml -Verbose;
 "@
 # Set up Pester params
