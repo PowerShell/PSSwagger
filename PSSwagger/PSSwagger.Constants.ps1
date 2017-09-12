@@ -51,7 +51,9 @@ else {
 `$ClrPath = Join-Path -Path `$PSScriptRoot -ChildPath 'ref' | Join-Path -ChildPath `$clr
 $DynamicAssemblyGenerationCode
 `$allDllsPath = Join-Path -Path `$ClrPath -ChildPath '*.dll'
-Get-ChildItem -Path `$allDllsPath -File | ForEach-Object { Add-Type -Path `$_.FullName -ErrorAction SilentlyContinue }
+if (Test-Path -Path `$ClrPath) {
+    Get-ChildItem -Path `$allDllsPath -File | ForEach-Object { Add-Type -Path `$_.FullName -ErrorAction SilentlyContinue }
+}
 
 . (Join-Path -Path `$PSScriptRoot -ChildPath 'New-ServiceClient.ps1')
 . (Join-Path -Path `$PSScriptRoot -ChildPath 'GeneratedHelpers.ps1')
