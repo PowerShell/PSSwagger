@@ -96,7 +96,7 @@ function Invoke-NewPSSwaggerModuleCommand {
         }
         # For now this hides Exception and ErrorObject
         $command = "& {
-            `$env:Path = '$env:SystemRoot\System32\WindowsPowerShell\v1.0\PowerShell.exe;$env:Path';
+            `$env:Path = '$env:SystemRoot\System32\WindowsPowerShell\v1.0;$env:Path';
             `$env:PSModulePath=`$env:PSModulePath_Backup;
             New-PSSwaggerModule $ParametersString -ErrorVariable evtemp
             foreach (`$ev in `$evtemp) {
@@ -193,7 +193,7 @@ function Initialize-Test {
     # Module generation part needs to happen in full powershell
     Write-Verbose "Generating module"
     if((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
-        & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\PowerShell.exe" -command "& {`$env:Path = '$env:SystemRoot\System32\WindowsPowerShell\v1.0\PowerShell.exe;$env:Path';`$env:PSModulePath=`$env:PSModulePath_Backup;
+        & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\PowerShell.exe" -command "& {`$env:Path = '$env:SystemRoot\System32\WindowsPowerShell\v1.0;$env:Path';`$env:PSModulePath=`$env:PSModulePath_Backup;
             Import-Module (Join-Path `"$PsSwaggerPath`" `"PSSwagger.psd1`") -Force;
             Initialize-PSSwaggerDependencies -AllFrameworks -AcceptBootstrap -Azure:`$$UseAzureCSharpGenerator;
             New-PSSwaggerModule -SpecificationPath (Join-Path -Path `"$testCaseDataLocation`" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Verbose -NoAssembly -UseAzureCSharpGenerator:`$$UseAzureCSharpGenerator -ConfirmBootstrap;

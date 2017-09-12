@@ -812,7 +812,7 @@ Describe "Header scenario tests" -Tag @('Header','ScenarioTest')  {
         $GeneratedModuleVersionPath = Join-Path -Path $GeneratedModuleBase -ChildPath $ModuleVersion
         $Header = '__Custom_HEADER_Content__'
         if((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
-            & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\PowerShell.exe" -command "& {`$env:Path = '$env:SystemRoot\System32\WindowsPowerShell\v1.0\PowerShell.exe;$env:Path';`$env:PSModulePath=`$env:PSModulePath_Backup;
+            & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\PowerShell.exe" -command "& {`$env:Path = '$env:SystemRoot\System32\WindowsPowerShell\v1.0;$env:Path';`$env:PSModulePath=`$env:PSModulePath_Backup;
                 Import-Module '$PsSwaggerPath' -Force -ArgumentList `$true;
                 New-PSSwaggerModule -SpecificationPath '$SwaggerSpecPath' -Name $ModuleName -Version '$ModuleVersion' -UseAzureCsharpGenerator -Path '$GeneratedPath' -NoAssembly -Verbose -ConfirmBootstrap -Header '$Header';
             }"
@@ -833,7 +833,7 @@ Describe "Header scenario tests" -Tag @('Header','ScenarioTest')  {
         $ModuleVersion = '2.2.2.2'
         $GeneratedModuleVersionPath = Join-Path -Path $GeneratedModuleBase -ChildPath $ModuleVersion
         if((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
-            & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\PowerShell.exe" -command "& {`$env:Path = '$env:SystemRoot\System32\WindowsPowerShell\v1.0\PowerShell.exe;$env:Path';`$env:PSModulePath=`$env:PSModulePath_Backup;
+            & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\PowerShell.exe" -command "& {`$env:Path = '$env:SystemRoot\System32\WindowsPowerShell\v1.0;$env:Path';`$env:PSModulePath=`$env:PSModulePath_Backup;
                 Import-Module '$PsSwaggerPath' -Force -ArgumentList `$true;
                 New-PSSwaggerModule -SpecificationPath '$SwaggerSpecPath' -Name $ModuleName -Version '$ModuleVersion' -UseAzureCsharpGenerator -Path '$GeneratedPath' -NoAssembly -Verbose -ConfirmBootstrap;
             }"
