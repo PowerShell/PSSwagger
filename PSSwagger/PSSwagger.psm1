@@ -938,7 +938,7 @@ function ConvertTo-CsharpCode
                 CodeCreatedByAzureGenerator                    = `$$codeCreatedByAzureGenerator
                 BootstrapConsent                               = `$$UserConsent
             }
-            `$env:PSModulePath += '$env:PSModulePath'
+            `$env:PSModulePath += ';$env:PSModulePath'
             PSSwaggerUtility\Add-PSSwaggerClientType @AddPSSwaggerClientType_params
 "@
         $success = & "$PowerShellCorePath" -command "& {$command}"

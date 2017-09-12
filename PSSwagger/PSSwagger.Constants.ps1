@@ -51,7 +51,7 @@ else {
 `$ClrPath = Join-Path -Path `$PSScriptRoot -ChildPath 'ref' | Join-Path -ChildPath `$clr
 $DynamicAssemblyGenerationCode
 `$allDllsPath = Join-Path -Path `$ClrPath -ChildPath '*.dll'
-if (Test-Path -Path `$ClrPath) {
+if (Test-Path -Path `$ClrPath -PathType Container) {
     Get-ChildItem -Path `$allDllsPath -File | ForEach-Object { Add-Type -Path `$_.FullName -ErrorAction SilentlyContinue }
 }
 
