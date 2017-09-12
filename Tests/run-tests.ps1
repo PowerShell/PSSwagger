@@ -147,8 +147,7 @@ if ("netstandard1.7" -eq $TestFramework) {
     }
     $psVersion = $powershellCore.Name.Substring(11)
     $powershellFolder = "$Env:ProgramFiles\PowerShell\$($psVersion)"
-    $fullPowerShellPath = Split-Path (Get-Command powershell).Path -Parent
-    $executeTestsCommand += ";`$env:PSModulePath_Backup=`"$srcPath;$modulePath;$env:PSModulePath`";`$global:fullPowerShellPath=`"$fullPowerShellPath`""
+    $executeTestsCommand += ";`$env:PSModulePath_Backup=`"$srcPath;$modulePath;$env:PSModulePath`""
 }
 
 if ($EnableTracing) {
