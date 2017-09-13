@@ -425,7 +425,7 @@ function New-SwaggerPath
     $parametersToAdd = @{}
     $flattenedParametersOnPSCmdlet = @{}
     $parameterHitCount = @{}
-    $globalParameterBlock = ''
+    $globalParameters = @()
     $x_ms_pageableObject = $null
     foreach ($parameterSetDetail in $parameterSetDetails) {
         if ($parameterSetDetail.ContainsKey('x-ms-pageable') -and $parameterSetDetail.'x-ms-pageable' -and (-not $isNextPageOperation)) {
@@ -505,7 +505,7 @@ function New-SwaggerPath
                         $globalParameterValue = $parameterDetails.ConstantValue
                     }
                     
-                    $globalParameterBlock += [Environment]::NewLine + $executionContext.InvokeCommand.ExpandString($GlobalParameterBlockStr)
+                    $globalParameters += $globalParameterName
                 }
             }
 
@@ -609,24 +609,24 @@ function New-SwaggerPath
     }
 
     # Process security section
-    $azSubscriptionIdBlock = ""
-    $authFunctionCall = ""
-    $overrideBaseUriBlock = ""
-    $httpClientHandlerCall = ""
+    $SubscriptionIdCommand = ""
+    $AuthenticationCommand = ""
+    $AuthenticationCommandArgumentName = ''
+    $hostOverrideCommand = ''
+    $AddHttpClientHandler = $false
     $securityParametersToAdd = @()
     $PowerShellCodeGen = $SwaggerMetaDict['PowerShellCodeGen']
     if (($PowerShellCodeGen['ServiceType'] -eq 'azure') -or ($PowerShellCodeGen['ServiceType'] -eq 'azure_stack')) {
-        $azSubscriptionIdBlock = "`$subscriptionId = Get-AzSubscriptionId"
+        $SubscriptionIdCommand = 'Get-AzSubscriptionId'
     }
     if ($PowerShellCodeGen['CustomAuthCommand']) {
-        $authFunctionCall = $PowerShellCodeGen['CustomAuthCommand']
+        $AuthenticationCommand = $PowerShellCodeGen['CustomAuthCommand']
     }
     if ($PowerShellCodeGen['HostOverrideCommand']) {
         $hostOverrideCommand = $PowerShellCodeGen['HostOverrideCommand']
-        $overrideBaseUriBlock = $executionContext.InvokeCommand.ExpandString($HostOverrideBlock)
     }
     # If the auth function hasn't been set by metadata, try to discover it from the security and securityDefinition objects in the spec
-    if (-not $authFunctionCall) {
+    if (-not $AuthenticationCommand) {
         if ($FunctionDetails.ContainsKey('Security')) {
             # For now, just take the first security object
             if ($FunctionDetails.Security.Count -gt 1) {
@@ -674,11 +674,12 @@ function New-SwaggerPath
                     }
                     # If the service is specified to not issue authentication challenges, we can't rely on HttpClientHandler
                     if ($PowerShellCodeGen['NoAuthChallenge'] -and ($PowerShellCodeGen['NoAuthChallenge'] -eq $true)) {
-                        $authFunctionCall = 'Get-AutoRestCredential -Credential $Credential'
+                        $AuthenticationCommand = 'param([pscredential]$Credential) Get-AutoRestCredential -Credential $Credential'
+                        $AuthenticationCommandArgumentName = 'Credential'
                     } else {
                         # Use an empty service client credentials object because we're using HttpClientHandler instead
-                        $authFunctionCall = 'Get-AutoRestCredential'
-                        $httpClientHandlerCall = '$httpClientHandler = New-HttpClientHandler -Credential $Credential'
+                        $AuthenticationCommand = 'Get-AutoRestCredential'
+                        $AddHttpClientHandler = $true
                     }
                 } elseif ($type -eq 'apiKey') {
                     if (-not (Get-Member -InputObject $securityDefinition -Name 'name')) {
@@ -712,7 +713,8 @@ function New-SwaggerPath
                         Parameter = $credentialParameter
                         IsConflictingWithOperationParameter = $false
                     }
-                    $authFunctionCall = "Get-AutoRestCredential -APIKey `$APIKey -Location '$in' -Name '$name'"
+                    $AuthenticationCommand = "param([string]`$APIKey) Get-AutoRestCredential -APIKey `$APIKey -Location '$in' -Name '$name'"
+                    $AuthenticationCommandArgumentName = 'APIKey'
                 } else {
                     Write-Warning -Message ($LocalizedData.UnsupportedAuthenticationType -f ($type))
                 }
@@ -720,14 +722,9 @@ function New-SwaggerPath
         }
     }
 
-    if (-not $authFunctionCall) {
+    if (-not $AuthenticationCommand) {
         # At this point, there was no supported security object or overridden auth function, so assume no auth
-        $authFunctionCall = 'Get-AutoRestCredential'
-    }
-
-    $clientArgumentList = $clientArgumentListNoHandler
-    if ($httpClientHandlerCall) {
-        $clientArgumentList = $clientArgumentListHttpClientHandler
+        $AuthenticationCommand = 'Get-AutoRestCredential'
     }
 
     $nonUniqueParameterSets = @()
@@ -961,18 +958,22 @@ function New-SwaggerPath
     }
 
     $functionBodyParams = @{
-                                ParameterSetDetails = $parameterSetDetails
-                                ODataExpressionBlock = $oDataExpressionBlock
-                                ParameterGroupsExpressionBlock = $parameterGroupsExpressionBlock
-                                GlobalParameterBlock = $GlobalParameterBlock
-                                SwaggerDict = $SwaggerDict
-                                SwaggerMetaDict = $SwaggerMetaDict
-                                SecurityBlock = $executionContext.InvokeCommand.ExpandString($securityBlockStr)
-                                OverrideBaseUriBlock = $overrideBaseUriBlock
-                                ClientArgumentList = $clientArgumentList
-                                FlattenedParametersOnPSCmdlet = $flattenedParametersOnPSCmdlet
-                           }
-
+        ParameterSetDetails               = $parameterSetDetails
+        ODataExpressionBlock              = $oDataExpressionBlock
+        ParameterGroupsExpressionBlock    = $parameterGroupsExpressionBlock
+        SwaggerDict                       = $SwaggerDict
+        SwaggerMetaDict                   = $SwaggerMetaDict
+        AddHttpClientHandler              = $AddHttpClientHandler
+        HostOverrideCommand               = $hostOverrideCommand
+        AuthenticationCommand             = $AuthenticationCommand
+        AuthenticationCommandArgumentName = $AuthenticationCommandArgumentName
+        SubscriptionIdCommand             = $SubscriptionIdCommand
+        FlattenedParametersOnPSCmdlet     = $flattenedParametersOnPSCmdlet
+    }
+    if($globalParameters) {
+        $functionBodyParams['GlobalParameters'] = $globalParameters
+    }
+                           
     $pathGenerationPhaseResult = Get-PathFunctionBody @functionBodyParams
     $bodyObject = $pathGenerationPhaseResult.BodyObject
 
