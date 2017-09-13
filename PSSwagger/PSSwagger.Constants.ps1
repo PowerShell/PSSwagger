@@ -184,20 +184,21 @@ if($hostOverrideCommand){
     $hostOverrideCommand
 `'@"
 }
-
+if($GlobalParameters) {
 '
     $GlobalParameterHashtable = @{} '
     
-foreach($parameter in $GlobalParameters) {
+    foreach($parameter in $GlobalParameters) {
 "    
     `$GlobalParameterHashtable['$parameter'] = `$null
     if(`$PSBoundParameters.ContainsKey('$parameter')) {
         `$GlobalParameterHashtable['$parameter'] = `$PSBoundParameters['$parameter']
     }
 "
-}
+    }
 "
     `$NewServiceClient_params['GlobalParameterHashtable'] = `$GlobalParameterHashtable "
+}
 )
     $clientName = New-ServiceClient @NewServiceClient_params
     $oDataExpressionBlock
