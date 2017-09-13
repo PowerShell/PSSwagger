@@ -51,7 +51,9 @@ else {
 `$ClrPath = Join-Path -Path `$PSScriptRoot -ChildPath 'ref' | Join-Path -ChildPath `$clr
 $DynamicAssemblyGenerationCode
 `$allDllsPath = Join-Path -Path `$ClrPath -ChildPath '*.dll'
-Get-ChildItem -Path `$allDllsPath -File | ForEach-Object { Add-Type -Path `$_.FullName -ErrorAction SilentlyContinue }
+if (Test-Path -Path `$ClrPath -PathType Container) {
+    Get-ChildItem -Path `$allDllsPath -File | ForEach-Object { Add-Type -Path `$_.FullName -ErrorAction SilentlyContinue }
+}
 
 . (Join-Path -Path `$PSScriptRoot -ChildPath 'New-ServiceClient.ps1')
 . (Join-Path -Path `$PSScriptRoot -ChildPath 'GeneratedHelpers.ps1')
@@ -247,7 +249,21 @@ $getTaskResultBlock = @'
         if(`$taskResult.IsFaulted)
         {
             Write-Verbose -Message 'Operation failed.'
-            Throw "`$(`$taskResult.Exception.InnerExceptions | Out-String)"
+            if (`$taskResult.Exception)
+            {
+                if ((Get-Member -InputObject `$taskResult.Exception -Name 'InnerExceptions') -and `$taskResult.Exception.InnerExceptions)
+                {
+                    foreach (`$ex in `$taskResult.Exception.InnerExceptions)
+                    {
+                        Write-Error -Exception `$ex
+                    }
+                } elseif ((Get-Member -InputObject `$taskResult.Exception -Name 'InnerException') -and `$taskResult.Exception.InnerException)
+                {
+                    Write-Error -Exception `$taskResult.Exception.InnerException
+                } else {
+                    Write-Error -Exception `$taskResult.Exception
+                }
+            }
         } 
         elseif (`$taskResult.IsCanceled)
         {

@@ -512,7 +512,7 @@ Describe "Composite Swagger Tests" -Tag @('Composite','ScenarioTest') {
 
             Import-Module $PsSwaggerPath -Force
             if((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
-                & "powershell.exe" -command "& {`$env:PSModulePath=`$env:PSModulePath_Backup;
+                & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -command "& {`$env:PSModulePath=`$env:PSModulePath_Backup;
                     Import-Module (Join-Path `"$PsSwaggerPath`" `"PSSwagger.psd1`") -Force -ArgumentList `$true;
                     New-PSSwaggerModule -SpecificationPath $SwaggerSpecPath -Name $ModuleName -UseAzureCsharpGenerator -Path $Path -NoAssembly -Verbose -ConfirmBootstrap;
                 }"
@@ -521,6 +521,11 @@ Describe "Composite Swagger Tests" -Tag @('Composite','ScenarioTest') {
             }
         
             $ModulePath = Join-Path -Path $Path -ChildPath $ModuleName
+            # Destroy the full and core CLR requirements so that AzureRM modules aren't required
+            # For now, composite swagger specs don't work without the -UseAzureCsharpGenerator flag because of AutoRest naming inconsistency
+            "" | Out-File -FilePath (Join-Path -Path $ModulePath -ChildPath "0.0.1" | Join-Path -ChildPath "Test-CoreRequirements.ps1")
+            "" | Out-File -FilePath (Join-Path -Path $ModulePath -ChildPath "0.0.1" | Join-Path -ChildPath "Test-FullRequirements.ps1")
+
             Get-Module -ListAvailable -Name $ModulePath | Should BeOfType 'System.Management.Automation.PSModuleInfo'
 
             # Import generated module
@@ -807,7 +812,7 @@ Describe "Header scenario tests" -Tag @('Header','ScenarioTest')  {
         $GeneratedModuleVersionPath = Join-Path -Path $GeneratedModuleBase -ChildPath $ModuleVersion
         $Header = '__Custom_HEADER_Content__'
         if((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
-            & "powershell.exe" -command "& {`$env:PSModulePath=`$env:PSModulePath_Backup;
+            & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\PowerShell.exe" -command "& {`$env:PSModulePath=`$env:PSModulePath_Backup;
                 Import-Module '$PsSwaggerPath' -Force -ArgumentList `$true;
                 New-PSSwaggerModule -SpecificationPath '$SwaggerSpecPath' -Name $ModuleName -Version '$ModuleVersion' -UseAzureCsharpGenerator -Path '$GeneratedPath' -NoAssembly -Verbose -ConfirmBootstrap -Header '$Header';
             }"
@@ -828,7 +833,7 @@ Describe "Header scenario tests" -Tag @('Header','ScenarioTest')  {
         $ModuleVersion = '2.2.2.2'
         $GeneratedModuleVersionPath = Join-Path -Path $GeneratedModuleBase -ChildPath $ModuleVersion
         if((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
-            & "powershell.exe" -command "& {`$env:PSModulePath=`$env:PSModulePath_Backup;
+            & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\PowerShell.exe" -command "& {`$env:PSModulePath=`$env:PSModulePath_Backup;
                 Import-Module '$PsSwaggerPath' -Force -ArgumentList `$true;
                 New-PSSwaggerModule -SpecificationPath '$SwaggerSpecPath' -Name $ModuleName -Version '$ModuleVersion' -UseAzureCsharpGenerator -Path '$GeneratedPath' -NoAssembly -Verbose -ConfirmBootstrap;
             }"
@@ -973,7 +978,7 @@ Describe "Pre-compiled SDK Assmebly scenario tests" -Tag @('SDKAssembly','Scenar
             Verbose                 = $true
         }
         Invoke-NewPSSwaggerModuleCommand -NewPSSwaggerModuleParameters $NewPSSwaggerModule_params -ErrorVariable 'ev' -ErrorAction 'SilentlyContinue'
-        $ev.FullyQualifiedErrorId | Should Be 'AssemblyNotFound,New-PSSwaggerModule'
+        (Remove-TestErrorId -FullyQualifiedErrorId $ev.FullyQualifiedErrorId) | Should Be 'AssemblyNotFound,New-PSSwaggerModule'
     }
 
     It 'Should fail when client type name is not found in pre-compiled SDK assembly scenario' {
@@ -999,7 +1004,7 @@ Describe "Pre-compiled SDK Assmebly scenario tests" -Tag @('SDKAssembly','Scenar
             Verbose                 = $true
         }
         Invoke-NewPSSwaggerModuleCommand -NewPSSwaggerModuleParameters $NewPSSwaggerModule_params -ErrorVariable 'ev' -ErrorAction 'SilentlyContinue'
-        $ev.FullyQualifiedErrorId | Should Be 'UnableToExtractDetailsFromSdkAssembly,Update-PathFunctionDetails'
+        (Remove-TestErrorId -FullyQualifiedErrorId $ev.FullyQualifiedErrorId) | Should Be 'UnableToExtractDetailsFromSdkAssembly,Update-PathFunctionDetails'
     }
 
     It 'Should fail when incorrect namespace in client type name is specified in pre-compiled SDK assembly scenario' {
@@ -1025,7 +1030,7 @@ Describe "Pre-compiled SDK Assmebly scenario tests" -Tag @('SDKAssembly','Scenar
             Verbose                 = $true
         }
         Invoke-NewPSSwaggerModuleCommand -NewPSSwaggerModuleParameters $NewPSSwaggerModule_params -ErrorVariable 'ev' -ErrorAction 'SilentlyContinue'
-        $ev.FullyQualifiedErrorId | Should Be 'UnableToExtractDetailsFromSdkAssembly,Update-PathFunctionDetails'
+        (Remove-TestErrorId -FullyQualifiedErrorId $ev.FullyQualifiedErrorId) | Should Be 'UnableToExtractDetailsFromSdkAssembly,Update-PathFunctionDetails'
     }
 
     It 'Should fail when incorrect client type name is specified in pre-compiled SDK assembly scenario' {
@@ -1051,6 +1056,6 @@ Describe "Pre-compiled SDK Assmebly scenario tests" -Tag @('SDKAssembly','Scenar
             Verbose                 = $true
         }
         Invoke-NewPSSwaggerModuleCommand -NewPSSwaggerModuleParameters $NewPSSwaggerModule_params -ErrorVariable 'ev' -ErrorAction 'SilentlyContinue'
-        $ev.FullyQualifiedErrorId | Should Be 'UnableToExtractDetailsFromSdkAssembly,Update-PathFunctionDetails'
+        (Remove-TestErrorId -FullyQualifiedErrorId $ev.FullyQualifiedErrorId) | Should Be 'UnableToExtractDetailsFromSdkAssembly,Update-PathFunctionDetails'
     }
 }
