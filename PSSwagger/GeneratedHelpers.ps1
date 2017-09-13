@@ -50,13 +50,16 @@ function Get-AzSubscriptionId
     param()
 
     $AzureContext = & "Get-AzureRmContext" -ErrorAction Stop
-    if(Get-Member -InputObject $AzureContext.Subscription -Name SubscriptionId)
+    if($AzureContext)
     {
-        return $AzureContext.Subscription.SubscriptionId
-    }
-    else
-    {
-        return $AzureContext.Subscription.Id        
+        if(Get-Member -InputObject $AzureContext.Subscription -Name SubscriptionId)
+        {
+            return $AzureContext.Subscription.SubscriptionId
+        }
+        else
+        {
+            return $AzureContext.Subscription.Id        
+        }
     }
 }
 

@@ -1373,10 +1373,9 @@ function Get-PathFunctionBody
         [AllowEmptyString()]
         $ParameterGroupsExpressionBlock,
 
-        [Parameter(Mandatory=$true)]
-        [string]
-        [AllowEmptyString()]
-        $GlobalParameterBlock,
+        [Parameter(Mandatory=$false)]
+        [string[]]
+        $GlobalParameters,
 
         [Parameter(Mandatory=$true)]
         [PSCustomObject]
@@ -1386,22 +1385,29 @@ function Get-PathFunctionBody
         [PSCustomObject]
         $SwaggerMetaDict,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $AddHttpClientHandler,
+
+        [Parameter(Mandatory=$false)]
         [string]
-        $SecurityBlock,
+        $HostOverrideCommand,
 
         [Parameter(Mandatory=$true)]
         [string]
-        [AllowEmptyString()]
-        $OverrideBaseUriBlock,
-        
+        $AuthenticationCommand,
+
+        [Parameter(Mandatory=$false)]
+        [string]
+        $AuthenticationCommandArgumentName,
+
+        [Parameter(Mandatory=$false)]
+        [string]
+        $SubscriptionIdCommand,
+
         [Parameter(Mandatory=$true)]
         [PSCustomObject]
-        $FlattenedParametersOnPSCmdlet,
-
-        [Parameter(Mandatory=$true)]
-        [string]
-        $ClientArgumentList
+        $FlattenedParametersOnPSCmdlet
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -1414,16 +1420,12 @@ function Get-PathFunctionBody
     $clientName = '$' + $Info['ClientTypeName']
     $NameSpace = $info.namespace
     $FullClientTypeName = $Namespace + '.' + $Info['ClientTypeName']
-    $apiVersion = $null
     $SubscriptionId = $null
     $BaseUri = $null
     $GetServiceCredentialStr = ''
     $AdvancedFunctionEndCodeBlock = ''
     $GetServiceCredentialStr = 'Get-AzServiceCredential'
 
-    # Expanding again expands $clientName
-    $GlobalParameterBlock = $executionContext.InvokeCommand.ExpandString($GlobalParameterBlock)
-    
     $parameterSetBasedMethodStr = ''
     foreach ($parameterSetDetail in $ParameterSetDetails) {
         # Responses isn't actually used right now, but keeping this when we need to handle responses per parameter set

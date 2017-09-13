@@ -53,6 +53,7 @@ $DynamicAssemblyGenerationCode
 `$allDllsPath = Join-Path -Path `$ClrPath -ChildPath '*.dll'
 Get-ChildItem -Path `$allDllsPath -File | ForEach-Object { Add-Type -Path `$_.FullName -ErrorAction SilentlyContinue }
 
+. (Join-Path -Path `$PSScriptRoot -ChildPath 'New-ServiceClient.ps1')
 . (Join-Path -Path `$PSScriptRoot -ChildPath 'GeneratedHelpers.ps1')
 
 `$allPs1FilesPath = Join-Path -Path `$PSScriptRoot -ChildPath '$GeneratedCommandsName' | Join-Path -ChildPath '*.ps1'
@@ -157,11 +158,49 @@ $constructFlattenedParameter = @'
 $functionBodyStr = @'
 
     `$ErrorActionPreference = 'Stop'
-    $securityBlock
 
-    $clientName = New-Object -TypeName $FullClientTypeName -ArgumentList $clientArgumentList$apiVersion
-    $overrideBaseUriBlock
-    $GlobalParameterBlock
+    `$NewServiceClient_params = @{
+        FullClientTypeName = '$FullClientTypeName'
+    }
+$(
+if($AuthenticationCommand){
+"
+    `$NewServiceClient_params['AuthenticationCommand'] = @'
+    $AuthenticationCommand
+`'@ "
+    if($AuthenticationCommandArgumentName){
+"
+    `$NewServiceClient_params['AuthenticationCommandArgumentList'] = `$$AuthenticationCommandArgumentName"
+    }
+}
+if($AddHttpClientHandler){
+"
+    `$NewServiceClient_params['AddHttpClientHandler'] = `$true
+    `$NewServiceClient_params['Credential']           = `$Credential"
+}
+if($hostOverrideCommand){
+"
+    `$NewServiceClient_params['HostOverrideCommand'] = @'
+    $hostOverrideCommand
+`'@"
+}
+if($GlobalParameters) {
+'
+    $GlobalParameterHashtable = @{} '
+    
+    foreach($parameter in $GlobalParameters) {
+"    
+    `$GlobalParameterHashtable['$parameter'] = `$null
+    if(`$PSBoundParameters.ContainsKey('$parameter')) {
+        `$GlobalParameterHashtable['$parameter'] = `$PSBoundParameters['$parameter']
+    }
+"
+    }
+"
+    `$NewServiceClient_params['GlobalParameterHashtable'] = `$GlobalParameterHashtable "
+}
+)
+    $clientName = New-ServiceClient @NewServiceClient_params
     $oDataExpressionBlock
     $parameterGroupsExpressionBlock
     $flattenedParametersBlock
@@ -172,16 +211,6 @@ $functionBodyStr = @'
         Write-Verbose -Message 'Failed to map parameter set to operation method.'
         throw 'Module failed to find operation to execute.'
     }
-'@
-
-$clientArgumentListNoHandler = "`$serviceCredentials,`$delegatingHandler"
-$clientArgumentListHttpClientHandler = "`$serviceCredentials,`$httpClientHandler,`$delegatingHandler"
-
-$securityBlockStr = @'
-`$serviceCredentials = $authFunctionCall
-    $azSubscriptionIdBlock
-    $httpClientHandlerCall
-    `$delegatingHandler = New-Object -TypeName System.Net.Http.DelegatingHandler[] 0
 '@
 
 $parameterSetBasedMethodStrIfCase = @'
@@ -427,23 +456,6 @@ $createObjectStr = @'
 
     return `$Object
 '@
-
-$ApiVersionStr = @'
-
-    if(Get-Member -InputObject $clientName -Name 'ApiVersion' -MemberType Property)
-    {
-        $clientName.ApiVersion = "$infoVersion"
-    }
-'@
-
-$GlobalParameterBlockStr = @'
-    if(Get-Member -InputObject `$clientName -Name '$globalParameterName' -MemberType Property)
-    {
-        `$clientName.$globalParameterName = $globalParameterValue
-    }
-'@
-
-$HostOverrideBlock = '`$ResourceManagerUrl = $hostOverrideCommand`n    $clientName.BaseUri = `$ResourceManagerUrl'
 
 $GeneratedCommandsName = 'Generated.PowerShell.Commands'
 
