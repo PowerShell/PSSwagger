@@ -630,18 +630,20 @@ function Get-PathParamInfo
         $operationId = $JsonPathItemObject.operationId
     }
     
-    $JsonPathItemObject.parameters | ForEach-Object {
-        $AllParameterDetails = Get-ParameterDetails -ParameterJsonObject $_ `
-                                                    -SwaggerDict $SwaggerDict `
-                                                    -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
-                                                    -OperationId $operationId `
-                                                    -ParameterGroupCache $ParameterGroupCache `
-                                                    -PSMetaParametersJsonObject $PSMetaParametersJsonObject
-        foreach ($ParameterDetails in $AllParameterDetails) {
-            if($ParameterDetails -and ($ParameterDetails.ContainsKey('x_ms_parameter_grouping_group') -or $ParameterDetails.Type))
-            {
-                $ParametersTable[$index] = $ParameterDetails
-                $index = $index + 1            
+    if(Get-Member -InputObject $JsonPathItemObject -Name 'Parameters'){
+        $JsonPathItemObject.parameters | ForEach-Object {
+            $AllParameterDetails = Get-ParameterDetails -ParameterJsonObject $_ `
+                                                        -SwaggerDict $SwaggerDict `
+                                                        -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
+                                                        -OperationId $operationId `
+                                                        -ParameterGroupCache $ParameterGroupCache `
+                                                        -PSMetaParametersJsonObject $PSMetaParametersJsonObject
+            foreach ($ParameterDetails in $AllParameterDetails) {
+                if($ParameterDetails -and ($ParameterDetails.ContainsKey('x_ms_parameter_grouping_group') -or $ParameterDetails.Type))
+                {
+                    $ParametersTable[$index] = $ParameterDetails
+                    $index = $index + 1            
+                }
             }
         }
     }
