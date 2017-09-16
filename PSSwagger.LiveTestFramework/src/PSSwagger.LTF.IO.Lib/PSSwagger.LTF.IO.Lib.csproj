@@ -3,7 +3,7 @@
     <TargetFrameworks>net452</TargetFrameworks>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.JSON" Version="10.0.1" />
+    <PackageReference Include="Newtonsoft.JSON" Version="10.0.3" />
   </ItemGroup>
   <ItemGroup Condition=" '$(TargetFramework)' == 'net452' ">
     <PackageReference Include="Microsoft.CSharp" Version="4.4.0-preview2-25405-01" />
