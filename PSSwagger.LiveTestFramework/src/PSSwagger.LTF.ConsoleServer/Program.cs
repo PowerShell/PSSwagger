@@ -11,6 +11,7 @@ namespace PSSwagger.LTF.ConsoleServer
     using Lib.PowerShell;
     using Lib.ServiceTracing;
     using Newtonsoft.Json;
+    using PSSwagger.LTF.Lib.Transforms;
     using System;
     using System.Collections.Generic;
     using System.Globalization;
@@ -81,7 +82,8 @@ namespace PSSwagger.LTF.ConsoleServer
                 RunspaceManager = runspace,
                 ModulePath = serverArgs.ModulePath,
                 TracingManager = new ServiceTracingManager(),
-                SpecificationPaths = serverArgs.SpecificationPaths
+                SpecificationPaths = serverArgs.SpecificationPaths,
+                ObjectTransforms = serverArgs.GetTransforms()
             });
 
             try
@@ -109,6 +111,7 @@ namespace PSSwagger.LTF.ConsoleServer
         public List<string> Errors { get; set; }
         public bool EnablePipeLog { get; set; }
         public bool EnableEventLog { get; set; }
+        public List<string> TransformDefinitionFiles { get; set; }
 
         public ServerArgs()
         {
@@ -118,6 +121,18 @@ namespace PSSwagger.LTF.ConsoleServer
             this.LogPipeName = "psswagger-ltf-consoleserver";
             this.EnablePipeLog = true;
             this.EnableEventLog = false;
+            this.TransformDefinitionFiles = new List<string>();
+        }
+
+        public IList<DynamicObjectTransform> GetTransforms()
+        {
+            List<DynamicObjectTransform> transforms = new List<DynamicObjectTransform>();
+            foreach (string file in this.TransformDefinitionFiles)
+            {
+                transforms.Add(JsonConvert.DeserializeObject<DynamicObjectTransform>(File.ReadAllText(file)));
+            }
+
+            return transforms;
         }
 
         public ServerArgs Parse(string[] args)
@@ -165,6 +180,10 @@ namespace PSSwagger.LTF.ConsoleServer
                             break;
                         case "logpipename":
                             this.LogPipeName = arg;
+                            break;
+                        case "transform":
+                            // Let's merge these instead of overwriting maybe?
+                            this.TransformDefinitionFiles.Add(arg);
                             break;
                         default:
                             this.Errors.Add(String.Format(CultureInfo.CurrentCulture, "Unknown argument: {0}", lastArg));
@@ -215,6 +234,12 @@ namespace PSSwagger.LTF.ConsoleServer
                 if (fromFile.SpecificationPaths != null && fromFile.SpecificationPaths.Count > 0)
                 {
                     this.SpecificationPaths = fromFile.SpecificationPaths;
+                }
+
+                if (fromFile.TransformDefinitionFiles != null && fromFile.TransformDefinitionFiles.Count > 0)
+                {
+                    // Let's merge these instead of overwriting maybe?
+                    this.TransformDefinitionFiles.AddRange(fromFile.TransformDefinitionFiles);
                 }
             }
 

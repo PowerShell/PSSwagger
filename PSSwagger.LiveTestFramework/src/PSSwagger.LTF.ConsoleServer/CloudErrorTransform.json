@@ -1,0 +1,19 @@
+﻿{
+	"type": "System.Management.Automation.ActionPreferenceStopException",
+  "transforms": [
+    {
+      "query": "select",
+      "property": "ErrorRecord",
+      "result": "System.Management.Automation.ErrorRecord"
+    },
+    {
+      "query": "select",
+      "property": "Exception",
+      "result": "Microsoft.Rest.Azure.CloudException"
+    },
+    {
+      "query": "select",
+      "property": "Body"
+    }
+  ]
+}

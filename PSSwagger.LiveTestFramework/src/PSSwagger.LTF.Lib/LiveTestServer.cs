@@ -16,6 +16,7 @@ namespace PSSwagger.LTF.Lib
     using System.IO;
     using System.Threading;
     using System.Threading.Tasks;
+    using Transforms;
 
     public class LiveTestServerStartParams
     {
@@ -27,9 +28,11 @@ namespace PSSwagger.LTF.Lib
         public IList<string> SpecificationPaths { get; set; }
         public LiveTestCredentialFactory CredentialFactory { get; set; }
         public ServiceTracingManager TracingManager { get; set; }
+        public IList<DynamicObjectTransform> ObjectTransforms { get; set; }
         public LiveTestServerStartParams()
         {
             this.SpecificationPaths = new List<string>();
+            this.ObjectTransforms = new List<DynamicObjectTransform>();
         }
     }
 
@@ -187,7 +190,7 @@ namespace PSSwagger.LTF.Lib
                                     }
                                     else
                                     {
-                                        response = msg.MakeResponse(commandResult, serviceTracer, this.parameters.Logger);
+                                        response = msg.MakeResponse(commandResult, serviceTracer, parameters.ObjectTransforms, this.parameters.Logger);
                                     }
                                 }
                                 catch (Exception exRequest)
