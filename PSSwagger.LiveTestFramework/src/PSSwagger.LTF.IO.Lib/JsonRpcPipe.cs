@@ -20,6 +20,7 @@ namespace PSSwagger.LTF.Lib.IO
         /// Constant to indicate that headers are done.
         /// </summary>
         private const string HeaderEndConstant = "end";
+        private const string InputStreamClosedConstant = "closed";
         private IInputPipe characterReader;
         private IOutputPipe characterWriter;
         private ConcurrentQueue<object> blockQueue;
@@ -48,7 +49,7 @@ namespace PSSwagger.LTF.Lib.IO
         /// Read a single valid JSON-RPC block.
         /// </summary>
         /// <typeparam name="T">Type of block to read and deserialize.</typeparam>
-        /// <returns>Block of type <typeparamref name="T"/>.</returns>
+        /// <returns>Block of type <typeparamref name="T"/>. Returns null if input stream has been closed.</returns>
         public async Task<T> ReadBlock<T>() where T : class
         {
             object returnObj = null;
@@ -69,7 +70,14 @@ namespace PSSwagger.LTF.Lib.IO
                 do
                 {
                     headers[header.Item1.ToLowerInvariant()] = header.Item2;
-                } while ((header = await ReadHeader()) != null && !header.Item1.Equals(HeaderEndConstant));
+                } while ((header = await ReadHeader()) != null && !header.Item1.Equals(HeaderEndConstant) && !header.Item1.Equals(InputStreamClosedConstant));
+
+                if (header.Item1.Equals(InputStreamClosedConstant))
+                {
+                    // Input stream closed - return null to indicate this
+                    return null;
+                }
+
                 byte[] bytes = new byte[Int32.Parse(headers["content-length"])];
                 for (int i = 0; i < bytes.Length; i++)
                 {
@@ -189,6 +197,9 @@ namespace PSSwagger.LTF.Lib.IO
                         break;
                     case '\r':
                         break;
+                    case '\uffff':
+                        // When this character is read, assume the input stream has been closed
+                        return new Tuple<string, string>(InputStreamClosedConstant, String.Empty);
                     default:
                         if (spaceRead)
                         {

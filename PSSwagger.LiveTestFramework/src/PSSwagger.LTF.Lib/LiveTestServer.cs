@@ -163,58 +163,70 @@ namespace PSSwagger.LTF.Lib
                         LiveTestRequest msg = await this.Input.ReadBlock<LiveTestRequest>();
                         if (this.IsRunning)
                         {
-                            if (this.parameters.Logger != null)
+                            if (msg == null)
                             {
-                                this.parameters.Logger.LogAsync("Processing message: {0}", msg);
-                            }
-                            Task.Run(() =>
-                            {
-                                LiveTestResponse response = null;
-                                IServiceTracer serviceTracer = null;
-                                try
+                                if (this.parameters.Logger != null)
                                 {
+                                    this.parameters.Logger.LogAsync("Input stream has been closed, stopping server.", msg);
+                                }
+
+                                this.IsRunning = false;
+                            }
+                            else
+                            {
+                                if (this.parameters.Logger != null)
+                                {
+                                    this.parameters.Logger.LogAsync("Processing message: {0}", msg);
+                                }
+                                Task.Run(() =>
+                                {
+                                    LiveTestResponse response = null;
+                                    IServiceTracer serviceTracer = null;
+                                    try
+                                    {
                                     // Enable service tracing so that we can get service layer information required by test protocol
                                     long invocationId = this.parameters.TracingManager.GetNextInvocationId();
-                                    serviceTracer = this.parameters.TracingManager.CreateTracer(invocationId, this.parameters.Logger);
-                                    this.parameters.TracingManager.EnableTracing();
+                                        serviceTracer = this.parameters.TracingManager.CreateTracer(invocationId, this.parameters.Logger);
+                                        this.parameters.TracingManager.EnableTracing();
                                     // Process teh request
                                     CommandExecutionResult commandResult = this.currentModule.ProcessRequest(msg, this.parameters.CredentialFactory);
-                                    if (commandResult == null)
+                                        if (commandResult == null)
+                                        {
+                                            if (this.parameters.Logger != null)
+                                            {
+                                                this.parameters.Logger.LogAsync("Command not found.");
+                                            }
+
+                                            response = msg.MakeResponse(null, MethodNotFound);
+                                        }
+                                        else
+                                        {
+                                            response = msg.MakeResponse(commandResult, serviceTracer, parameters.ObjectTransforms, this.parameters.Logger);
+                                        }
+                                    }
+                                    catch (Exception exRequest)
                                     {
                                         if (this.parameters.Logger != null)
                                         {
-                                            this.parameters.Logger.LogAsync("Command not found.");
+                                            this.parameters.Logger.LogError("Exception processing request: " + exRequest.ToString());
                                         }
 
-                                        response = msg.MakeResponse(null, MethodNotFound);
+                                        response = msg.MakeResponse(exRequest, InternalError);
                                     }
-                                    else
+                                    finally
                                     {
-                                        response = msg.MakeResponse(commandResult, serviceTracer, parameters.ObjectTransforms, this.parameters.Logger);
-                                    }
-                                }
-                                catch (Exception exRequest)
-                                {
-                                    if (this.parameters.Logger != null)
-                                    {
-                                        this.parameters.Logger.LogError("Exception processing request: " + exRequest.ToString());
-                                    }
+                                        if (response != null)
+                                        {
+                                            this.Output.WriteBlock(response);
+                                        }
 
-                                    response = msg.MakeResponse(exRequest, InternalError);
-                                }
-                                finally
-                                {
-                                    if (response != null)
-                                    {
-                                        this.Output.WriteBlock(response);
+                                        if (serviceTracer != null)
+                                        {
+                                            this.parameters.TracingManager.RemoveTracer(serviceTracer);
+                                        }
                                     }
-
-                                    if (serviceTracer != null)
-                                    {
-                                        this.parameters.TracingManager.RemoveTracer(serviceTracer);
-                                    }
-                                }
-                            });
+                                });
+                            }
                         }
                     }
                     catch (Exception eRead)
