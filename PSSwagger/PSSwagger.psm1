@@ -927,7 +927,7 @@ function ConvertTo-CsharpCode
 
         # In some cases, PSCore doesn't inherit this process's PSModulePath
         $command = @"
-		    `$env:PSModulePath = `"$env:PSModulePath`";
+            `$env:PSModulePath += ';$env:PSModulePath'
             `$AddPSSwaggerClientType_params = @{
                 OutputAssemblyName                             = '$outAssembly'
                 ClrPath                                        = '$clrPath'
@@ -938,7 +938,6 @@ function ConvertTo-CsharpCode
                 CodeCreatedByAzureGenerator                    = `$$codeCreatedByAzureGenerator
                 BootstrapConsent                               = `$$UserConsent
             }
-            `$env:PSModulePath += ';$env:PSModulePath'
             PSSwaggerUtility\Add-PSSwaggerClientType @AddPSSwaggerClientType_params
 "@
         $success = & "$PowerShellCorePath" -command "& {$command}"

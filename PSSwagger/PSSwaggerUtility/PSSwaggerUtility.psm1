@@ -733,7 +733,7 @@ function Get-AddTypeParameters {
     if (-not (Get-OperatingSystemInfo).IsCore) {
         $AddTypeParams['Path'] = $SourceCodeFilePath
         $compilerParameters = New-Object -TypeName System.CodeDom.Compiler.CompilerParameters
-        $compilerParameters.WarningLevel = 3
+        $compilerParameters.WarningLevel = 1
         $compilerParameters.CompilerOptions = '/debug:full'
         if ($TestBuild) {
             $compilerParameters.IncludeDebugInformation = $true
@@ -807,7 +807,7 @@ function Get-CscParameters {
         $SourceCodeFilePath
         '/nologo',
         '/checked',
-        '/warn:3',
+        '/warn:1',
         '/debug:full',
         '/platform:anycpu',
         "/target:$TargetType"
