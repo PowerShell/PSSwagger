@@ -152,6 +152,11 @@ function Get-SwaggerSpecPathInfo
             if((Get-Member -InputObject $_.value -Name 'description') -and $_.value.description) {
                 $FunctionDescription = $_.value.description 
             }
+
+            $FunctionSynopsis = ''
+            if((Get-Member -InputObject $_.value -Name 'Summary') -and $_.value.Summary) {
+                $FunctionSynopsis = $_.value.Summary 
+            }
             
             $ParametersTable = @{}
             # Add Path common parameters to the operation's parameters list.
@@ -193,15 +198,16 @@ function Get-SwaggerSpecPathInfo
             }
 
             $ParameterSetDetail = @{
-                Description = $FunctionDescription
-                ParameterDetails = $ParametersTable
-                Responses = $responses
-                OperationId = $operationId
-                OperationType = $operationType
+                Description          = $FunctionDescription
+                Synopsis             = $FunctionSynopsis
+                ParameterDetails     = $ParametersTable
+                Responses            = $responses
+                OperationId          = $operationId
+                OperationType        = $operationType
                 EndpointRelativePath = $EndpointRelativePath
                 PathCommonParameters = $PathCommonParameters
-                Priority = 100 # Default
-                'x-ms-pageable' = $x_ms_pageableObject
+                Priority             = 100 # Default
+                'x-ms-pageable'      = $x_ms_pageableObject
             }
 
             if ((Get-Member -InputObject $_.Value -Name 'x-ms-odata') -and $_.Value.'x-ms-odata') {
@@ -420,6 +426,7 @@ function New-SwaggerPath
     $UseAzureCsharpGenerator = $SwaggerMetaDict['UseAzureCsharpGenerator']
     
     $description = ''
+    $synopsis = ''
     $paramBlock = ''
     $paramHelp = ''
     $parametersToAdd = @{}
@@ -827,16 +834,19 @@ function New-SwaggerPath
         $defaultParameterSet = $nonUniqueParameterSets | Sort-Object -Property Priority | Select-Object -First 1
         $DefaultParameterSetName = $defaultParameterSet.OperationId
         $description = $defaultParameterSet.Description
+        $synopsis = $defaultParameterSet.Synopsis
         Write-Warning -Message ($LocalizedData.CmdletHasAmbiguousParameterSets -f ($commandName))
     } elseif ($nonUniqueParameterSets.Length -eq 1) {
         # If there's only one non-unique, we can prevent errors by making this the default
         $DefaultParameterSetName = $nonUniqueParameterSets[0].OperationId
         $description = $nonUniqueParameterSets[0].Description
+        $synopsis = $nonUniqueParameterSets[0].Synopsis
     } else {
         # Pick the highest priority set among all sets
         $defaultParameterSet = $parameterSetDetails | Sort-Object @{e = {$_.Priority -as [int] }} | Select-Object -First 1
         $DefaultParameterSetName = $defaultParameterSet.OperationId
         $description = $defaultParameterSet.Description
+        $synopsis = $defaultParameterSet.Synopsis        
     }
 
     $oDataExpression = ""
