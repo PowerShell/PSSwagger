@@ -73,7 +73,7 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
                 return @{
                     IsCore = $true
                     IsLinux = $true
-                    IsOSX = $false
+                    IsMacOS = $false
                     IsWindows = $false
                 }
             }
@@ -120,7 +120,7 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
                 return @{
                     IsCore = $true
                     IsLinux = $true
-                    IsOSX = $false
+                    IsMacOS = $false
                     IsWindows = $false
                 }
             }
@@ -161,7 +161,7 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
                 return @{
                     IsCore = $true
                     IsLinux = $false
-                    IsOSX = $false
+                    IsMacOS = $false
                     IsWindows = $true
                 }
             }

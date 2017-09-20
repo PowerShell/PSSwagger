@@ -250,13 +250,13 @@ function Start-PSSwaggerJobHelper
 
 <#
 .DESCRIPTION
-  Gets operating system information. Returns an object with the following boolean properties: IsCore, IsLinux, IsWindows, IsOSX, IsNanoServer, IsIoT
+  Gets operating system information. Returns an object with the following boolean properties: IsCore, IsLinux, IsWindows, IsMacOS, IsNanoServer, IsIoT
 #>
 function Get-OperatingSystemInfo {
     $info = @{
         IsCore = $false
         IsLinux = $false
-        IsOSX = $false
+        IsMacOS = $false
         IsWindows = $false
         IsNanoServer = $false
         IsIoT = $false
@@ -265,7 +265,7 @@ function Get-OperatingSystemInfo {
     if ('System.Management.Automation.Platform' -as [Type]) {
         $info.IsCore = [System.Management.Automation.Platform]::IsCoreCLR
         $info.IsLinux = [System.Management.Automation.Platform]::IsLinux
-        $info.IsOSX = [System.Management.Automation.Platform]::IsOSX
+        $info.IsMacOS = [System.Management.Automation.Platform]::IsMacOS
         $info.IsWindows = [System.Management.Automation.Platform]::IsWindows
         $info.IsNanoServer = [System.Management.Automation.Platform]::IsNanoServer
         $info.IsIoT = [System.Management.Automation.Platform]::IsIoT

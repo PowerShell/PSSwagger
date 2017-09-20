@@ -252,15 +252,15 @@ function Install-Dotnet {
     $osInfo = PSSwaggerUtility\Get-OperatingSystemInfo
     $obtainUrl = "https://raw.githubusercontent.com/dotnet/cli/master/scripts/obtain"
 
-    # Install for Linux and OS X
-    if ($osInfo.IsLinux -or $osInfo.IsOSX) {
+    # Install for Linux and Mac OS
+    if ($osInfo.IsLinux -or $osInfo.IsMacOS) {
         $LinuxInfo = Get-Content /etc/os-release -Raw | ConvertFrom-StringData
         $IsUbuntu = $LinuxInfo.ID -match 'ubuntu'
 
         # Uninstall all previous dotnet packages
         $uninstallScript = if ($IsUbuntu) {
             "dotnet-uninstall-debian-packages.sh"
-        } elseif ($osInfo.IsOSX) {
+        } elseif ($osInfo.IsMacOS) {
             "dotnet-uninstall-pkgs.sh"
         }
 
