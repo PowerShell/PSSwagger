@@ -127,6 +127,8 @@ function Get-SwaggerSpecDefinitionInfo
 
     $FunctionDetails['Name'] = $Name
     $FunctionDetails['Description'] = $FunctionDescription
+    # Definition doesn't have Summary property, so using specifying Description as Function Synopsis.
+    $FunctionDetails['Synopsis'] = $FunctionDescription
     $FunctionDetails['ParametersTable'] = $ParametersTable
     $FunctionDetails['x_ms_Client_flatten_DefinitionNames'] = $x_ms_Client_flatten_DefinitionNames
     $FunctionDetails['AllOf_DefinitionNames'] = $AllOf_DefinitionNames
@@ -802,6 +804,7 @@ function New-SwaggerSpecDefinitionCommand
     $commandName = "New-$($FunctionDetails.Name)Object"
 
     $description = $FunctionDetails.description
+    $synopsis = $FunctionDetails.synopsis
     $commandHelp = $executionContext.InvokeCommand.ExpandString($helpDescStr)
 
     [string]$paramHelp = ""

@@ -387,6 +387,17 @@ Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
                 $CommandList.Name -CContains $_ | Should be $True
             }
         }
+
+        It "Test 'Synopsis' and 'Description' help contents of generated commands" {
+            $HelpInfo1 = Get-Help -Name 'Get-Cupcake'
+            $HelpInfo1.Description.Text | Should BeExactly 'Make a cupcake or update an existing one.'
+            $HelpInfo1.Synopsis | Should BeExactly 'List all cupcakes matching parameters'
+
+            $HelpInfo2 = Get-Help -Name 'New-DefWithDummyRefObject'
+            $ExpectedText = 'The workflow properties.'
+            $HelpInfo2.Description.Text | Should BeExactly $ExpectedText
+            $HelpInfo2.Synopsis | Should BeExactly $ExpectedText
+        }
     }
 
     AfterAll {
