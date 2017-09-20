@@ -1034,12 +1034,13 @@ function Set-ExtendedCodeMetadata {
             }
             
             $operationId = $parameterSetDetail.OperationId
-            $methodName = ''
+            $methodNames = @()
             $operations = ''
             $operationsWithSuffix = ''
             $opIdValues = $operationId -split '_',2 
             if(-not $opIdValues -or ($opIdValues.count -ne 2)) {
-                $methodName = $operationId + 'WithHttpMessagesAsync'
+                $methodNames += $operationId + 'WithHttpMessagesAsync'
+                $methodNames += $operationId + 'Method' + 'WithHttpMessagesAsync'
             } else {            
                 $operationName = $opIdValues[0]
                 $operationType = $opIdValues[1]
@@ -1049,10 +1050,11 @@ function Set-ExtendedCodeMetadata {
                     $operationsWithSuffix = $operations + 'Operations'
                 }
 
-                $methodName = $operationType + 'WithHttpMessagesAsync'
+                $methodNames += $operationType + 'WithHttpMessagesAsync'
+                # When OperationType value conflicts with a definition name, AutoREST generates method name by adding Method to the OperationType.
+                $methodNames += $operationType + 'Method' + 'WithHttpMessagesAsync'
             }
 
-            $parameterSetDetail['MethodName'] = $methodName
             $parameterSetDetail['Operations'] = $operations
 
             # For some reason, moving this out of this loop causes issues
@@ -1119,13 +1121,14 @@ function Set-ExtendedCodeMetadata {
                 $clientType = $propertyObject.PropertyType
             }
 
-            $methodInfo = $clientType.GetMethods() | Where-Object { $_.Name -eq $MethodName } | Select-Object -First 1
+            $methodInfo = $clientType.GetMethods() | Where-Object {$MethodNames -contains $_.Name} | Select-Object -First 1
             if (-not $methodInfo) {
-                $resultRecord.ErrorMessages += $LocalizedData.ExpectedMethodOnTypeNotFound -f ($MethodName, $clientType)
+                $resultRecord.ErrorMessages += $LocalizedData.ExpectedMethodOnTypeNotFound -f (($MethodNames -join ', or '), $clientType)
                 Export-CliXml -InputObject $resultRecord -Path $CliXmlTmpPath
                 $errorOccurred = $true
                 return
             }
+            $parameterSetDetail['MethodName'] = $methodInfo.Name
 
             # Process output type
             $returnType = $methodInfo.ReturnType
