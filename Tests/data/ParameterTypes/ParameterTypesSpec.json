@@ -298,6 +298,58 @@
                     }
                 }
             }
+        },
+        "/PathWithEffectiveNetworkSecurityGroup": {
+            "get": {
+                "summary": "List all dinosaurs matching parameters",
+                "operationId": "EffectiveNetworkSecurityGroup_Get",
+                "description": "List all dinosaurs matching parameters",
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/ApiVersionParameter"
+                    },
+                    {
+                        "$ref": "#/parameters/SubscriptionIdParameter"
+                    },
+                    {
+                        "name": "OperationTagMap",
+                        "in": "query",
+                        "required": false,
+                        "type": "string",
+                        "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "List of IP Addresses within the tag (key)"
+                        },
+                        "description": "Mapping of tags to list of IP Addresses included within the tag."
+                    },
+                    {
+                        "name": "EffectiveNetworkSecurityGroup",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/EffectiveNetworkSecurityGroup"
+                        },
+                        "description": "Group filtering parameters."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Namespace"
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -538,6 +590,26 @@
                 }
             },
             "description": "The response of the List Namespace operation."
+        },
+        "EffectiveNetworkSecurityGroup": {
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "Unique identifier"
+                },
+                "tagMap": {
+                    "type": "string",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "List of IP Addresses within the tag (key)"
+                    },
+                    "description": "Mapping of tags to list of IP Addresses included within the tag."
+                }
+            },
+            "description": "Effective network security group."
         }
     },
     "parameters": {

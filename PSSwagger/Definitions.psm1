@@ -383,6 +383,44 @@ function Get-DefinitionParameterType
                     Write-Warning -Message $Message
                 }
             }
+            elseif($ParameterJsonObject.Type -eq 'string') {
+                if((Get-Member -InputObject $ParameterJsonObject.AdditionalProperties -Name 'Type') -and
+                   ($ParameterJsonObject.AdditionalProperties.Type -eq 'array'))
+                {
+                    if(Get-Member -InputObject $ParameterJsonObject.AdditionalProperties -Name 'Items')
+                    {
+                        if((Get-Member -InputObject $ParameterJsonObject.AdditionalProperties.Items -Name 'Type') -and
+                           $ParameterJsonObject.AdditionalProperties.Items.Type)
+                        { 
+                            $ItemsType = Get-PSTypeFromSwaggerObject -JsonObject $ParameterJsonObject.AdditionalProperties.Items
+                            $ParameterType = "System.Collections.Generic.Dictionary[[string],[System.Collections.Generic.List[$ItemsType]]]"
+                        }
+                        elseif((Get-Member -InputObject $ParameterJsonObject.AdditionalProperties.Items -Name '$ref') -and
+                               $ParameterJsonObject.AdditionalProperties.Items.'$ref')
+                        {
+                            $ReferenceTypeValue = $ParameterJsonObject.AdditionalProperties.Items.'$ref'
+                            $ReferenceTypeName = Get-CSharpModelName -Name $ReferenceTypeValue.Substring( $( $ReferenceTypeValue.LastIndexOf('/') ) + 1 )
+                            $ItemsType = $DefinitionTypeNamePrefix + "$ReferenceTypeName"
+                            $ParameterType = "System.Collections.Generic.Dictionary[[string],[System.Collections.Generic.List[$ItemsType]]]"
+                        }
+                        else
+                        {
+                            $Message = $LocalizedData.UnsupportedSwaggerProperties -f ('ParameterJsonObject', $($ParameterJsonObject | Out-String))
+                            Write-Warning -Message $Message
+                        }
+                    }
+                    else
+                    {
+                        $Message = $LocalizedData.UnsupportedSwaggerProperties -f ('ParameterJsonObject', $($ParameterJsonObject | Out-String))
+                        Write-Warning -Message $Message
+                    }
+                }
+                else
+                {
+                    $Message = $LocalizedData.UnsupportedSwaggerProperties -f ('ParameterJsonObject', $($ParameterJsonObject | Out-String))
+                    Write-Warning -Message $Message
+                }
+            }
             else {
                 $Message = $LocalizedData.UnsupportedSwaggerProperties -f ('ParameterJsonObject', $($ParameterJsonObject | Out-String))
                 Write-Warning -Message $Message

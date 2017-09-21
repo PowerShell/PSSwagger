@@ -398,6 +398,19 @@ Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
             $HelpInfo2.Description.Text | Should BeExactly $ExpectedText
             $HelpInfo2.Synopsis | Should BeExactly $ExpectedText
         }
+
+        It 'Test parameter types with array of items in AdditionalProperties json schema' {
+            $ModuleName = 'Generated.ParamTypes.Module'
+            $ev = $null
+            $null = Get-Command -Module $ModuleName -Syntax -ErrorVariable ev
+            $ev | Should BeNullOrEmpty
+
+            $OperationCommandInfo = Get-Command -name Get-EffectiveNetworkSecurityGroup -Module $ModuleName
+            $OperationCommandInfo.Parameters.OperationTagMap.ParameterType.ToString() | Should BeExactly 'System.Collections.Generic.IDictionary`2[System.String,System.Collections.Generic.IList`1[System.String]]'
+            
+            $NewObjectCommandInfo = Get-Command -Name New-EffectiveNetworkSecurityGroupObject -Module $ModuleName
+            $NewObjectCommandInfo.Parameters.TagMap.ParameterType.ToString() | Should BeExactly 'System.Collections.Generic.Dictionary`2[System.String,System.Collections.Generic.List`1[System.String]]'
+        }
     }
 
     AfterAll {
