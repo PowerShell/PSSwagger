@@ -956,7 +956,16 @@ function Get-ParamType
             {
                 $ReferenceTypeValue = $ParameterJsonObject.Items.'$ref'
                 $ReferenceTypeName = Get-CSharpModelName -Name $ReferenceTypeValue.Substring( $( $ReferenceTypeValue.LastIndexOf('/') ) + 1 )
-                $paramType = $DefinitionTypeNamePrefix + "$ReferenceTypeName[]"
+                $ResolveReferenceParameterType_params = @{
+                    DefinitionFunctionsDetails = $DefinitionFunctionsDetails
+                    ReferenceTypeName          = $ReferenceTypeName
+                    DefinitionTypeNamePrefix   = $DefinitionTypeNamePrefix
+                }
+                $ResolvedResult = Resolve-ReferenceParameterType @ResolveReferenceParameterType_params
+                $paramType = $ResolvedResult.ParameterType + '[]'
+                if($ResolvedResult.ValidateSetString) {
+                    $ValidateSetString = $ResolvedResult.ValidateSetString
+                }
             }
             elseif((Get-Member -InputObject $ParameterJsonObject.Items -Name 'Type') -and $ParameterJsonObject.Items.Type)
             {
@@ -979,8 +988,13 @@ function Get-ParamType
                 {
                     $ReferenceTypeValue = $ParameterJsonObject.AdditionalProperties.'$ref'
                     $ReferenceTypeName = Get-CSharpModelName -Name $ReferenceTypeValue.Substring( $( $ReferenceTypeValue.LastIndexOf('/') ) + 1 )
-                    $AdditionalPropertiesType = $DefinitionTypeNamePrefix + "$ReferenceTypeName"
-                    $paramType = "System.Collections.Generic.Dictionary[[string],[$AdditionalPropertiesType]]"
+                    $ResolveReferenceParameterType_params = @{
+                        DefinitionFunctionsDetails = $DefinitionFunctionsDetails
+                        ReferenceTypeName          = $ReferenceTypeName
+                        DefinitionTypeNamePrefix   = $DefinitionTypeNamePrefix
+                    }
+                    $ResolvedResult = Resolve-ReferenceParameterType @ResolveReferenceParameterType_params
+                    $paramType = "System.Collections.Generic.Dictionary[[string],[$($ResolvedResult.ParameterType)]]"
                 }
                 else {
                     $Message = $LocalizedData.UnsupportedSwaggerProperties -f ('ParameterJsonObject', $($ParameterJsonObject | Out-String))
@@ -1004,8 +1018,13 @@ function Get-ParamType
                         {
                             $ReferenceTypeValue = $ParameterJsonObject.AdditionalProperties.Items.'$ref'
                             $ReferenceTypeName = Get-CSharpModelName -Name $ReferenceTypeValue.Substring( $( $ReferenceTypeValue.LastIndexOf('/') ) + 1 )
-                            $ItemsType = $DefinitionTypeNamePrefix + "$ReferenceTypeName"
-                            $paramType = "System.Collections.Generic.Dictionary[[string],[System.Collections.Generic.List[$ItemsType]]]"
+                            $ResolveReferenceParameterType_params = @{
+                                DefinitionFunctionsDetails = $DefinitionFunctionsDetails
+                                ReferenceTypeName          = $ReferenceTypeName
+                                DefinitionTypeNamePrefix   = $DefinitionTypeNamePrefix
+                            }
+                            $ResolvedResult = Resolve-ReferenceParameterType @ResolveReferenceParameterType_params
+                            $paramType = "System.Collections.Generic.Dictionary[[string],[System.Collections.Generic.List[$($ResolvedResult.ParameterType)]]]"
                         }
                         else
                         {
@@ -1079,7 +1098,16 @@ function Get-ParamType
             {
                 #  #<...>/definitions/<DEFINITIONNAME>
                 $ReferenceTypeName = Get-CSharpModelName -Name $ReferenceParts[-1]
-                $paramType = $DefinitionTypeNamePrefix + $ReferenceTypeName
+                $ResolveReferenceParameterType_params = @{
+                    DefinitionFunctionsDetails = $DefinitionFunctionsDetails
+                    ReferenceTypeName          = $ReferenceTypeName
+                    DefinitionTypeNamePrefix   = $DefinitionTypeNamePrefix
+                }
+                $ResolvedResult = Resolve-ReferenceParameterType @ResolveReferenceParameterType_params
+                $paramType = $ResolvedResult.ParameterType
+                if($ResolvedResult.ValidateSetString) {
+                    $ValidateSetString = $ResolvedResult.ValidateSetString
+                }
             }
         }
     }
@@ -1088,7 +1116,17 @@ function Get-ParamType
     {
         $ReferenceParameterValue = $ParameterJsonObject.Schema.'$ref'
         $ReferenceTypeName = Get-CSharpModelName -Name $ReferenceParameterValue.Substring( $( $ReferenceParameterValue.LastIndexOf('/') ) + 1 )
-        $paramType = $DefinitionTypeNamePrefix + $ReferenceTypeName
+
+        $ResolveReferenceParameterType_params = @{
+            DefinitionFunctionsDetails = $DefinitionFunctionsDetails
+            ReferenceTypeName          = $ReferenceTypeName
+            DefinitionTypeNamePrefix   = $DefinitionTypeNamePrefix
+        }
+        $ResolvedResult = Resolve-ReferenceParameterType @ResolveReferenceParameterType_params
+        $paramType = $ResolvedResult.ParameterType
+        if($ResolvedResult.ValidateSetString) {
+            $ValidateSetString = $ResolvedResult.ValidateSetString
+        }
 
         if((Get-Member -InputObject $ParameterJsonObject -Name 'x-ms-client-flatten') -and
            ($ParameterJsonObject.'x-ms-client-flatten'))
@@ -1632,8 +1670,9 @@ function Get-OutputType
                                 $DefRefParts = $defRef -split '/' | ForEach-Object { if($_.Trim()){ $_.Trim() } }
                                 if(($DefRefParts.Count -ge 3) -and ($DefRefParts[-2] -eq 'definitions'))
                                 {
-                                    $defKey = Get-CSharpModelName -Name $DefRefParts[-1]
-                                    $fullPathDataType = "$ModelsNamespace.$defKey"
+                                    $ReferenceTypeName = $DefRefParts[-1]
+                                    $ReferenceTypeName = Get-CSharpModelName -Name $ReferenceTypeName
+                                    $fullPathDataType = "$ModelsNamespace.$ReferenceTypeName"
                                 }
                                 if(Get-member -InputObject $defValue -Name 'type') 
                                 {
@@ -1836,5 +1875,46 @@ function Get-PowerShellCodeGenSettings {
                 $CodeGenSettings[$prop.Name] = $swaggerObject.'info'.'x-ps-code-generation-settings'.$($prop.Name)
             }
         }
+    }
+}
+
+function Resolve-ReferenceParameterType {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]
+        $ReferenceTypeName,
+
+        [Parameter(Mandatory = $true)]
+        [string]
+        $DefinitionTypeNamePrefix,
+
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]
+        $DefinitionFunctionsDetails
+    )
+
+    $ParameterType = $DefinitionTypeNamePrefix + $ReferenceTypeName
+    $ValidateSet = $null
+    $ValidateSetString = $null
+
+    # Some referenced definitions can be non-models like enums with validateset.
+    if ($DefinitionFunctionsDetails.ContainsKey($ReferenceTypeName) -and
+        $DefinitionFunctionsDetails[$ReferenceTypeName].ContainsKey('Type') -and
+        $DefinitionFunctionsDetails[$ReferenceTypeName].Type -and
+        -not $DefinitionFunctionsDetails[$ReferenceTypeName].IsModel)
+    {
+        $ParameterType = $DefinitionFunctionsDetails[$ReferenceTypeName].Type
+        
+        if($DefinitionFunctionsDetails[$ReferenceTypeName].ValidateSet) {
+            $ValidateSet = $DefinitionFunctionsDetails[$ReferenceTypeName].ValidateSet
+            $ValidateSetString = "'$($ValidateSet -join "', '")'"
+        }
+    }
+
+    return @{
+        ParameterType     = $ParameterType
+        ValidateSet       = $ValidateSet
+        ValidateSetString = $ValidateSetString
     }
 }
