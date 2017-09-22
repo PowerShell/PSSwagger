@@ -411,6 +411,41 @@ Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
             $NewObjectCommandInfo = Get-Command -Name New-EffectiveNetworkSecurityGroupObject -Module $ModuleName
             $NewObjectCommandInfo.Parameters.TagMap.ParameterType.ToString() | Should BeExactly 'System.Collections.Generic.Dictionary`2[System.String,System.Collections.Generic.List`1[System.String]]'
         }
+
+        It 'Test parameter types with references to enum definition type' {
+            $ModuleName = 'Generated.ParamTypes.Module'
+
+            # Swagger operation command with parameter type reference to enum definition type
+            $OperationCommandInfo = Get-Command -Name Get-PathWithEnumDefinitionType -Module $ModuleName
+
+            $OperationCommandInfo.Parameters.PolicyNameEnumParameter.ParameterType.ToString() | Should BeExactly 'System.String'
+            @('AppGwSslPolicy20150501', 'AppGwSslPolicy20170401','AppGwSslPolicy20170401S') | ForEach-Object {
+                $OperationCommandInfo.Parameters.PolicyNameEnumParameter.Attributes.ValidValues -contains $_ | Should Be $true
+            }
+
+            # Swagger definition command with parameter type reference to enum definition type
+            $NewObjectCommandInfo = Get-Command -Name New-ApplicationGatewaySslPolicyObject -Module $ModuleName
+
+            $NewObjectCommandInfo.Parameters.PolicyType.ParameterType.ToString() | Should BeExactly 'System.String'
+            @('Predefined','Custom') | ForEach-Object {
+                $NewObjectCommandInfo.Parameters.PolicyType.Attributes.ValidValues -contains $_ | Should Be $true
+            }
+
+            $NewObjectCommandInfo.Parameters.DisabledSslProtocols.ParameterType.ToString() | Should BeExactly 'System.String[]'
+            @('TLSv1_0','TLSv1_1', 'TLSv1_2') | ForEach-Object {
+                $NewObjectCommandInfo.Parameters.DisabledSslProtocols.Attributes.ValidValues -contains $_ | Should Be $true
+            }
+
+            $NewObjectCommandInfo.Parameters.PolicyName.ParameterType.ToString() | Should BeExactly 'System.String'
+            @('AppGwSslPolicy20150501', 'AppGwSslPolicy20170401','AppGwSslPolicy20170401S') | ForEach-Object {
+                $NewObjectCommandInfo.Parameters.PolicyName.Attributes.ValidValues -contains $_ | Should Be $true
+            }
+
+            $NewObjectCommandInfo.Parameters.MinProtocolVersion.ParameterType.ToString() | Should BeExactly 'System.String'
+            @('TLSv1_0','TLSv1_1', 'TLSv1_2') | ForEach-Object {
+                $NewObjectCommandInfo.Parameters.MinProtocolVersion.Attributes.ValidValues -contains $_ | Should Be $true
+            }
+        }
     }
 
     AfterAll {

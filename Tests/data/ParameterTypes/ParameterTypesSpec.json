@@ -350,6 +350,56 @@
                     }
                 }
             }
+        },
+        "/PathWithEnumDefinitionType": {
+            "get": {
+                "summary": "List all dinosaurs matching parameters",
+                "operationId": "PathWithEnumDefinitionType_Get",
+                "description": "List all dinosaurs matching parameters",
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/ApiVersionParameter"
+                    },
+                    {
+                        "$ref": "#/parameters/SubscriptionIdParameter"
+                    },
+                    {
+                        "name": "ApplicationGatewaySslPolicy",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ApplicationGatewaySslPolicy"
+                        },
+                        "description": "Group filtering parameters."
+                    },
+                    {
+                        "name": "PolicyNameEnumParameter",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/PolicyNameEnum"
+                        },
+                        "description": "Group filtering parameters."
+                    }
+                ],
+                "tags": [
+                    "Dinosaurs"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Namespace"
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -610,6 +660,69 @@
                 }
             },
             "description": "Effective network security group."
+        },
+        "PolicyNameEnum": {
+            "type": "string",
+            "description": "Ssl predefined policy name enums.",
+            "enum": [
+                "AppGwSslPolicy20150501",
+                "AppGwSslPolicy20170401",
+                "AppGwSslPolicy20170401S"
+            ],
+            "x-ms-enum": {
+                "name": "ApplicationGatewaySslPolicyName",
+                "modelAsString": true
+            }
+        },
+        "ApplicationGatewaySslPolicy": {
+            "properties": {
+                "disabledSslProtocols": {
+                    "type": "array",
+                    "description": "Ssl protocols to be disabled on application gateway.",
+                    "items": {
+                        "type": "string",
+                        "$ref": "#/definitions/ProtocolsEnum",
+                        "x-ms-enum": {
+                            "name": "ApplicationGatewaySslProtocol",
+                            "modelAsString": true
+                        }
+                    }
+                },
+                "policyType": {
+                    "type": "string",
+                    "description": "Type of Ssl Policy",
+                    "enum": [
+                        "Predefined",
+                        "Custom"
+                    ],
+                    "x-ms-enum": {
+                        "name": "ApplicationGatewaySslPolicyType",
+                        "modelAsString": true
+                    }
+                },
+                "policyName": {
+                    "$ref": "#/definitions/PolicyNameEnum",
+                    "description": "Name of Ssl predefined policy"
+                },
+                "minProtocolVersion": {
+                    "$ref": "#/definitions/ProtocolsEnum",
+                    "description": "Minimum version of Ssl protocol to be supported on application gateway."
+                }
+            },
+            "description": "Application Gateway Ssl policy."
+        },
+        "ProtocolsEnum": {
+            "type": "string",
+            "description": "Ssl protocol enums.",
+            "enum": [
+                "TLSv1_0",
+                "TLSv1_1",
+                "TLSv1_2"
+            ],
+            "x-ms-enum": {
+                "name": "ApplicationGatewaySslProtocol",
+                "modelAsString": true
+            }
         }
     },
     "parameters": {
