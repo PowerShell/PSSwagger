@@ -449,6 +449,69 @@
                     }
                 }
             }
+        },
+        "/PathWithPagingResult": {
+            "get": {
+                "tags": [
+                    "GET"
+                ],
+                "summary": "Get a list of the consumer groups in the Event Hub-compatible device-to-cloud endpoint in an IoT hub.",
+                "description": "Get a list of the consumer groups in the Event Hub-compatible device-to-cloud endpoint in an IoT hub.",
+                "operationId": "IotHubResource_ListEventHubConsumerGroups",
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/ApiVersionParameter"
+                    },
+                    {
+                        "$ref": "#/parameters/SubscriptionIdParameter"
+                    },
+                    {
+                        "name": "resourceGroupName",
+                        "description": "The name of the resource group that contains the IoT hub.",
+                        "in": "path",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "resourceName",
+                        "in": "path",
+                        "description": "The name of the IoT hub.",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "eventHubEndpointName",
+                        "in": "path",
+                        "description": "The name of the Event Hub-compatible endpoint.",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "This is a synchronous operation. The body contains a JSON-serialized list of the consumer groups in the the Event Hub-compatible endpoint in this IoT hub",
+                        "schema": {
+                            "$ref": "#/definitions/EventHubConsumerGroupsListResult"
+                        }
+                    },
+                    "default": {
+                        "description": "DefaultErrorResponse",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                },
+                "deprecated": false,
+                "x-ms-pageable": {
+                    "nextLinkName": "nextLink"
+                },
+                "produces": [
+                    "application/json"
+                ],
+                "consumes": [
+                    "application/json"
+                ]
+            }
         }
     },
     "x-ms-paths": {
@@ -670,6 +733,24 @@
                 "message": {
                     "type": "string",
                     "description": "Message"
+                }
+            }
+        },
+        "EventHubConsumerGroupsListResult": {
+            "description": "The JSON-serialized array of Event Hub-compatible consumer group names with a next link.",
+            "type": "object",
+            "properties": {
+                "value": {
+                    "description": "The array of Event Hub-compatible consumer group names.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "nextLink": {
+                    "description": "The next link.",
+                    "type": "string",
+                    "readOnly": true
                 }
             }
         }

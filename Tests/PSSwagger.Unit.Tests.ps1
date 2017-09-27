@@ -269,16 +269,31 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
         }
         
         Context "Get-CSharpModelName Unit Tests" {
-            It "Get-CSharpModelNamee should remove special characters" {
+            It "Get-CSharpModelName should remove special characters" {
                 Get-CSharpModelName -Name @"
                     SomeTypeWithSpecialCharacters ~!@#$%^&*()_+|}{:"<>?,./;'][\=-``
 "@  | Should BeExactly 'SomeTypeWithSpecialCharacters'
             }
-            It "Get-CSharpModelNamee should replace [] with Sequence" {
+            It "Get-CSharpModelName should replace [] with Sequence" {
                 Get-CSharpModelName -Name 'foo[]'  | Should BeExactly 'FooSequence'
             }
-            It "Get-CSharpModelNamee should append 'Model' for C# reserved words" {
+            It "Get-CSharpModelName should append 'Model' for C# reserved words" {
                 Get-CSharpModelName -Name 'break'  | Should BeExactly 'BreakModel'
+            }
+        }
+
+        Context "Get-PSCommandOutputType Unit Tests" {
+            It "Get-PSCommandOutputType with 'System.Int32' type" {
+                Get-PSCommandOutputType -Type ('System.Int32' -as [type]) | Should BeExactly 'System.Int32'
+            }
+            It "Get-PSCommandOutputType with 'System.String[]' type" {
+                Get-PSCommandOutputType -Type ('System.String[]' -as [type]) | Should BeExactly 'System.String'
+            }
+            It "Get-PSCommandOutputType with 'System.Collections.Generic.List[string]' type" {
+                Get-PSCommandOutputType -Type ('System.Collections.Generic.List[string]' -as [type]) | Should BeExactly 'System.String'
+            }
+            It "Get-PSCommandOutputType with 'System.Collections.Generic.Dictionary[string, string]' type" {
+                Get-PSCommandOutputType -Type ('System.Collections.Generic.Dictionary[string, string]' -as [type]) | Should BeExactly 'System.Collections.Generic.Dictionary[System.String,System.String]'
             }
         }
     }

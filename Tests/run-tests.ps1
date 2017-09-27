@@ -27,6 +27,7 @@ $nugetPackageSource = Test-NugetPackageSource
 $nodeModuleVersions = @{}
 $NodeJSVersion = '7.10.0'
 $NodeJSPackageName = "node-v$NodeJSVersion-win-x64"
+$AutoRestVersion = '1.2.2'
 
 # Note: If we use the $PSScriptRoot, Expand-Archive cmdlet is failing with path too long error (260 characters limit). 
 # So using $env:SystemDrive\$NodeJSPackageName path for now.
@@ -64,21 +65,11 @@ if (-not (Test-Path -Path $NodeModulesPath -PathType Container)) {
 # Install AutoRest using NPM, if not installed already.
 $AutorestCmdPath = Join-Path -Path $NodeModulesPath -ChildPath 'autorest.cmd'
 if (-not (Test-Path -Path $AutorestCmdPath -PathType Leaf)) {
-    Write-Verbose "Couldn't find $AutorestCmdPath. Running 'npm install -g autorest'."
-    & $NpmCmdPath install -g --prefix $NodeModulesPath autorest --scripts-prepend-node-path
+    Write-Verbose "Couldn't find $AutorestCmdPath. Running 'npm install -g autorest@$AutoRestVersion'."
+    & $NpmCmdPath install -g --prefix $NodeModulesPath "autorest@$AutoRestVersion" --scripts-prepend-node-path
 }
 $nodeModuleVersions['autorest'] = & $NpmCmdPath list -g --prefix $NodeModulesPath autorest
 $executeTestsCommand += ";`$env:Path =`"$NodeModulesPath;`$env:Path`""
-
-$AutoRestPluginPath = Join-Path -Path $env:USERPROFILE -ChildPath '.autorest' | 
-    Join-Path -ChildPath 'plugins' | 
-    Join-Path -ChildPath 'autorest'
-
-if (-not ((Test-Path -Path $AutoRestPluginPath -PathType Container) -and 
-        (Get-ChildItem -Path $AutoRestPluginPath -Directory))) {
-    # Create the generator plugins
-    & $AutorestCmdPath  --reset
-}
 
 $testRunGuid = [guid]::NewGuid().GUID
 Write-Verbose -message "Test run GUID: $testRunGuid"

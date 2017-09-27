@@ -19,13 +19,15 @@ $script:PSCommandVerbMap = @{
     Acquire        = 'Get'
     Examine        = 'Get'
     Suggest        = 'Get'
-
+    Retrieve       = 'Get'
+    
     Create         = 'New'
     Generate       = 'New'
     Allocate       = 'New'
     Provision      = 'New'
     Make           = 'New'
-
+    Renew          = 'New' # Alternatives: Initialize, Set, Update
+    
     CreateOrUpdate = 'New,Set'
     Failover       = 'Set'
     Assign         = 'Set'
@@ -57,6 +59,7 @@ $script:PSCommandVerbMap = @{
     Reprocess      = "Update" # Alternatives: Redo
     Upgrade        = 'Update'
     Reimage        = 'Update' # Alternatives: Format, Reset
+    Retarget       = 'Update' # Alternatives: Set
 
     Validate       = 'Test'
     Check          = 'Test'
@@ -103,13 +106,15 @@ $script:PSCommandVerbMap = @{
     Migrate        = 'Move' # Alternatives: Export
     Transfer       = 'Move'
     Name           = 'Move'
+    Reassociate    = 'Move'
 
     Change         = 'Rename'
 
     Swap           = 'Switch' # Alternatives: Move
     
     Execute        = 'Invoke'
-
+    Perform        = 'Invoke'
+    
     Discover       = 'Find' # Alternatives: Search
     Locate         = 'Find'
 
@@ -140,4 +145,8 @@ $script:PSCommandVerbMap = @{
     Jump           = 'Skip'
     
     Separate       = 'Split'
+
+    Notify         = 'Send'
+
+    Authorize      = 'Grant'
 }
