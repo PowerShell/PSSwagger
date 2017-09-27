@@ -1164,7 +1164,9 @@ function Set-ExtendedCodeMetadata {
             }
 
             # Note: ReturnType and PSCmdletOutputItemType are currently used for Swagger operations which supports x-ms-pageable.
-            $parameterSetDetail['PSCmdletOutputItemType'] = Get-PSCommandOutputType -Type $returnType.GenericTypeArguments[0]
+            if (($returnType.Name -eq 'IPage`1') -and $returnType.GenericTypeArguments) {
+                $parameterSetDetail['PSCmdletOutputItemType'] = Get-PSCommandOutputType -Type $returnType.GenericTypeArguments[0]
+            }
             $returnTypeString = Convert-GenericTypeToString -Type $returnType
             $parameterSetDetail['ReturnType'] = $returnTypeString
 
