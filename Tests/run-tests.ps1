@@ -68,6 +68,12 @@ if (-not (Test-Path -Path $AutorestCmdPath -PathType Leaf)) {
     Write-Verbose "Couldn't find $AutorestCmdPath. Running 'npm install -g autorest@$AutoRestVersion'."
     & $NpmCmdPath install -g --prefix $NodeModulesPath "autorest@$AutoRestVersion" --scripts-prepend-node-path
 }
+else {
+    $npmListResult = & $NpmCmdPath list -g --prefix $NodeModulesPath "autorest@$AutoRestVersion"
+    if("$npmListResult" -notmatch "autorest@$AutoRestVersion") {
+        Write-Warning "The required AutoRest version to run the PSSwagger tests is $AutoRestVersion. You might run into some test failures if the installed version '$npmListResult' is incompatible with the current version of PSSwagger."
+    }
+}
 $nodeModuleVersions['autorest'] = & $NpmCmdPath list -g --prefix $NodeModulesPath autorest
 $executeTestsCommand += ";`$env:Path =`"$NodeModulesPath;`$env:Path`""
 
