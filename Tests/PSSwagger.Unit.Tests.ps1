@@ -282,18 +282,18 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
             }
         }
 
-        Context "Get-PSCommandOutputType Unit Tests" {
-            It "Get-PSCommandOutputType with 'System.Int32' type" {
-                Get-PSCommandOutputType -Type ('System.Int32' -as [type]) | Should BeExactly 'System.Int32'
+        Context "Convert-GenericTypeToString Unit Tests" {
+            It "Convert-GenericTypeToString with 'System.Int32' type" {
+                Convert-GenericTypeToString -Type ('System.Int32' -as [type]) | Should BeExactly 'System.Int32'
             }
-            It "Get-PSCommandOutputType with 'System.String[]' type" {
-                Get-PSCommandOutputType -Type ('System.String[]' -as [type]) | Should BeExactly 'System.String'
+            It "Convert-GenericTypeToString with 'System.String[]' type" {
+                Convert-GenericTypeToString -Type ('System.String[]' -as [type]) | Should BeExactly 'System.String'
             }
-            It "Get-PSCommandOutputType with 'System.Collections.Generic.List[string]' type" {
-                Get-PSCommandOutputType -Type ('System.Collections.Generic.List[string]' -as [type]) | Should BeExactly 'System.String'
+            It "Convert-GenericTypeToString with 'System.Collections.Generic.List[string]' type" {
+                Convert-GenericTypeToString -Type ('System.Collections.Generic.List[string]' -as [type]) | Should BeExactly 'System.Collections.Generic.List[System.String]'
             }
-            It "Get-PSCommandOutputType with 'System.Collections.Generic.Dictionary[string, string]' type" {
-                Get-PSCommandOutputType -Type ('System.Collections.Generic.Dictionary[string, string]' -as [type]) | Should BeExactly 'System.Collections.Generic.Dictionary[System.String,System.String]'
+            It "Convert-GenericTypeToString with 'System.Collections.Generic.Dictionary[string, string]' type" {
+                Convert-GenericTypeToString -Type ('System.Collections.Generic.Dictionary[string, string]' -as [type]) | Should BeExactly 'System.Collections.Generic.Dictionary[System.String,System.String]'
             }
         }
     }
