@@ -561,7 +561,7 @@ function New-SwaggerPath
     $Cmdlet = ''
     $CmdletParameter = ''
     $CmdletArgs = ''
-    $pageType = 'Array'
+    $pageType = ''
     $resultBlockStr = $resultBlockNoPaging
     if ($x_ms_pageableObject) {
         if ($x_ms_pageableObject.ReturnType -ne 'NONE') {
@@ -988,7 +988,13 @@ function New-SwaggerPath
     $bodyObject = $pathGenerationPhaseResult.BodyObject
 
     $body = $bodyObject.Body
-    $outputTypeBlock = $bodyObject.OutputTypeBlock
+    if($pageType){
+        $fullPathDataType = $pageType
+        $outputTypeBlock = $executionContext.InvokeCommand.ExpandString($outputTypeStr)
+    }
+    else {
+        $outputTypeBlock = $bodyObject.OutputTypeBlock        
+    }
 
     if ($UseAzureCsharpGenerator) {
         $dependencyInitFunction = "Initialize-PSSwaggerDependencies -Azure"
@@ -1150,6 +1156,10 @@ function Set-ExtendedCodeMetadata {
                 $returnType = $returnType.GenericTypeArguments[0]
             }
 
+            if (($returnType.Name -eq 'IPage`1') -and $returnType.GenericTypeArguments) {
+                $returnType = $returnType.GenericTypeArguments[0]
+            }
+            # Note: ReturnType is currently used for Swagger operations which supports x-ms-pageable.
             $returnTypeString = Convert-GenericTypeToString -Type $returnType
             $parameterSetDetail['ReturnType'] = $returnTypeString
 
@@ -1272,7 +1282,7 @@ function Convert-GenericTypeToString {
     )
 
     if (-not $Type.IsGenericType) {
-        return $Type.FullName
+        return $Type.FullName.Trim('[]')
     }
 
     $genericTypeStr = ''

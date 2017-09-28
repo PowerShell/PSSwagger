@@ -245,16 +245,17 @@ Describe "Optional parameter tests" -Tag ScenarioTest {
 
 Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
     BeforeAll {
+        $ModuleName = 'Generated.ParamTypes.Module'        
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwaggerUtility" | `
                        Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
-        Initialize-Test -GeneratedModuleName "Generated.ParamTypes.Module" -GeneratedModuleVersion "0.0.2" -TestApiName "ParameterTypes" `
+        Initialize-Test -GeneratedModuleName $ModuleName -GeneratedModuleVersion "0.0.2" -TestApiName "ParameterTypes" `
                         -TestSpecFileName "ParameterTypesSpec.json" -TestDataFileName "ParameterTypesData.json" `
                         -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
 
         # Import generated module
         Write-Verbose "Importing modules"
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
-                       Join-Path -ChildPath "Generated.ParamTypes.Module")
+                       Join-Path -ChildPath $ModuleName)
 
         $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "ParameterTypes"
         if ($global:PSSwaggerTest_EnableTracing -and $script:EnableTracer) {
@@ -325,7 +326,6 @@ Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
         }
 
         It "Test dummy definition references" {
-            $ModuleName = 'Generated.ParamTypes.Module'
             $ev = $null
             $CommandList = Get-Command -Module $ModuleName -ErrorVariable ev
             $ev | Should BeNullOrEmpty
@@ -345,7 +345,6 @@ Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
         }
 
         It "Test CSharp reserved keywords as definition or type names" {
-            $ModuleName = 'Generated.ParamTypes.Module'
             $ev = $null
             $CommandList = Get-Command -Module $ModuleName -ErrorVariable ev
             $ev | Should BeNullOrEmpty
@@ -375,7 +374,6 @@ Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
         }
 
         It "Test Definition commands 'New-<NestedDefinition>Object' for nested definitions" {
-            $ModuleName = 'Generated.ParamTypes.Module'
             $ev = $null
             $CommandList = Get-Command -Module $ModuleName -ErrorVariable ev
             $ev | Should BeNullOrEmpty
@@ -400,7 +398,6 @@ Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
         }
 
         It 'Test parameter types with array of items in AdditionalProperties json schema' {
-            $ModuleName = 'Generated.ParamTypes.Module'
             $ev = $null
             $null = Get-Command -Module $ModuleName -Syntax -ErrorVariable ev
             $ev | Should BeNullOrEmpty
@@ -413,8 +410,6 @@ Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
         }
 
         It 'Test parameter types with references to enum definition type' {
-            $ModuleName = 'Generated.ParamTypes.Module'
-
             # Swagger operation command with parameter type reference to enum definition type
             $OperationCommandInfo = Get-Command -Name Get-PathWithEnumDefinitionType -Module $ModuleName
 
@@ -453,7 +448,7 @@ Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
     }
 }
 
-Describe "AzureExtensions" {
+Describe "AzureExtensions" -Tag @('AzureExtension','ScenarioTest') {
     BeforeAll {
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwaggerUtility" | `
                        Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
@@ -1116,5 +1111,34 @@ Describe "Pre-compiled SDK Assmebly scenario tests" -Tag @('SDKAssembly','Scenar
         }
         Invoke-NewPSSwaggerModuleCommand -NewPSSwaggerModuleParameters $NewPSSwaggerModule_params -ErrorVariable 'ev' -ErrorAction 'SilentlyContinue'
         (Remove-TestErrorId -FullyQualifiedErrorId $ev.FullyQualifiedErrorId) | Should Be 'UnableToExtractDetailsFromSdkAssembly,Update-PathFunctionDetails'
+    }
+}
+
+Describe "Output type scenario tests" -Tag @('OutputType','ScenarioTest')  {
+    BeforeAll {
+        $ModuleName = 'Generated.AzExt.OutputType.Module'
+        $SwaggerSpecPath = Join-Path -Path $PSScriptRoot -ChildPath 'Data' | Join-Path -ChildPath 'AzureExtensions' | Join-Path -ChildPath 'AzureExtensionsSpec.json'
+        $GeneratedPath = Join-Path -Path $PSScriptRoot -ChildPath 'Generated'
+        $GeneratedModuleBase = Join-Path -Path $GeneratedPath -ChildPath $ModuleName
+        if (Test-Path -Path $GeneratedModuleBase -PathType Container) {
+            Remove-Item -Path $GeneratedModuleBase -Recurse -Force
+        }
+
+        $params = @{
+            SpecificationPath       = $SwaggerSpecPath
+            Name                    = $ModuleName
+            UseAzureCsharpGenerator = $true
+            Path                    = $GeneratedPath
+            ConfirmBootstrap        = $true
+            Verbose                 = $true
+        }
+        Invoke-NewPSSwaggerModuleCommand -NewPSSwaggerModuleParameters $params
+
+        Import-Module $GeneratedModuleBase -Force
+    }
+
+    It 'Test output type of swagger operation which supports x-ms-pageable' {
+        $CommandInfo = Get-Command -Name Get-IotHubResourceEventHubConsumerGroup -Module $ModuleName
+        $CommandInfo.OutputType.Type.ToString() | Should BeExactly 'System.String'
     }
 }

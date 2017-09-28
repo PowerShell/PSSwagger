@@ -269,16 +269,31 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
         }
         
         Context "Get-CSharpModelName Unit Tests" {
-            It "Get-CSharpModelNamee should remove special characters" {
+            It "Get-CSharpModelName should remove special characters" {
                 Get-CSharpModelName -Name @"
                     SomeTypeWithSpecialCharacters ~!@#$%^&*()_+|}{:"<>?,./;'][\=-``
 "@  | Should BeExactly 'SomeTypeWithSpecialCharacters'
             }
-            It "Get-CSharpModelNamee should replace [] with Sequence" {
+            It "Get-CSharpModelName should replace [] with Sequence" {
                 Get-CSharpModelName -Name 'foo[]'  | Should BeExactly 'FooSequence'
             }
-            It "Get-CSharpModelNamee should append 'Model' for C# reserved words" {
+            It "Get-CSharpModelName should append 'Model' for C# reserved words" {
                 Get-CSharpModelName -Name 'break'  | Should BeExactly 'BreakModel'
+            }
+        }
+
+        Context "Convert-GenericTypeToString Unit Tests" {
+            It "Convert-GenericTypeToString with 'System.Int32' type" {
+                Convert-GenericTypeToString -Type ('System.Int32' -as [type]) | Should BeExactly 'System.Int32'
+            }
+            It "Convert-GenericTypeToString with 'System.String[]' type" {
+                Convert-GenericTypeToString -Type ('System.String[]' -as [type]) | Should BeExactly 'System.String'
+            }
+            It "Convert-GenericTypeToString with 'System.Collections.Generic.List[string]' type" {
+                Convert-GenericTypeToString -Type ('System.Collections.Generic.List[string]' -as [type]) | Should BeExactly 'System.Collections.Generic.List[System.String]'
+            }
+            It "Convert-GenericTypeToString with 'System.Collections.Generic.Dictionary[string, string]' type" {
+                Convert-GenericTypeToString -Type ('System.Collections.Generic.Dictionary[string, string]' -as [type]) | Should BeExactly 'System.Collections.Generic.Dictionary[System.String,System.String]'
             }
         }
     }
