@@ -250,13 +250,13 @@ function Start-PSSwaggerJobHelper
 
 <#
 .DESCRIPTION
-  Gets operating system information. Returns an object with the following boolean properties: IsCore, IsLinux, IsWindows, IsOSX, IsNanoServer, IsIoT
+  Gets operating system information. Returns an object with the following boolean properties: IsCore, IsLinux, IsWindows, IsMacOS, IsNanoServer, IsIoT
 #>
 function Get-OperatingSystemInfo {
     $info = @{
         IsCore = $false
         IsLinux = $false
-        IsOSX = $false
+        IsMacOS = $false
         IsWindows = $false
         IsNanoServer = $false
         IsIoT = $false
@@ -265,7 +265,7 @@ function Get-OperatingSystemInfo {
     if ('System.Management.Automation.Platform' -as [Type]) {
         $info.IsCore = [System.Management.Automation.Platform]::IsCoreCLR
         $info.IsLinux = [System.Management.Automation.Platform]::IsLinux
-        $info.IsOSX = [System.Management.Automation.Platform]::IsOSX
+        $info.IsMacOS = [System.Management.Automation.Platform]::IsMacOS
         $info.IsWindows = [System.Management.Automation.Platform]::IsWindows
         $info.IsNanoServer = [System.Management.Automation.Platform]::IsNanoServer
         $info.IsIoT = [System.Management.Automation.Platform]::IsIoT
@@ -467,7 +467,7 @@ function Add-PSSwaggerClientType {
     $preprocessorDirectives = @()
     if ((Get-OperatingSystemInfo).IsCore) {
         # Base framework references
-        $preprocessorDirectives = @('#define DNXCORE50','#define PORTABLE')
+        $preprocessorDirectives = @('#define DNXCORE50','#define PORTABLE')        
         $systemRefs = @('System.dll',
                         'System.Core.dll',
                         'System.Net.Http.dll',
@@ -496,44 +496,57 @@ function Add-PSSwaggerClientType {
     # Get dependencies for AutoRest SDK
     $externalReferences = Get-PSSwaggerExternalDependencies -Framework $externalReferencesFramework -Azure:$CodeCreatedByAzureGenerator -RequiredVersionMap $requiredVersionMap
 
-    # Ensure output directory exists
-    if (-not (Test-Path -Path $clrPath -PathType Container)) {
-        $null = New-Item -Path $clrPath -ItemType Directory -Force
+    $AddClientTypeHelperParams = @{
+        Path                   = $CSharpFiles | ForEach-Object { $_.FullName }
+        AllUsers               = $AllUsers
+        BootstrapConsent       = $BootstrapConsent
+        PackageDependencies    = $externalReferences
+        PreprocessorDirectives = $PreprocessorDirectives
+    }
+    if ($OutputAssemblyName) {
+        $AddClientTypeHelperParams['OutputDirectory']    = $clrPath
+        $AddClientTypeHelperParams['OutputAssemblyName'] = $OutputAssemblyName
+        $AddClientTypeHelperParams['TestBuild']          = $TestBuild
+        $AddClientTypeHelperParams['SymbolPath']         = $SymbolPath
+    }    
+    $HelperResult = Add-PSSwaggerClientTypeHelper @AddClientTypeHelperParams
+
+    $CompilerHelperParams = @{
+        ReferencedAssemblies = $systemRefs + $HelperResult['ResolvedPackageReferences']
+        SourceCodeFilePath   = $HelperResult['SourceCodeFilePath']
+        OutputAssembly       = $HelperResult['OutputAssembly']
+        TestBuild            = $TestBuild
     }
 
-    $addTypeParamsResult = Get-PSSwaggerAddTypeParameters -Path ($CSharpFiles | ForEach-Object { $_.FullName }) -OutputDirectory $clrPath -OutputAssemblyName $OutputAssemblyName `
-                                                          -AllUsers:$AllUsers -BootstrapConsent:$BootstrapConsent -TestBuild:$TestBuild -SymbolPath $SymbolPath -PackageDependencies $externalReferences `
-                                                          -FileReferences $systemRefs -PreprocessorDirectives $preprocessorDirectives
-    
-    if ($addTypeParamsResult['ResolvedPackageReferences']) {
-        # Copy package references when precompiling
-        foreach ($extraRef in $addTypeParamsResult['ResolvedPackageReferences']) {
-            $null = Copy-Item -Path $extraRef -Destination (Join-Path -Path $ClrPath -ChildPath (Split-Path -Path $extraRef -Leaf)) -Force
-            Add-Type -Path $extraRef -ErrorAction Ignore
+    if ((Get-OperatingSystemInfo).IsCore) {
+        $addTypeParams = Get-AddTypeParameters @CompilerHelperParams
+        Add-Type @addTypeParams
+    }
+    else {
+        $CscArgumentList = Get-CscParameters @CompilerHelperParams
+        $output = & 'Csc.exe' $CscArgumentList
+        if ($output) {
+            Write-Error -ErrorId 'SOURCE_CODE_ERROR' -Message ($output | Out-String)
+            return $false
         }
     }
 
-    if ($addTypeParamsResult['SourceFileName']) {
-        # A source code file is expected to exist
-        # Emit the created source code
-        $addTypeParamsResult['SourceCode'] | Out-File -FilePath $addTypeParamsResult['SourceFileName']
-    }
-
-    # Execute Add-Type
-    $addTypeParams = $addTypeParamsResult['Params']
-    Add-Type @addTypeParams
-
     # Copy the PDB to the symbol path if specified
-    if ($addTypeParamsResult['OutputAssemblyPath']) {
-        # Verify result of Add-Type
-        $outputAssemblyItem = Get-Item -Path $addTypeParamsResult['OutputAssemblyPath']
-        if ((-not (Test-Path -Path $addTypeParamsResult['OutputAssemblyPath'])) -or ($outputAssemblyItem.Length -eq 0kb)) {
+    if ($HelperResult['OutputAssembly']) {
+        # Verify result of assembly compilation
+        $outputAssemblyItem = Get-Item -Path $HelperResult['OutputAssembly']
+        if ((-not (Test-Path -Path $HelperResult['OutputAssembly'])) -or ($outputAssemblyItem.Length -eq 0kb)) {
             return $false
         }
 
-        $OutputPdbName = "$($outputAssemblyItem.BaseName).pdb"
-        if ($SymbolPath -and (Test-Path -Path (Join-Path -Path $ClrPath -ChildPath $OutputPdbName))) {
-            $null = Copy-Item -Path (Join-Path -Path $ClrPath -ChildPath $OutputPdbName) -Destination (Join-Path -Path $SymbolPath -ChildPath $OutputPdbName)
+        if(-not $OutputAssemblyName) {
+            Add-Type -Path $outputAssemblyItem
+        }
+        else {
+            $OutputPdbName = "$($outputAssemblyItem.BaseName).pdb"
+            if ($SymbolPath -and (Test-Path -Path (Join-Path -Path $ClrPath -ChildPath $OutputPdbName))) {
+                $null = Copy-Item -Path (Join-Path -Path $ClrPath -ChildPath $OutputPdbName) -Destination (Join-Path -Path $SymbolPath -ChildPath $OutputPdbName)
+            }
         }
     }
 
@@ -542,7 +555,7 @@ function Add-PSSwaggerClientType {
 
 <#
 .DESCRIPTION
-  Compiles AutoRest generated C# code using the framework of the current PowerShell process.
+  Helper function to validate and install the required package dependencies. Also prepares the source code for compilation.
 
 .PARAMETER  Path
   All *.Code.ps1 C# files to compile.
@@ -568,90 +581,101 @@ function Add-PSSwaggerClientType {
 .PARAMETER  PackageDependencies
   Map of package dependencies to add as referenced assemblies but don't exist on disk.
 
-.PARAMETER  FileReferences
-  Compilation references that exist on disk.
-
 .PARAMETER  PreprocessorDirectives
   Preprocessor directives to add to the top of the combined source code file.
-.NOTES
-  This function will be deprecated when we move away from Add-Type compilation.
 #>
-function Get-PSSwaggerAddTypeParameters {
+function Add-PSSwaggerClientTypeHelper {
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [string[]]
         $Path,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [AllowEmptyString()]
         [string]
         $OutputDirectory,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [AllowEmptyString()]
         [string]
         $OutputAssemblyName,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [switch]
         $AllUsers,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [switch]
         $BootstrapConsent,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [switch]
         $TestBuild,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [string]
         $SymbolPath,
-
-        [Parameter(Mandatory=$false)]
-        [ValidateSet("ConsoleApplication","Library")]
-        [string]
-        $OutputType = 'Library',
 		
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [hashtable]
         $PackageDependencies,
-		
-        [Parameter(Mandatory=$false)]
-        [string[]]
-        $FileReferences,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [string[]]
         $PreprocessorDirectives
     )
 	
     $resultObj = @{
-        # The add type parameters to use
-        Params = $null
         # Full path to resolved package reference assemblies
         ResolvedPackageReferences = @()
+
         # The expected output assembly full path
-        OutputAssemblyPath = $null
+        OutputAssembly            = $null
+        
         # The actual source to be emitted
-        SourceCode = $null
+        SourceCode                = $null
+        
         # The file name the returned params expect to exist, if required
-        SourceFileName = $null
+        SourceCodeFilePath        = $null
+    }
+
+    if (-not $OutputDirectory -or -not $SymbolPath) {
+        $TempOutputPath = Join-Path -Path (Get-XDGDirectory -DirectoryType Cache) -ChildPath ([Guid]::NewGuid().Guid)
+        $null = New-Item -Path $TempOutputPath -ItemType Directory -Force
+    }
+    
+    if (-not $SymbolPath) {
+        $SymbolPath = $TempOutputPath
+    }
+
+    if (-not $OutputDirectory) {
+        $OutputDirectory = $TempOutputPath
+    }
+    elseif (-not (Test-Path -Path $OutputDirectory -PathType Container)) {
+        $null = New-Item -Path $OutputDirectory -ItemType Directory -Force
+    }
+
+    if (-not $OutputAssemblyName) {
+        $OutputAssemblyName = [Guid]::NewGuid().Guid + '.dll'
     }
 
     # Resolve package dependencies
-    $extraRefs = @()
     if ($PackageDependencies) {
         foreach ($entry in ($PackageDependencies.GetEnumerator() | Sort-Object { $_.Value.LoadOrder })) {
             $reference = $entry.Value
             $resolvedRef = Get-PSSwaggerDependency -PackageName $reference.PackageName `
-                                                -RequiredVersion $reference.RequiredVersion `
-                                                -References $reference.References `
-                                                -Framework $reference.Framework `
-                                                -AllUsers:$AllUsers -Install -BootstrapConsent:$BootstrapConsent
-            $extraRefs += $resolvedRef
+                -RequiredVersion $reference.RequiredVersion `
+                -References $reference.References `
+                -Framework $reference.Framework `
+                -AllUsers:$AllUsers `
+                -Install `
+                -BootstrapConsent:$BootstrapConsent
             $resultObj['ResolvedPackageReferences'] += $resolvedRef
+
+            # Copy package references to OutputDirectory
+            $null = Copy-Item -Path $resolvedRef -Destination (Join-Path -Path $OutputDirectory -ChildPath (Split-Path -Path $resolvedRef -Leaf)) -Force
+            Add-Type -Path $resolvedRef -ErrorAction Ignore
         }
     }
 
@@ -660,38 +684,61 @@ function Get-PSSwaggerAddTypeParameters {
     $srcContent += $Path | ForEach-Object { "// File $_"; Remove-AuthenticodeSignatureBlock -Path $_ }
     if ($PreprocessorDirectives) {
         foreach ($preprocessorDirective in $PreprocessorDirectives) {
-            $srcContent = ,$preprocessorDirective + $srcContent
+            $srcContent = , $preprocessorDirective + $srcContent
         }
     }
 
     $oneSrc = $srcContent -join "`n"
     $resultObj['SourceCode'] = $oneSrc
-    if ($SymbolPath) {
-        if ($OutputAssemblyName) {
-            $OutputAssemblyBaseName = [System.IO.Path]::GetFileNameWithoutExtension("$OutputAssemblyName")
-            $resultObj['SourceFileName'] = Join-Path -Path $SymbolPath -ChildPath "Generated.$OutputAssemblyBaseName.cs"
-        } else {
-            $resultObj['SourceFileName'] = Join-Path -Path $SymbolPath -ChildPath "Generated.cs"
-        }
 
-        $addTypeParams = @{
-            Path = $resultObj['SourceFileName']
-            WarningAction = 'Ignore'
-        }
-    } else {
-        $addTypeParams = @{
-            TypeDefinition = $oneSrc
-            Language = "CSharp"
-            WarningAction = 'Ignore'
-        }
+    $OutputAssemblyBaseName = [System.IO.Path]::GetFileNameWithoutExtension("$OutputAssemblyName")
+    $SourceCodeFilePath = Join-Path -Path $SymbolPath -ChildPath "Generated.$OutputAssemblyBaseName.cs"
+    $resultObj['SourceCodeFilePath'] = $SourceCodeFilePath
+    Out-File -InputObject $oneSrc -FilePath $SourceCodeFilePath
+
+    $resultObj['OutputAssembly'] = Join-Path -Path $OutputDirectory -ChildPath $OutputAssemblyName
+    
+    return $resultObj
+}
+
+function Get-AddTypeParameters {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]
+        $SourceCodeFilePath,
+
+        [Parameter(Mandatory = $false)]
+        [string[]]
+        $ReferencedAssemblies,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateSet("ConsoleApplication", "Library")]
+        [string]
+        $OutputType = 'Library',
+        
+        [Parameter(Mandatory = $false)]
+        [switch]
+        $TestBuild,
+
+        [Parameter(Mandatory = $false)]
+        [string]
+        $OutputAssembly
+    )
+	
+    $AddTypeParams = @{
+        WarningAction = 'Ignore'
     }
 
     if (-not (Get-OperatingSystemInfo).IsCore) {
+        $AddTypeParams['Path'] = $SourceCodeFilePath
         $compilerParameters = New-Object -TypeName System.CodeDom.Compiler.CompilerParameters
+        $compilerParameters.WarningLevel = 1
         $compilerParameters.CompilerOptions = '/debug:full'
         if ($TestBuild) {
             $compilerParameters.IncludeDebugInformation = $true
-        } else {
+        }
+        else {
             $compilerParameters.CompilerOptions += ' /optimize+'
         }
 
@@ -699,35 +746,81 @@ function Get-PSSwaggerAddTypeParameters {
             $compilerParameters.GenerateExecutable = $true
         }
     
-        $compilerParameters.WarningLevel = 3
-        foreach ($ref in ($FileReferences + $extraRefs)) {
-            $null = $compilerParameters.ReferencedAssemblies.Add($ref)
+        $ReferencedAssemblies | ForEach-Object {
+            $null = $compilerParameters.ReferencedAssemblies.Add($_)
         }
-        $addTypeParams['CompilerParameters'] = $compilerParameters
-    } else {
-        $addTypeParams['ReferencedAssemblies'] = ($FileReferences + $extraRefs)
-        if ($OutputType -eq 'ConsoleApplication') {
-            $addTypeParams['ReferencedAssemblies'] = $OutputType
-        }
+        $AddTypeParams['CompilerParameters'] = $compilerParameters
+    }
+    else {
+        $AddTypeParams['TypeDefinition'] = Get-Content -Path $SourceCodeFilePath -Raw
+        $AddTypeParams['ReferencedAssemblies'] = $ReferencedAssemblies
+        $AddTypeParams['OutputType'] = $OutputType
+        $AddTypeParams['Language'] = 'CSharp'        
     }
 
-    $OutputPdbName = ''
-    if ($OutputAssemblyName) {
-        $OutputAssembly = Join-Path -Path $OutputDirectory -ChildPath $OutputAssemblyName
-        $resultObj['OutputAssemblyPath'] = $OutputAssembly
-        if ($addTypeParams.ContainsKey('CompilerParameters')) {
-            $addTypeParams['CompilerParameters'].OutputAssembly = $OutputAssembly
-        } else {
-            $addTypeParams['OutputAssembly'] = $OutputAssembly
+    if ($OutputAssembly) {
+        if ($AddTypeParams.ContainsKey('CompilerParameters')) {
+            $AddTypeParams['CompilerParameters'].OutputAssembly = $OutputAssembly
         }
-    } else {
-        if ($addTypeParams.ContainsKey('CompilerParameters')) {
-            $addTypeParams['CompilerParameters'].GenerateInMemory = $true
+        else {
+            $AddTypeParams['OutputAssembly'] = $OutputAssembly
+        }
+    }
+    else {
+        if ($AddTypeParams.ContainsKey('CompilerParameters')) {
+            $AddTypeParams['CompilerParameters'].GenerateInMemory = $true
         }
     }
     
-    $resultObj['Params'] = $addTypeParams
-    return $resultObj
+    return $AddTypeParams
+}
+function Get-CscParameters {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]
+        $SourceCodeFilePath,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateSet('Exe', 'Library')]
+        [string]
+        $TargetType = 'Library',
+        
+        [Parameter(Mandatory = $false)]
+        [string[]]
+        $ReferencedAssemblies,
+
+        [Parameter(Mandatory = $false)]
+        [string[]]
+        $ConditionalCompilationSymbol,
+
+        [Parameter(Mandatory = $false)]
+        [switch]
+        $TestBuild,
+
+        [Parameter(Mandatory = $false)]
+        [string]
+        $OutputAssembly
+    )
+	
+    $CscParameter = @(
+        $SourceCodeFilePath
+        '/nologo',
+        '/checked',
+        '/warn:1',
+        '/debug:full',
+        '/platform:anycpu',
+        "/target:$TargetType"
+    )
+
+    $ReferencedAssemblies | ForEach-Object { $CscParameter += "/reference:$_" }
+    if (-not $TestBuild) { $CscParameter += '/optimize+' }
+    if ($OutputAssembly) { $CscParameter += "/out:$OutputAssembly" }
+    if ($ConditionalCompilationSymbol) {
+        $ConditionalCompilationSymbol | ForEach-Object { $CscParameter += "/define:$_" }
+    }
+
+    return $CscParameter
 }
 
 <#

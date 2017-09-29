@@ -7,13 +7,13 @@
     Copyright = '(c) Microsoft Corporation. All rights reserved.'
     Description = 'PowerShell module with commands for testing the PSSwagger.LiveTestFramework module.'
     PowerShellVersion = '5.0'
-    FunctionsToExport = @('Initialize-Dependencies','Start-Run')
+    FunctionsToExport = @('Initialize-TestDependency','Start-TestRun')
     CmdletsToExport = ''
     VariablesToExport = ''
     AliasesToExport = ''
     RequiredModules = @('PSSwaggerUtility')
     NestedModules = @()
-	DefaultCommandPrefix = 'LTFTests'
+	DefaultCommandPrefix = 'LTF'
     FileList = @(
         'PSSwagger.LiveTestFramework.Tests.psd1',
         'PSSwagger.LiveTestFramework.Tests.psm1'
@@ -21,8 +21,7 @@
 
     PrivateData = @{
         PSData = @{
-            Tags = @('Azure',
-                'Swagger',
+            Tags = @('Swagger',
                 'PSEdition_Desktop',
                 'PSEdition_Core',
                 'Linux',

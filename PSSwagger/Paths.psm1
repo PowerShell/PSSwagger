@@ -152,6 +152,11 @@ function Get-SwaggerSpecPathInfo
             if((Get-Member -InputObject $_.value -Name 'description') -and $_.value.description) {
                 $FunctionDescription = $_.value.description 
             }
+
+            $FunctionSynopsis = ''
+            if((Get-Member -InputObject $_.value -Name 'Summary') -and $_.value.Summary) {
+                $FunctionSynopsis = $_.value.Summary 
+            }
             
             $ParametersTable = @{}
             # Add Path common parameters to the operation's parameters list.
@@ -193,15 +198,16 @@ function Get-SwaggerSpecPathInfo
             }
 
             $ParameterSetDetail = @{
-                Description = $FunctionDescription
-                ParameterDetails = $ParametersTable
-                Responses = $responses
-                OperationId = $operationId
-                OperationType = $operationType
+                Description          = $FunctionDescription
+                Synopsis             = $FunctionSynopsis
+                ParameterDetails     = $ParametersTable
+                Responses            = $responses
+                OperationId          = $operationId
+                OperationType        = $operationType
                 EndpointRelativePath = $EndpointRelativePath
                 PathCommonParameters = $PathCommonParameters
-                Priority = 100 # Default
-                'x-ms-pageable' = $x_ms_pageableObject
+                Priority             = 100 # Default
+                'x-ms-pageable'      = $x_ms_pageableObject
             }
 
             if ((Get-Member -InputObject $_.Value -Name 'x-ms-odata') -and $_.Value.'x-ms-odata') {
@@ -276,7 +282,12 @@ function New-SwaggerSpecPathCommand
 
         [Parameter(Mandatory=$true)]
         [hashtable]
-        $DefinitionFunctionsDetails
+        $DefinitionFunctionsDetails,
+
+        [Parameter(Mandatory=$false)]
+        [AllowEmptyString()]
+        [string]
+        $PSHeaderComment
     )
     
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -288,7 +299,8 @@ function New-SwaggerSpecPathCommand
                                               -SwaggerMetaDict $SwaggerMetaDict `
                                               -SwaggerDict $SwaggerDict `
                                               -PathFunctionDetails $PathFunctionDetails `
-                                              -DefinitionFunctionsDetails $DefinitionFunctionsDetails
+                                              -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
+                                              -PSHeaderComment $PSHeaderComment
     }
 
     return $FunctionsToExport
@@ -393,7 +405,12 @@ function New-SwaggerPath
 
         [Parameter(Mandatory=$true)]
         [hashtable]
-        $DefinitionFunctionsDetails
+        $DefinitionFunctionsDetails,
+        
+        [Parameter(Mandatory=$false)]
+        [AllowEmptyString()]
+        [string]
+        $PSHeaderComment
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -405,17 +422,17 @@ function New-SwaggerPath
     $info = $SwaggerDict['Info']
     $namespace = $info['NameSpace']
     $models = $info['Models']
-    $modulePostfix = $info['infoName']
-    $clientName = '$' + $modulePostfix
+    $clientName = '$' + $info['ClientTypeName']
     $UseAzureCsharpGenerator = $SwaggerMetaDict['UseAzureCsharpGenerator']
     
     $description = ''
+    $synopsis = ''
     $paramBlock = ''
     $paramHelp = ''
     $parametersToAdd = @{}
     $flattenedParametersOnPSCmdlet = @{}
     $parameterHitCount = @{}
-    $globalParameterBlock = ''
+    $globalParameters = @()
     $x_ms_pageableObject = $null
     foreach ($parameterSetDetail in $parameterSetDetails) {
         if ($parameterSetDetail.ContainsKey('x-ms-pageable') -and $parameterSetDetail.'x-ms-pageable' -and (-not $isNextPageOperation)) {
@@ -495,7 +512,7 @@ function New-SwaggerPath
                         $globalParameterValue = $parameterDetails.ConstantValue
                     }
                     
-                    $globalParameterBlock += [Environment]::NewLine + $executionContext.InvokeCommand.ExpandString($GlobalParameterBlockStr)
+                    $globalParameters += $globalParameterName
                 }
             }
 
@@ -539,11 +556,12 @@ function New-SwaggerPath
     $skipParameterToAdd = $null
     $pagingBlock = ''
     $pagingOperationName = ''
+    $NextLinkName = 'NextLink'
     $pagingOperations = ''
     $Cmdlet = ''
     $CmdletParameter = ''
     $CmdletArgs = ''
-    $pageType = 'Array'
+    $pageType = ''
     $resultBlockStr = $resultBlockNoPaging
     if ($x_ms_pageableObject) {
         if ($x_ms_pageableObject.ReturnType -ne 'NONE') {
@@ -556,6 +574,10 @@ function New-SwaggerPath
         } else {
             $Cmdlet = $x_ms_pageableObject.Cmdlet
             $CmdletArgs = $x_ms_pageableObject.CmdletArgsPaging
+        }
+
+        if ($x_ms_pageableObject.ContainsKey('NextLinkName') -and $x_ms_pageableObject.NextLinkName) {
+            $NextLinkName = $x_ms_pageableObject.NextLinkName
         }
 
         $topParameterToAdd = @{
@@ -594,24 +616,24 @@ function New-SwaggerPath
     }
 
     # Process security section
-    $azSubscriptionIdBlock = ""
-    $authFunctionCall = ""
-    $overrideBaseUriBlock = ""
-    $httpClientHandlerCall = ""
+    $SubscriptionIdCommand = ""
+    $AuthenticationCommand = ""
+    $AuthenticationCommandArgumentName = ''
+    $hostOverrideCommand = ''
+    $AddHttpClientHandler = $false
     $securityParametersToAdd = @()
     $PowerShellCodeGen = $SwaggerMetaDict['PowerShellCodeGen']
     if (($PowerShellCodeGen['ServiceType'] -eq 'azure') -or ($PowerShellCodeGen['ServiceType'] -eq 'azure_stack')) {
-        $azSubscriptionIdBlock = "`$subscriptionId = Get-AzSubscriptionId"
+        $SubscriptionIdCommand = 'Get-AzSubscriptionId'
     }
     if ($PowerShellCodeGen['CustomAuthCommand']) {
-        $authFunctionCall = $PowerShellCodeGen['CustomAuthCommand']
+        $AuthenticationCommand = $PowerShellCodeGen['CustomAuthCommand']
     }
     if ($PowerShellCodeGen['HostOverrideCommand']) {
         $hostOverrideCommand = $PowerShellCodeGen['HostOverrideCommand']
-        $overrideBaseUriBlock = $executionContext.InvokeCommand.ExpandString($HostOverrideBlock)
     }
     # If the auth function hasn't been set by metadata, try to discover it from the security and securityDefinition objects in the spec
-    if (-not $authFunctionCall) {
+    if (-not $AuthenticationCommand) {
         if ($FunctionDetails.ContainsKey('Security')) {
             # For now, just take the first security object
             if ($FunctionDetails.Security.Count -gt 1) {
@@ -659,11 +681,12 @@ function New-SwaggerPath
                     }
                     # If the service is specified to not issue authentication challenges, we can't rely on HttpClientHandler
                     if ($PowerShellCodeGen['NoAuthChallenge'] -and ($PowerShellCodeGen['NoAuthChallenge'] -eq $true)) {
-                        $authFunctionCall = 'Get-AutoRestCredential -Credential $Credential'
+                        $AuthenticationCommand = 'param([pscredential]$Credential) Get-AutoRestCredential -Credential $Credential'
+                        $AuthenticationCommandArgumentName = 'Credential'
                     } else {
                         # Use an empty service client credentials object because we're using HttpClientHandler instead
-                        $authFunctionCall = 'Get-AutoRestCredential'
-                        $httpClientHandlerCall = '$httpClientHandler = New-HttpClientHandler -Credential $Credential'
+                        $AuthenticationCommand = 'Get-AutoRestCredential'
+                        $AddHttpClientHandler = $true
                     }
                 } elseif ($type -eq 'apiKey') {
                     if (-not (Get-Member -InputObject $securityDefinition -Name 'name')) {
@@ -697,7 +720,8 @@ function New-SwaggerPath
                         Parameter = $credentialParameter
                         IsConflictingWithOperationParameter = $false
                     }
-                    $authFunctionCall = "Get-AutoRestCredential -APIKey `$APIKey -Location '$in' -Name '$name'"
+                    $AuthenticationCommand = "param([string]`$APIKey) Get-AutoRestCredential -APIKey `$APIKey -Location '$in' -Name '$name'"
+                    $AuthenticationCommandArgumentName = 'APIKey'
                 } else {
                     Write-Warning -Message ($LocalizedData.UnsupportedAuthenticationType -f ($type))
                 }
@@ -705,14 +729,9 @@ function New-SwaggerPath
         }
     }
 
-    if (-not $authFunctionCall) {
+    if (-not $AuthenticationCommand) {
         # At this point, there was no supported security object or overridden auth function, so assume no auth
-        $authFunctionCall = 'Get-AutoRestCredential'
-    }
-
-    $clientArgumentList = $clientArgumentListNoHandler
-    if ($httpClientHandlerCall) {
-        $clientArgumentList = $clientArgumentListHttpClientHandler
+        $AuthenticationCommand = 'Get-AutoRestCredential'
     }
 
     $nonUniqueParameterSets = @()
@@ -815,16 +834,19 @@ function New-SwaggerPath
         $defaultParameterSet = $nonUniqueParameterSets | Sort-Object -Property Priority | Select-Object -First 1
         $DefaultParameterSetName = $defaultParameterSet.OperationId
         $description = $defaultParameterSet.Description
+        $synopsis = $defaultParameterSet.Synopsis
         Write-Warning -Message ($LocalizedData.CmdletHasAmbiguousParameterSets -f ($commandName))
     } elseif ($nonUniqueParameterSets.Length -eq 1) {
         # If there's only one non-unique, we can prevent errors by making this the default
         $DefaultParameterSetName = $nonUniqueParameterSets[0].OperationId
         $description = $nonUniqueParameterSets[0].Description
+        $synopsis = $nonUniqueParameterSets[0].Synopsis
     } else {
         # Pick the highest priority set among all sets
         $defaultParameterSet = $parameterSetDetails | Sort-Object @{e = {$_.Priority -as [int] }} | Select-Object -First 1
         $DefaultParameterSetName = $defaultParameterSet.OperationId
         $description = $defaultParameterSet.Description
+        $synopsis = $defaultParameterSet.Synopsis        
     }
 
     $oDataExpression = ""
@@ -946,23 +968,33 @@ function New-SwaggerPath
     }
 
     $functionBodyParams = @{
-                                ParameterSetDetails = $parameterSetDetails
-                                ODataExpressionBlock = $oDataExpressionBlock
-                                ParameterGroupsExpressionBlock = $parameterGroupsExpressionBlock
-                                GlobalParameterBlock = $GlobalParameterBlock
-                                SwaggerDict = $SwaggerDict
-                                SwaggerMetaDict = $SwaggerMetaDict
-                                SecurityBlock = $executionContext.InvokeCommand.ExpandString($securityBlockStr)
-                                OverrideBaseUriBlock = $overrideBaseUriBlock
-                                ClientArgumentList = $clientArgumentList
-                                FlattenedParametersOnPSCmdlet = $flattenedParametersOnPSCmdlet
-                           }
-
+        ParameterSetDetails               = $parameterSetDetails
+        ODataExpressionBlock              = $oDataExpressionBlock
+        ParameterGroupsExpressionBlock    = $parameterGroupsExpressionBlock
+        SwaggerDict                       = $SwaggerDict
+        SwaggerMetaDict                   = $SwaggerMetaDict
+        AddHttpClientHandler              = $AddHttpClientHandler
+        HostOverrideCommand               = $hostOverrideCommand
+        AuthenticationCommand             = $AuthenticationCommand
+        AuthenticationCommandArgumentName = $AuthenticationCommandArgumentName
+        SubscriptionIdCommand             = $SubscriptionIdCommand
+        FlattenedParametersOnPSCmdlet     = $flattenedParametersOnPSCmdlet
+    }
+    if($globalParameters) {
+        $functionBodyParams['GlobalParameters'] = $globalParameters
+    }
+                           
     $pathGenerationPhaseResult = Get-PathFunctionBody @functionBodyParams
     $bodyObject = $pathGenerationPhaseResult.BodyObject
 
     $body = $bodyObject.Body
-    $outputTypeBlock = $bodyObject.OutputTypeBlock
+    if($pageType){
+        $fullPathDataType = $pageType
+        $outputTypeBlock = $executionContext.InvokeCommand.ExpandString($outputTypeStr)
+    }
+    else {
+        $outputTypeBlock = $bodyObject.OutputTypeBlock        
+    }
 
     if ($UseAzureCsharpGenerator) {
         $dependencyInitFunction = "Initialize-PSSwaggerDependencies -Azure"
@@ -979,7 +1011,7 @@ function New-SwaggerPath
     }
 
     $CommandFilePath = Join-Path -Path $GeneratedCommandsPath -ChildPath "$commandName.ps1"
-    Out-File -InputObject $CommandString -FilePath $CommandFilePath -Encoding ascii -Force -Confirm:$false -WhatIf:$false
+    Out-File -InputObject @($PSHeaderComment, $CommandString) -FilePath $CommandFilePath -Encoding ascii -Force -Confirm:$false -WhatIf:$false
 
     Write-Verbose -Message ($LocalizedData.GeneratedPathCommand -f $commandName)
 
@@ -1018,12 +1050,13 @@ function Set-ExtendedCodeMetadata {
             }
             
             $operationId = $parameterSetDetail.OperationId
-            $methodName = ''
+            $methodNames = @()
             $operations = ''
             $operationsWithSuffix = ''
             $opIdValues = $operationId -split '_',2 
             if(-not $opIdValues -or ($opIdValues.count -ne 2)) {
-                $methodName = $operationId + 'WithHttpMessagesAsync'
+                $methodNames += $operationId + 'WithHttpMessagesAsync'
+                $methodNames += $operationId + 'Method' + 'WithHttpMessagesAsync'
             } else {            
                 $operationName = $opIdValues[0]
                 $operationType = $opIdValues[1]
@@ -1033,10 +1066,11 @@ function Set-ExtendedCodeMetadata {
                     $operationsWithSuffix = $operations + 'Operations'
                 }
 
-                $methodName = $operationType + 'WithHttpMessagesAsync'
+                $methodNames += $operationType + 'WithHttpMessagesAsync'
+                # When OperationType value conflicts with a definition name, AutoREST generates method name by adding Method to the OperationType.
+                $methodNames += $operationType + 'Method' + 'WithHttpMessagesAsync'
             }
 
-            $parameterSetDetail['MethodName'] = $methodName
             $parameterSetDetail['Operations'] = $operations
 
             # For some reason, moving this out of this loop causes issues
@@ -1103,13 +1137,14 @@ function Set-ExtendedCodeMetadata {
                 $clientType = $propertyObject.PropertyType
             }
 
-            $methodInfo = $clientType.GetMethods() | Where-Object { $_.Name -eq $MethodName } | Select-Object -First 1
+            $methodInfo = $clientType.GetMethods() | Where-Object {$MethodNames -contains $_.Name} | Select-Object -First 1
             if (-not $methodInfo) {
-                $resultRecord.ErrorMessages += $LocalizedData.ExpectedMethodOnTypeNotFound -f ($MethodName, $clientType)
+                $resultRecord.ErrorMessages += $LocalizedData.ExpectedMethodOnTypeNotFound -f (($MethodNames -join ', or '), $clientType)
                 Export-CliXml -InputObject $resultRecord -Path $CliXmlTmpPath
                 $errorOccurred = $true
                 return
             }
+            $parameterSetDetail['MethodName'] = $methodInfo.Name
 
             # Process output type
             $returnType = $methodInfo.ReturnType
@@ -1121,6 +1156,10 @@ function Set-ExtendedCodeMetadata {
                 $returnType = $returnType.GenericTypeArguments[0]
             }
 
+            if (($returnType.Name -eq 'IPage`1') -and $returnType.GenericTypeArguments) {
+                $returnType = $returnType.GenericTypeArguments[0]
+            }
+            # Note: ReturnType is currently used for Swagger operations which supports x-ms-pageable.
             $returnTypeString = Convert-GenericTypeToString -Type $returnType
             $parameterSetDetail['ReturnType'] = $returnTypeString
 
@@ -1243,7 +1282,7 @@ function Convert-GenericTypeToString {
     )
 
     if (-not $Type.IsGenericType) {
-        return $Type.FullName
+        return $Type.FullName.Trim('[]')
     }
 
     $genericTypeStr = ''
@@ -1336,10 +1375,10 @@ function Get-TemporaryCliXmlFilePath {
     param(
         [Parameter(Mandatory=$true)]
         [string]
-        $FullModuleName
+        $FullClientTypeName
     )
 
     $random = [Guid]::NewGuid().Guid
-    $filePath = Join-Path -Path (Get-XDGDirectory -DirectoryType Cache) -ChildPath "$FullModuleName.$random.xml"
+    $filePath = Join-Path -Path (Get-XDGDirectory -DirectoryType Cache) -ChildPath "$FullClientTypeName.$random.xml"
     return $filePath
 }

@@ -20,6 +20,9 @@ A PowerShell module with commands to generate the PowerShell commands for a give
 ## Customizing PowerShell Metadata
 - [PowerShell Extensions](/docs/extensions/readme.md)
 
+## Testing generated module
+- [Mocking New-ServiceClient utility](/docs/testing/NewServiceClient.md)
+
 ## Supported Platforms
 | Usage | Platforms |
 | ----------------| ------------------------------------- |
@@ -33,17 +36,18 @@ A PowerShell module with commands to generate the PowerShell commands for a give
 ## Dependencies
 | Dependency       | Version   | Description              |             
 | ----------------| ----------- | -------------------------- |
-| AutoRest | 0.17.3 | Tool to generate C# SDK from Swagger spec |
+| AutoRest | 0.17.3 or newer | Tool to generate C# SDK from Swagger spec |
+| CSC.exe (Microsoft.Net.Compilers) | 2.3.1 or newer | C# Compiler to generate C# SDK assembly on Windows PowerShell |
 | Newtonsoft.Json | Full CLR: 6.0.8, Core CLR: 9.0.1 | NuGet package containing Newtonsoft.Json assembly, required for all modules |
-| Microsoft.Rest.ClientRuntime | 2.3.4 | NuGet package containing Microsoft.Rest.ClientRuntime assembly, required for all modules |
-| Microsoft.Rest.ClientRuntime.Azure | 3.3.4 | NuGet package containing Microsoft.Rest.ClientRuntime.Azure assembly, required for Microsoft Azure modules |
-| AzureRM.Profile | * | Module containing authentication helpers, required for Microsoft Azure modules on PowerShell |
+| Microsoft.Rest.ClientRuntime | 2.3.4 or newer | NuGet package containing Microsoft.Rest.ClientRuntime assembly, required for all modules |
+| Microsoft.Rest.ClientRuntime.Azure | 3.3.4 or newer | NuGet package containing Microsoft.Rest.ClientRuntime.Azure assembly, required for Microsoft Azure modules |
+| AzureRM.Profile | 2.0.0 or newer | Module containing authentication helpers, required for Microsoft Azure modules on PowerShell |
 | AzureRM.Profile.NetCore.Preview | * | Module containing authentication helpers, required for Microsoft Azure modules on PowerShell Core |
 
 ## Usage
 NOTE: In the short term, for best performance, the operation IDs in your Open API specifications should be of the form "<Noun>_<Verb><Suffix>". For example, the operation ID "Resource_GetByName" gets a resource named Resource by name.
 1. Get PSSwagger!
-    * Install from PowerShellGallery.com:
+    * Install from PowerShellGallery.com
        ```powershell
        Install-Module -Name PSSwagger
        ```
@@ -52,24 +56,46 @@ NOTE: In the short term, for best performance, the operation IDs in your Open AP
         git clone https://github.com/PowerShell/PSSwagger.git
        ```
 
-2. Ensure you AutoRest version 0.17.3 installed
-  ```powershell
-  Install-Package -Name AutoRest -Source https://www.nuget.org/api/v2 -RequiredVersion 0.17.3 -Scope CurrentUser
-  ```   
+2. Ensure AutoRest is installed and available in $env:PATH
+    - Follow the instructions provided at [AutoRest github repository](https://github.com/Azure/Autorest#installing-autorest).
+    - Ensure AutoRest.cmd path is in $env:Path
+        ```powershell
+        $env:path += ";$env:APPDATA\npm"
+        Get-Command -Name AutoRest
+        ```
+3. Ensure CSC.exe is installed and available in $env:PATH
+    - If CSC.exe is not installed already, install Microsoft.Net.Compilers package
+        ```powershell
+        Install-Package -Name Microsoft.Net.Compilers -Source https://www.nuget.org/api/v2 -Scope CurrentUser
+        ```
+    - Add CSC.exe path to $env:Path
+        ```powershell
+        $package = Get-Package -Name Microsoft.Net.Compilers
+        $env:path += ";$(Split-Path $package.Source -Parent)\tools"
+        Get-Command -Name CSC.exe
+        ```
 
-3. Ensure AutoRest.exe is in $env:Path
-  ```powershell
-  $package = Get-Package -Name AutoRest -RequiredVersion 0.17.3
-  $env:path += ";$(Split-Path $package.Source -Parent)\tools"
-  ```
-
-4. If you plan on precompiling the generated assembly, ensure you have the module AzureRM.Profile or AzureRM.NetCore.Preview available to PackageManagement if you are on PowerShell or PowerShell Core, respectively.
+4. If you plan on pre-compiling the generated assembly, ensure you have the module AzureRM.Profile or AzureRM.NetCore.Preview available to PackageManagement if you are on PowerShell or PowerShell Core, respectively.
 
 5. Run the following in a PowerShell console from the directory where you cloned PSSwagger in
 
     ```powershell
-    Import-Module .\PSSwagger\PSSwagger.psd1
-    $param = @{
+    # Import PSSwagger module
+    Import-Module PSSwagger
+
+    # If you are trying from a clone of this repository, follow below steps to import the PSSwagger module.
+    # Ensure PSSwaggerUtility module is available in $env:PSModulePath
+    # Please note the trialing back slash ('\') to ensure PSSwaggerUtility module is available.
+    $PSSwaggerFolderPath = Resolve-Path '.\PSSwagger\'
+    $env:PSModulePath = "$PSSwaggerFolderPath;$env:PSModulePath"
+    Import-Module .\PSSwagger
+
+    # Ensure PSSwagger module is loaded into the current session
+    Get-Module PSSwagger
+
+    # Prepare input parameters for cmdlet generation
+    $null = New-Item -ItemType Directory -Path C:\GeneratedModules -Force
+    $params = @{
       # Download the Open API v2 Specification from this location
       SpecificationUri = 'https://raw.githubusercontent.com/Azure/azure-rest-api-specs/master/arm-batch/2015-12-01/swagger/BatchManagement.json'
       # Output the generated module to this path
@@ -79,9 +105,11 @@ NOTE: In the short term, for best performance, the operation IDs in your Open AP
       # This specification is for a Microsoft Azure service, so use Azure-specific functionality
       UseAzureCsharpGenerator = $true
     }
+    
     # You may be prompted to download missing dependencies
-    New-PSSwaggerModule @param
+    New-PSSwaggerModule @params
     ```
+
     The generated module will be in the `C:\Temp\GeneratedModule\Generated.AzureRM.BatchManagement` folder.
     For more New-PSSwaggerModule options, check out the [documentation](/docs/commands/New-PSSwaggerModule.md).
 6. Your generated module is now ready! For production modules (i.e. modules you will publish to PowerShellGallery.com), we recommend using the -IncludeCoreFxAssembly option to generate the Core CLR assembly, strong name signing assemblies in the generated module, and authenticode signing the module. Optionally, you can remove the generated C# code (under the Generated.CSharp folder) for even more security.

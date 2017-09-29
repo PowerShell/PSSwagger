@@ -245,16 +245,17 @@ Describe "Optional parameter tests" -Tag ScenarioTest {
 
 Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
     BeforeAll {
+        $ModuleName = 'Generated.ParamTypes.Module'        
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwaggerUtility" | `
                        Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
-        Initialize-Test -GeneratedModuleName "Generated.ParamTypes.Module" -GeneratedModuleVersion "0.0.2" -TestApiName "ParameterTypes" `
+        Initialize-Test -GeneratedModuleName $ModuleName -GeneratedModuleVersion "0.0.2" -TestApiName "ParameterTypes" `
                         -TestSpecFileName "ParameterTypesSpec.json" -TestDataFileName "ParameterTypesData.json" `
                         -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
 
         # Import generated module
         Write-Verbose "Importing modules"
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
-                       Join-Path -ChildPath "Generated.ParamTypes.Module")
+                       Join-Path -ChildPath $ModuleName)
 
         $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "ParameterTypes"
         if ($global:PSSwaggerTest_EnableTracing -and $script:EnableTracer) {
@@ -325,7 +326,6 @@ Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
         }
 
         It "Test dummy definition references" {
-            $ModuleName = 'Generated.ParamTypes.Module'
             $ev = $null
             $CommandList = Get-Command -Module $ModuleName -ErrorVariable ev
             $ev | Should BeNullOrEmpty
@@ -345,7 +345,6 @@ Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
         }
 
         It "Test CSharp reserved keywords as definition or type names" {
-            $ModuleName = 'Generated.ParamTypes.Module'
             $ev = $null
             $CommandList = Get-Command -Module $ModuleName -ErrorVariable ev
             $ev | Should BeNullOrEmpty
@@ -375,7 +374,6 @@ Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
         }
 
         It "Test Definition commands 'New-<NestedDefinition>Object' for nested definitions" {
-            $ModuleName = 'Generated.ParamTypes.Module'
             $ev = $null
             $CommandList = Get-Command -Module $ModuleName -ErrorVariable ev
             $ev | Should BeNullOrEmpty
@@ -387,6 +385,62 @@ Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
                 $CommandList.Name -CContains $_ | Should be $True
             }
         }
+
+        It "Test 'Synopsis' and 'Description' help contents of generated commands" {
+            $HelpInfo1 = Get-Help -Name 'Get-Cupcake'
+            $HelpInfo1.Description.Text | Should BeExactly 'Make a cupcake or update an existing one.'
+            $HelpInfo1.Synopsis | Should BeExactly 'List all cupcakes matching parameters'
+
+            $HelpInfo2 = Get-Help -Name 'New-DefWithDummyRefObject'
+            $ExpectedText = 'The workflow properties.'
+            $HelpInfo2.Description.Text | Should BeExactly $ExpectedText
+            $HelpInfo2.Synopsis | Should BeExactly $ExpectedText
+        }
+
+        It 'Test parameter types with array of items in AdditionalProperties json schema' {
+            $ev = $null
+            $null = Get-Command -Module $ModuleName -Syntax -ErrorVariable ev
+            $ev | Should BeNullOrEmpty
+
+            $OperationCommandInfo = Get-Command -name Get-EffectiveNetworkSecurityGroup -Module $ModuleName
+            $OperationCommandInfo.Parameters.OperationTagMap.ParameterType.ToString() | Should BeExactly 'System.Collections.Generic.IDictionary`2[System.String,System.Collections.Generic.IList`1[System.String]]'
+            
+            $NewObjectCommandInfo = Get-Command -Name New-EffectiveNetworkSecurityGroupObject -Module $ModuleName
+            $NewObjectCommandInfo.Parameters.TagMap.ParameterType.ToString() | Should BeExactly 'System.Collections.Generic.Dictionary`2[System.String,System.Collections.Generic.List`1[System.String]]'
+        }
+
+        It 'Test parameter types with references to enum definition type' {
+            # Swagger operation command with parameter type reference to enum definition type
+            $OperationCommandInfo = Get-Command -Name Get-PathWithEnumDefinitionType -Module $ModuleName
+
+            $OperationCommandInfo.Parameters.PolicyNameEnumParameter.ParameterType.ToString() | Should BeExactly 'System.String'
+            @('AppGwSslPolicy20150501', 'AppGwSslPolicy20170401','AppGwSslPolicy20170401S') | ForEach-Object {
+                $OperationCommandInfo.Parameters.PolicyNameEnumParameter.Attributes.ValidValues -contains $_ | Should Be $true
+            }
+
+            # Swagger definition command with parameter type reference to enum definition type
+            $NewObjectCommandInfo = Get-Command -Name New-ApplicationGatewaySslPolicyObject -Module $ModuleName
+
+            $NewObjectCommandInfo.Parameters.PolicyType.ParameterType.ToString() | Should BeExactly 'System.String'
+            @('Predefined','Custom') | ForEach-Object {
+                $NewObjectCommandInfo.Parameters.PolicyType.Attributes.ValidValues -contains $_ | Should Be $true
+            }
+
+            $NewObjectCommandInfo.Parameters.DisabledSslProtocols.ParameterType.ToString() | Should BeExactly 'System.String[]'
+            @('TLSv1_0','TLSv1_1', 'TLSv1_2') | ForEach-Object {
+                $NewObjectCommandInfo.Parameters.DisabledSslProtocols.Attributes.ValidValues -contains $_ | Should Be $true
+            }
+
+            $NewObjectCommandInfo.Parameters.PolicyName.ParameterType.ToString() | Should BeExactly 'System.String'
+            @('AppGwSslPolicy20150501', 'AppGwSslPolicy20170401','AppGwSslPolicy20170401S') | ForEach-Object {
+                $NewObjectCommandInfo.Parameters.PolicyName.Attributes.ValidValues -contains $_ | Should Be $true
+            }
+
+            $NewObjectCommandInfo.Parameters.MinProtocolVersion.ParameterType.ToString() | Should BeExactly 'System.String'
+            @('TLSv1_0','TLSv1_1', 'TLSv1_2') | ForEach-Object {
+                $NewObjectCommandInfo.Parameters.MinProtocolVersion.Attributes.ValidValues -contains $_ | Should Be $true
+            }
+        }
     }
 
     AfterAll {
@@ -394,7 +448,7 @@ Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
     }
 }
 
-Describe "AzureExtensions" {
+Describe "AzureExtensions" -Tag @('AzureExtension','ScenarioTest') {
     BeforeAll {
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwaggerUtility" | `
                        Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
@@ -512,7 +566,7 @@ Describe "Composite Swagger Tests" -Tag @('Composite','ScenarioTest') {
 
             Import-Module $PsSwaggerPath -Force
             if((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
-                & "powershell.exe" -command "& {`$env:PSModulePath=`$env:PSModulePath_Backup;
+                & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -command "& {`$env:PSModulePath=`$env:PSModulePath_Backup;
                     Import-Module (Join-Path `"$PsSwaggerPath`" `"PSSwagger.psd1`") -Force -ArgumentList `$true;
                     New-PSSwaggerModule -SpecificationPath $SwaggerSpecPath -Name $ModuleName -UseAzureCsharpGenerator -Path $Path -NoAssembly -Verbose -ConfirmBootstrap;
                 }"
@@ -521,6 +575,11 @@ Describe "Composite Swagger Tests" -Tag @('Composite','ScenarioTest') {
             }
         
             $ModulePath = Join-Path -Path $Path -ChildPath $ModuleName
+            # Destroy the full and core CLR requirements so that AzureRM modules aren't required
+            # For now, composite swagger specs don't work without the -UseAzureCsharpGenerator flag because of AutoRest naming inconsistency
+            "" | Out-File -FilePath (Join-Path -Path $ModulePath -ChildPath "0.0.1" | Join-Path -ChildPath "Test-CoreRequirements.ps1")
+            "" | Out-File -FilePath (Join-Path -Path $ModulePath -ChildPath "0.0.1" | Join-Path -ChildPath "Test-FullRequirements.ps1")
+
             Get-Module -ListAvailable -Name $ModulePath | Should BeOfType 'System.Management.Automation.PSModuleInfo'
 
             # Import generated module
@@ -785,5 +844,301 @@ Describe "PSMetadataTests" -Tag @('PSMetadata','ScenarioTest')  {
             Get-Command Get-Cupcake -Module Generated.PSMetadataTest.Module -ErrorAction Ignore | should BeNullOrEmpty
             Get-Command List-Cupcakes -Module Generated.PSMetadataTest.Module | should not BeNullOrEmpty
         }
+    }
+}
+
+Describe "Header scenario tests" -Tag @('Header','ScenarioTest')  {
+    BeforeAll {
+        $PsSwaggerPath = Split-Path -Path $PSScriptRoot -Parent | Join-Path -ChildPath "PSSwagger"
+        Import-Module $PsSwaggerPath -Force
+
+        $SwaggerSpecPath = Join-Path -Path $PSScriptRoot -ChildPath 'Data' | Join-Path -ChildPath 'ParameterTypes' | Join-Path -ChildPath 'ParameterTypesSpec.json'
+        $GeneratedPath = Join-Path -Path $PSScriptRoot -ChildPath 'Generated'
+        $ModuleName = 'HeaderScenarioTestModule'
+        $GeneratedModuleBase = Join-Path -Path $GeneratedPath -ChildPath $ModuleName
+        if (Test-Path -Path $GeneratedModuleBase -PathType Container) {
+            Remove-Item -Path $GeneratedModuleBase -Recurse -Force
+        }
+    }
+    
+    It "Validate custom header content in the PSSwagger generated files" {
+        $ModuleVersion = '1.1.1.1'
+        $GeneratedModuleVersionPath = Join-Path -Path $GeneratedModuleBase -ChildPath $ModuleVersion
+        $Header = '__Custom_HEADER_Content__'
+        if((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
+            & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\PowerShell.exe" -command "& {`$env:PSModulePath=`$env:PSModulePath_Backup;
+                Import-Module '$PsSwaggerPath' -Force -ArgumentList `$true;
+                New-PSSwaggerModule -SpecificationPath '$SwaggerSpecPath' -Name $ModuleName -Version '$ModuleVersion' -UseAzureCsharpGenerator -Path '$GeneratedPath' -NoAssembly -Verbose -ConfirmBootstrap -Header '$Header';
+            }"
+        } else {
+            New-PSSwaggerModule -SpecificationPath $SwaggerSpecPath -Name $ModuleName -Version $ModuleVersion -UseAzureCsharpGenerator -Path $GeneratedPath -NoAssembly -Verbose -ConfirmBootstrap -Header $Header
+        }
+
+        Test-Path -Path $GeneratedModuleVersionPath -PathType Container | Should Be $true
+        $FileList = Get-ChildItem -Path $GeneratedModuleVersionPath -File
+        $GeneratedPowerShellCommandsPath = Join-Path -Path $GeneratedModuleVersionPath -ChildPath 'Generated.PowerShell.Commands'
+        $FileList += Get-ChildItem -Path $GeneratedPowerShellCommandsPath -File -Recurse
+        $FileList | ForEach-Object {
+            (Get-Content -Path $_.FullName) -contains $Header | Should Be $true
+        }
+    }
+
+    It "Validate header comment from x-ms-code-generation-settings in the PSSwagger generated files" {
+        $ModuleVersion = '2.2.2.2'
+        $GeneratedModuleVersionPath = Join-Path -Path $GeneratedModuleBase -ChildPath $ModuleVersion
+        if((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
+            & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\PowerShell.exe" -command "& {`$env:PSModulePath=`$env:PSModulePath_Backup;
+                Import-Module '$PsSwaggerPath' -Force -ArgumentList `$true;
+                New-PSSwaggerModule -SpecificationPath '$SwaggerSpecPath' -Name $ModuleName -Version '$ModuleVersion' -UseAzureCsharpGenerator -Path '$GeneratedPath' -NoAssembly -Verbose -ConfirmBootstrap;
+            }"
+        } else {
+            New-PSSwaggerModule -SpecificationPath $SwaggerSpecPath -Name $ModuleName -Version $ModuleVersion -UseAzureCsharpGenerator -Path $GeneratedPath -NoAssembly -Verbose -ConfirmBootstrap
+        }
+        
+        Test-Path -Path $GeneratedModuleVersionPath -PathType Container | Should Be $true
+        $ExpectedHeaderContent = 'Header content from swagger spec'        
+        $FileList = Get-ChildItem -Path $GeneratedModuleVersionPath -File
+        $GeneratedPowerShellCommandsPath = Join-Path -Path $GeneratedModuleVersionPath -ChildPath 'Generated.PowerShell.Commands'
+        $FileList += Get-ChildItem -Path $GeneratedPowerShellCommandsPath -File -Recurse
+        $FileList | ForEach-Object {
+            (Get-Content -Path $_.FullName) -contains $ExpectedHeaderContent | Should Be $true
+        }
+    }
+}
+
+Describe "Pre-compiled SDK Assmebly scenario tests" -Tag @('SDKAssembly','ScenarioTest')  {    
+    BeforeAll {
+        $PsSwaggerPath = Split-Path -Path $PSScriptRoot -Parent | Join-Path -ChildPath "PSSwagger"
+        Import-Module $PsSwaggerPath -Force
+        $SwaggerSpecPath = Join-Path -Path $PSScriptRoot -ChildPath 'Data' | Join-Path -ChildPath 'ParameterTypes' | Join-Path -ChildPath 'ParameterTypesSpec.json'
+        $GeneratedPath = Join-Path -Path $PSScriptRoot -ChildPath 'Generated'
+        $ModuleName = 'GeneratedModuleForSdkAssemblyScenario'
+        $GeneratedModuleBase = Join-Path -Path $GeneratedPath -ChildPath $ModuleName
+        if (Test-Path -Path $GeneratedModuleBase -PathType Container) {
+            Remove-Item -Path $GeneratedModuleBase -Recurse -Force
+        }
+
+        # Generating the first version, so that PSSwagger generated the SDK Assembly, 
+        # later this assembly will be used for testing the precompiled SDK assembly scenarios.
+        $ModuleVersion = '1.1.1.1'
+        $params = @{
+            SpecificationPath       = $SwaggerSpecPath
+            Name                    = $ModuleName
+            Version                 = $ModuleVersion
+            UseAzureCsharpGenerator = $true
+            Path                    = $GeneratedPath
+            ConfirmBootstrap        = $true
+            Verbose                 = $true
+        }
+        Invoke-NewPSSwaggerModuleCommand -NewPSSwaggerModuleParameters $params -IncludeAssembly
+
+        $GeneratedModuleRefPath = Join-Path -Path $GeneratedModuleBase -ChildPath $ModuleVersion | Join-Path -ChildPath ref
+        $GeneratedModuleFullClrPath = Join-Path -Path $GeneratedModuleRefPath -ChildPath fullclr
+        $NameSpace = "Microsoft.PowerShell.$ModuleName.v$("$ModuleVersion" -replace '\.','')"
+        $ClientTypeName = 'ParameterTypesSpec'
+        $AssemblyName = "$NameSpace.dll"
+        Test-Path -Path $GeneratedModuleFullClrPath -PathType Container | Should Be $true
+    }
+
+    It 'Validate module generation using pre-compiled SDK assembly and full client type name' {
+        $ModuleVersion = '2.2.1.1'
+        $GeneratedModuleVersionPath = Join-Path -Path $GeneratedModuleBase -ChildPath $ModuleVersion
+
+        if (Test-Path -Path $GeneratedModuleVersionPath -PathType Container) {
+            Remove-Item -Path $GeneratedModuleVersionPath -Recurse -Force
+        }
+
+        $null = New-Item -Path $GeneratedModuleVersionPath -Type Directory -Force
+        Copy-Item -Path $GeneratedModuleRefPath -Destination $GeneratedModuleVersionPath -Recurse -Force
+
+        $NewPSSwaggerModule_params = @{
+            SpecificationPath       = $SwaggerSpecPath
+            AssemblyFileName        = $AssemblyName
+            ClientTypeName          = "$NameSpace.$ClientTypeName"
+            ModelsName              = 'Models'
+            Name                    = $ModuleName
+            Version                 = $ModuleVersion
+            UseAzureCsharpGenerator = $true
+            Path                    = $GeneratedPath
+            Verbose                 = $true
+        }
+        Invoke-NewPSSwaggerModuleCommand -NewPSSwaggerModuleParameters $NewPSSwaggerModule_params -ErrorVariable 'ev' -ErrorAction 'SilentlyContinue'
+
+        $ev | Where-Object {$_.PSTypeNames -contains 'System.Management.Automation.ErrorRecord'} | Should BeNullOrEmpty
+        
+        # Test module manifest
+        $CurrentVersionManifestPath = Join-Path -Path $GeneratedModuleVersionPath -ChildPath "$ModuleName.psd1"
+        Test-ModuleManifest -Path $CurrentVersionManifestPath -ErrorAction SilentlyContinue -ErrorVariable 'ev2' | Should Not BeNullOrEmpty
+        $ev2 | Should BeNullOrEmpty
+    }
+
+    It 'Validate module generation using pre-compiled SDK assembly without client type name' {
+        $ModuleVersion = '1.1.1.1'
+        $GeneratedModuleVersionPath = Join-Path -Path $GeneratedModuleBase -ChildPath $ModuleVersion
+
+        $NewPSSwaggerModule_params = @{
+            SpecificationPath       = $SwaggerSpecPath
+            AssemblyFileName        = $AssemblyName
+            Name                    = $ModuleName
+            Version                 = $ModuleVersion
+            UseAzureCsharpGenerator = $true
+            Path                    = $GeneratedPath
+            Verbose                 = $true
+        }
+        Invoke-NewPSSwaggerModuleCommand -NewPSSwaggerModuleParameters $NewPSSwaggerModule_params -ErrorVariable 'ev' -ErrorAction 'SilentlyContinue'
+        $ev | Where-Object {$_.PSTypeNames -contains 'System.Management.Automation.ErrorRecord'} | Should BeNullOrEmpty
+        
+        # Test module manifest
+        $CurrentVersionManifestPath = Join-Path -Path $GeneratedModuleVersionPath -ChildPath "$ModuleName.psd1"
+        Test-ModuleManifest -Path $CurrentVersionManifestPath -ErrorAction SilentlyContinue -ErrorVariable 'ev2' | Should Not BeNullOrEmpty
+        $ev2 | Should BeNullOrEmpty
+    }
+
+    It 'Validate module generation using pre-compiled SDK assembly with client type name' {
+        $ModuleVersion = '1.1.1.1'
+        $GeneratedModuleVersionPath = Join-Path -Path $GeneratedModuleBase -ChildPath $ModuleVersion
+
+        $NewPSSwaggerModule_params = @{
+            SpecificationPath       = $SwaggerSpecPath
+            AssemblyFileName        = $AssemblyName
+            ClientTypeName          = $ClientTypeName
+            Name                    = $ModuleName
+            Version                 = $ModuleVersion
+            UseAzureCsharpGenerator = $true
+            Path                    = $GeneratedPath
+            Verbose                 = $true
+        }
+        Invoke-NewPSSwaggerModuleCommand -NewPSSwaggerModuleParameters $NewPSSwaggerModule_params -ErrorVariable 'ev' -ErrorAction 'SilentlyContinue'
+        $ev | Where-Object {$_.PSTypeNames -contains 'System.Management.Automation.ErrorRecord'} | Should BeNullOrEmpty
+        
+        # Test module manifest
+        $CurrentVersionManifestPath = Join-Path -Path $GeneratedModuleVersionPath -ChildPath "$ModuleName.psd1"
+        Test-ModuleManifest -Path $CurrentVersionManifestPath -ErrorAction SilentlyContinue -ErrorVariable 'ev2' | Should Not BeNullOrEmpty
+        $ev2 | Should BeNullOrEmpty
+    }
+
+    It 'Validate module generation of pre-compiled SDK assembly scenario with incorrect assembly file name' {
+        $ModuleVersion = '1.1.1.1'
+        $GeneratedModuleVersionPath = Join-Path -Path $GeneratedModuleBase -ChildPath $ModuleVersion
+
+        $NewPSSwaggerModule_params = @{
+            SpecificationPath       = $SwaggerSpecPath
+            AssemblyFileName        = "IncorrectAssemblyName.dll"
+            ClientTypeName          = $ClientTypeName
+            Name                    = $ModuleName
+            Version                 = $ModuleVersion
+            UseAzureCsharpGenerator = $true
+            Path                    = $GeneratedPath
+            Verbose                 = $true
+        }
+        Invoke-NewPSSwaggerModuleCommand -NewPSSwaggerModuleParameters $NewPSSwaggerModule_params -ErrorVariable 'ev' -ErrorAction 'SilentlyContinue'
+        (Remove-TestErrorId -FullyQualifiedErrorId $ev.FullyQualifiedErrorId) | Should Be 'AssemblyNotFound,New-PSSwaggerModule'
+    }
+
+    It 'Should fail when client type name is not found in pre-compiled SDK assembly scenario' {
+        $ModuleVersion = '3.3.3.0'
+        $GeneratedModuleVersionPath = Join-Path -Path $GeneratedModuleBase -ChildPath $ModuleVersion
+
+        if (Test-Path -Path $GeneratedModuleVersionPath -PathType Container) {
+            Remove-Item -Path $GeneratedModuleVersionPath -Recurse -Force
+        }
+
+        $CurrentVersionRefPath = Join-Path -Path $GeneratedModuleVersionPath -ChildPath ref
+        $null = New-Item -Path $CurrentVersionRefPath -Type Directory -Force
+        Copy-Item -Path $GeneratedModuleFullClrPath -Destination $CurrentVersionRefPath -Recurse -Force
+
+        $NewPSSwaggerModule_params = @{
+            SpecificationPath       = $SwaggerSpecPath
+            AssemblyFileName        = $AssemblyName
+            ClientTypeName          = $ClientTypeName
+            Name                    = $ModuleName
+            Version                 = $ModuleVersion
+            UseAzureCsharpGenerator = $true
+            Path                    = $GeneratedPath
+            Verbose                 = $true
+        }
+        Invoke-NewPSSwaggerModuleCommand -NewPSSwaggerModuleParameters $NewPSSwaggerModule_params -ErrorVariable 'ev' -ErrorAction 'SilentlyContinue'
+        (Remove-TestErrorId -FullyQualifiedErrorId $ev.FullyQualifiedErrorId) | Should Be 'UnableToExtractDetailsFromSdkAssembly,Update-PathFunctionDetails'
+    }
+
+    It 'Should fail when incorrect namespace in client type name is specified in pre-compiled SDK assembly scenario' {
+        $ModuleVersion = '3.3.3.1'
+        $GeneratedModuleVersionPath = Join-Path -Path $GeneratedModuleBase -ChildPath $ModuleVersion
+
+        if (Test-Path -Path $GeneratedModuleVersionPath -PathType Container) {
+            Remove-Item -Path $GeneratedModuleVersionPath -Recurse -Force
+        }
+
+        $CurrentVersionRefPath = Join-Path -Path $GeneratedModuleVersionPath -ChildPath ref
+        $null = New-Item -Path $CurrentVersionRefPath -Type Directory -Force
+        Copy-Item -Path $GeneratedModuleFullClrPath -Destination $CurrentVersionRefPath -Recurse -Force
+
+        $NewPSSwaggerModule_params = @{
+            SpecificationPath       = $SwaggerSpecPath
+            AssemblyFileName        = $AssemblyName
+            ClientTypeName          = "Incorrect.NameSpec.$ClientTypeName"
+            Name                    = $ModuleName
+            Version                 = $ModuleVersion
+            UseAzureCsharpGenerator = $true
+            Path                    = $GeneratedPath
+            Verbose                 = $true
+        }
+        Invoke-NewPSSwaggerModuleCommand -NewPSSwaggerModuleParameters $NewPSSwaggerModule_params -ErrorVariable 'ev' -ErrorAction 'SilentlyContinue'
+        (Remove-TestErrorId -FullyQualifiedErrorId $ev.FullyQualifiedErrorId) | Should Be 'UnableToExtractDetailsFromSdkAssembly,Update-PathFunctionDetails'
+    }
+
+    It 'Should fail when incorrect client type name is specified in pre-compiled SDK assembly scenario' {
+        $ModuleVersion = '3.3.3.2'
+        $GeneratedModuleVersionPath = Join-Path -Path $GeneratedModuleBase -ChildPath $ModuleVersion
+
+        if (Test-Path -Path $GeneratedModuleVersionPath -PathType Container) {
+            Remove-Item -Path $GeneratedModuleVersionPath -Recurse -Force
+        }
+
+        $CurrentVersionRefPath = Join-Path -Path $GeneratedModuleVersionPath -ChildPath ref
+        $null = New-Item -Path $CurrentVersionRefPath -Type Directory -Force
+        Copy-Item -Path $GeneratedModuleFullClrPath -Destination $CurrentVersionRefPath -Recurse -Force
+
+        $NewPSSwaggerModule_params = @{
+            SpecificationPath       = $SwaggerSpecPath
+            AssemblyFileName        = $AssemblyName
+            ClientTypeName          = 'IncorrectClientName'
+            Name                    = $ModuleName
+            Version                 = $ModuleVersion
+            UseAzureCsharpGenerator = $true
+            Path                    = $GeneratedPath
+            Verbose                 = $true
+        }
+        Invoke-NewPSSwaggerModuleCommand -NewPSSwaggerModuleParameters $NewPSSwaggerModule_params -ErrorVariable 'ev' -ErrorAction 'SilentlyContinue'
+        (Remove-TestErrorId -FullyQualifiedErrorId $ev.FullyQualifiedErrorId) | Should Be 'UnableToExtractDetailsFromSdkAssembly,Update-PathFunctionDetails'
+    }
+}
+
+Describe "Output type scenario tests" -Tag @('OutputType','ScenarioTest')  {
+    BeforeAll {
+        $ModuleName = 'Generated.AzExt.OutputType.Module'
+        $SwaggerSpecPath = Join-Path -Path $PSScriptRoot -ChildPath 'Data' | Join-Path -ChildPath 'AzureExtensions' | Join-Path -ChildPath 'AzureExtensionsSpec.json'
+        $GeneratedPath = Join-Path -Path $PSScriptRoot -ChildPath 'Generated'
+        $GeneratedModuleBase = Join-Path -Path $GeneratedPath -ChildPath $ModuleName
+        if (Test-Path -Path $GeneratedModuleBase -PathType Container) {
+            Remove-Item -Path $GeneratedModuleBase -Recurse -Force
+        }
+
+        $params = @{
+            SpecificationPath       = $SwaggerSpecPath
+            Name                    = $ModuleName
+            UseAzureCsharpGenerator = $true
+            Path                    = $GeneratedPath
+            ConfirmBootstrap        = $true
+            Verbose                 = $true
+        }
+        Invoke-NewPSSwaggerModuleCommand -NewPSSwaggerModuleParameters $params
+
+        Import-Module $GeneratedModuleBase -Force
+    }
+
+    It 'Test output type of swagger operation which supports x-ms-pageable' {
+        $CommandInfo = Get-Command -Name Get-IotHubResourceEventHubConsumerGroup -Module $ModuleName
+        $CommandInfo.OutputType.Type.ToString() | Should BeExactly 'System.String'
     }
 }

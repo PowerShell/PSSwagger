@@ -46,6 +46,23 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwa
 .PARAMETER  SpecificationUri
     Uri to a Swagger based JSON spec.
 
+.PARAMETER  AssemblyFileName
+    File name of the pre-compiled SDK assembly.
+    This assembly along with its dependencies should be available in '.\ref\fullclr\' folder under the target module version base path ($Path\$Name\$Version\).
+    If your generated module needs to work on PowerShell Core, place the coreclr assembly along with its depdencies under '.\ref\coreclr\' folder under the target module version base path ($Path\$Name\$Version\).
+    For FullClr, the specified assembly should be available at "$Path\$Name\$Version\ref\fullclr\$AssemblyFileName".
+    For CoreClr, the specified assembly should be available at "$Path\$Name\$Version\ref\coreclr\$AssemblyFileName".
+
+.PARAMETER  ClientTypeName
+    Client type name in the pre-compiled SDK assembly.
+    Specify if client type name is different from the value of 'Title' field from the input specification, or
+    if client type namespace is different from the specified namespace in the specification.
+    It is recommended to specify the fully qualified client type name.
+
+.PARAMETER  ModelsName
+    Models name if it is different from default value 'Models'.
+    It is recommended to specify the custom models name in using x-ms-code-generation-settings extension in specification.
+
 .PARAMETER  Path
     Full Path to a file where the commands are exported to.
 
@@ -57,6 +74,19 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwa
 
 .PARAMETER  DefaultCommandPrefix
     Prefix value to be prepended to cmdlet noun or to cmdlet name without verb.
+
+.PARAMETER  Header
+    Text to include as a header comment in the PSSwagger generated files.
+    It also can be a path to a .txt file with the content to be added as header in the PSSwagger generated files.
+
+    Supported predefined license header values:
+    - NONE: Suppresses the default header.
+    - MICROSOFT_MIT: Adds predefined Microsoft MIT license text with default PSSwagger code generation header content.
+    - MICROSOFT_MIT_NO_VERSION: Adds predefined Microsoft MIT license text with default PSSwagger code generation header content without version.
+    - MICROSOFT_MIT_NO_CODEGEN: Adds predefined Microsoft MIT license text without default PSSwagger code generation header content.
+    - MICROSOFT_APACHE: Adds predefined Microsoft Apache license text with default PSSwagger code generation header content.
+    - MICROSOFT_APACHE_NO_VERSION: Adds predefined Microsoft Apache license text with default PSSwagger code generation header content without version.
+    - MICROSOFT_APACHE_NO_CODEGEN: Adds predefined Microsoft Apache license text without default PSSwagger code generation header content.
 
 .PARAMETER  NoAssembly
     Switch to disable saving the precompiled module assembly and instead enable dynamic compilation.
@@ -94,19 +124,36 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwa
 #>
 function New-PSSwaggerModule
 {
-    [CmdletBinding()]
+    [CmdletBinding(DefaultParameterSetName='SpecificationPath')]
     param(
-        [Parameter(Mandatory = $true, ParameterSetName = 'SwaggerPath')]
+        [Parameter(Mandatory = $true, ParameterSetName = 'SpecificationPath')]
+        [Parameter(Mandatory = $true, ParameterSetName = 'SdkAssemblyWithSpecificationPath')]
         [string] 
         $SpecificationPath,
 
-        [Parameter(Mandatory = $true, ParameterSetName = 'SwaggerURI')]
+        [Parameter(Mandatory = $true, ParameterSetName = 'SpecificationUri')]
+        [Parameter(Mandatory = $true, ParameterSetName = 'SdkAssemblyWithSpecificationUri')]
         [Uri]
         $SpecificationUri,
 
         [Parameter(Mandatory = $true)]
         [string]
         $Path,
+
+        [Parameter(Mandatory = $true, ParameterSetName = 'SdkAssemblyWithSpecificationPath')]
+        [Parameter(Mandatory = $true, ParameterSetName = 'SdkAssemblyWithSpecificationUri')]
+        [string]
+        $AssemblyFileName,
+        
+        [Parameter(Mandatory = $false, ParameterSetName = 'SdkAssemblyWithSpecificationPath')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SdkAssemblyWithSpecificationUri')]
+        [string]
+        $ClientTypeName,
+
+        [Parameter(Mandatory = $false, ParameterSetName = 'SdkAssemblyWithSpecificationPath')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SdkAssemblyWithSpecificationUri')]
+        [string]
+        $ModelsName,
 
         [Parameter(Mandatory = $true)]
         [string]
@@ -120,35 +167,46 @@ function New-PSSwaggerModule
         [string]
         $DefaultCommandPrefix,
 
+        [Parameter(Mandatory = $false)]
+        [string[]]
+        $Header,
+
         [Parameter()]
         [switch]
         $UseAzureCsharpGenerator,
 
-        [Parameter()]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SpecificationPath')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SpecificationUri')]
         [switch]
         $NoAssembly,
 
-        [Parameter()]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SpecificationPath')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SpecificationUri')]
         [string]
         $PowerShellCorePath,
 
-        [Parameter()]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SpecificationPath')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SpecificationUri')]
         [switch]
         $IncludeCoreFxAssembly,
 
-        [Parameter()]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SpecificationPath')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SpecificationUri')]
         [switch]
         $InstallToolsForAllUsers,
 
-        [Parameter()]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SpecificationPath')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SpecificationUri')]
         [switch]
         $TestBuild,
 
-        [Parameter()]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SpecificationPath')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SpecificationUri')]
         [string]
         $SymbolPath,
 
-        [Parameter()]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SpecificationPath')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SpecificationUri')]
         [switch]
         $ConfirmBootstrap
     )
@@ -180,7 +238,8 @@ function New-PSSwaggerModule
     $SwaggerSpecFilePaths = @()
     $AutoRestModeler = 'Swagger'
     
-    if ($PSCmdlet.ParameterSetName -eq 'SwaggerURI')
+    if (($PSCmdlet.ParameterSetName -eq 'SpecificationUri') -or 
+        ($PSCmdlet.ParameterSetName -eq 'SdkAssemblyWithSpecificationUri'))
     {
         # Ensure that if the URI is coming from github, it is getting the raw content
         if($SpecificationUri.Host -eq 'github.com'){
@@ -262,7 +321,8 @@ function New-PSSwaggerModule
         $PSMetaJsonObject = ConvertFrom-Json -InputObject ((Get-Content -Path $PSMetaFilePath) -join [Environment]::NewLine) -ErrorAction Stop
     }
 
-    if ($PSCmdlet.ParameterSetName -eq 'SwaggerPath')
+    if (($PSCmdlet.ParameterSetName -eq 'SpecificationPath') -or 
+        ($PSCmdlet.ParameterSetName -eq 'SdkAssemblyWithSpecificationPath'))
     {
         $jsonObject = ConvertFrom-Json -InputObject ((Get-Content -Path $SpecificationPath) -join [Environment]::NewLine) -ErrorAction Stop
         if((Get-Member -InputObject $jsonObject -Name 'Documents') -and ($jsonObject.Documents.Count))
@@ -292,43 +352,47 @@ function New-PSSwaggerModule
         }
     }
 
-    $frameworksToCheckDependencies = @('net4')
-    if ($IncludeCoreFxAssembly) {
-        if ((-not (Get-OperatingSystemInfo).IsCore) -and (-not $PowerShellCorePath)) {
-            $psCore = Get-PSSwaggerMsi -Name "PowerShell*" -MaximumVersion "6.0.0.11" | Sort-Object -Property Version -Descending
-            if ($null -ne $psCore) {
-                # PSCore exists via MSI, but the MSI provider doesn't seem to provide an install path
-                # First check the default path (for now, just Windows)
-                $psCore | ForEach-Object {
-                    if (-not $PowerShellCorePath) {
-                        $message = $LocalizedData.FoundPowerShellCoreMsi -f ($($_.Version))
-                        Write-Verbose -Message $message
-                        $possiblePsPath = (Join-Path -Path "$env:ProgramFiles" -ChildPath "PowerShell" | Join-Path -ChildPath "$($_.Version)" | Join-Path -ChildPath "PowerShell.exe")
-                        if (Test-Path -Path $possiblePsPath) {
-                            $PowerShellCorePath = $possiblePsPath
+    if (($PSCmdlet.ParameterSetName -eq 'SpecificationPath') -or 
+        ($PSCmdlet.ParameterSetName -eq 'SpecificationUri'))
+    {
+        $frameworksToCheckDependencies = @('net4')
+        if ($IncludeCoreFxAssembly) {
+            if ((-not (Get-OperatingSystemInfo).IsCore) -and (-not $PowerShellCorePath)) {
+                $psCore = Get-PSSwaggerMsi -Name "PowerShell*" -MaximumVersion "6.0.0.11" | Sort-Object -Property Version -Descending
+                if ($null -ne $psCore) {
+                    # PSCore exists via MSI, but the MSI provider doesn't seem to provide an install path
+                    # First check the default path (for now, just Windows)
+                    $psCore | ForEach-Object {
+                        if (-not $PowerShellCorePath) {
+                            $message = $LocalizedData.FoundPowerShellCoreMsi -f ($($_.Version))
+                            Write-Verbose -Message $message
+                            $possiblePsPath = (Join-Path -Path "$env:ProgramFiles" -ChildPath "PowerShell" | Join-Path -ChildPath "$($_.Version)" | Join-Path -ChildPath "PowerShell.exe")
+                            if (Test-Path -Path $possiblePsPath) {
+                                $PowerShellCorePath = $possiblePsPath
+                            }
                         }
                     }
                 }
             }
+
+            if (-not $PowerShellCorePath) {
+                throw $LocalizedData.MustSpecifyPsCorePath
+            }
+
+            if ((Get-Item $PowerShellCorePath).PSIsContainer) {
+                $PowerShellCorePath = Join-Path -Path $PowerShellCorePath -ChildPath "PowerShell.exe"
+            }
+
+            if (-not (Test-Path -Path $PowerShellCorePath)) {
+                $message = $LocalizedData.PsCorePathNotFound -f ($PowerShellCorePath)
+                throw $message
+            }
+
+            $frameworksToCheckDependencies += 'netstandard1'
         }
 
-        if (-not $PowerShellCorePath) {
-            throw $LocalizedData.MustSpecifyPsCorePath
-        }
-
-        if ((Get-Item $PowerShellCorePath).PSIsContainer) {
-            $PowerShellCorePath = Join-Path -Path $PowerShellCorePath -ChildPath "PowerShell.exe"
-        }
-
-        if (-not (Test-Path -Path $PowerShellCorePath)) {
-            $message = $LocalizedData.PsCorePathNotFound -f ($PowerShellCorePath)
-            throw $message
-        }
-
-        $frameworksToCheckDependencies += 'netstandard1'
+        $userConsent = Initialize-PSSwaggerLocalTool -AllUsers:$InstallToolsForAllUsers -Azure:$UseAzureCsharpGenerator -Framework $frameworksToCheckDependencies -AcceptBootstrap:$ConfirmBootstrap
     }
-
-    $userConsent = Initialize-PSSwaggerLocalTool -AllUsers:$InstallToolsForAllUsers -Azure:$UseAzureCsharpGenerator -Framework $frameworksToCheckDependencies -AcceptBootstrap:$ConfirmBootstrap
 
     $DefinitionFunctionsDetails = @{}
     $PowerShellCodeGen = @{
@@ -346,19 +410,23 @@ function New-PSSwaggerModule
         HostOverrideCommand = ""
         NoAuthChallenge = $false
         NameSpacePrefix = ''
+        Header = ''
     }
 
     # Parse the JSON and populate the dictionary
     $ConvertToSwaggerDictionary_params = @{
-        SwaggerSpecPath = $SpecificationPath
-        ModuleName = $Name
-        ModuleVersion = $Version
-        DefaultCommandPrefix = $DefaultCommandPrefix
-        SwaggerSpecFilePaths = $SwaggerSpecFilePaths
+        SwaggerSpecPath            = $SpecificationPath
+        ModuleName                 = $Name
+        ModuleVersion              = $Version
+        DefaultCommandPrefix       = $DefaultCommandPrefix
+        Header                     = $($Header -join "`r`n")
+        SwaggerSpecFilePaths       = $SwaggerSpecFilePaths
         DefinitionFunctionsDetails = $DefinitionFunctionsDetails
-        AzureSpec = $UseAzureCsharpGenerator
-        PowerShellCodeGen = $PowerShellCodeGen
-        PSMetaJsonObject = $PSMetaJsonObject
+        AzureSpec                  = $UseAzureCsharpGenerator
+        PowerShellCodeGen          = $PowerShellCodeGen
+        PSMetaJsonObject           = $PSMetaJsonObject
+        ClientTypeName             = $ClientTypeName
+        ModelsName                 = $ModelsName
     }
     $swaggerDict = ConvertTo-SwaggerDictionary @ConvertToSwaggerDictionary_params
 
@@ -454,32 +522,65 @@ function New-PSSwaggerModule
         }
     }
 
-    $codePhaseResult = ConvertTo-CsharpCode -SwaggerDict $swaggerDict `
-                                            -SwaggerMetaDict $swaggerMetaDict `
-                                            -PowerShellCorePath $PowerShellCorePath `
-                                            -InstallToolsForAllUsers:$InstallToolsForAllUsers `
-                                            -UserConsent:$userConsent `
-                                            -TestBuild:$TestBuild `
-                                            -PathFunctionDetails $PathFunctionDetails `
-                                            -NoAssembly:$NoAssembly `
-                                            -SymbolPath $SymbolPath
+    $FullClrAssemblyFilePath = $null
+    if($AssemblyFileName) {
+        $FullClrAssemblyFilePath = Join-Path -Path $outputDirectory -ChildPath 'ref' | Join-Path -ChildPath 'fullclr' | Join-Path -ChildPath $AssemblyFileName
+        if(-not (Test-Path -Path $FullClrAssemblyFilePath -PathType Leaf)) {
+            $message = $LocalizedData.PathNotFound -f $FullClrAssemblyFilePath
+            Write-Error -Message $message -ErrorId AssemblyNotFound
+            return
+        }
+    }
+    else {
+        $ConvertToCsharpCode_params = @{
+            SwaggerDict             = $swaggerDict
+            SwaggerMetaDict         = $swaggerMetaDict
+            PowerShellCorePath      = $PowerShellCorePath
+            InstallToolsForAllUsers = $InstallToolsForAllUsers
+            UserConsent             = $userConsent
+            TestBuild               = $TestBuild
+            NoAssembly              = $NoAssembly
+            SymbolPath              = $SymbolPath
+        }
+        $AssemblyGenerationResult = ConvertTo-CsharpCode @ConvertToCsharpCode_params
+        if(-not $AssemblyGenerationResult) {
+            return
+        }
+        $FullClrAssemblyFilePath = $AssemblyGenerationResult['FullClrAssemblyFilePath']
+    }
 
-    $PathFunctionDetails = $codePhaseResult.PathFunctionDetails
-    $generatedCSharpFilePath = $codePhaseResult.GeneratedCSharpPath
+    $NameSpace = $SwaggerDict['info'].NameSpace
+    $FullClientTypeName = $Namespace + '.' + $SwaggerDict['Info'].ClientTypeName
+
+    $PathFunctionDetails = Update-PathFunctionDetails -PathFunctionDetails $PathFunctionDetails -FullClientTypeName $FullClientTypeName
+    if(-not $PathFunctionDetails) {
+        return
+    }
 
     # Need to expand the definitions early as parameter flattening feature requires the parameters list of the definition/model types.
     Expand-SwaggerDefinition -DefinitionFunctionsDetails $DefinitionFunctionsDetails -NameSpace $NameSpace -Models $Models
+
+    $HeaderContent = Get-HeaderContent -SwaggerDict $SwaggerDict -ErrorVariable ev
+    if($ev) {
+        return
+    }
+    $PSHeaderComment = $null
+    if($HeaderContent) {
+        $PSHeaderComment = ($PSCommentFormatString -f $HeaderContent)
+    }
 
     $FunctionsToExport = @()
     $FunctionsToExport += New-SwaggerSpecPathCommand -PathFunctionDetails $PathFunctionDetails `
                                                      -SwaggerMetaDict $swaggerMetaDict `
                                                      -SwaggerDict $swaggerDict `
-                                                     -DefinitionFunctionsDetails $DefinitionFunctionsDetails
+                                                     -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
+                                                     -PSHeaderComment $PSHeaderComment
 
     $FunctionsToExport += New-SwaggerDefinitionCommand -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
                                                        -SwaggerMetaDict $swaggerMetaDict `
                                                        -NameSpace $nameSpace `
-                                                       -Models $models
+                                                       -Models $models `
+                                                       -HeaderContent $HeaderContent
 
     $RootModuleFilePath = Join-Path $outputDirectory "$Name.psm1"
     $testCoreModuleRequirements = ''
@@ -489,26 +590,104 @@ function New-PSSwaggerModule
         $testFullModuleRequirements = '. (Join-Path -Path $PSScriptRoot "Test-FullRequirements.ps1")' + [Environment]::NewLine + "    "
     }
 
+    $DynamicAssemblyGenerationCode = $null
+    if ($AssemblyFileName) {
+        $DllFileName = $AssemblyFileName
+    }
+    else {
+        $DllFileName = "$Namespace.dll"
+        $DynamicAssemblyGenerationCode = $ExecutionContext.InvokeCommand.ExpandString($DynamicAssemblyGenerationBlock)
+    }
+
     Out-File -FilePath $RootModuleFilePath `
-             -InputObject $ExecutionContext.InvokeCommand.ExpandString($RootModuleContents)`
+             -InputObject @($PSHeaderComment, $ExecutionContext.InvokeCommand.ExpandString($RootModuleContents))`
              -Encoding ascii `
              -Force `
              -Confirm:$false `
              -WhatIf:$false
 
     New-ModuleManifestUtility -Path $outputDirectory `
-                              -FunctionsToExport $FunctionsToExport `
-                              -Info $swaggerDict['info']
+        -FunctionsToExport $FunctionsToExport `
+        -Info $swaggerDict['info'] `
+        -PSHeaderComment $PSHeaderComment
 
-    Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Generated.Resources.psd1") (Join-Path -Path "$outputDirectory" -ChildPath "$Name.Resources.psd1") -Force
-    Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "GeneratedHelpers.psm1") (Join-Path -Path "$outputDirectory" -ChildPath "GeneratedHelpers.psm1") -Force
-    Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Test-CoreRequirements.ps1") (Join-Path -Path "$outputDirectory" -ChildPath "Test-CoreRequirements.ps1") -Force
-    Copy-Item (Join-Path -Path "$PSScriptRoot" -ChildPath "Test-FullRequirements.ps1") (Join-Path -Path "$outputDirectory" -ChildPath "Test-FullRequirements.ps1") -Force
+    $CopyFilesMap = [ordered]@{
+        'GeneratedHelpers.ps1'      = 'GeneratedHelpers.ps1'
+        'Test-CoreRequirements.ps1' = 'Test-CoreRequirements.ps1'
+        'Test-FullRequirements.ps1' = 'Test-FullRequirements.ps1'
+        'New-ServiceClient.ps1'     = 'New-ServiceClient.ps1'
+    }
+
+    if (-not $AssemblyFileName) {
+        $CopyFilesMap['AssemblyGenerationHelpers.ps1'] = 'AssemblyGenerationHelpers.ps1'
+        $CopyFilesMap['AssemblyGenerationHelpers.Resources.psd1'] = 'AssemblyGenerationHelpers.Resources.psd1'
+    }
+
+    $CopyFilesMap.GetEnumerator() | ForEach-Object {
+        Copy-PSFileWithHeader -SourceFilePath (Join-Path -Path "$PSScriptRoot" -ChildPath $_.Name) `
+            -DestinationFilePath (Join-Path -Path "$outputDirectory" -ChildPath $_.Value) `
+            -PSHeaderComment $PSHeaderComment
+    }
 
     Write-Verbose -Message ($LocalizedData.SuccessfullyGeneratedModule -f $Name,$outputDirectory)
 }
 
 #region Module Generation Helpers
+
+function Update-PathFunctionDetails {
+    param(
+        [Parameter(Mandatory=$true)]
+        [PSCustomObject]
+        $PathFunctionDetails,
+
+        [Parameter(Mandatory=$true)]
+        [string]
+        $FullClientTypeName
+    )
+
+    $cliXmlTmpPath = Get-TemporaryCliXmlFilePath -FullClientTypeName $FullClientTypeName
+
+    try {
+        Export-CliXml -InputObject $PathFunctionDetails -Path $cliXmlTmpPath
+        $PathsPsm1FilePath = Join-Path -Path $PSScriptRoot -ChildPath Paths.psm1
+        $command = @"
+            Add-Type -Path '$FullClrAssemblyFilePath'
+            Import-Module -Name '$PathsPsm1FilePath' -DisableNameChecking
+            Set-ExtendedCodeMetadata -MainClientTypeName '$FullClientTypeName' -CliXmlTmpPath '$cliXmlTmpPath'
+"@
+        $null = & PowerShell.exe -command "& {$command}"
+
+        $codeReflectionResult = Import-CliXml -Path $cliXmlTmpPath
+        if ($codeReflectionResult.ContainsKey('VerboseMessages') -and
+            $codeReflectionResult.VerboseMessages -and
+            ($codeReflectionResult.VerboseMessages.Count -gt 0)) {
+            $verboseMessages = $codeReflectionResult.VerboseMessages -Join [Environment]::NewLine
+            Write-Verbose -Message $verboseMessages
+        }
+
+        if ($codeReflectionResult.ContainsKey('WarningMessages') -and
+            $codeReflectionResult.WarningMessages -and
+            ($codeReflectionResult.WarningMessages.Count -gt 0)) {
+            $warningMessages = $codeReflectionResult.WarningMessages -Join [Environment]::NewLine
+            Write-Warning -Message $warningMessages
+        }
+
+        if (-not $codeReflectionResult.Result -or 
+            $codeReflectionResult.ErrorMessages.Count -gt 0) {
+            $errorMessage = (, ($LocalizedData.MetadataExtractFailed) + 
+                $codeReflectionResult.ErrorMessages) -Join [Environment]::NewLine
+            Write-Error -Message $errorMessage -ErrorId 'UnableToExtractDetailsFromSdkAssembly'
+            return
+        }
+
+        return $codeReflectionResult.Result
+    }
+    finally {
+        if (Test-Path -Path $cliXmlTmpPath -PathType Leaf) {
+            $null = Remove-Item -Path $cliXmlTmpPath -Force -WhatIf:$false -Confirm:$false
+        }
+    }
+}
 
 function ConvertTo-CsharpCode
 {
@@ -538,10 +717,6 @@ function ConvertTo-CsharpCode
         [switch]
         $TestBuild,
 
-        [Parameter(Mandatory=$true)]
-        [hashtable]
-        $PathFunctionDetails,
-
         [Parameter()]
         [switch]
         $NoAssembly,
@@ -552,11 +727,16 @@ function ConvertTo-CsharpCode
     )
 
     Write-Verbose -Message $LocalizedData.GenerateCodeUsingAutoRest
-    $info = $SwaggerDict['Info']
+    $info = $SwaggerDict['Info']    
 
-    $autoRestExePath = "AutoRest"
-    if (-not (get-command -name $autoRestExePath)) {
-            throw $LocalizedData.AutoRestNotInPath
+    $AutoRestCommand = Get-Command -Name AutoRest -ErrorAction Ignore | Select-Object -First 1 -ErrorAction Ignore
+    if (-not $AutoRestCommand) {
+        throw $LocalizedData.AutoRestNotInPath
+    }
+
+    if (-not (Get-OperatingSystemInfo).IsCore -and 
+        (-not (Get-Command -Name 'Csc.Exe' -ErrorAction Ignore))) {
+        throw $LocalizedData.CscExeNotInPath
     }
 
     $outputDirectory = $SwaggerMetaDict['outputDirectory']
@@ -590,39 +770,78 @@ function ConvertTo-CsharpCode
         $outAssembly = ''
     }
 
-    $return = @{
+    $result = @{
         GeneratedCSharpPath = $generatedCSharpPath
+        FullClrAssemblyFilePath = ''
+        CoreClrAssemblyFilePath = ''
     }
 
     $tempCodeGenSettingsPath = ''
+    # Latest AutoRest inconsistently appends 'Client' to the specified infoName to generated the client name.
+    # We need to override the client name to ensure that generated PowerShell cmdlets work fine.
+    # Note: -ClientName doesn't seem to work for legacy invocation
+    $ClientName = $info['ClientTypeName']
     try {
         if ($info.ContainsKey('CodeGenFileRequired') -and $info.CodeGenFileRequired) {
             # Some settings need to be overwritten
             # Write the following parameters: AddCredentials, CodeGenerator, Modeler
             $tempCodeGenSettings = @{
                 AddCredentials = $true
-                CodeGenerator = $codeGenerator
-                Modeler = $swaggerMetaDict['AutoRestModeler']
+                CodeGenerator  = $codeGenerator
+                Modeler        = $swaggerMetaDict['AutoRestModeler']
+                ClientName     = $ClientName
             }
 
             $tempCodeGenSettingsPath = "$(Join-Path -Path (Get-XDGDirectory -DirectoryType Cache) -ChildPath (Get-Random)).json"
             $tempCodeGenSettings | ConvertTo-Json | Out-File -FilePath $tempCodeGenSettingsPath
 
             $autoRestParams = @('-Input', $swaggerMetaDict['SwaggerSpecPath'], '-OutputDirectory', $generatedCSharpPath, '-Namespace', $NameSpace, '-CodeGenSettings', $tempCodeGenSettingsPath)
-        } else {
+        }
+        elseif ( ($AutoRestCommand.Name -eq 'AutoRest.exe') -or 
+            ($swaggerMetaDict['AutoRestModeler'] -eq 'CompositeSwagger')) {
             # None of the PSSwagger-required params are being overwritten, just call the CLI directly to avoid the extra disk op
-            $autoRestParams = @('-Input', $swaggerMetaDict['SwaggerSpecPath'], '-OutputDirectory', $generatedCSharpPath, '-Namespace', $NameSpace, '-AddCredentials', $true, '-CodeGenerator', $codeGenerator, '-Modeler', $swaggerMetaDict['AutoRestModeler'])
+            $autoRestParams = @('-Input', $swaggerMetaDict['SwaggerSpecPath'], 
+                '-OutputDirectory', $generatedCSharpPath, 
+                '-Namespace', $NameSpace, 
+                '-AddCredentials', $true, 
+                '-CodeGenerator', $codeGenerator, 
+                '-ClientName', $ClientName
+                '-Modeler', $swaggerMetaDict['AutoRestModeler'] 
+            )
+        }
+        else {
+            # See https://aka.ms/autorest/cli for AutoRest.cmd options.
+            $autoRestParams = @(
+                "--input-file=$($swaggerMetaDict['SwaggerSpecPath'])",
+                "--output-folder=$generatedCSharpPath",
+                "--namespace=$NameSpace",
+                '--add-credentials',
+                '--clear-output-folder=true',
+                "--override-client-name=$ClientName"
+                '--verbose',
+                '--csharp'
+            )
+
+            if ($codeGenerator -eq 'Azure.CSharp') {
+                $autoRestParams += '--azure-arm'
+            }
+
+            if (('continue' -eq $DebugPreference) -or 
+                ('inquire' -eq $DebugPreference)) {
+                $autoRestParams += '--debug'
+            }            
         }
 
         Write-Verbose -Message $LocalizedData.InvokingAutoRestWithParams
-        for ($i = 0; $i -lt $autoRestParams.Length; $i += 2) {
-            Write-Verbose -Message ($LocalizedData.AutoRestParam -f ($autoRestParams[$i], $autoRestParams[$i+1]))
+        Write-Verbose -Message $($autoRestParams | Out-String)
+        $autorestMessages = & AutoRest $autoRestParams
+        if ($autorestMessages) {
+            Write-Verbose -Message $($autorestMessages | Out-String)
         }
-
-        $null = & $autoRestExePath $autoRestParams
         if ($LastExitCode)
         {
-            throw $LocalizedData.AutoRestError
+            Write-Error -Message $LocalizedData.AutoRestError -ErrorId 'SourceCodeGenerationError'
+            return
         }
     }
     finally {
@@ -630,7 +849,6 @@ function ConvertTo-CsharpCode
             $null = Remove-Item -Path $tempCodeGenSettingsPath -Force -ErrorAction Ignore
         }
     }
-    
 
     Write-Verbose -Message $LocalizedData.GenerateAssemblyFromCode
     if ($info.ContainsKey('CodeOutputDirectory') -and $info.CodeOutputDirectory) {
@@ -653,79 +871,42 @@ function ConvertTo-CsharpCode
     # Compile full CLR (PSSwagger requires to be invoked from full PowerShell)
     $codeCreatedByAzureGenerator = [bool]$SwaggerMetaDict['UseAzureCsharpGenerator']
 
-    # As of 3/2/2017, there's a version mismatch between the latest Microsoft.Rest.ClientRuntime.Azure package and the latest AzureRM.Profile package
-    # So we have to hardcode Microsoft.Rest.ClientRuntime.Azure to at most version 3.3.4
-    $modulePostfix = $info['infoName']
-    $NameSpace = $info.namespace
-    $fullModuleName = $Namespace + '.' + $modulePostfix
-    $cliXmlTmpPath = Get-TemporaryCliXmlFilePath -FullModuleName $fullModuleName
-    try {
-        Export-CliXml -InputObject $PathFunctionDetails -Path $cliXmlTmpPath
-        $dependencies = Get-PSSwaggerExternalDependencies -Azure:$codeCreatedByAzureGenerator -Framework 'net4'
-        $microsoftRestClientRuntimeAzureRequiredVersion = if ($dependencies.ContainsKey('Microsoft.Rest.ClientRuntime.Azure')) { $dependencies['Microsoft.Rest.ClientRuntime.Azure'].RequiredVersion } else { '' }
-        $command = "Import-Module '$PSScriptRoot\PSSwaggerUtility';
-                    Add-PSSwaggerClientType  -OutputAssemblyName '$outAssembly' ``
-                                                -ClrPath '$clrPath' ``
-                                                -CSharpFiles $allCSharpFilesArrayString ``
-                                                -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator ``
-                                                -MicrosoftRestClientRuntimeAzureRequiredVersion '$microsoftRestClientRuntimeAzureRequiredVersion' ``
-                                                -MicrosoftRestClientRuntimeRequiredVersion '$($dependencies['Microsoft.Rest.ClientRuntime'].RequiredVersion)' ``
-                                                -NewtonsoftJsonRequiredVersion '$($dependencies['Newtonsoft.Json'].RequiredVersion)' ``
-                                                -AllUsers:`$$InstallToolsForAllUsers ``
-                                                -BootstrapConsent:`$$UserConsent ``
-                                                -TestBuild:`$$TestBuild ``
-                                                -SymbolPath $SymbolPath;
-                    if('$outAssembly') {
-                        # Load the generated assembly to extract the extended metadata
-                        `$AssemblyPath = Join-Path -Path '$clrPath' -ChildPath '$outAssembly'
-                        if(Test-Path -Path `$AssemblyPath -PathType Leaf) {
-                            Add-Type -Path `$AssemblyPath
-                        }
-                    }
-
-                    Import-Module `"`$(Join-Path -Path `"$PSScriptRoot`" -ChildPath `"Paths.psm1`")` -DisableNameChecking;
-                    Set-ExtendedCodeMetadata -MainClientTypeName $fullModuleName ``
-                                                -CliXmlTmpPath $cliXmlTmpPath"
-
-        $success = & "powershell" -command "& {$command}"
-        
-        $codeReflectionResult = Import-CliXml -Path $cliXmlTmpPath
-        if ($codeReflectionResult.ContainsKey('VerboseMessages') -and $codeReflectionResult.VerboseMessages -and ($codeReflectionResult.VerboseMessages.Count -gt 0)) {
-            $verboseMessages = $codeReflectionResult.VerboseMessages -Join [Environment]::NewLine
-            Write-Verbose -Message $verboseMessages
-        }
-
-        if ($codeReflectionResult.ContainsKey('WarningMessages') -and $codeReflectionResult.WarningMessages -and ($codeReflectionResult.WarningMessages.Count -gt 0)) {
-            $warningMessages = $codeReflectionResult.WarningMessages -Join [Environment]::NewLine
-            Write-Warning -Message $warningMessages
-        }
-
-        if ((Test-AssemblyCompilationSuccess -Output ($success | Out-String))) {
-            $message = $LocalizedData.GeneratedAssembly -f ($outAssembly)
-            Write-Verbose -Message $message
-        } else {
-            # This should be enough to let the user know we failed to generate their module's assembly.
-            if (-not $outAssembly) {
-                $outAssembly = "$NameSpace.dll"
-            }
-
-            $message = $LocalizedData.UnableToGenerateAssembly -f ($outAssembly)
-            Throw $message
-        }
-
-        if (-not $codeReflectionResult.Result -or $codeReflectionResult.ErrorMessages.Count -gt 0) {
-            $errorMessage = (,($LocalizedData.MetadataExtractFailed) + 
-                $codeReflectionResult.ErrorMessages) -Join [Environment]::NewLine
-            throw $errorMessage
-        }
-
-        $return.PathFunctionDetails = $codeReflectionResult.Result
-    } finally {
-        if (Test-Path -Path $cliXmlTmpPath) {
-            $null = Remove-Item -Path $cliXmlTmpPath
-        }
-    }
+    $dependencies = Get-PSSwaggerExternalDependencies -Azure:$codeCreatedByAzureGenerator -Framework 'net4'
+    $microsoftRestClientRuntimeAzureRequiredVersion = if ($dependencies.ContainsKey('Microsoft.Rest.ClientRuntime.Azure')) { $dependencies['Microsoft.Rest.ClientRuntime.Azure'].RequiredVersion } else { '' }
     
+    if(-not $OutAssembly) {
+        $TempGuid = [Guid]::NewGuid().Guid
+        if (-not $OutAssembly) {
+            $OutAssembly = "$TempGuid.dll"
+        }
+        $ClrPath = Join-Path -Path (Get-XDGDirectory -DirectoryType Cache) -ChildPath ([Guid]::NewGuid().Guid)
+        $null = New-Item -Path $ClrPath -ItemType Directory -Force -WhatIf:$false -Confirm:$false
+    }
+
+    $AddPSSwaggerClientType_params = @{
+        OutputAssemblyName = $outAssembly
+        ClrPath = $clrPath
+        CSharpFiles = $allCodeFiles
+        CodeCreatedByAzureGenerator = $codeCreatedByAzureGenerator
+        MicrosoftRestClientRuntimeAzureRequiredVersion = $microsoftRestClientRuntimeAzureRequiredVersion
+        MicrosoftRestClientRuntimeRequiredVersion = $dependencies['Microsoft.Rest.ClientRuntime'].RequiredVersion
+        NewtonsoftJsonRequiredVersion = $dependencies['Newtonsoft.Json'].RequiredVersion
+        AllUsers = $InstallToolsForAllUsers
+        BootstrapConsent = $UserConsent
+        TestBuild = $TestBuild
+        SymbolPath = $SymbolPath
+    }
+
+    if(-not (PSSwaggerUtility\Add-PSSwaggerClientType @AddPSSwaggerClientType_params)) {
+        $message = $LocalizedData.UnableToGenerateAssembly -f ($outAssembly)
+        Write-Error -ErrorId 'UnableToGenerateAssembly' -Message $message
+        return
+    }
+
+    $message = $LocalizedData.GeneratedAssembly -f ($outAssembly)
+    Write-Verbose -Message $message
+    $result['FullClrAssemblyFilePath'] = Join-Path -Path $ClrPath -ChildPath $OutAssembly
+
     # If we're not going to save the assembly, no need to generate the core CLR one now
     if ($PowerShellCorePath -and (-not $NoAssembly)) {
         if (-not $outAssembly) {
@@ -743,27 +924,35 @@ function ConvertTo-CsharpCode
         }
         $dependencies = Get-PSSwaggerExternalDependencies -Azure:$codeCreatedByAzureGenerator -Framework 'netstandard1'
         $microsoftRestClientRuntimeAzureRequiredVersion = if ($dependencies.ContainsKey('Microsoft.Rest.ClientRuntime.Azure')) { $dependencies['Microsoft.Rest.ClientRuntime.Azure'].RequiredVersion } else { '' }
-        $command = "Import-Module '$PSScriptRoot\PSSwaggerUtility';
-                    Add-PSSwaggerClientType -OutputAssemblyName '$outAssembly' ``
-                                               -ClrPath '$clrPath' ``
-                                               -CSharpFiles $allCSharpFilesArrayString ``
-                                               -MicrosoftRestClientRuntimeAzureRequiredVersion '$microsoftRestClientRuntimeAzureRequiredVersion' ``
-                                               -MicrosoftRestClientRuntimeRequiredVersion '$($dependencies['Microsoft.Rest.ClientRuntime'].RequiredVersion)' ``
-                                               -NewtonsoftJsonRequiredVersion '$($dependencies['Newtonsoft.Json'].RequiredVersion)' ``
-                                               -CodeCreatedByAzureGenerator:`$$codeCreatedByAzureGenerator ``
-                                               -BootstrapConsent:`$$UserConsent"
 
+        # In some cases, PSCore doesn't inherit this process's PSModulePath
+        $command = @"
+            `$env:PSModulePath += ';$env:PSModulePath'
+            `$AddPSSwaggerClientType_params = @{
+                OutputAssemblyName                             = '$outAssembly'
+                ClrPath                                        = '$clrPath'
+                CSharpFiles                                    = $allCSharpFilesArrayString
+                MicrosoftRestClientRuntimeAzureRequiredVersion = '$microsoftRestClientRuntimeAzureRequiredVersion'
+                MicrosoftRestClientRuntimeRequiredVersion      = '$($dependencies['Microsoft.Rest.ClientRuntime'].RequiredVersion)'
+                NewtonsoftJsonRequiredVersion                  = '$($dependencies['Newtonsoft.Json'].RequiredVersion)'
+                CodeCreatedByAzureGenerator                    = `$$codeCreatedByAzureGenerator
+                BootstrapConsent                               = `$$UserConsent
+            }
+            PSSwaggerUtility\Add-PSSwaggerClientType @AddPSSwaggerClientType_params
+"@
         $success = & "$PowerShellCorePath" -command "& {$command}"
         if ((Test-AssemblyCompilationSuccess -Output ($success | Out-String))) {
             $message = $LocalizedData.GeneratedAssembly -f ($outAssembly)
             Write-Verbose -Message $message
         } else {
             $message = $LocalizedData.UnableToGenerateAssembly -f ($outAssembly)
-            Throw $message
+            Write-Error -ErrorId 'UnableToGenerateCoreClrAssembly' -Message $message
+            return
         }
+        $result['CoreClrAssemblyFilePath'] = Join-Path -Path $ClrPath -ChildPath $OutAssembly
     }
 
-    return $return
+    return $result
 }
 
 function Test-AssemblyCompilationSuccess {
@@ -791,15 +980,21 @@ function New-ModuleManifestUtility
 
         [Parameter(Mandatory=$true)]
         [hashtable]
-        $Info
+        $Info,
+        
+        [Parameter(Mandatory=$false)]
+        [AllowEmptyString()]
+        [string]
+        $PSHeaderComment
     )
 
     $FormatsToProcess = Get-ChildItem -Path "$Path\$GeneratedCommandsName\FormatFiles\*.ps1xml" `
                                       -File `
                                       -ErrorAction Ignore | Foreach-Object { $_.FullName.Replace($Path, '.') }
-
+                                      
+    $ModuleManifestFilePath = "$(Join-Path -Path $Path -ChildPath $Info.ModuleName).psd1"
     $NewModuleManifest_params = @{
-        Path = "$(Join-Path -Path $Path -ChildPath $Info.ModuleName).psd1"
+        Path = $ModuleManifestFilePath
         ModuleVersion = $Info.Version
         Description = $Info.Description
         CopyRight = $info.LicenseName
@@ -811,6 +1006,7 @@ function New-ModuleManifestUtility
         CmdletsToExport = @()
         AliasesToExport = @()
         VariablesToExport = @()
+        PassThru = $true
     }
 
     if($Info.DefaultCommandPrefix)
@@ -832,7 +1028,116 @@ function New-ModuleManifestUtility
         }
     }
 
-    New-ModuleManifest @NewModuleManifest_params
+    $PassThruContent = New-ModuleManifest @NewModuleManifest_params
+    
+    # Add header comment
+    if ($PSHeaderComment) {
+        Out-File -FilePath $ModuleManifestFilePath `
+            -InputObject @($PSHeaderComment, $PassThruContent)`
+            -Encoding ascii `
+            -Force `
+            -Confirm:$false `
+            -WhatIf:$false
+    }
+}
+
+function Get-HeaderContent {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]
+        $SwaggerDict
+    )
+
+    $Header = $swaggerDict['Info'].Header
+    $HeaderContent = ($DefaultGeneratedFileHeader -f $MyInvocation.MyCommand.Module.Version)
+    if ($Header) {
+        switch ($Header) {
+            'MICROSOFT_MIT' {
+                return $MicrosoftMitLicenseHeader + [Environment]::NewLine + [Environment]::NewLine + $HeaderContent
+            }
+            'MICROSOFT_MIT_NO_VERSION' {
+                return $MicrosoftMitLicenseHeader + [Environment]::NewLine + [Environment]::NewLine + $DefaultGeneratedFileHeaderWithoutVersion
+            }
+            'MICROSOFT_MIT_NO_CODEGEN' {
+                return $MicrosoftMitLicenseHeader
+            }
+            'MICROSOFT_APACHE' {
+                return $MicrosoftApacheLicenseHeader + [Environment]::NewLine + [Environment]::NewLine + $HeaderContent
+            }
+            'MICROSOFT_APACHE_NO_VERSION' {
+                return $MicrosoftApacheLicenseHeader + [Environment]::NewLine + [Environment]::NewLine + $DefaultGeneratedFileHeaderWithoutVersion
+            }
+            'MICROSOFT_APACHE_NO_CODEGEN' {
+                return $MicrosoftApacheLicenseHeader
+            }
+            'NONE' {
+                return ''
+            }
+        }
+        
+        $HeaderFilePath = Resolve-Path -Path $Header -ErrorAction Ignore
+        if ($HeaderFilePath) {
+            # Selecting the first path when multiple paths are returned by Resolve-Path cmdlet.
+            if ($HeaderFilePath.PSTypeNames -contains 'System.Array') {
+                $HeaderFilePath = $HeaderFilePath[0]
+            }
+
+            if (-not $HeaderFilePath.Path.EndsWith('.txt', [System.StringComparison]::OrdinalIgnoreCase)) {
+                $message = ($LocalizedData.InvalidHeaderFileExtension -f $Header)
+                Write-Error -Message $message -ErrorId 'InvalidHeaderFileExtension' -Category InvalidArgument
+                return
+            }
+
+            if (-not (Test-Path -LiteralPath $HeaderFilePath -PathType Leaf)) {
+                $message = ($LocalizedData.InvalidHeaderFilePath -f $Header)
+                Write-Error -Message $message -ErrorId 'InvalidHeaderFilePath' -Category InvalidArgument
+                return    
+            }
+            
+            $HeaderContent = Get-Content -LiteralPath $HeaderFilePath -Raw
+        }
+        elseif ($Header.EndsWith('.txt', [System.StringComparison]::OrdinalIgnoreCase)) {
+            # If this is an existing '.txt' file above Resolve-Path returns a valid header file path
+            $message = ($LocalizedData.PathNotFound -f $Header)
+            Write-Error -Message $message -ErrorId 'HeaderFilePathNotFound' -Category InvalidArgument
+            return
+        }
+        else {
+            $HeaderContent = $Header
+        }
+    }
+
+    return $HeaderContent
+}
+
+function Copy-PSFileWithHeader {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]
+        $SourceFilePath,
+
+        [Parameter(Mandatory = $true)]
+        [string]
+        $DestinationFilePath,
+
+        [Parameter(Mandatory = $false)]
+        [AllowEmptyString()]
+        [string]
+        $PSHeaderComment
+    )
+
+    if (-not (Test-Path -Path $SourceFilePath -PathType Leaf)) {
+        Throw ($LocalizedData.PathNotFound -f $SourceFilePath)
+    }
+
+    $FileContent = Get-Content -Path $SourceFilePath -Raw
+    Out-File -FilePath $DestinationFilePath `
+        -InputObject @($PSHeaderComment, $FileContent)`
+        -Encoding ascii `
+        -Force `
+        -Confirm:$false `
+        -WhatIf:$false
 }
 
 #endregion

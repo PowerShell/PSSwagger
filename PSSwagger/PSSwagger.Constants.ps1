@@ -9,6 +9,9 @@
 #########################################################################################
 
 $helpDescStr = @'
+.SYNOPSIS
+    $synopsis
+
 .DESCRIPTION
     $description
 '@
@@ -24,9 +27,17 @@ $parameterDefString = @'
 
 $parameterDefaultValueString = ' = $parameterDefaultValue'
 
+$DynamicAssemblyGenerationBlock = @'
+`$dllFullName = Join-Path -Path `$ClrPath -ChildPath '$DllFileName'
+if(-not (Test-Path -Path `$dllFullName -PathType Leaf)) {
+    . (Join-Path -Path `$PSScriptRoot -ChildPath 'AssemblyGenerationHelpers.ps1')
+    New-SDKAssembly -AssemblyFileName '$DllFileName' -IsAzureSDK:`$$UseAzureCSharpGenerator
+}
+'@
+
 $RootModuleContents = @'
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
-Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename $Name.Resources.psd1
+
 # If the user supplied -Prefix to Import-Module, that applies to the nested module as well
 # Force import the nested module again without -Prefix
 if (-not (Get-Command Get-OperatingSystemInfo -Module PSSwaggerUtility -ErrorAction Ignore)) {
@@ -35,61 +46,23 @@ if (-not (Get-Command Get-OperatingSystemInfo -Module PSSwaggerUtility -ErrorAct
 
 if ((Get-OperatingSystemInfo).IsCore) {
     $testCoreModuleRequirements`$clr = 'coreclr'
-    `$framework = 'netstandard1'
-} else {
+}
+else {
     $testFullModuleRequirements`$clr = 'fullclr'
-    `$framework = 'net4'
 }
 
-`$clrPath = Join-Path -Path `$PSScriptRoot -ChildPath 'ref' | Join-Path -ChildPath `$clr
-`$dllFullName = Join-Path -Path `$clrPath -ChildPath '$Namespace.dll'
-`$isAzureCSharp = `$$UseAzureCSharpGenerator
-`$consent = `$false
-if (-not (Test-Path -Path `$dllFullName)) {
-    `$message = `$LocalizedData.CompilingBinaryComponent -f (`$dllFullName)
-    Write-Verbose -Message `$message
-    `$generatedCSharpFilePath = (Join-Path -Path "`$PSScriptRoot" -ChildPath "Generated.Csharp")
-    if (-not (Test-Path -Path `$generatedCSharpFilePath)) {
-        throw `$LocalizedData.CSharpFilesNotFound -f (`$generatedCSharpFilePath)
-    }
-
-    `$allCSharpFiles = Get-ChildItem -Path (Join-Path -Path `$generatedCSharpFilePath -ChildPath "*.Code.ps1") -Recurse -Exclude Program.cs,TemporaryGeneratedFile* -File | Where-Object DirectoryName -notlike '*Azure.Csharp.Generated*'
-    if ((Get-OperatingSystemInfo).IsWindows) {
-        `$allCSharpFiles | ForEach-Object {
-            `$sig = Get-AuthenticodeSignature -FilePath `$_.FullName 
-            if (('NotSigned' -ne `$sig.Status) -and ('Valid' -ne `$sig.Status)) {
-                throw `$LocalizedData.HashValidationFailed
-            }
-        }
-
-        `$message = `$LocalizedData.HashValidationSuccessful
-        Write-Verbose -Message `$message -Verbose
-    }
-
-    `$dependencies = Get-PSSwaggerExternalDependencies -Azure:`$isAzureCSharp -Framework `$framework
-    `$consent = Initialize-PSSwaggerLocalTool -Azure:`$isAzureCSharp -Framework `$framework
-    `$microsoftRestClientRuntimeAzureRequiredVersion = ''
-    if (`$dependencies.ContainsKey('Microsoft.Rest.ClientRuntime.Azure')) {
-        `$microsoftRestClientRuntimeAzureRequiredVersion = `$dependencies['Microsoft.Rest.ClientRuntime.Azure'].RequiredVersion
-    }
-    
-    `$microsoftRestClientRuntimeRequiredVersion = `$dependencies['Microsoft.Rest.ClientRuntime'].RequiredVersion
-    `$newtonsoftJsonRequiredVersion = `$dependencies['Newtonsoft.Json'].RequiredVersion
-
-    `$success = Add-PSSwaggerClientType -CSharpFiles `$allCSharpFiles -NewtonsoftJsonRequiredVersion `$newtonsoftJsonRequiredVersion -MicrosoftRestClientRuntimeRequiredVersion `$microsoftRestClientRuntimeRequiredVersion -MicrosoftRestClientRuntimeAzureRequiredVersion "`$microsoftRestClientRuntimeAzureRequiredVersion" -ClrPath `$clrPath -BootstrapConsent:`$consent -CodeCreatedByAzureGenerator:`$isAzureCSharp
-    if (-not `$success) {
-        `$message = `$LocalizedData.CompilationFailed -f (`$dllFullName)
-        throw `$message
-    }
-
-    `$message = `$LocalizedData.CompilationFailed -f (`$dllFullName)
-    Write-Verbose -Message `$message
+`$ClrPath = Join-Path -Path `$PSScriptRoot -ChildPath 'ref' | Join-Path -ChildPath `$clr
+$DynamicAssemblyGenerationCode
+`$allDllsPath = Join-Path -Path `$ClrPath -ChildPath '*.dll'
+if (Test-Path -Path `$ClrPath -PathType Container) {
+    Get-ChildItem -Path `$allDllsPath -File | ForEach-Object { Add-Type -Path `$_.FullName -ErrorAction SilentlyContinue }
 }
 
+. (Join-Path -Path `$PSScriptRoot -ChildPath 'New-ServiceClient.ps1')
+. (Join-Path -Path `$PSScriptRoot -ChildPath 'GeneratedHelpers.ps1')
 
-
-Get-ChildItem -Path (Join-Path -Path "`$PSScriptRoot" -ChildPath "ref" | Join-Path -ChildPath "`$clr" | Join-Path -ChildPath "*.dll") -File | ForEach-Object { Add-Type -Path `$_.FullName -ErrorAction SilentlyContinue }
-Get-ChildItem -Path "`$PSScriptRoot\$GeneratedCommandsName\*.ps1" -Recurse -File | ForEach-Object { . `$_.FullName}
+`$allPs1FilesPath = Join-Path -Path `$PSScriptRoot -ChildPath '$GeneratedCommandsName' | Join-Path -ChildPath '*.ps1'
+Get-ChildItem -Path `$allPs1FilesPath -Recurse -File | ForEach-Object { . `$_.FullName}
 '@
 
 $advFnSignatureForDefintion = @'
@@ -114,7 +87,6 @@ $AsJobParameterString = @'
 
 
 $advFnSignatureForPath = @'
-Import-Module -Name (Join-Path -Path `$PSScriptRoot -ChildPath .. | Join-Path -ChildPath .. | Join-Path -ChildPath "GeneratedHelpers.psm1")
 <#
 $commandHelp
 $paramHelp
@@ -191,11 +163,49 @@ $constructFlattenedParameter = @'
 $functionBodyStr = @'
 
     `$ErrorActionPreference = 'Stop'
-    $securityBlock
 
-    $clientName = New-Object -TypeName $fullModuleName -ArgumentList $clientArgumentList$apiVersion
-    $overrideBaseUriBlock
-    $GlobalParameterBlock
+    `$NewServiceClient_params = @{
+        FullClientTypeName = '$FullClientTypeName'
+    }
+$(
+if($AuthenticationCommand){
+"
+    `$NewServiceClient_params['AuthenticationCommand'] = @'
+    $AuthenticationCommand
+`'@ "
+    if($AuthenticationCommandArgumentName){
+"
+    `$NewServiceClient_params['AuthenticationCommandArgumentList'] = `$$AuthenticationCommandArgumentName"
+    }
+}
+if($AddHttpClientHandler){
+"
+    `$NewServiceClient_params['AddHttpClientHandler'] = `$true
+    `$NewServiceClient_params['Credential']           = `$Credential"
+}
+if($hostOverrideCommand){
+"
+    `$NewServiceClient_params['HostOverrideCommand'] = @'
+    $hostOverrideCommand
+`'@"
+}
+if($GlobalParameters) {
+'
+    $GlobalParameterHashtable = @{} '
+    
+    foreach($parameter in $GlobalParameters) {
+"    
+    `$GlobalParameterHashtable['$parameter'] = `$null
+    if(`$PSBoundParameters.ContainsKey('$parameter')) {
+        `$GlobalParameterHashtable['$parameter'] = `$PSBoundParameters['$parameter']
+    }
+"
+    }
+"
+    `$NewServiceClient_params['GlobalParameterHashtable'] = `$GlobalParameterHashtable "
+}
+)
+    $clientName = New-ServiceClient @NewServiceClient_params
     $oDataExpressionBlock
     $parameterGroupsExpressionBlock
     $flattenedParametersBlock
@@ -206,16 +216,6 @@ $functionBodyStr = @'
         Write-Verbose -Message 'Failed to map parameter set to operation method.'
         throw 'Module failed to find operation to execute.'
     }
-'@
-
-$clientArgumentListNoHandler = "`$serviceCredentials,`$delegatingHandler"
-$clientArgumentListHttpClientHandler = "`$serviceCredentials,`$httpClientHandler,`$delegatingHandler"
-
-$securityBlockStr = @'
-`$serviceCredentials = $authFunctionCall
-    $azSubscriptionIdBlock
-    $httpClientHandlerCall
-    `$delegatingHandler = New-Object -TypeName System.Net.Http.DelegatingHandler[] 0
 '@
 
 $parameterSetBasedMethodStrIfCase = @'
@@ -249,10 +249,35 @@ $getTaskResultBlock = @'
                     
         Write-Debug -Message "`$(`$taskResult | Out-String)"
 
-        if(`$taskResult.IsFaulted)
+
+        if((Get-Member -InputObject `$taskResult -Name 'Result') -and
+           `$taskResult.Result -and
+           (Get-Member -InputObject `$taskResult.Result -Name 'Body') -and
+           `$taskResult.Result.Body)
+        {
+            Write-Verbose -Message 'Operation completed successfully.'
+            `$result = `$taskResult.Result.Body
+            Write-Debug -Message "`$(`$result | Out-String)"
+            $resultBlockStr
+        }
+        elseif(`$taskResult.IsFaulted)
         {
             Write-Verbose -Message 'Operation failed.'
-            Throw "`$(`$taskResult.Exception.InnerExceptions | Out-String)"
+            if (`$taskResult.Exception)
+            {
+                if ((Get-Member -InputObject `$taskResult.Exception -Name 'InnerExceptions') -and `$taskResult.Exception.InnerExceptions)
+                {
+                    foreach (`$ex in `$taskResult.Exception.InnerExceptions)
+                    {
+                        Write-Error -Exception `$ex
+                    }
+                } elseif ((Get-Member -InputObject `$taskResult.Exception -Name 'InnerException') -and `$taskResult.Exception.InnerException)
+                {
+                    Write-Error -Exception `$taskResult.Exception.InnerException
+                } else {
+                    Write-Error -Exception `$taskResult.Exception
+                }
+            }
         } 
         elseif (`$taskResult.IsCanceled)
         {
@@ -262,15 +287,6 @@ $getTaskResultBlock = @'
         else
         {
             Write-Verbose -Message 'Operation completed successfully.'
-
-            if(`$taskResult.Result -and
-                (Get-Member -InputObject `$taskResult.Result -Name 'Body') -and
-                `$taskResult.Result.Body)
-            {
-                `$result = `$taskResult.Result.Body
-                Write-Debug -Message "`$(`$result | Out-String)"
-                $resultBlockStr
-            }
         }
 '@
 
@@ -371,9 +387,9 @@ $PagingBlockStrFunctionCallWithTop = @'
     
         Write-Verbose -Message 'Flattening paged results.'
         # Get the next page iff 1) there is a next page and 2) any result in the next page would be returned
-        while (`$result -and `$result.NextPageLink -and ((`$Top -eq -1) -or (`$returnedCount -lt `$Top))) {
-            Write-Debug -Message "Retrieving next page: `$(`$result.NextPageLink)"
-            `$taskResult = $clientName$pagingOperations.$pagingOperationName(`$result.NextPageLink)
+        while (`$result -and (Get-Member -InputObject `$result -Name '$NextLinkName') -and `$result.'$NextLinkName' -and ((`$Top -eq -1) -or (`$returnedCount -lt `$Top))) {
+            Write-Debug -Message "Retrieving next page: `$(`$result.'$NextLinkName')"
+            `$taskResult = $clientName$pagingOperations.$pagingOperationName(`$result.'$NextLinkName')
              $getTaskResult
         }
 '@
@@ -381,9 +397,9 @@ $PagingBlockStrFunctionCallWithTop = @'
 $PagingBlockStrFunctionCall = @'
     
         Write-Verbose -Message 'Flattening paged results.'
-        while (`$result -and `$result.NextPageLink) {
-            Write-Debug -Message "Retrieving next page: `$(`$result.NextPageLink)"
-            `$taskResult = $clientName$pagingOperations.$pagingOperationName(`$result.NextPageLink)
+        while (`$result -and (Get-Member -InputObject `$result -Name '$NextLinkName') -and `$result.'$NextLinkName') {
+            Write-Debug -Message "Retrieving next page: `$(`$result.'$NextLinkName')"
+            `$taskResult = $clientName$pagingOperations.$pagingOperationName(`$result.'$NextLinkName')
              $getTaskResult
         }
 '@
@@ -393,8 +409,8 @@ $PagingBlockStrCmdletCallWithTop = @'
     
         Write-Verbose -Message 'Flattening paged results.'
         # Get the next page iff 1) there is a next page and 2) any result in the next page would be returned
-        while (`$result -and `$result.NextPageLink -and ((`$Top -eq -1) -or (`$returnedCount -lt `$Top))) {
-            Write-Debug -Message "Retrieving next page: `$(`$result.NextPageLink)"
+        while (`$result -and (Get-Member -InputObject `$result -Name '$NextLinkName') -and `$result.'$NextLinkName' -and ((`$Top -eq -1) -or (`$returnedCount -lt `$Top))) {
+            Write-Debug -Message "Retrieving next page: `$(`$result.'$NextLinkName')"
             $Cmdlet $CmdletArgs
         }
 '@
@@ -402,8 +418,8 @@ $PagingBlockStrCmdletCallWithTop = @'
 $PagingBlockStrCmdletCall = @'
     
         Write-Verbose -Message 'Flattening paged results.'
-        while (`$result -and `$result.NextPageLink) {
-            Write-Debug -Message "Retrieving next page: `$(`$result.NextPageLink)"
+        while (`$result -and (Get-Member -InputObject `$result -Name '$NextLinkName') -and `$result.'$NextLinkName') {
+            Write-Debug -Message "Retrieving next page: `$(`$result.'$NextLinkName')"
             $Cmdlet $CmdletArgs
         }
 '@
@@ -462,27 +478,11 @@ $createObjectStr = @'
     return `$Object
 '@
 
-$ApiVersionStr = @'
-
-    if(Get-Member -InputObject $clientName -Name 'ApiVersion' -MemberType Property)
-    {
-        $clientName.ApiVersion = "$infoVersion"
-    }
-'@
-
-$GlobalParameterBlockStr = @'
-    if(Get-Member -InputObject `$clientName -Name '$globalParameterName' -MemberType Property)
-    {
-        `$clientName.$globalParameterName = $globalParameterValue
-    }
-'@
-
-$HostOverrideBlock = '`$ResourceManagerUrl = $hostOverrideCommand`n    $clientName.BaseUri = `$ResourceManagerUrl'
-
 $GeneratedCommandsName = 'Generated.PowerShell.Commands'
 
 $FormatViewDefinitionStr = @'
 <?xml version="1.0" encoding="utf-8" ?>
+{4}
 <Configuration>
     <ViewDefinitions>
         <View>
@@ -517,3 +517,45 @@ $TableColumnHeaderStr = @'
                         <Width>{0}</Width>
                     </TableColumnHeader>
 '@
+
+$DefaultGeneratedFileHeader = @'
+Code generated by Microsoft (R) PSSwagger {0}
+Changes may cause incorrect behavior and will be lost if the code is regenerated.
+'@
+
+$PSCommentFormatString = "<#
+{0}
+#>
+"
+
+$XmlCommentFormatString = "<!--
+{0}
+-->
+"
+
+$DefaultGeneratedFileHeaderWithoutVersion = @'
+Code generated by Microsoft (R) PSSwagger
+Changes may cause incorrect behavior and will be lost if the code is regenerated.
+'@
+
+$MicrosoftApacheLicenseHeader = @'
+Copyright (c) Microsoft and contributors.  All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the ""License"");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+
+See the License for the specific language governing permissions and
+limitations under the License.
+'@
+
+$MicrosoftMitLicenseHeader = @'
+Copyright (c) Microsoft Corporation. All rights reserved.
+Licensed under the MIT License. See License.txt in the project root for license information.
+'@
+

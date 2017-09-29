@@ -73,7 +73,7 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
                 return @{
                     IsCore = $true
                     IsLinux = $true
-                    IsOSX = $false
+                    IsMacOS = $false
                     IsWindows = $false
                 }
             }
@@ -120,7 +120,7 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
                 return @{
                     IsCore = $true
                     IsLinux = $true
-                    IsOSX = $false
+                    IsMacOS = $false
                     IsWindows = $false
                 }
             }
@@ -161,7 +161,7 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
                 return @{
                     IsCore = $true
                     IsLinux = $false
-                    IsOSX = $false
+                    IsMacOS = $false
                     IsWindows = $true
                 }
             }
@@ -184,6 +184,116 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
             It "Windows + Config" {
                  $expectedPath = Join-Path -Path $env:LOCALAPPDATA -ChildPath 'Microsoft\Windows\PowerShell'
                 Get-XDGDirectory -DirectoryType Config | should beexactly $expectedPath
+            }
+        }
+
+        Context "Get-HeaderContent Unit Tests" {
+            BeforeAll {
+                $moduleInfo = Get-Module -Name PSSwagger
+                $DefaultGeneratedFileHeaderString = $DefaultGeneratedFileHeader -f $moduleInfo.Version
+                
+                $InvalidHeaderFileExtensionPath = Join-Path -Path $PSScriptRoot -ChildPath '*.ps1'
+                $UnavailableHeaderFilePath = Join-Path -Path $PSScriptRoot -ChildPath 'NotExistingHeaderFile.txt'
+                
+                $FolderPathEndingWithDotTxt = Join-Path -Path $PSScriptRoot -ChildPath 'TestFoldeName.txt'
+                $null = New-Item -Path $FolderPathEndingWithDotTxt -ItemType Directory -Force
+                
+                $ValidHeaderFilePath = Join-Path -Path $PSScriptRoot -ChildPath 'TestHeader.txt'
+                Out-File -FilePath $ValidHeaderFilePath -InputObject 'Content from Header file' -Force -WhatIf:$false -Confirm:$false
+                $HeaderFileContent = Get-Content -Path $ValidHeaderFilePath -Raw
+            }
+
+            AfterAll {
+                Get-Item -Path $FolderPathEndingWithDotTxt -ErrorAction SilentlyContinue | Remove-Item -Force
+                Get-Item -Path $ValidHeaderFilePath -ErrorAction SilentlyContinue | Remove-Item -Force                
+            }
+
+            It "Get-HeaderContent should return null when header value is 'NONE'" {
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = 'NONE'}} | Should BeNullOrEmpty
+            }
+
+            It "Get-HeaderContent should return default header content when header value is empty" {
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = ''}} | Should BeExactly $DefaultGeneratedFileHeaderString
+            }
+
+            It "Get-HeaderContent should return default header content when header value is null" {
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = $null}} | Should BeExactly $DefaultGeneratedFileHeaderString
+            }
+            
+            It "Get-HeaderContent should throw when the specified header file path is invalid" {
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = $InvalidHeaderFileExtensionPath}} -ErrorVariable ev -ErrorAction SilentlyContinue | Should BeNullOrEmpty
+                $ev[0].FullyQualifiedErrorId | Should BeExactly 'InvalidHeaderFileExtension,Get-HeaderContent'
+            }
+            
+            It "Get-HeaderContent should throw when the specified header file path is not found" {
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = $UnavailableHeaderFilePath}} -ErrorVariable ev -ErrorAction SilentlyContinue | Should BeNullOrEmpty
+                $ev[0].FullyQualifiedErrorId | Should BeExactly 'HeaderFilePathNotFound,Get-HeaderContent'
+            }
+            
+            It "Get-HeaderContent should throw when the specified header file path is not a file path" {
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = $FolderPathEndingWithDotTxt}} -ErrorVariable ev -ErrorAction SilentlyContinue | Should BeNullOrEmpty
+                $ev[0].FullyQualifiedErrorId | Should BeExactly 'InvalidHeaderFilePath,Get-HeaderContent'
+            }
+
+            It "Get-HeaderContent should return content from the header file" {
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = $ValidHeaderFilePath}} | Should BeExactly $HeaderFileContent
+            }
+
+            It "Get-HeaderContent should return MICROSOFT_MIT header content with '-Header MICROSOFT_MIT'" {
+                $ExpectedHeaderContent = $MicrosoftMitLicenseHeader + [Environment]::NewLine + [Environment]::NewLine + $DefaultGeneratedFileHeaderString
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = 'MICROSOFT_MIT'}} | Should BeExactly $ExpectedHeaderContent
+            }
+
+            It "Get-HeaderContent should return MICROSOFT_MIT_NO_VERSION header content with '-Header MICROSOFT_MIT_NO_VERSION'" {
+                $ExpectedHeaderContent = $MicrosoftMitLicenseHeader + [Environment]::NewLine + [Environment]::NewLine + $DefaultGeneratedFileHeaderWithoutVersion
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = 'MICROSOFT_MIT_NO_VERSION'}} | Should BeExactly $ExpectedHeaderContent
+            }
+
+            It "Get-HeaderContent should return MICROSOFT_MIT_NO_CODEGEN header content with '-Header MICROSOFT_MIT_NO_CODEGEN'" {
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = 'MICROSOFT_MIT_NO_CODEGEN'}} | Should BeExactly $MicrosoftMitLicenseHeader
+            }
+
+            It "Get-HeaderContent should return MICROSOFT_APACHE header content with '-Header MICROSOFT_APACHE'" {
+                $ExpectedHeaderContent = $MicrosoftApacheLicenseHeader + [Environment]::NewLine + [Environment]::NewLine + $DefaultGeneratedFileHeaderString
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = 'MICROSOFT_APACHE'}} | Should BeExactly $ExpectedHeaderContent
+            }
+
+            It "Get-HeaderContent should return MICROSOFT_APACHE_NO_VERSION header content with '-Header MICROSOFT_APACHE_NO_VERSION'" {
+                $ExpectedHeaderContent = $MicrosoftApacheLicenseHeader + [Environment]::NewLine + [Environment]::NewLine + $DefaultGeneratedFileHeaderWithoutVersion
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = 'MICROSOFT_APACHE_NO_VERSION'}} | Should BeExactly $ExpectedHeaderContent
+            }
+
+            It "Get-HeaderContent should return MICROSOFT_APACHE_NO_CODEGEN header content with '-Header MICROSOFT_APACHE_NO_CODEGEN'" {
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = 'MICROSOFT_APACHE_NO_CODEGEN'}} | Should BeExactly $MicrosoftApacheLicenseHeader
+            }
+        }
+        
+        Context "Get-CSharpModelName Unit Tests" {
+            It "Get-CSharpModelName should remove special characters" {
+                Get-CSharpModelName -Name @"
+                    SomeTypeWithSpecialCharacters ~!@#$%^&*()_+|}{:"<>?,./;'][\=-``
+"@  | Should BeExactly 'SomeTypeWithSpecialCharacters'
+            }
+            It "Get-CSharpModelName should replace [] with Sequence" {
+                Get-CSharpModelName -Name 'foo[]'  | Should BeExactly 'FooSequence'
+            }
+            It "Get-CSharpModelName should append 'Model' for C# reserved words" {
+                Get-CSharpModelName -Name 'break'  | Should BeExactly 'BreakModel'
+            }
+        }
+
+        Context "Convert-GenericTypeToString Unit Tests" {
+            It "Convert-GenericTypeToString with 'System.Int32' type" {
+                Convert-GenericTypeToString -Type ('System.Int32' -as [type]) | Should BeExactly 'System.Int32'
+            }
+            It "Convert-GenericTypeToString with 'System.String[]' type" {
+                Convert-GenericTypeToString -Type ('System.String[]' -as [type]) | Should BeExactly 'System.String'
+            }
+            It "Convert-GenericTypeToString with 'System.Collections.Generic.List[string]' type" {
+                Convert-GenericTypeToString -Type ('System.Collections.Generic.List[string]' -as [type]) | Should BeExactly 'System.Collections.Generic.List[System.String]'
+            }
+            It "Convert-GenericTypeToString with 'System.Collections.Generic.Dictionary[string, string]' type" {
+                Convert-GenericTypeToString -Type ('System.Collections.Generic.Dictionary[string, string]' -as [type]) | Should BeExactly 'System.Collections.Generic.Dictionary[System.String,System.String]'
             }
         }
     }

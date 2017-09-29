@@ -25,6 +25,7 @@ ConvertFrom-StringData @'
     SamePropertyName=Same property name '{0}' is defined in a definition '{1}' with AllOf inheritance.
     DataTypeNotImplemented=Please get an implementation of '{0}' for '{1}'
     AutoRestNotInPath=Unable to find AutoRest in PATH environment. Ensure the PATH is updated.
+    CscExeNotInPath=Unable to find CSC.exe in PATH environment. Ensure the PATH is updated with CSC.exe location.
     AutoRestError=AutoRest resulted in an error
     SwaggerParamsMissing=No parameters in the Swagger
     SwaggerDefinitionsMissing=No definitions in the Swagger
@@ -84,5 +85,7 @@ ConvertFrom-StringData @'
     ServiceTypeMetadataFileNotFound=The service type metadata file '{0}' does not exist.
     UnknownPSMetadataProperty=Unknown '{0}' property: '{1}'.
     InvalidPSMetaFlattenParameter=Flatten property is specified as 'true' for an invalid parameter '{0}' with type '{1}'.
+    InvalidHeaderFileExtension=Header '{0}' file extension should be '.txt'.
+    InvalidHeaderFilePath=The specified value '{0}' for Header parameter is should be a valid file path.
 ###PSLOC
 '@

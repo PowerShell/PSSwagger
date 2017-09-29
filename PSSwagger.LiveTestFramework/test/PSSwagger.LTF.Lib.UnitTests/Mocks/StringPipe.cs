@@ -1,10 +1,14 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+
+// Licensed under the MIT license.
 namespace PSSwagger.LTF.Lib.UnitTests.Mocks
 {
+    using Interfaces;
     using System;
+    using System.Collections.Generic;
+    using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
-    using System.Text;
-    using Interfaces;
 
     /// <summary>
     /// Basic string input/output interface. Use BufferInputString to add a string to the read buffer.
@@ -13,17 +17,19 @@ namespace PSSwagger.LTF.Lib.UnitTests.Mocks
     {
         private StringBuilder buffer;
         private int bufferIndex = 0;
-        
+        private Queue<byte> byteQueue = new Queue<byte>();
+        public StringBuilder OutputBuffer { get; private set; }
         public StringPipe()
         {
             this.buffer = new StringBuilder();
+            this.OutputBuffer = new StringBuilder();
         }
 
         public void Flush()
         {
         }
 
-        public char ReadChar()
+        public async Task<char> ReadChar()
         {
             while (buffer.Length <= bufferIndex)
             {
@@ -33,33 +39,68 @@ namespace PSSwagger.LTF.Lib.UnitTests.Mocks
             return buffer[bufferIndex++];
         }
 
-        public void Write(char b)
+        public async Task Write(char b)
         {
+            this.OutputBuffer.Append(b);
         }
 
-        public void BufferInputString(string line)
+        public void BufferInputString(string str)
         {
-            this.buffer.Append(line);
+            this.buffer.Append(str);
         }
 
-        public string ReadLine()
+        public void BufferJsonRpcBlock(object message, string type = null)
+        {
+            string messageSerialized = Newtonsoft.Json.JsonConvert.SerializeObject(message);
+            StringBuilder sb = new StringBuilder();
+            sb.Append("Content-Length: " + Encoding.ASCII.GetByteCount(messageSerialized) + "\r\n");
+            if (!String.IsNullOrEmpty(type))
+            {
+                sb.Append("Content-Type: " + type + "\r\n");
+            }
+            sb.Append("\r\n");
+            sb.Append(messageSerialized);
+            this.buffer.Append(sb.ToString());
+        }
+
+        public Task<string> ReadLine()
         {
             throw new NotImplementedException();
         }
 
-        public Task<T> ReadBlockAsync<T>() where T : class
+        public Task<T> ReadBlock<T>() where T : class
         {
             throw new NotImplementedException();
         }
 
-        public void WriteLine(string line)
+        public async Task WriteLine(string line)
+        {
+            this.OutputBuffer.AppendLine(line);
+        }
+
+        public Task WriteBlock<T>(T msg) where T : class
         {
             throw new NotImplementedException();
         }
 
-        public Task WriteBlockAsync<T>(T msg) where T : class
+        public async Task<byte> ReadByte()
         {
-            throw new NotImplementedException();
+            if (this.byteQueue.Count > 0)
+            {
+                return this.byteQueue.Dequeue();
+            }
+
+            while (buffer.Length <= bufferIndex)
+            {
+                Thread.Sleep(1);
+            }
+
+            foreach (byte b in Encoding.ASCII.GetBytes(new char[] { buffer[bufferIndex++] }))
+            {
+                this.byteQueue.Enqueue(b);
+            }
+
+            return this.byteQueue.Dequeue();
         }
     }
 }

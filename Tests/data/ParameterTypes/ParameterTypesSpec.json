@@ -3,7 +3,10 @@
     "info": {
         "title": "ParameterTypesSpec",
         "description": "API that contains tests for all known parameter types",
-        "version": "2017-03-24"
+        "version": "2017-03-24",
+        "x-ms-code-generation-settings": {
+            "Header": "Header content from swagger spec"
+        }
     },
     "host": "localhost:3000",
     "schemes": [
@@ -295,6 +298,108 @@
                     }
                 }
             }
+        },
+        "/PathWithEffectiveNetworkSecurityGroup": {
+            "get": {
+                "summary": "List all dinosaurs matching parameters",
+                "operationId": "EffectiveNetworkSecurityGroup_Get",
+                "description": "List all dinosaurs matching parameters",
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/ApiVersionParameter"
+                    },
+                    {
+                        "$ref": "#/parameters/SubscriptionIdParameter"
+                    },
+                    {
+                        "name": "OperationTagMap",
+                        "in": "query",
+                        "required": false,
+                        "type": "string",
+                        "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "List of IP Addresses within the tag (key)"
+                        },
+                        "description": "Mapping of tags to list of IP Addresses included within the tag."
+                    },
+                    {
+                        "name": "EffectiveNetworkSecurityGroup",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/EffectiveNetworkSecurityGroup"
+                        },
+                        "description": "Group filtering parameters."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Namespace"
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/PathWithEnumDefinitionType": {
+            "get": {
+                "summary": "List all dinosaurs matching parameters",
+                "operationId": "PathWithEnumDefinitionType_Get",
+                "description": "List all dinosaurs matching parameters",
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/ApiVersionParameter"
+                    },
+                    {
+                        "$ref": "#/parameters/SubscriptionIdParameter"
+                    },
+                    {
+                        "name": "ApplicationGatewaySslPolicy",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ApplicationGatewaySslPolicy"
+                        },
+                        "description": "Group filtering parameters."
+                    },
+                    {
+                        "name": "PolicyNameEnumParameter",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/PolicyNameEnum"
+                        },
+                        "description": "Group filtering parameters."
+                    }
+                ],
+                "tags": [
+                    "Dinosaurs"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Namespace"
+                        }
+                    },
+                    "default": {
+                        "description": "Error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -535,6 +640,89 @@
                 }
             },
             "description": "The response of the List Namespace operation."
+        },
+        "EffectiveNetworkSecurityGroup": {
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "Unique identifier"
+                },
+                "tagMap": {
+                    "type": "string",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "List of IP Addresses within the tag (key)"
+                    },
+                    "description": "Mapping of tags to list of IP Addresses included within the tag."
+                }
+            },
+            "description": "Effective network security group."
+        },
+        "PolicyNameEnum": {
+            "type": "string",
+            "description": "Ssl predefined policy name enums.",
+            "enum": [
+                "AppGwSslPolicy20150501",
+                "AppGwSslPolicy20170401",
+                "AppGwSslPolicy20170401S"
+            ],
+            "x-ms-enum": {
+                "name": "ApplicationGatewaySslPolicyName",
+                "modelAsString": true
+            }
+        },
+        "ApplicationGatewaySslPolicy": {
+            "properties": {
+                "disabledSslProtocols": {
+                    "type": "array",
+                    "description": "Ssl protocols to be disabled on application gateway.",
+                    "items": {
+                        "type": "string",
+                        "$ref": "#/definitions/ProtocolsEnum",
+                        "x-ms-enum": {
+                            "name": "ApplicationGatewaySslProtocol",
+                            "modelAsString": true
+                        }
+                    }
+                },
+                "policyType": {
+                    "type": "string",
+                    "description": "Type of Ssl Policy",
+                    "enum": [
+                        "Predefined",
+                        "Custom"
+                    ],
+                    "x-ms-enum": {
+                        "name": "ApplicationGatewaySslPolicyType",
+                        "modelAsString": true
+                    }
+                },
+                "policyName": {
+                    "$ref": "#/definitions/PolicyNameEnum",
+                    "description": "Name of Ssl predefined policy"
+                },
+                "minProtocolVersion": {
+                    "$ref": "#/definitions/ProtocolsEnum",
+                    "description": "Minimum version of Ssl protocol to be supported on application gateway."
+                }
+            },
+            "description": "Application Gateway Ssl policy."
+        },
+        "ProtocolsEnum": {
+            "type": "string",
+            "description": "Ssl protocol enums.",
+            "enum": [
+                "TLSv1_0",
+                "TLSv1_1",
+                "TLSv1_2"
+            ],
+            "x-ms-enum": {
+                "name": "ApplicationGatewaySslProtocol",
+                "modelAsString": true
+            }
         }
     },
     "parameters": {

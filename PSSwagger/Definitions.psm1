@@ -127,6 +127,8 @@ function Get-SwaggerSpecDefinitionInfo
 
     $FunctionDetails['Name'] = $Name
     $FunctionDetails['Description'] = $FunctionDescription
+    # Definition doesn't have Summary property, so using specifying Description as Function Synopsis.
+    $FunctionDetails['Synopsis'] = $FunctionDescription
     $FunctionDetails['ParametersTable'] = $ParametersTable
     $FunctionDetails['x_ms_Client_flatten_DefinitionNames'] = $x_ms_Client_flatten_DefinitionNames
     $FunctionDetails['AllOf_DefinitionNames'] = $AllOf_DefinitionNames
@@ -135,6 +137,7 @@ function Get-SwaggerSpecDefinitionInfo
     $FunctionDetails['ExpandedParameters'] = $ExpandedParameters
 
     $DefinitionType = ""
+    $ValidateSet = $null
     if ((Get-HashtableKeyCount -Hashtable $ParametersTable) -lt 1)
     {
         $GetDefinitionParameterType_params = @{
@@ -143,9 +146,12 @@ function Get-SwaggerSpecDefinitionInfo
             ModelsNamespace = "$NameSpace.$Models"
             DefinitionFunctionsDetails = $DefinitionFunctionsDetails
         }
-        $DefinitionType = Get-DefinitionParameterType @GetDefinitionParameterType_params
+        $TypeResult = Get-DefinitionParameterType @GetDefinitionParameterType_params
+        $DefinitionType = $TypeResult['ParameterType']
+        $ValidateSet = $TypeResult['ValidateSet']
     }
     $FunctionDetails['Type'] = $DefinitionType
+    $FunctionDetails['ValidateSet'] = $ValidateSet
 
     if(-not $FunctionDetails.ContainsKey('IsUsedAs_x_ms_client_flatten'))
     {
@@ -236,13 +242,20 @@ function Get-DefinitionParameters
                     $ValidateSetString = $null
                     $ParameterDescription = ''
                     
-                    $ParameterType = Get-DefinitionParameterType -ParameterJsonObject $ParameterJsonObject `
-                                                                 -DefinitionName $DefinitionName `
-                                                                 -ParameterName $ParameterName `
-                                                                 -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
-                                                                 -ModelsNamespace "$NameSpace.Models" `
-                                                                 -ParametersTable $ParametersTable
+                    $GetDefinitionParameterType_params = @{
+                        ParameterJsonObject        = $ParameterJsonObject
+                        DefinitionName             = $DefinitionName
+                        ParameterName              = $ParameterName
+                        DefinitionFunctionsDetails = $DefinitionFunctionsDetails
+                        ModelsNamespace            = "$NameSpace.Models"
+                        ParametersTable            = $ParametersTable
+                    }
+                    $TypeResult = Get-DefinitionParameterType @GetDefinitionParameterType_params
             
+                    $ParameterType = $TypeResult['ParameterType']
+                    if($TypeResult['ValidateSet']) {
+                        $ValidateSetString = "'$($TypeResult['ValidateSet'] -join "', '")'"
+                    }
                     if ((Get-Member -InputObject $JsonDefinitionItemObject.Value -Name 'Required') -and 
                         $JsonDefinitionItemObject.Value.Required -and
                         ($JsonDefinitionItemObject.Value.Required -contains $ParameterName) )
@@ -318,6 +331,7 @@ function Get-DefinitionParameterType
     $DefinitionTypeNamePrefix = "$ModelsNamespace."
 
     $ParameterType = $null
+    $ValidateSet = $null
 
     if ((Get-Member -InputObject $ParameterJsonObject -Name 'Type') -and $ParameterJsonObject.Type)
     {
@@ -325,13 +339,18 @@ function Get-DefinitionParameterType
 
         # When a definition property has single enum value, AutoRest doesn't generate an enum type.
         if ((Get-Member -InputObject $ParameterJsonObject -Name 'Enum') -and 
-            ($ParameterJsonObject.Enum.Count -gt 1) -and 
-            (Get-Member -InputObject $ParameterJsonObject -Name 'x-ms-enum') -and 
-            $ParameterJsonObject.'x-ms-enum' -and             
-            (-not (Get-Member -InputObject $ParameterJsonObject.'x-ms-enum' -Name 'modelAsString') -or
-             ($ParameterJsonObject.'x-ms-enum'.modelAsString -eq $false)))
+            $ParameterJsonObject.Enum -and ($ParameterJsonObject.Enum.Count -gt 1))
         {
-            $ParameterType = $DefinitionTypeNamePrefix + (Get-CSharpModelName -Name $ParameterJsonObject.'x-ms-enum'.Name)
+            if ((Get-Member -InputObject $ParameterJsonObject -Name 'x-ms-enum') -and
+                $ParameterJsonObject.'x-ms-enum' -and
+                (-not (Get-Member -InputObject $ParameterJsonObject.'x-ms-enum' -Name 'modelAsString') -or
+                ($ParameterJsonObject.'x-ms-enum'.modelAsString -eq $false)))
+            {
+                $ParameterType = $DefinitionTypeNamePrefix + (Get-CSharpModelName -Name $ParameterJsonObject.'x-ms-enum'.Name)
+            }
+            else {
+                $ValidateSet = $ParameterJsonObject.Enum | ForEach-Object {$_ -replace "'", "''"}
+            }
         }
         # Use the format as parameter type if that is available as a type in PowerShell
         elseif ((Get-Member -InputObject $ParameterJsonObject -Name 'Format') -and 
@@ -348,8 +367,17 @@ function Get-DefinitionParameterType
                 $ParameterJsonObject.Items.'$ref')
             {
                 $ReferenceTypeValue = $ParameterJsonObject.Items.'$ref'
-                $ReferenceTypeName = Get-CSharpModelName -Name $ReferenceTypeValue.Substring( $( $ReferenceTypeValue.LastIndexOf('/') ) + 1 )
-                $ParameterType = $DefinitionTypeNamePrefix + "$ReferenceTypeName[]"
+                $ReferenceTypeName = Get-CSharpModelName -Name $ReferenceTypeValue.Substring( $( $ReferenceTypeValue.LastIndexOf('/') ) + 1 )                
+                $ResolveReferenceParameterType_params = @{
+                    DefinitionFunctionsDetails = $DefinitionFunctionsDetails
+                    ReferenceTypeName          = $ReferenceTypeName
+                    DefinitionTypeNamePrefix   = $DefinitionTypeNamePrefix
+                }
+                $ResolvedResult = Resolve-ReferenceParameterType @ResolveReferenceParameterType_params
+                $ParameterType = $ResolvedResult.ParameterType + '[]'
+                if($ResolvedResult.ValidateSet) {
+                    $ValidateSet = $ResolvedResult.ValidateSet
+                }
             }
             elseif((Get-Member -InputObject $ParameterJsonObject.Items -Name 'Type') -and $ParameterJsonObject.Items.Type)
             {
@@ -372,11 +400,59 @@ function Get-DefinitionParameterType
                 {
                     $ReferenceTypeValue = $ParameterJsonObject.AdditionalProperties.'$ref'
                     $ReferenceTypeName = Get-CSharpModelName -Name $ReferenceTypeValue.Substring( $( $ReferenceTypeValue.LastIndexOf('/') ) + 1 )
-                    $AdditionalPropertiesType = $DefinitionTypeNamePrefix + "$ReferenceTypeName"
+                    $ResolveReferenceParameterType_params = @{
+                        DefinitionFunctionsDetails = $DefinitionFunctionsDetails
+                        ReferenceTypeName          = $ReferenceTypeName
+                        DefinitionTypeNamePrefix   = $DefinitionTypeNamePrefix
+                    }
+                    $ResolvedResult = Resolve-ReferenceParameterType @ResolveReferenceParameterType_params
                     # Dictionary
-                    $ParameterType = "System.Collections.Generic.Dictionary[[string],[$AdditionalPropertiesType]]"
+                    $ParameterType = "System.Collections.Generic.Dictionary[[string],[$($ResolvedResult.ParameterType)]]"
                 }
                 else {
+                    $Message = $LocalizedData.UnsupportedSwaggerProperties -f ('ParameterJsonObject', $($ParameterJsonObject | Out-String))
+                    Write-Warning -Message $Message
+                }
+            }
+            elseif($ParameterJsonObject.Type -eq 'string') {
+                if((Get-Member -InputObject $ParameterJsonObject.AdditionalProperties -Name 'Type') -and
+                   ($ParameterJsonObject.AdditionalProperties.Type -eq 'array'))
+                {
+                    if(Get-Member -InputObject $ParameterJsonObject.AdditionalProperties -Name 'Items')
+                    {
+                        if((Get-Member -InputObject $ParameterJsonObject.AdditionalProperties.Items -Name 'Type') -and
+                           $ParameterJsonObject.AdditionalProperties.Items.Type)
+                        { 
+                            $ItemsType = Get-PSTypeFromSwaggerObject -JsonObject $ParameterJsonObject.AdditionalProperties.Items
+                            $ParameterType = "System.Collections.Generic.Dictionary[[string],[System.Collections.Generic.List[$ItemsType]]]"
+                        }
+                        elseif((Get-Member -InputObject $ParameterJsonObject.AdditionalProperties.Items -Name '$ref') -and
+                               $ParameterJsonObject.AdditionalProperties.Items.'$ref')
+                        {
+                            $ReferenceTypeValue = $ParameterJsonObject.AdditionalProperties.Items.'$ref'
+                            $ReferenceTypeName = Get-CSharpModelName -Name $ReferenceTypeValue.Substring( $( $ReferenceTypeValue.LastIndexOf('/') ) + 1 )
+                            $ResolveReferenceParameterType_params = @{
+                                DefinitionFunctionsDetails = $DefinitionFunctionsDetails
+                                ReferenceTypeName          = $ReferenceTypeName
+                                DefinitionTypeNamePrefix   = $DefinitionTypeNamePrefix
+                            }
+                            $ResolvedResult = Resolve-ReferenceParameterType @ResolveReferenceParameterType_params
+                            $ParameterType = "System.Collections.Generic.Dictionary[[string],[System.Collections.Generic.List[$($ResolvedResult.ParameterType)]]]"
+                        }
+                        else
+                        {
+                            $Message = $LocalizedData.UnsupportedSwaggerProperties -f ('ParameterJsonObject', $($ParameterJsonObject | Out-String))
+                            Write-Warning -Message $Message
+                        }
+                    }
+                    else
+                    {
+                        $Message = $LocalizedData.UnsupportedSwaggerProperties -f ('ParameterJsonObject', $($ParameterJsonObject | Out-String))
+                        Write-Warning -Message $Message
+                    }
+                }
+                else
+                {
                     $Message = $LocalizedData.UnsupportedSwaggerProperties -f ('ParameterJsonObject', $($ParameterJsonObject | Out-String))
                     Write-Warning -Message $Message
                 }
@@ -421,7 +497,16 @@ function Get-DefinitionParameterType
     {
         $ReferenceParameterValue = $ParameterJsonObject.'$ref'        
         $ReferenceTypeName = Get-CSharpModelName -Name $ReferenceParameterValue.Substring( $( $ReferenceParameterValue.LastIndexOf('/') ) + 1 )
-        $ParameterType = $DefinitionTypeNamePrefix + $ReferenceTypeName
+        $ResolveReferenceParameterType_params = @{
+            DefinitionFunctionsDetails = $DefinitionFunctionsDetails
+            ReferenceTypeName          = $ReferenceTypeName
+            DefinitionTypeNamePrefix   = $DefinitionTypeNamePrefix
+        }
+        $ResolvedResult = Resolve-ReferenceParameterType @ResolveReferenceParameterType_params
+        $ParameterType = $ResolvedResult.ParameterType
+        if($ResolvedResult.ValidateSet) {
+            $ValidateSet = $ResolvedResult.ValidateSet
+        }
     }
     else
     {
@@ -437,7 +522,10 @@ function Get-DefinitionParameterType
         Write-Warning -Message ($LocalizedData.InvalidDefinitionParameterType -f $ParameterType, $ParameterName, $DefinitionName)
     }
 
-    return $ParameterType
+    return @{
+        ParameterType = $ParameterType
+        ValidateSet   = $ValidateSet
+    }
 }
 
 function Expand-SwaggerDefinition
@@ -565,10 +653,23 @@ function New-SwaggerDefinitionCommand
 
         [Parameter(Mandatory = $true)]
         [string]
-        $Models
+        $Models,
+        
+        [Parameter(Mandatory=$false)]
+        [AllowEmptyString()]
+        [string]
+        $HeaderContent
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+
+    $PSHeaderComment = $null
+    $XmlHeaderComment = $null
+
+    if($HeaderContent) {
+        $PSHeaderComment = ($PSCommentFormatString -f $HeaderContent)
+        $XmlHeaderComment = ($XmlCommentFormatString -f $HeaderContent)
+    }
 
     $FunctionsToExport = @()
     $GeneratedCommandsPath = Join-Path -Path $SwaggerMetaDict['outputDirectory'] -ChildPath $GeneratedCommandsName
@@ -584,13 +685,15 @@ function New-SwaggerDefinitionCommand
             if ($FunctionDetails.ContainsKey('GenerateDefinitionCmdlet') -and ($FunctionDetails['GenerateDefinitionCmdlet'] -eq $true)) {
                 $FunctionsToExport += New-SwaggerSpecDefinitionCommand -FunctionDetails $FunctionDetails `
                                                                     -GeneratedCommandsPath $SwaggerDefinitionCommandsPath `
-                                                                    -ModelsNamespace "$Namespace.$Models"
+                                                                    -ModelsNamespace "$Namespace.$Models" `
+                                                                    -PSHeaderComment $PSHeaderComment
             }
 
             New-SwaggerDefinitionFormatFile -FunctionDetails $FunctionDetails `
                                             -FormatFilesPath $FormatFilesPath `
                                             -Namespace $NameSpace `
-                                            -Models $Models
+                                            -Models $Models `
+                                            -XmlHeaderComment $XmlHeaderComment
         }
     }
 
@@ -723,13 +826,25 @@ function Expand-NonModelDefinition
                 {
                     $FunctionDetails.ParametersTable.GetEnumerator() | ForEach-Object {
                         $ParameterDetails = $_.Value
-                        if ($ParameterDetails.Type -eq "$Namespace.$Models.$($DefFunctionDetails.Name)") {
+                        if (($ParameterDetails.Type -eq "$Namespace.$Models.$($DefFunctionDetails.Name)") -or
+                            ($ParameterDetails.Type -eq "$Namespace.$Models.$($DefFunctionDetails.Name)[]")) {
+                            
                             if($SourceDetails.ContainsKey('Type')) {
-                                $ParameterDetails['Type'] = $SourceDetails.Type
+                                if($ParameterDetails.Type -eq "$Namespace.$Models.$($DefFunctionDetails.Name)[]") {
+                                    $ParameterDetails['Type'] = $SourceDetails.Type + '[]'
+                                }
+                                else {
+                                    $ParameterDetails['Type'] = $SourceDetails.Type
+                                }
                             }
 
                             if($SourceDetails.ContainsKey('ValidateSet')) {
-                                $ParameterDetails['ValidateSet'] = $SourceDetails.ValidateSet
+                                if($SourceDetails.ValidateSet.PSTypeNames -contains 'System.Array') {
+                                    $ParameterDetails['ValidateSet'] = "'$($SourceDetails.ValidateSet -join "', '")'"
+                                }
+                                else {
+                                    $ParameterDetails['ValidateSet'] = $SourceDetails.ValidateSet
+                                }
                             }
 
                             if((-not $ParameterDetails.Description) -and 
@@ -774,7 +889,12 @@ function New-SwaggerSpecDefinitionCommand
 
         [Parameter(Mandatory=$true)]
         [string] 
-        $ModelsNamespace
+        $ModelsNamespace,
+        
+        [Parameter(Mandatory=$false)]
+        [AllowEmptyString()]
+        [string]
+        $PSHeaderComment
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -782,6 +902,7 @@ function New-SwaggerSpecDefinitionCommand
     $commandName = "New-$($FunctionDetails.Name)Object"
 
     $description = $FunctionDetails.description
+    $synopsis = $FunctionDetails.synopsis
     $commandHelp = $executionContext.InvokeCommand.ExpandString($helpDescStr)
 
     [string]$paramHelp = ""
@@ -824,7 +945,7 @@ function New-SwaggerSpecDefinitionCommand
     }
 
     $CommandFilePath = Join-Path -Path $GeneratedCommandsPath -ChildPath "$CommandName.ps1"
-    Out-File -InputObject $CommandString -FilePath $CommandFilePath -Encoding ascii -Force -Confirm:$false -WhatIf:$false
+    Out-File -InputObject @($PSHeaderComment, $CommandString) -FilePath $CommandFilePath -Encoding ascii -Force -Confirm:$false -WhatIf:$false
 
     Write-Verbose -Message ($LocalizedData.GeneratedDefinitionCommand -f ($commandName, $FunctionDetails.Name))
 
@@ -853,7 +974,12 @@ function New-SwaggerDefinitionFormatFile
 
         [Parameter(Mandatory=$true)]
         [string]
-        $Models
+        $Models,
+        
+        [Parameter(Mandatory=$false)]
+        [AllowEmptyString()]
+        [string]
+        $XmlHeaderComment
     )
     
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -883,7 +1009,7 @@ function New-SwaggerDefinitionFormatFile
 
     $TableColumnHeaders = $null
     $TableColumnItems = $TableColumnItemsList -join "`r`n"
-    $FormatViewDefinition = $FormatViewDefinitionStr -f ($ViewName, $ViewTypeName, $TableColumnHeaders, $TableColumnItems)
+    $FormatViewDefinition = $FormatViewDefinitionStr -f ($ViewName, $ViewTypeName, $TableColumnHeaders, $TableColumnItems, $XmlHeaderComment)
 
     if(-not (Test-Path -Path $FormatFilesPath -PathType Container))
     {

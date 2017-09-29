@@ -1,8 +1,12 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+
+// Licensed under the MIT license.
 namespace PSSwagger.LTF.Lib.UnitTests.Mocks
 {
+    using Credentials;
     using Interfaces;
     using Messages;
-    using System.Collections;
+    using Models;
 
     /// <summary>
     /// Mock generated module that tracks if methods are called.
@@ -14,12 +18,13 @@ namespace PSSwagger.LTF.Lib.UnitTests.Mocks
         public bool LoadCalled { get; set; }
         public bool ProcessRequestCalled { get; set; }
 
-        public override void Load(bool force = false)
+        public override CommandExecutionResult Load(bool force = false)
         {
             this.LoadCalled = true;
+            return null;
         }
 
-        public override IEnumerable ProcessRequest(LiveTestRequest request)
+        public override CommandExecutionResult ProcessRequest(LiveTestRequest request, LiveTestCredentialFactory credentialsFactory)
         {
             this.ProcessRequestCalled = true;
             return null;
