@@ -6,7 +6,10 @@ GUID = '6c925abf-49bc-49f4-8a47-12b95c9a8b37'
 Author = 'Microsoft Corporation'
 CompanyName = 'Microsoft Corporation'
 Copyright = '(c) Microsoft Corporation. All rights reserved.'
-Description = 'PowerShell module with commands for generating the PowerShell Cmdlets using Swagger based specifications.'
+Description = @'
+The PowerShell cmdlet generator from OpenAPI (f.k.a Swagger) specification.
+Please refer to https://github.com/PowerShell/PSSwagger/blob/developer/README.md for more details.
+'@
 FunctionsToExport = @(
                         'New-PSSwaggerModule',
                         'New-PSSwaggerMetadataFile'
@@ -38,11 +41,12 @@ PrivateData = @{
     PSData = @{
         Tags = @('Azure',
                  'Swagger',
+                 'OpenApi',
                  'PSEdition_Desktop')
         ProjectUri = 'https://github.com/PowerShell/PSSwagger'
         LicenseUri = 'https://github.com/PowerShell/PSSwagger/blob/master/LICENSE'
         ReleaseNotes = @'
-- Initial development release 
+Please refer to https://github.com/PowerShell/PSSwagger/blob/developer/CHANGELOG.md
 '@
     }
 }
