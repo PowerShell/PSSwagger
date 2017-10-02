@@ -23,9 +23,6 @@ Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
     Command should return a custom hostname string.
     Overrides the default host in the specification.
 
-.PARAMETER  SubscriptionIdCommand
-    Custom command get SubscriptionId value.
-
 .PARAMETER  GlobalParameterHashtable
     Global parameters to be set on client object.
 #>
@@ -57,10 +54,6 @@ function New-ServiceClient {
         $HostOverrideCommand,
 
         [Parameter(Mandatory = $false)]
-        [string]
-        $SubscriptionIdCommand,
-
-        [Parameter(Mandatory = $false)]
         [PSCustomObject]
         $GlobalParameterHashtable
     )
@@ -90,18 +83,8 @@ function New-ServiceClient {
 
     if ($GlobalParameterHashtable) {
         $GlobalParameterHashtable.GetEnumerator() | ForEach-Object {
-            if (Get-Member -InputObject $Client -Name $_.Key -MemberType Property) {
-                if ((-not $_.Value) -and ($_.Key -eq 'SubscriptionId')) {
-                    if($SubscriptionIdCommand) {
-                        $Client.SubscriptionId = Invoke-Command -ScriptBlock [scriptblock]::Create($SubscriptionIdCommand)
-                    }
-                    else {
-                        $Client.SubscriptionId = Get-AzSubscriptionId
-                    }
-                }
-                else {
-                    $Client."$($_.Key)" = $_.Value
-                }
+            if ($_.Value -and (Get-Member -InputObject $Client -Name $_.Key -MemberType Property)) {
+                $Client."$($_.Key)" = $_.Value
             }    
         }
     }

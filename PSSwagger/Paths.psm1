@@ -616,24 +616,25 @@ function New-SwaggerPath
     }
 
     # Process security section
-    $SubscriptionIdCommand = ""
     $AuthenticationCommand = ""
     $AuthenticationCommandArgumentName = ''
     $hostOverrideCommand = ''
     $AddHttpClientHandler = $false
     $securityParametersToAdd = @()
     $PowerShellCodeGen = $SwaggerMetaDict['PowerShellCodeGen']
-    if (($PowerShellCodeGen['ServiceType'] -eq 'azure') -or ($PowerShellCodeGen['ServiceType'] -eq 'azure_stack')) {
-        $SubscriptionIdCommand = 'Get-AzSubscriptionId'
+
+    # CustomAuthCommand and HostOverrideCommand are not required for Arm Services
+    if (($PowerShellCodeGen['ServiceType'] -ne 'azure') -and ($PowerShellCodeGen['ServiceType'] -eq 'azure_stack')) {
+        if ($PowerShellCodeGen['CustomAuthCommand']) {
+            $AuthenticationCommand = $PowerShellCodeGen['CustomAuthCommand']
+        }
+        if ($PowerShellCodeGen['HostOverrideCommand']) {
+            $hostOverrideCommand = $PowerShellCodeGen['HostOverrideCommand']
+        }
     }
-    if ($PowerShellCodeGen['CustomAuthCommand']) {
-        $AuthenticationCommand = $PowerShellCodeGen['CustomAuthCommand']
-    }
-    if ($PowerShellCodeGen['HostOverrideCommand']) {
-        $hostOverrideCommand = $PowerShellCodeGen['HostOverrideCommand']
-    }
+
     # If the auth function hasn't been set by metadata, try to discover it from the security and securityDefinition objects in the spec
-    if (-not $AuthenticationCommand) {
+    if (-not $AuthenticationCommand -and -not $UseAzureCsharpGenerator) {
         if ($FunctionDetails.ContainsKey('Security')) {
             # For now, just take the first security object
             if ($FunctionDetails.Security.Count -gt 1) {
@@ -729,7 +730,7 @@ function New-SwaggerPath
         }
     }
 
-    if (-not $AuthenticationCommand) {
+    if (-not $AuthenticationCommand -and -not $UseAzureCsharpGenerator) {
         # At this point, there was no supported security object or overridden auth function, so assume no auth
         $AuthenticationCommand = 'Get-AutoRestCredential'
     }
@@ -973,12 +974,17 @@ function New-SwaggerPath
         ParameterGroupsExpressionBlock    = $parameterGroupsExpressionBlock
         SwaggerDict                       = $SwaggerDict
         SwaggerMetaDict                   = $SwaggerMetaDict
-        AddHttpClientHandler              = $AddHttpClientHandler
-        HostOverrideCommand               = $hostOverrideCommand
-        AuthenticationCommand             = $AuthenticationCommand
-        AuthenticationCommandArgumentName = $AuthenticationCommandArgumentName
-        SubscriptionIdCommand             = $SubscriptionIdCommand
         FlattenedParametersOnPSCmdlet     = $flattenedParametersOnPSCmdlet
+    }
+    if($AuthenticationCommand) {
+        $functionBodyParams['AuthenticationCommand'] = $AuthenticationCommand
+        $functionBodyParams['AuthenticationCommandArgumentName'] = $AuthenticationCommandArgumentName
+    }
+    if($AddHttpClientHandler) {
+        $functionBodyParams['AddHttpClientHandler'] = $AddHttpClientHandler
+    }    
+    if($hostOverrideCommand) {
+        $functionBodyParams['hostOverrideCommand'] = $hostOverrideCommand
     }
     if($globalParameters) {
         $functionBodyParams['GlobalParameters'] = $globalParameters

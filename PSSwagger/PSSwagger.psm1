@@ -613,9 +613,15 @@ function New-PSSwaggerModule
 
     $CopyFilesMap = [ordered]@{
         'GeneratedHelpers.ps1'      = 'GeneratedHelpers.ps1'
-        'Test-CoreRequirements.ps1' = 'Test-CoreRequirements.ps1'
-        'Test-FullRequirements.ps1' = 'Test-FullRequirements.ps1'
-        'New-ServiceClient.ps1'     = 'New-ServiceClient.ps1'
+    }
+    
+    if($UseAzureCsharpGenerator) {
+        $CopyFilesMap['New-ArmServiceClient.ps1'] = 'New-ServiceClient.ps1'
+        $CopyFilesMap['Test-FullRequirements.ps1'] = 'Test-FullRequirements.ps1'
+        $CopyFilesMap['Test-CoreRequirements.ps1'] = 'Test-CoreRequirements.ps1'
+    }
+    else {
+        $CopyFilesMap['New-ServiceClient.ps1'] = 'New-ServiceClient.ps1'        
     }
 
     if (-not $AssemblyFileName) {
