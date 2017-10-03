@@ -85,7 +85,8 @@ function New-ServiceClient {
     $Client = New-Object -TypeName $FullClientTypeName -ArgumentList $ClientArgumentList
 
     if ($HostOverrideCommand) {
-        $Client.BaseUri = Invoke-Command -ScriptBlock [scriptblock]::Create($HostOverrideCommand)
+        [scriptblock]$HostOverrideCommand = [scriptblock]::Create($HostOverrideCommand)
+        $Client.BaseUri = Invoke-Command -ScriptBlock $HostOverrideCommand
     }
 
     if ($GlobalParameterHashtable) {
