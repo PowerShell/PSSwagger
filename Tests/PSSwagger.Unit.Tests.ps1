@@ -287,7 +287,7 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
                 Convert-GenericTypeToString -Type ('System.Int32' -as [type]) | Should BeExactly 'System.Int32'
             }
             It "Convert-GenericTypeToString with 'System.String[]' type" {
-                Convert-GenericTypeToString -Type ('System.String[]' -as [type]) | Should BeExactly 'System.String'
+                Convert-GenericTypeToString -Type ('System.String[]' -as [type]) | Should BeExactly 'System.String[]'
             }
             It "Convert-GenericTypeToString with 'System.Collections.Generic.List[string]' type" {
                 Convert-GenericTypeToString -Type ('System.Collections.Generic.List[string]' -as [type]) | Should BeExactly 'System.Collections.Generic.List[System.String]'
