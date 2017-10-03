@@ -25,7 +25,8 @@ $script:PSCommandVerbMap = @{
     Allocate       = 'New'
     Provision      = 'New'
     Make           = 'New'
-
+    Regenerate     = 'New' # Alternatives: Redo, Update, Reset
+    
     CreateOrUpdate = 'New,Set'
     Failover       = 'Set'
     Assign         = 'Set'
@@ -53,7 +54,6 @@ $script:PSCommandVerbMap = @{
 
     Patch          = 'Update'
     Refresh        = 'Update'
-    Regenerate     = 'Update' # Alternatives: Redo, New, Reset
     Reprocess      = "Update" # Alternatives: Redo
     Upgrade        = 'Update'
     Reimage        = 'Update' # Alternatives: Format, Reset
