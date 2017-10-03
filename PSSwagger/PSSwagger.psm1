@@ -1118,11 +1118,11 @@ function Get-HeaderContent {
     $HeaderContent = $HeaderContent.Replace('<#', '<`#').Replace('#>', '#`>')
 
     if ($HeaderContent -match '--') {
-        Write-Error -Message $LocalizedData.InvalidHeaderContent -ErrorId InvalidHeaderContent -Category InvalidArgument
+        Write-Warning -Message $LocalizedData.HeaderContentTwoHyphenWarning
+        $HeaderContent = $HeaderContent.Replace('--', '==')
     }
-    else {
-        return $HeaderContent
-    }
+
+    return $HeaderContent
 }
 
 function Copy-PSFileWithHeader {

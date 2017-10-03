@@ -275,14 +275,14 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
                 Get-HeaderContent -SwaggerDict @{Info = @{Header = 'Header content with #>'}} | Should BeExactly 'Header content with #`>'
             }
 
-            It 'Get-HeaderContent should throw when the specified header content contains --' {
-                Get-HeaderContent -SwaggerDict @{Info = @{Header = 'Invalid header content with -- and some other license message.'}} -ErrorVariable ev -ErrorAction SilentlyContinue | Should BeNullOrEmpty
-                $ev[0].FullyQualifiedErrorId | Should BeExactly 'InvalidHeaderContent,Get-HeaderContent'
+            It 'Get-HeaderContent should replace -- with ==' {
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = 'Header content with --'}} -WarningVariable wv -WarningAction SilentlyContinue | Should BeExactly 'Header content with =='
+                $wv | Should not BeNullOrEmpty
+                $wv.Message -match '==' | Should Be $true
             }
 
-            It 'Get-HeaderContent should throw when the specified header content contains with <#, #> and --' {
-                Get-HeaderContent -SwaggerDict @{Info = @{Header = 'Invalid header content with <# PS comment #> and -- and some other license message.'}} -ErrorVariable ev -ErrorAction SilentlyContinue | Should BeNullOrEmpty
-                $ev[0].FullyQualifiedErrorId | Should BeExactly 'InvalidHeaderContent,Get-HeaderContent'
+            It "Get-HeaderContent should escape '<#' and '#>', and replace '--' with '=='" {
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = 'Header content with <# PS comment #> and --.'}} -WarningAction SilentlyContinue | Should BeExactly 'Header content with <`# PS comment #`> and ==.'
             }
         }
         
