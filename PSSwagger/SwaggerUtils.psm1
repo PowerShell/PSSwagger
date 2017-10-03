@@ -1471,17 +1471,13 @@ function Get-PathFunctionBody
         [string]
         $HostOverrideCommand,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$false)]
         [string]
         $AuthenticationCommand,
 
         [Parameter(Mandatory=$false)]
         [string]
         $AuthenticationCommandArgumentName,
-
-        [Parameter(Mandatory=$false)]
-        [string]
-        $SubscriptionIdCommand,
 
         [Parameter(Mandatory=$true)]
         [PSCustomObject]

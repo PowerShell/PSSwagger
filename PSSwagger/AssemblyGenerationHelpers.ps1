@@ -1,11 +1,3 @@
-#########################################################################################
-#
-# Copyright (c) Microsoft Corporation. All rights reserved.
-#
-# Licensed under the MIT license.
-#
-#########################################################################################
-
 Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -FileName AssemblyGenerationHelpers.Resources.psd1
 
