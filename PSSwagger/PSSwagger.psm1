@@ -1114,6 +1114,14 @@ function Get-HeaderContent {
         }
     }
 
+    # Escape block comment character sequence, if any, using the PowerShell escape character, grave-accent(`).
+    $HeaderContent = $HeaderContent.Replace('<#', '<`#').Replace('#>', '#`>')
+
+    if ($HeaderContent -match '--') {
+        Write-Warning -Message $LocalizedData.HeaderContentTwoHyphenWarning
+        $HeaderContent = $HeaderContent.Replace('--', '==')
+    }
+
     return $HeaderContent
 }
 
