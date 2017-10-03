@@ -445,6 +445,9 @@ function New-SwaggerPath
             } elseif (-not $x_ms_pageableObject) {
                 $x_ms_pageableObject = $parameterSetDetail.'x-ms-pageable'
                 $x_ms_pageableObject['ReturnType'] = $parameterSetDetail.ReturnType
+                if($parameterSetDetail.ContainsKey('PSCmdletOutputItemType')) {
+                    $x_ms_pageableObject['PSCmdletOutputItemType'] = $parameterSetDetail.PSCmdletOutputItemType
+                }
                 if ($x_ms_pageableObject.Containskey('operationName')) {
                     # Search for the cmdlet with a parameter set with the given operationName
                     $pagingFunctionDetails = $PathFunctionDetails.GetEnumerator() | Where-Object { $_.Value.ParameterSetDetails | Where-Object { $_.OperationId -eq $x_ms_pageableObject.operationName }} | Select-Object -First 1
@@ -561,11 +564,15 @@ function New-SwaggerPath
     $Cmdlet = ''
     $CmdletParameter = ''
     $CmdletArgs = ''
-    $pageType = ''
+    $pageType = 'Array'
+    $PSCmdletOutputItemType = ''
     $resultBlockStr = $resultBlockNoPaging
     if ($x_ms_pageableObject) {
         if ($x_ms_pageableObject.ReturnType -ne 'NONE') {
             $pageType = $x_ms_pageableObject.ReturnType
+            if($x_ms_pageableObject.ContainsKey('PSCmdletOutputItemType')) {
+                $PSCmdletOutputItemType = $x_ms_pageableObject.PSCmdletOutputItemType                
+            }
         }
 
         if ($x_ms_pageableObject.ContainsKey('Operations')) {
@@ -994,8 +1001,8 @@ function New-SwaggerPath
     $bodyObject = $pathGenerationPhaseResult.BodyObject
 
     $body = $bodyObject.Body
-    if($pageType){
-        $fullPathDataType = $pageType
+    if($PSCmdletOutputItemType){
+        $fullPathDataType = $PSCmdletOutputItemType
         $outputTypeBlock = $executionContext.InvokeCommand.ExpandString($outputTypeStr)
     }
     else {
@@ -1162,12 +1169,12 @@ function Set-ExtendedCodeMetadata {
                 $returnType = $returnType.GenericTypeArguments[0]
             }
 
+            # Note: ReturnType and PSCmdletOutputItemType are currently used for Swagger operations which supports x-ms-pageable.
             if (($returnType.Name -eq 'IPage`1') -and $returnType.GenericTypeArguments) {
-                $returnType = $returnType.GenericTypeArguments[0]
+                $PSCmdletOutputItemTypeString = Convert-GenericTypeToString -Type $returnType.GenericTypeArguments[0]
+                $parameterSetDetail['PSCmdletOutputItemType'] = $PSCmdletOutputItemTypeString.Trim('[]')
             }
-            # Note: ReturnType is currently used for Swagger operations which supports x-ms-pageable.
-            $returnTypeString = Convert-GenericTypeToString -Type $returnType
-            $parameterSetDetail['ReturnType'] = $returnTypeString
+            $parameterSetDetail['ReturnType'] = Convert-GenericTypeToString -Type $returnType
 
             $ParamList = @()
             $oDataQueryFound = $false
@@ -1288,7 +1295,7 @@ function Convert-GenericTypeToString {
     )
 
     if (-not $Type.IsGenericType) {
-        return $Type.FullName.Trim('[]')
+        return $Type.FullName
     }
 
     $genericTypeStr = ''
