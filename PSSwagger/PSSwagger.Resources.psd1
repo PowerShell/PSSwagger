@@ -87,5 +87,6 @@ ConvertFrom-StringData @'
     InvalidPSMetaFlattenParameter=Flatten property is specified as 'true' for an invalid parameter '{0}' with type '{1}'.
     InvalidHeaderFileExtension=Header '{0}' file extension should be '.txt'.
     InvalidHeaderFilePath=The specified value '{0}' for Header parameter is should be a valid file path.
+    InvalidHeaderContent=The specified Header content is invalid, please ensure that it does not contain '<#', '#>' and '--'.
 ###PSLOC
 '@

@@ -266,6 +266,26 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
             It "Get-HeaderContent should return MICROSOFT_APACHE_NO_CODEGEN header content with '-Header MICROSOFT_APACHE_NO_CODEGEN'" {
                 Get-HeaderContent -SwaggerDict @{Info = @{Header = 'MICROSOFT_APACHE_NO_CODEGEN'}} | Should BeExactly $MicrosoftApacheLicenseHeader
             }
+
+            It 'Get-HeaderContent should throw when the specified header content contains #>' {
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = 'Invalid header content with #>'}} -ErrorVariable ev -ErrorAction SilentlyContinue | Should BeNullOrEmpty
+                $ev[0].FullyQualifiedErrorId | Should BeExactly 'InvalidHeaderContent,Get-HeaderContent'
+            }
+
+            It 'Get-HeaderContent should throw when the specified header content contains <#' {
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = 'Invalid header content with <#'}} -ErrorVariable ev -ErrorAction SilentlyContinue | Should BeNullOrEmpty
+                $ev[0].FullyQualifiedErrorId | Should BeExactly 'InvalidHeaderContent,Get-HeaderContent'
+            }
+
+            It 'Get-HeaderContent should throw when the specified header content contains --' {
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = 'Invalid header content with -- and some other license message.'}} -ErrorVariable ev -ErrorAction SilentlyContinue | Should BeNullOrEmpty
+                $ev[0].FullyQualifiedErrorId | Should BeExactly 'InvalidHeaderContent,Get-HeaderContent'
+            }
+
+            It 'Get-HeaderContent should throw when the specified header content contains with <#, #> and --' {
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = 'Invalid header content with <# PS comment #> and -- and some other license message.'}} -ErrorVariable ev -ErrorAction SilentlyContinue | Should BeNullOrEmpty
+                $ev[0].FullyQualifiedErrorId | Should BeExactly 'InvalidHeaderContent,Get-HeaderContent'
+            }
         }
         
         Context "Get-CSharpModelName Unit Tests" {

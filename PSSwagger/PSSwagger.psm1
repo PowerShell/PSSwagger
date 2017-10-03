@@ -1114,7 +1114,12 @@ function Get-HeaderContent {
         }
     }
 
-    return $HeaderContent
+    if (($HeaderContent -match '<#') -or ($HeaderContent -match '#>') -or ($HeaderContent -match '--')) {
+        Write-Error -Message $LocalizedData.InvalidHeaderContent -ErrorId InvalidHeaderContent -Category InvalidArgument
+    }
+    else {
+        return $HeaderContent
+    }
 }
 
 function Copy-PSFileWithHeader {
