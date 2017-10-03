@@ -1114,7 +1114,10 @@ function Get-HeaderContent {
         }
     }
 
-    if (($HeaderContent -match '<#') -or ($HeaderContent -match '#>') -or ($HeaderContent -match '--')) {
+    # Escape block comment character sequence, if any, using the PowerShell escape character, grave-accent(`).
+    $HeaderContent = $HeaderContent.Replace('<#', '<`#').Replace('#>', '#`>')
+
+    if ($HeaderContent -match '--') {
         Write-Error -Message $LocalizedData.InvalidHeaderContent -ErrorId InvalidHeaderContent -Category InvalidArgument
     }
     else {

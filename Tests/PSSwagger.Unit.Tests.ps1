@@ -267,14 +267,12 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
                 Get-HeaderContent -SwaggerDict @{Info = @{Header = 'MICROSOFT_APACHE_NO_CODEGEN'}} | Should BeExactly $MicrosoftApacheLicenseHeader
             }
 
-            It 'Get-HeaderContent should throw when the specified header content contains #>' {
-                Get-HeaderContent -SwaggerDict @{Info = @{Header = 'Invalid header content with #>'}} -ErrorVariable ev -ErrorAction SilentlyContinue | Should BeNullOrEmpty
-                $ev[0].FullyQualifiedErrorId | Should BeExactly 'InvalidHeaderContent,Get-HeaderContent'
+            It 'Get-HeaderContent should escape <#' {
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = 'Header content with <#'}} | Should BeExactly 'Header content with <`#'
             }
 
-            It 'Get-HeaderContent should throw when the specified header content contains <#' {
-                Get-HeaderContent -SwaggerDict @{Info = @{Header = 'Invalid header content with <#'}} -ErrorVariable ev -ErrorAction SilentlyContinue | Should BeNullOrEmpty
-                $ev[0].FullyQualifiedErrorId | Should BeExactly 'InvalidHeaderContent,Get-HeaderContent'
+            It 'Get-HeaderContent should escape #>' {
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = 'Header content with #>'}} | Should BeExactly 'Header content with #`>'
             }
 
             It 'Get-HeaderContent should throw when the specified header content contains --' {
