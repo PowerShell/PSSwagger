@@ -618,10 +618,7 @@ function New-PSSwaggerModule
         -Info $swaggerDict['info'] `
         -PSHeaderComment $PSHeaderComment
 
-    $CopyFilesMap = [ordered]@{
-        'GeneratedHelpers.ps1'      = 'GeneratedHelpers.ps1'
-    }
-    
+    $CopyFilesMap = [ordered]@{}
     if($UseAzureCsharpGenerator) {
         $CopyFilesMap['New-ArmServiceClient.ps1'] = 'New-ServiceClient.ps1'
         $CopyFilesMap['Test-FullRequirements.ps1'] = 'Test-FullRequirements.ps1'
