@@ -43,6 +43,7 @@ ConvertFrom-StringData @'
     GeneratedPathCommand=Generated path command '{0}'.
     GeneratedDefinitionCommand=Generated command '{0}' for the definition name '{1}'.
     GeneratedFormatFile=Generated output format file for the definition name '{0}'.
+    FormatFileNotRequired=It is not required to generated the format file as this definition '{0}' doesn't have non-complex typed properties.
     DeleteGeneratedFile=Deleting generated file '{0}'
     ExtractingMetadata=Extracting metadata from generated assembly
     ExpectedServiceClientTypeNotFound=Unable to find expected service client type: {0}
