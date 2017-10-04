@@ -68,7 +68,12 @@ function New-ServiceClient {
     $ClientArgumentList += Invoke-Command @InvokeCommand_parameters
 
     if ($AddHttpClientHandler) {
-        $httpClientHandler = New-HttpClientHandler -Credential $Credential
+        if(-not ('System.Net.Http.HttpClientHandler' -as [Type])) {
+            Add-Type -AssemblyName System.Net.Http
+        }
+        $httpClientHandler = New-Object -TypeName System.Net.Http.HttpClientHandler
+        $httpClientHandler.PreAuthenticate = $true
+        $httpClientHandler.Credentials = $Credential
         $ClientArgumentList += $httpClientHandler
     }
     
