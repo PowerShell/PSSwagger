@@ -491,7 +491,8 @@ $FormatViewDefinitionStr = @'
                 <TypeName>{1}</TypeName>
             </ViewSelectedBy>
             <TableControl>
-                <TableHeaders>{2}
+                <TableHeaders>
+{2}
                 </TableHeaders>
                 <TableRowEntries>
                     <TableRowEntry>
@@ -516,6 +517,10 @@ $TableColumnHeaderStr = @'
                     <TableColumnHeader>
                         <Width>{0}</Width>
                     </TableColumnHeader>
+'@
+
+$LastTableColumnHeaderStr = @'
+                    <TableColumnHeader/>
 '@
 
 $DefaultGeneratedFileHeader = @'
