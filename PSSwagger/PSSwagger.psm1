@@ -72,6 +72,9 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwa
 .PARAMETER  Version
     Version of the generated PowerShell module.
 
+.PARAMETER  NoVersionFolder
+    Switch to not create the version folder under the generated module folder.
+
 .PARAMETER  DefaultCommandPrefix
     Prefix value to be prepended to cmdlet noun or to cmdlet name without verb.
 
@@ -162,6 +165,10 @@ function New-PSSwaggerModule
         [Parameter(Mandatory = $false)]
         [Version]
         $Version = '0.0.1',
+
+        [Parameter(Mandatory = $false)]
+        [switch]
+        $NoVersionFolder,
 
         [Parameter(Mandatory = $false)]
         [string]
@@ -449,7 +456,7 @@ function New-PSSwaggerModule
     
     $nameSpace = $swaggerDict['info'].NameSpace
     $models = $swaggerDict['info'].Models
-    if($PSVersionTable.PSVersion -lt '5.0.0') {
+    if($NoVersionFolder -or $PSVersionTable.PSVersion -lt '5.0.0') {
         if (-not $outputDirectory.EndsWith($Name, [System.StringComparison]::OrdinalIgnoreCase)) {
             $outputDirectory = Join-Path -Path $outputDirectory -ChildPath $Name
             $SymbolPath = Join-Path -Path $SymbolPath -ChildPath $Name
