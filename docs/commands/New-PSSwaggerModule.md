@@ -14,30 +14,30 @@ PowerShell command to generate the PowerShell commands for a given RESTful Web S
 ### SpecificationPath (Default)
 ```
 New-PSSwaggerModule -SpecificationPath <String> -Path <String> -Name <String> [-Version <Version>]
- [-DefaultCommandPrefix <String>] [-Header <String[]>] [-UseAzureCsharpGenerator] [-NoAssembly]
- [-PowerShellCorePath <String>] [-IncludeCoreFxAssembly] [-InstallToolsForAllUsers] [-TestBuild]
+ [-NoVersionFolder] [-DefaultCommandPrefix <String>] [-Header <String[]>] [-UseAzureCsharpGenerator]
+ [-NoAssembly] [-PowerShellCorePath <String>] [-IncludeCoreFxAssembly] [-InstallToolsForAllUsers] [-TestBuild]
  [-SymbolPath <String>] [-ConfirmBootstrap]
 ```
 
 ### SdkAssemblyWithSpecificationPath
 ```
 New-PSSwaggerModule -SpecificationPath <String> -Path <String> -AssemblyFileName <String>
- [-ClientTypeName <String>] [-ModelsName <String>] -Name <String> [-Version <Version>]
+ [-ClientTypeName <String>] [-ModelsName <String>] -Name <String> [-Version <Version>] [-NoVersionFolder]
  [-DefaultCommandPrefix <String>] [-Header <String[]>] [-UseAzureCsharpGenerator]
 ```
 
 ### SdkAssemblyWithSpecificationUri
 ```
 New-PSSwaggerModule -SpecificationUri <Uri> -Path <String> -AssemblyFileName <String>
- [-ClientTypeName <String>] [-ModelsName <String>] -Name <String> [-Version <Version>]
+ [-ClientTypeName <String>] [-ModelsName <String>] -Name <String> [-Version <Version>] [-NoVersionFolder]
  [-DefaultCommandPrefix <String>] [-Header <String[]>] [-UseAzureCsharpGenerator]
 ```
 
 ### SpecificationUri
 ```
 New-PSSwaggerModule -SpecificationUri <Uri> -Path <String> -Name <String> [-Version <Version>]
- [-DefaultCommandPrefix <String>] [-Header <String[]>] [-UseAzureCsharpGenerator] [-NoAssembly]
- [-PowerShellCorePath <String>] [-IncludeCoreFxAssembly] [-InstallToolsForAllUsers] [-TestBuild]
+ [-NoVersionFolder] [-DefaultCommandPrefix <String>] [-Header <String[]>] [-UseAzureCsharpGenerator]
+ [-NoAssembly] [-PowerShellCorePath <String>] [-IncludeCoreFxAssembly] [-InstallToolsForAllUsers] [-TestBuild]
  [-SymbolPath <String>] [-ConfirmBootstrap]
 ```
 
@@ -187,6 +187,21 @@ Aliases:
 Required: False
 Position: Named
 Default value: 0.0.1
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -NoVersionFolder
+Switch to not create the version folder under the generated module folder.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases: 
+
+Required: False
+Position: Named
+Default value: False
 Accept pipeline input: False
 Accept wildcard characters: False
 ```

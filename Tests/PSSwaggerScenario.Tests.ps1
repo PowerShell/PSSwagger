@@ -1142,3 +1142,31 @@ Describe "Output type scenario tests" -Tag @('OutputType','ScenarioTest')  {
         $CommandInfo.OutputType.Type.ToString() | Should BeExactly 'System.String'
     }
 }
+
+Describe 'New-PSSwaggerModule cmdlet parameter tests' -Tag @('CmdletParameterTest','ScenarioTest')  {
+    BeforeAll {
+        $ModuleName = 'Generated.Module.NoVersionFolder'
+        $SwaggerSpecPath = Join-Path -Path $PSScriptRoot -ChildPath 'Data' | Join-Path -ChildPath 'AzureExtensions' | Join-Path -ChildPath 'AzureExtensionsSpec.json'
+        $GeneratedPath = Join-Path -Path $PSScriptRoot -ChildPath 'Generated'
+        $GeneratedModuleBase = Join-Path -Path $GeneratedPath -ChildPath $ModuleName
+        if (Test-Path -Path $GeneratedModuleBase -PathType Container) {
+            Remove-Item -Path $GeneratedModuleBase -Recurse -Force
+        }
+    }
+
+    It 'Test NoVersionFolder switch parameter' {
+        $params = @{
+            SpecificationPath       = $SwaggerSpecPath
+            Name                    = $ModuleName
+            UseAzureCsharpGenerator = $true
+            Path                    = $GeneratedPath
+            NoVersionFolder         = $true
+            ConfirmBootstrap        = $true
+            Verbose                 = $true
+        }
+        Invoke-NewPSSwaggerModuleCommand -NewPSSwaggerModuleParameters $params
+
+        $ModuleInfo = Import-Module $GeneratedModuleBase -Force -PassThru
+        $ModuleInfo.ModuleBase | Should Be $GeneratedModuleBase
+    }
+}
