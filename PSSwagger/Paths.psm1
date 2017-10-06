@@ -196,6 +196,25 @@ function Get-SwaggerSpecPathInfo
             } else {
                 $commandNames = Get-PathCommandName -OperationId $operationId
             }
+            
+            # Priority of a parameterset will be used to determine the default parameterset of a cmdlet.
+            $Priority = 0
+            $ParametersCount = Get-HashtableKeyCount -Hashtable $ParametersTable
+            if($ParametersCount) {
+                # Priority for parameter sets with mandatory parameters starts at 100
+                $Priority = 100
+
+                $ParametersTable.GetEnumerator() | ForEach-Object {
+                    if($_.Value.ContainsKey('Mandatory') -and $_.Value.Mandatory -eq '$true') {
+                        $Priority++
+                    }
+                }
+
+                # If there are no mandatory parameters, use the parameter count as the priority.                
+                if($Priority -eq 100) {
+                    $Priority = $ParametersCount
+                }
+            }
 
             $ParameterSetDetail = @{
                 Description          = $FunctionDescription
@@ -206,7 +225,7 @@ function Get-SwaggerSpecPathInfo
                 OperationType        = $operationType
                 EndpointRelativePath = $EndpointRelativePath
                 PathCommonParameters = $PathCommonParameters
-                Priority             = 100 # Default
+                Priority             = $Priority
                 'x-ms-pageable'      = $x_ms_pageableObject
             }
 
@@ -226,10 +245,6 @@ function Get-SwaggerSpecPathInfo
                 { 
                     $ParameterSetDetail['UseOperationsSuffix'] = $true
                 }
-            }
-
-            if ($approximateVerb.StartsWith("List")) {
-                $ParameterSetDetail.Priority = 0
             }
 
             $commandNames | ForEach-Object {
@@ -839,7 +854,7 @@ function New-SwaggerPath
     if ($nonUniqueParameterSets.Length -gt 1) {
         # Pick the highest priority set among $nonUniqueParameterSets, but really it doesn't matter, cause...
         # Print warning that this generated cmdlet has ambiguous parameter sets
-        $defaultParameterSet = $nonUniqueParameterSets | Sort-Object -Property Priority | Select-Object -First 1
+        $defaultParameterSet = $nonUniqueParameterSets | Sort-Object {$_.Priority} | Select-Object -First 1
         $DefaultParameterSetName = $defaultParameterSet.OperationId
         $description = $defaultParameterSet.Description
         $synopsis = $defaultParameterSet.Synopsis
