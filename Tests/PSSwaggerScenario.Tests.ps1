@@ -223,7 +223,7 @@ Describe "Optional parameter tests" -Tag ScenarioTest {
         }
 
         It "Generates cmdlet using optional path parameters" {
-            $results = Get-CupcakeByMaker -Flavor "chocolate" -Maker "bob"
+            $results = Get-Cupcake -Flavor "chocolate" -Maker "bob"
             $results.Length | should be 1
         }
 
@@ -528,10 +528,10 @@ Describe "AzureExtensions" -Tag @('AzureExtension','ScenarioTest') {
         }
 
         It "Test x-ms-paths generated cmdlets" {
-            $results = Get-CupcakeById -Id 1
+            $results = Get-Cupcake -Id 1
             $results.Count | should be 1
 
-            $results = Get-CupcakeByFlavor -Flavor 'vanilla'
+            $results = Get-Cupcake -Flavor 'vanilla'
             $results.Count | should be 1
         }
 
@@ -545,6 +545,22 @@ Describe "AzureExtensions" -Tag @('AzureExtension','ScenarioTest') {
             $cmdInfo = Get-Command New-CheckNameAvailabilityInputObject -ErrorVariable ev -ErrorAction SilentlyContinue
             $cmdInfo = Should BeNullOrEmpty
             $ev.FullyQualifiedErrorId | Should Be 'CommandNotFoundException,Microsoft.PowerShell.Commands.GetCommandCommand'
+        }
+
+        It "Validate default parameterset name of generated cmdlet" {
+            $CommandInfo = Get-Command -Name Get-Cupcake
+            $DefaultParameterSet = 'Cupcake_List'
+            $ParameterSetNames = @(
+                $DefaultParameterSet,
+                'Cupcake_GetById',
+                'Cupcake_GetByFlavor'
+            )
+            $CommandInfo.DefaultParameterSet | Should Be $DefaultParameterSet
+            $CommandInfo.ParameterSets.Count | Should Be $ParameterSetNames.Count
+
+            $ParameterSetNames | ForEach-Object {
+                $CommandInfo.ParameterSets.Name -contains $_ | Should Be $true                
+            }
         }
     }
 
