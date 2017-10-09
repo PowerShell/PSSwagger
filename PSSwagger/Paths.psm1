@@ -1310,7 +1310,7 @@ function Convert-GenericTypeToString {
     )
 
     if (-not $Type.IsGenericType) {
-        return $Type.FullName.Trim('[]')
+        return $Type.FullName
     }
 
     $genericTypeStr = ''
