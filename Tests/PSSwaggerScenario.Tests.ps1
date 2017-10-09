@@ -223,7 +223,7 @@ Describe "Optional parameter tests" -Tag ScenarioTest {
         }
 
         It "Generates cmdlet using optional path parameters" {
-            $results = Get-CupcakeByMaker -Flavor "chocolate" -Maker "bob"
+            $results = Get-Cupcake -Flavor "chocolate" -Maker "bob"
             $results.Length | should be 1
         }
 
@@ -528,10 +528,10 @@ Describe "AzureExtensions" -Tag @('AzureExtension','ScenarioTest') {
         }
 
         It "Test x-ms-paths generated cmdlets" {
-            $results = Get-CupcakeById -Id 1
+            $results = Get-Cupcake -Id 1
             $results.Count | should be 1
 
-            $results = Get-CupcakeByFlavor -Flavor 'vanilla'
+            $results = Get-Cupcake -Flavor 'vanilla'
             $results.Count | should be 1
         }
 
@@ -545,6 +545,22 @@ Describe "AzureExtensions" -Tag @('AzureExtension','ScenarioTest') {
             $cmdInfo = Get-Command New-CheckNameAvailabilityInputObject -ErrorVariable ev -ErrorAction SilentlyContinue
             $cmdInfo = Should BeNullOrEmpty
             $ev.FullyQualifiedErrorId | Should Be 'CommandNotFoundException,Microsoft.PowerShell.Commands.GetCommandCommand'
+        }
+
+        It "Validate default parameterset name of generated cmdlet" {
+            $CommandInfo = Get-Command -Name Get-Cupcake
+            $DefaultParameterSet = 'Cupcake_List'
+            $ParameterSetNames = @(
+                $DefaultParameterSet,
+                'Cupcake_GetById',
+                'Cupcake_GetByFlavor'
+            )
+            $CommandInfo.DefaultParameterSet | Should Be $DefaultParameterSet
+            $CommandInfo.ParameterSets.Count | Should Be $ParameterSetNames.Count
+
+            $ParameterSetNames | ForEach-Object {
+                $CommandInfo.ParameterSets.Name -contains $_ | Should Be $true                
+            }
         }
     }
 
@@ -1140,5 +1156,33 @@ Describe "Output type scenario tests" -Tag @('OutputType','ScenarioTest')  {
     It 'Test output type of swagger operation which supports x-ms-pageable' {
         $CommandInfo = Get-Command -Name Get-IotHubResourceEventHubConsumerGroup -Module $ModuleName
         $CommandInfo.OutputType.Type.ToString() | Should BeExactly 'System.String'
+    }
+}
+
+Describe 'New-PSSwaggerModule cmdlet parameter tests' -Tag @('CmdletParameterTest','ScenarioTest')  {
+    BeforeAll {
+        $ModuleName = 'Generated.Module.NoVersionFolder'
+        $SwaggerSpecPath = Join-Path -Path $PSScriptRoot -ChildPath 'Data' | Join-Path -ChildPath 'AzureExtensions' | Join-Path -ChildPath 'AzureExtensionsSpec.json'
+        $GeneratedPath = Join-Path -Path $PSScriptRoot -ChildPath 'Generated'
+        $GeneratedModuleBase = Join-Path -Path $GeneratedPath -ChildPath $ModuleName
+        if (Test-Path -Path $GeneratedModuleBase -PathType Container) {
+            Remove-Item -Path $GeneratedModuleBase -Recurse -Force
+        }
+    }
+
+    It 'Test NoVersionFolder switch parameter' {
+        $params = @{
+            SpecificationPath       = $SwaggerSpecPath
+            Name                    = $ModuleName
+            UseAzureCsharpGenerator = $true
+            Path                    = $GeneratedPath
+            NoVersionFolder         = $true
+            ConfirmBootstrap        = $true
+            Verbose                 = $true
+        }
+        Invoke-NewPSSwaggerModuleCommand -NewPSSwaggerModuleParameters $params
+
+        $ModuleInfo = Import-Module $GeneratedModuleBase -Force -PassThru
+        $ModuleInfo.ModuleBase | Should Be $GeneratedModuleBase
     }
 }

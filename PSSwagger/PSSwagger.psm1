@@ -72,6 +72,9 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwa
 .PARAMETER  Version
     Version of the generated PowerShell module.
 
+.PARAMETER  NoVersionFolder
+    Switch to not create the version folder under the generated module folder.
+
 .PARAMETER  DefaultCommandPrefix
     Prefix value to be prepended to cmdlet noun or to cmdlet name without verb.
 
@@ -162,6 +165,10 @@ function New-PSSwaggerModule
         [Parameter(Mandatory = $false)]
         [Version]
         $Version = '0.0.1',
+
+        [Parameter(Mandatory = $false)]
+        [switch]
+        $NoVersionFolder,
 
         [Parameter(Mandatory = $false)]
         [string]
@@ -449,7 +456,7 @@ function New-PSSwaggerModule
     
     $nameSpace = $swaggerDict['info'].NameSpace
     $models = $swaggerDict['info'].Models
-    if($PSVersionTable.PSVersion -lt '5.0.0') {
+    if($NoVersionFolder -or $PSVersionTable.PSVersion -lt '5.0.0') {
         if (-not $outputDirectory.EndsWith($Name, [System.StringComparison]::OrdinalIgnoreCase)) {
             $outputDirectory = Join-Path -Path $outputDirectory -ChildPath $Name
             $SymbolPath = Join-Path -Path $SymbolPath -ChildPath $Name
@@ -611,11 +618,14 @@ function New-PSSwaggerModule
         -Info $swaggerDict['info'] `
         -PSHeaderComment $PSHeaderComment
 
-    $CopyFilesMap = [ordered]@{
-        'GeneratedHelpers.ps1'      = 'GeneratedHelpers.ps1'
-        'Test-CoreRequirements.ps1' = 'Test-CoreRequirements.ps1'
-        'Test-FullRequirements.ps1' = 'Test-FullRequirements.ps1'
-        'New-ServiceClient.ps1'     = 'New-ServiceClient.ps1'
+    $CopyFilesMap = [ordered]@{}
+    if($UseAzureCsharpGenerator) {
+        $CopyFilesMap['New-ArmServiceClient.ps1'] = 'New-ServiceClient.ps1'
+        $CopyFilesMap['Test-FullRequirements.ps1'] = 'Test-FullRequirements.ps1'
+        $CopyFilesMap['Test-CoreRequirements.ps1'] = 'Test-CoreRequirements.ps1'
+    }
+    else {
+        $CopyFilesMap['New-ServiceClient.ps1'] = 'New-ServiceClient.ps1'        
     }
 
     if (-not $AssemblyFileName) {
@@ -1106,6 +1116,14 @@ function Get-HeaderContent {
         else {
             $HeaderContent = $Header
         }
+    }
+
+    # Escape block comment character sequence, if any, using the PowerShell escape character, grave-accent(`).
+    $HeaderContent = $HeaderContent.Replace('<#', '<`#').Replace('#>', '#`>')
+
+    if ($HeaderContent -match '--') {
+        Write-Warning -Message $LocalizedData.HeaderContentTwoHyphenWarning
+        $HeaderContent = $HeaderContent.Replace('--', '==')
     }
 
     return $HeaderContent

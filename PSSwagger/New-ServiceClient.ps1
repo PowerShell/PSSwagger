@@ -23,9 +23,6 @@ Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
     Command should return a custom hostname string.
     Overrides the default host in the specification.
 
-.PARAMETER  SubscriptionIdCommand
-    Custom command get SubscriptionId value.
-
 .PARAMETER  GlobalParameterHashtable
     Global parameters to be set on client object.
 #>
@@ -57,10 +54,6 @@ function New-ServiceClient {
         $HostOverrideCommand,
 
         [Parameter(Mandatory = $false)]
-        [string]
-        $SubscriptionIdCommand,
-
-        [Parameter(Mandatory = $false)]
         [PSCustomObject]
         $GlobalParameterHashtable
     )
@@ -75,7 +68,12 @@ function New-ServiceClient {
     $ClientArgumentList += Invoke-Command @InvokeCommand_parameters
 
     if ($AddHttpClientHandler) {
-        $httpClientHandler = New-HttpClientHandler -Credential $Credential
+        if(-not ('System.Net.Http.HttpClientHandler' -as [Type])) {
+            Add-Type -AssemblyName System.Net.Http
+        }
+        $httpClientHandler = New-Object -TypeName System.Net.Http.HttpClientHandler
+        $httpClientHandler.PreAuthenticate = $true
+        $httpClientHandler.Credentials = $Credential
         $ClientArgumentList += $httpClientHandler
     }
     
@@ -85,23 +83,14 @@ function New-ServiceClient {
     $Client = New-Object -TypeName $FullClientTypeName -ArgumentList $ClientArgumentList
 
     if ($HostOverrideCommand) {
-        $Client.BaseUri = Invoke-Command -ScriptBlock [scriptblock]::Create($HostOverrideCommand)
+        [scriptblock]$HostOverrideCommand = [scriptblock]::Create($HostOverrideCommand)
+        $Client.BaseUri = Invoke-Command -ScriptBlock $HostOverrideCommand
     }
 
     if ($GlobalParameterHashtable) {
         $GlobalParameterHashtable.GetEnumerator() | ForEach-Object {
-            if (Get-Member -InputObject $Client -Name $_.Key -MemberType Property) {
-                if ((-not $_.Value) -and ($_.Key -eq 'SubscriptionId')) {
-                    if($SubscriptionIdCommand) {
-                        $Client.SubscriptionId = Invoke-Command -ScriptBlock [scriptblock]::Create($SubscriptionIdCommand)
-                    }
-                    else {
-                        $Client.SubscriptionId = Get-AzSubscriptionId
-                    }
-                }
-                else {
-                    $Client."$($_.Key)" = $_.Value
-                }
+            if ($_.Value -and (Get-Member -InputObject $Client -Name $_.Key -MemberType Property)) {
+                $Client."$($_.Key)" = $_.Value
             }    
         }
     }

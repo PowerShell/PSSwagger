@@ -266,6 +266,24 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
             It "Get-HeaderContent should return MICROSOFT_APACHE_NO_CODEGEN header content with '-Header MICROSOFT_APACHE_NO_CODEGEN'" {
                 Get-HeaderContent -SwaggerDict @{Info = @{Header = 'MICROSOFT_APACHE_NO_CODEGEN'}} | Should BeExactly $MicrosoftApacheLicenseHeader
             }
+
+            It 'Get-HeaderContent should escape <#' {
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = 'Header content with <#'}} | Should BeExactly 'Header content with <`#'
+            }
+
+            It 'Get-HeaderContent should escape #>' {
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = 'Header content with #>'}} | Should BeExactly 'Header content with #`>'
+            }
+
+            It 'Get-HeaderContent should replace -- with ==' {
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = 'Header content with --'}} -WarningVariable wv -WarningAction SilentlyContinue | Should BeExactly 'Header content with =='
+                $wv | Should not BeNullOrEmpty
+                $wv.Message -match '==' | Should Be $true
+            }
+
+            It "Get-HeaderContent should escape '<#' and '#>', and replace '--' with '=='" {
+                Get-HeaderContent -SwaggerDict @{Info = @{Header = 'Header content with <# PS comment #> and --.'}} -WarningAction SilentlyContinue | Should BeExactly 'Header content with <`# PS comment #`> and ==.'
+            }
         }
         
         Context "Get-CSharpModelName Unit Tests" {
@@ -287,7 +305,7 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
                 Convert-GenericTypeToString -Type ('System.Int32' -as [type]) | Should BeExactly 'System.Int32'
             }
             It "Convert-GenericTypeToString with 'System.String[]' type" {
-                Convert-GenericTypeToString -Type ('System.String[]' -as [type]) | Should BeExactly 'System.String'
+                Convert-GenericTypeToString -Type ('System.String[]' -as [type]) | Should BeExactly 'System.String[]'
             }
             It "Convert-GenericTypeToString with 'System.Collections.Generic.List[string]' type" {
                 Convert-GenericTypeToString -Type ('System.Collections.Generic.List[string]' -as [type]) | Should BeExactly 'System.Collections.Generic.List[System.String]'

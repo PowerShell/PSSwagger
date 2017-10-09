@@ -59,7 +59,6 @@ if (Test-Path -Path `$ClrPath -PathType Container) {
 }
 
 . (Join-Path -Path `$PSScriptRoot -ChildPath 'New-ServiceClient.ps1')
-. (Join-Path -Path `$PSScriptRoot -ChildPath 'GeneratedHelpers.ps1')
 
 `$allPs1FilesPath = Join-Path -Path `$PSScriptRoot -ChildPath '$GeneratedCommandsName' | Join-Path -ChildPath '*.ps1'
 Get-ChildItem -Path `$allPs1FilesPath -Recurse -File | ForEach-Object { . `$_.FullName}
@@ -491,7 +490,8 @@ $FormatViewDefinitionStr = @'
                 <TypeName>{1}</TypeName>
             </ViewSelectedBy>
             <TableControl>
-                <TableHeaders>{2}
+                <TableHeaders>
+{2}
                 </TableHeaders>
                 <TableRowEntries>
                     <TableRowEntry>
@@ -516,6 +516,10 @@ $TableColumnHeaderStr = @'
                     <TableColumnHeader>
                         <Width>{0}</Width>
                     </TableColumnHeader>
+'@
+
+$LastTableColumnHeaderStr = @'
+                    <TableColumnHeader/>
 '@
 
 $DefaultGeneratedFileHeader = @'

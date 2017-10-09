@@ -78,6 +78,9 @@ function Invoke-NewPSSwaggerModuleCommand {
         $NewPSSwaggerModuleParameters['NoAssembly'] = $false
         $NewPSSwaggerModuleParameters['ConfirmBootstrap'] = $true
     }
+    elseif (-not $NewPSSwaggerModuleParameters.ContainsKey('AssemblyFileName'))  {
+        $NewPSSwaggerModuleParameters['NoAssembly'] = $true
+    }
 
     if ((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
         if ($IncludeAssembly) {

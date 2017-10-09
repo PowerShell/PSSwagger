@@ -43,6 +43,7 @@ ConvertFrom-StringData @'
     GeneratedPathCommand=Generated path command '{0}'.
     GeneratedDefinitionCommand=Generated command '{0}' for the definition name '{1}'.
     GeneratedFormatFile=Generated output format file for the definition name '{0}'.
+    FormatFileNotRequired=It is not required to generated the format file as this definition '{0}' doesn't have non-complex typed properties.
     DeleteGeneratedFile=Deleting generated file '{0}'
     ExtractingMetadata=Extracting metadata from generated assembly
     ExpectedServiceClientTypeNotFound=Unable to find expected service client type: {0}
@@ -87,5 +88,6 @@ ConvertFrom-StringData @'
     InvalidPSMetaFlattenParameter=Flatten property is specified as 'true' for an invalid parameter '{0}' with type '{1}'.
     InvalidHeaderFileExtension=Header '{0}' file extension should be '.txt'.
     InvalidHeaderFilePath=The specified value '{0}' for Header parameter is should be a valid file path.
+    HeaderContentTwoHyphenWarning=The specified Header content has '--', replacing '--' with '=='.
 ###PSLOC
 '@
