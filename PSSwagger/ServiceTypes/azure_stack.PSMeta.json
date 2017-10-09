@@ -1,8 +1,5 @@
 {
   "info": {
-    "x-ps-code-generation-settings": {
-		"customAuthCommand": "Get-AzServiceCredential",
-		"hostOverrideCommand": "Get-AzResourceManagerUrl"
-	}
+    "x-ps-code-generation-settings": {}
   }
 }

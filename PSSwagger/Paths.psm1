@@ -196,6 +196,25 @@ function Get-SwaggerSpecPathInfo
             } else {
                 $commandNames = Get-PathCommandName -OperationId $operationId
             }
+            
+            # Priority of a parameterset will be used to determine the default parameterset of a cmdlet.
+            $Priority = 0
+            $ParametersCount = Get-HashtableKeyCount -Hashtable $ParametersTable
+            if($ParametersCount) {
+                # Priority for parameter sets with mandatory parameters starts at 100
+                $Priority = 100
+
+                $ParametersTable.GetEnumerator() | ForEach-Object {
+                    if($_.Value.ContainsKey('Mandatory') -and $_.Value.Mandatory -eq '$true') {
+                        $Priority++
+                    }
+                }
+
+                # If there are no mandatory parameters, use the parameter count as the priority.                
+                if($Priority -eq 100) {
+                    $Priority = $ParametersCount
+                }
+            }
 
             $ParameterSetDetail = @{
                 Description          = $FunctionDescription
@@ -206,7 +225,7 @@ function Get-SwaggerSpecPathInfo
                 OperationType        = $operationType
                 EndpointRelativePath = $EndpointRelativePath
                 PathCommonParameters = $PathCommonParameters
-                Priority             = 100 # Default
+                Priority             = $Priority
                 'x-ms-pageable'      = $x_ms_pageableObject
             }
 
@@ -226,10 +245,6 @@ function Get-SwaggerSpecPathInfo
                 { 
                     $ParameterSetDetail['UseOperationsSuffix'] = $true
                 }
-            }
-
-            if ($approximateVerb.StartsWith("List")) {
-                $ParameterSetDetail.Priority = 0
             }
 
             $commandNames | ForEach-Object {
@@ -445,6 +460,9 @@ function New-SwaggerPath
             } elseif (-not $x_ms_pageableObject) {
                 $x_ms_pageableObject = $parameterSetDetail.'x-ms-pageable'
                 $x_ms_pageableObject['ReturnType'] = $parameterSetDetail.ReturnType
+                if($parameterSetDetail.ContainsKey('PSCmdletOutputItemType')) {
+                    $x_ms_pageableObject['PSCmdletOutputItemType'] = $parameterSetDetail.PSCmdletOutputItemType
+                }
                 if ($x_ms_pageableObject.Containskey('operationName')) {
                     # Search for the cmdlet with a parameter set with the given operationName
                     $pagingFunctionDetails = $PathFunctionDetails.GetEnumerator() | Where-Object { $_.Value.ParameterSetDetails | Where-Object { $_.OperationId -eq $x_ms_pageableObject.operationName }} | Select-Object -First 1
@@ -561,11 +579,15 @@ function New-SwaggerPath
     $Cmdlet = ''
     $CmdletParameter = ''
     $CmdletArgs = ''
-    $pageType = ''
+    $pageType = 'Array'
+    $PSCmdletOutputItemType = ''
     $resultBlockStr = $resultBlockNoPaging
     if ($x_ms_pageableObject) {
         if ($x_ms_pageableObject.ReturnType -ne 'NONE') {
             $pageType = $x_ms_pageableObject.ReturnType
+            if($x_ms_pageableObject.ContainsKey('PSCmdletOutputItemType')) {
+                $PSCmdletOutputItemType = $x_ms_pageableObject.PSCmdletOutputItemType                
+            }
         }
 
         if ($x_ms_pageableObject.ContainsKey('Operations')) {
@@ -616,24 +638,25 @@ function New-SwaggerPath
     }
 
     # Process security section
-    $SubscriptionIdCommand = ""
     $AuthenticationCommand = ""
     $AuthenticationCommandArgumentName = ''
     $hostOverrideCommand = ''
     $AddHttpClientHandler = $false
     $securityParametersToAdd = @()
     $PowerShellCodeGen = $SwaggerMetaDict['PowerShellCodeGen']
-    if (($PowerShellCodeGen['ServiceType'] -eq 'azure') -or ($PowerShellCodeGen['ServiceType'] -eq 'azure_stack')) {
-        $SubscriptionIdCommand = 'Get-AzSubscriptionId'
+
+    # CustomAuthCommand and HostOverrideCommand are not required for Arm Services
+    if (($PowerShellCodeGen['ServiceType'] -ne 'azure') -and ($PowerShellCodeGen['ServiceType'] -eq 'azure_stack')) {
+        if ($PowerShellCodeGen['CustomAuthCommand']) {
+            $AuthenticationCommand = $PowerShellCodeGen['CustomAuthCommand']
+        }
+        if ($PowerShellCodeGen['HostOverrideCommand']) {
+            $hostOverrideCommand = $PowerShellCodeGen['HostOverrideCommand']
+        }
     }
-    if ($PowerShellCodeGen['CustomAuthCommand']) {
-        $AuthenticationCommand = $PowerShellCodeGen['CustomAuthCommand']
-    }
-    if ($PowerShellCodeGen['HostOverrideCommand']) {
-        $hostOverrideCommand = $PowerShellCodeGen['HostOverrideCommand']
-    }
+
     # If the auth function hasn't been set by metadata, try to discover it from the security and securityDefinition objects in the spec
-    if (-not $AuthenticationCommand) {
+    if (-not $AuthenticationCommand -and -not $UseAzureCsharpGenerator) {
         if ($FunctionDetails.ContainsKey('Security')) {
             # For now, just take the first security object
             if ($FunctionDetails.Security.Count -gt 1) {
@@ -729,7 +752,7 @@ function New-SwaggerPath
         }
     }
 
-    if (-not $AuthenticationCommand) {
+    if (-not $AuthenticationCommand -and -not $UseAzureCsharpGenerator) {
         # At this point, there was no supported security object or overridden auth function, so assume no auth
         $AuthenticationCommand = 'Get-AutoRestCredential'
     }
@@ -831,7 +854,7 @@ function New-SwaggerPath
     if ($nonUniqueParameterSets.Length -gt 1) {
         # Pick the highest priority set among $nonUniqueParameterSets, but really it doesn't matter, cause...
         # Print warning that this generated cmdlet has ambiguous parameter sets
-        $defaultParameterSet = $nonUniqueParameterSets | Sort-Object -Property Priority | Select-Object -First 1
+        $defaultParameterSet = $nonUniqueParameterSets | Sort-Object {$_.Priority} | Select-Object -First 1
         $DefaultParameterSetName = $defaultParameterSet.OperationId
         $description = $defaultParameterSet.Description
         $synopsis = $defaultParameterSet.Synopsis
@@ -973,12 +996,17 @@ function New-SwaggerPath
         ParameterGroupsExpressionBlock    = $parameterGroupsExpressionBlock
         SwaggerDict                       = $SwaggerDict
         SwaggerMetaDict                   = $SwaggerMetaDict
-        AddHttpClientHandler              = $AddHttpClientHandler
-        HostOverrideCommand               = $hostOverrideCommand
-        AuthenticationCommand             = $AuthenticationCommand
-        AuthenticationCommandArgumentName = $AuthenticationCommandArgumentName
-        SubscriptionIdCommand             = $SubscriptionIdCommand
         FlattenedParametersOnPSCmdlet     = $flattenedParametersOnPSCmdlet
+    }
+    if($AuthenticationCommand) {
+        $functionBodyParams['AuthenticationCommand'] = $AuthenticationCommand
+        $functionBodyParams['AuthenticationCommandArgumentName'] = $AuthenticationCommandArgumentName
+    }
+    if($AddHttpClientHandler) {
+        $functionBodyParams['AddHttpClientHandler'] = $AddHttpClientHandler
+    }    
+    if($hostOverrideCommand) {
+        $functionBodyParams['hostOverrideCommand'] = $hostOverrideCommand
     }
     if($globalParameters) {
         $functionBodyParams['GlobalParameters'] = $globalParameters
@@ -988,8 +1016,8 @@ function New-SwaggerPath
     $bodyObject = $pathGenerationPhaseResult.BodyObject
 
     $body = $bodyObject.Body
-    if($pageType){
-        $fullPathDataType = $pageType
+    if($PSCmdletOutputItemType){
+        $fullPathDataType = $PSCmdletOutputItemType
         $outputTypeBlock = $executionContext.InvokeCommand.ExpandString($outputTypeStr)
     }
     else {
@@ -1156,12 +1184,12 @@ function Set-ExtendedCodeMetadata {
                 $returnType = $returnType.GenericTypeArguments[0]
             }
 
+            # Note: ReturnType and PSCmdletOutputItemType are currently used for Swagger operations which supports x-ms-pageable.
             if (($returnType.Name -eq 'IPage`1') -and $returnType.GenericTypeArguments) {
-                $returnType = $returnType.GenericTypeArguments[0]
+                $PSCmdletOutputItemTypeString = Convert-GenericTypeToString -Type $returnType.GenericTypeArguments[0]
+                $parameterSetDetail['PSCmdletOutputItemType'] = $PSCmdletOutputItemTypeString.Trim('[]')
             }
-            # Note: ReturnType is currently used for Swagger operations which supports x-ms-pageable.
-            $returnTypeString = Convert-GenericTypeToString -Type $returnType
-            $parameterSetDetail['ReturnType'] = $returnTypeString
+            $parameterSetDetail['ReturnType'] = Convert-GenericTypeToString -Type $returnType
 
             $ParamList = @()
             $oDataQueryFound = $false

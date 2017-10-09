@@ -1,6 +1,17 @@
 # Changelog
 
-## v0.3.0 - 2017-09-29
+## v0.3.0
+- Generate single Verb-Noun cmdlet for OperationIds like Noun_Verb and Noun_VerbBySomething (#358)
+- Move New-HttpClientHandler logic into New-ServiceClient for non-Azure services. (#357)
+- Add few verb mappings for Azure RPs (#356)
+- Add NoVersionFolder switch parameter on New-PSSwaggerModule cmdlet to not create the version folder. (#355)
+- Add all non-complex type properties in output format ps1xml files. (#354)
+- Escape '<#' and '#>', and replace '--' with '==' in Header content (#352)
+- Use separate PSCmdletOutputItemType variable for getting the output item type of pageable swagger operations. (#351)
+- Verb map change: 'Regenerate' to 'New' instead of 'Update' as per the feedback recieved from Azure PowerShell team. (#347)
+- [Azure and AzureStack] Use IClientFactory to create ARM Client in Azure PowerShell way. (#348)
+- New-ServiceClient error on custom host (#350)
+- Add CHANGELOG.md, and minor update for releasing the 0.3.0 version of PSSwagger and PSSwaggerUtility modules. (#345)
 - Add support for generating proper output type for the Swagger operations with x-ms-pageable extension (#342)
 - Add support for parameter type references to enum definitions (#341)
 - Add support for AdditionalProperties Json schema with array type (#339)
@@ -21,7 +32,7 @@
 - Update Readme and fix an error related to importing the PSSwaggerUtility module (#300)
 - Support custom x-ms-pageable\NextLinkName field name (#294)
 
-## v0.2.0 - 2017-08-15
+## v0.2.0
 
 * First preview release
 

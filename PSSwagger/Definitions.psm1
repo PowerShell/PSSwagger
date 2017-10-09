@@ -988,26 +988,37 @@ function New-SwaggerDefinitionFormatFile
     $ViewTypeName = $ViewName
     $TableColumnItemsList = @()
     $TableColumnItemCount = 0
-    $ParametersCount = Get-HashtableKeyCount -Hashtable $FunctionDetails.ParametersTable
-    $SkipParameterList = @('id', 'tags')
 
     $FunctionDetails.ParametersTable.GetEnumerator() | ForEach-Object {        
-        
         $ParameterDetails = $_.Value
-
-        # Add all properties when definition has 4 or less properties.
-        # Otherwise add the first 4 properties with basic types by skipping the complex types, id and tags.
-        if(($ParametersCount -le 4) -or
-           (($TableColumnItemCount -le 4) -and
-            ($SkipParameterList -notcontains $ParameterDetails.Name) -and
-            (-not $ParameterDetails.Type.StartsWith($Namespace, [System.StringComparison]::OrdinalIgnoreCase))))
+        # Add all properties otherthan complex typed properties.
+        # Complex typed properties are not displayed by the PowerShell Format viewer.
+        if(-not $ParameterDetails.Type.StartsWith($Namespace, [System.StringComparison]::OrdinalIgnoreCase))
         {
             $TableColumnItemsList += $TableColumnItemStr -f ($ParameterDetails.Name)
             $TableColumnItemCount += 1
         }
     }
 
-    $TableColumnHeaders = $null
+    if(-not $TableColumnItemCount) {
+        Write-Verbose -Message ($LocalizedData.FormatFileNotRequired -f $FunctionDetails.Name)
+        return    
+    }
+    
+    $TableColumnHeadersList = @()
+    $DefaultWindowSizeWidth = 120
+    # Getting the width value for each property column. Default console window width is 120.
+    $TableColumnHeaderWidth = [int]($DefaultWindowSizeWidth/$TableColumnItemCount)
+    
+    if ($TableColumnItemCount -ge 2) {
+        1..($TableColumnItemCount - 1) | ForEach-Object {
+            $TableColumnHeadersList += $TableColumnHeaderStr -f ($TableColumnHeaderWidth)
+        }
+    }
+    # Allowing the last property to get the remaining column width, this is useful when customer increases the default window width.
+    $TableColumnHeadersList += $LastTableColumnHeaderStr
+
+    $TableColumnHeaders = $TableColumnHeadersList -join "`r`n"
     $TableColumnItems = $TableColumnItemsList -join "`r`n"
     $FormatViewDefinition = $FormatViewDefinitionStr -f ($ViewName, $ViewTypeName, $TableColumnHeaders, $TableColumnItems, $XmlHeaderComment)
 

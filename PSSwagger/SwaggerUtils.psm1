@@ -1402,10 +1402,16 @@ function Get-PathCommandName
                 # This is still empty when a verb match is found that is the entire string, but it might not be worth checking for that case and skipping the below operation
                 $cmdNounSuffix = $UnapprovedVerb.Substring($beginningOfSuffix)
                 # Add command noun suffix only when the current noun doesn't contain it or vice-versa. 
-                if(-not $cmdNoun -or (($cmdNoun -notmatch $cmdNounSuffix) -and ($cmdNounSuffix -notmatch $cmdNoun))) {
-                    $cmdNoun = $cmdNoun + (Get-PascalCasedString -Name $UnapprovedVerb.Substring($beginningOfSuffix))
-                } elseif($cmdNounSuffix -match $cmdNoun) {
-                    $cmdNoun = $cmdNounSuffix
+                if(-not $cmdNoun) {
+                    $cmdNoun = Get-PascalCasedString -Name $cmdNounSuffix
+                }                
+                elseif(-not $cmdNounSuffix.StartsWith('By', [System.StringComparison]::OrdinalIgnoreCase)) {
+                    if(($cmdNoun -notmatch $cmdNounSuffix) -and ($cmdNounSuffix -notmatch $cmdNoun)) {
+                        $cmdNoun = $cmdNoun + (Get-PascalCasedString -Name $cmdNounSuffix)
+                    }
+                    elseif($cmdNounSuffix -match $cmdNoun) {
+                        $cmdNoun = $cmdNounSuffix
+                    }
                 }
             }
         }
@@ -1471,17 +1477,13 @@ function Get-PathFunctionBody
         [string]
         $HostOverrideCommand,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$false)]
         [string]
         $AuthenticationCommand,
 
         [Parameter(Mandatory=$false)]
         [string]
         $AuthenticationCommandArgumentName,
-
-        [Parameter(Mandatory=$false)]
-        [string]
-        $SubscriptionIdCommand,
 
         [Parameter(Mandatory=$true)]
         [PSCustomObject]
