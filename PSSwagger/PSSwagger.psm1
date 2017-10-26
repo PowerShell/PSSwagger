@@ -302,14 +302,8 @@ function New-PSSwaggerModule {
                 $SwaggerDocumentPath = Join-Path -Path $DocumentFolderPath -ChildPath $FileName
 
                 $ev = $null
-                $webRequestParams = @{
-                    'Uri' = $($BaseSwaggerUri + $($document.replace('\', '/').TrimStart('.')))
-                    'OutFile' = $SwaggerDocumentPath
-                }
-        
-                if($Credential -ne $null) {
-                    $webRequestParams['Credential'] = $Credential
-                }
+                $webRequestParams['Uri'] = $($BaseSwaggerUri + $($document.replace('\', '/').TrimStart('.')))
+                $webRequestParams['OutFile'] = $SwaggerDocumentPath
 
                 Invoke-WebRequest @webRequestParams -ErrorVariable ev
                 if ($ev) {
