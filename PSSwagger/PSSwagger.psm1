@@ -146,6 +146,11 @@ function New-PSSwaggerModule {
         [PSCredential]
         $Credential = $null,
 
+        [Parameter(Mandatory = $false, ParameterSetName = 'SpecificationUri')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SdkAssemblyWithSpecificationUri')]
+        [switch]
+        $UseDefaultCredential,
+
         [Parameter(Mandatory = $true)]
         [string]
         $Path,
@@ -279,6 +284,8 @@ function New-PSSwaggerModule {
 
         if($Credential -ne $null) {
             $webRequestParams['Credential'] = $Credential
+        } elseif ($UseDefaultCredential) {
+            $webRequestParams['UseDefaultCredential'] = $true
         }
 
         Invoke-WebRequest @webRequestParams -ErrorVariable ev 
