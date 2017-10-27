@@ -28,14 +28,14 @@ New-PSSwaggerModule -SpecificationPath <String> -Path <String> -AssemblyFileName
 
 ### SdkAssemblyWithSpecificationUri
 ```
-New-PSSwaggerModule -SpecificationUri <Uri> -Path <String> -AssemblyFileName <String>
+New-PSSwaggerModule -SpecificationUri <Uri> [-Credential <PSCredential>] -Path <String> -AssemblyFileName <String>
  [-ClientTypeName <String>] [-ModelsName <String>] -Name <String> [-Version <Version>] [-NoVersionFolder]
  [-DefaultCommandPrefix <String>] [-Header <String[]>] [-UseAzureCsharpGenerator]
 ```
 
 ### SpecificationUri
 ```
-New-PSSwaggerModule -SpecificationUri <Uri> -Path <String> -Name <String> [-Version <Version>]
+New-PSSwaggerModule -SpecificationUri <Uri> [-Credential <PSCredential>] -Path <String> -Name <String> [-Version <Version>]
  [-NoVersionFolder] [-DefaultCommandPrefix <String>] [-Header <String[]>] [-UseAzureCsharpGenerator]
  [-NoAssembly] [-PowerShellCorePath <String>] [-IncludeCoreFxAssembly] [-InstallToolsForAllUsers] [-TestBuild]
  [-SymbolPath <String>] [-ConfirmBootstrap]
@@ -86,6 +86,21 @@ Parameter Sets: SdkAssemblyWithSpecificationUri, SpecificationUri
 Aliases: 
 
 Required: True
+Position: Named
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -Credential
+Credentials to use when the SpecificationUri requires authentification.
+
+```yaml
+Type: PSCredential
+Parameter Sets: SdkAssemblyWithSpecificationUri, SpecificationUri
+Aliases: 
+
+Required: False
 Position: Named
 Default value: None
 Accept pipeline input: False
