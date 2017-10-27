@@ -141,7 +141,7 @@ Accept wildcard characters: False
 ### -AssemblyFileName
 File name of the pre-compiled SDK assembly.
 This assembly along with its dependencies should be available in '.\ref\fullclr\' folder under the target module version base path ($Path\$Name\$Version\\).
-If your generated module needs to work on PowerShell Core, place the coreclr assembly along with its depdencies under '.\ref\coreclr\' folder under the target module version base path ($Path\$Name\$Version\\).
+If your generated module needs to work on PowerShell Core, place the coreclr assembly along with its dependencies under '.\ref\coreclr\' folder under the target module version base path ($Path\$Name\$Version\\).
 For FullClr, the specified assembly should be available at "$Path\$Name\$Version\ref\fullclr\$AssemblyFileName".
 For CoreClr, the specified assembly should be available at "$Path\$Name\$Version\ref\coreclr\$AssemblyFileName".
 
@@ -280,6 +280,13 @@ Accept wildcard characters: False
 ### -UseAzureCsharpGenerator
 Switch to specify whether AzureCsharp code generator is required.
 By default, this command uses CSharp code generator.
+
+When this switch is specified and the resource id follows the guidelines of Azure Resource operations
+- The following additional parameter sets will be generated
+  - InputObject parameter set with the same object type returned by Get.
+Supports piping from Get operarion to action cmdlets.
+  - ResourceId parameter set which splits the resource id into component parts (supports piping from generic cmdlets).
+- Parameter name of Azure resource name parameter will be generated as 'Name' and the actual resource name parameter from the resource id will be added as an alias.
 
 ```yaml
 Type: SwitchParameter

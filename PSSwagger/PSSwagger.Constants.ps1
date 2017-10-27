@@ -16,11 +16,11 @@ $helpDescStr = @'
     $description
 '@
 
-$parameterAttributeString = '[Parameter(Mandatory = $isParamMandatory$ParameterSetPropertyString)]'
+$parameterAttributeString = '[Parameter(Mandatory = $isParamMandatory$ValueFromPipelineByPropertyNameString$ValueFromPipelineString$ParameterSetPropertyString)]'
 
 $parameterDefString = @'
     
-        $AllParameterSetsString$ValidateSetDefinition
+        $AllParameterSetsString$ParameterAliasAttribute$ValidateSetDefinition
         $paramType$paramName$parameterDefaultValueOption,
 
 '@
@@ -59,7 +59,9 @@ if (Test-Path -Path `$ClrPath -PathType Container) {
 }
 
 . (Join-Path -Path `$PSScriptRoot -ChildPath 'New-ServiceClient.ps1')
-
+$(if($UseAzureCsharpGenerator) {
+". (Join-Path -Path `$PSScriptRoot -ChildPath 'Get-ArmResourceIdParameterValue.ps1')"
+})
 `$allPs1FilesPath = Join-Path -Path `$PSScriptRoot -ChildPath '$GeneratedCommandsName' | Join-Path -ChildPath '*.ps1'
 Get-ChildItem -Path `$allPs1FilesPath -Recurse -File | ForEach-Object { . `$_.FullName}
 '@
@@ -208,6 +210,8 @@ if($GlobalParameters) {
     $oDataExpressionBlock
     $parameterGroupsExpressionBlock
     $flattenedParametersBlock
+    $ParameterAliasMappingBlock
+    $ResourceIdParamCodeBlock
 
     `$skippedCount = 0
     `$returnedCount = 0
@@ -218,13 +222,13 @@ if($GlobalParameters) {
 '@
 
 $parameterSetBasedMethodStrIfCase = @'
-if ('$operationId' -eq `$PsCmdlet.ParameterSetName) {
+if ($ParameterSetConditionsStr) {
 $additionalConditionStart$methodBlock$additionalConditionEnd
     }
 '@
 
 $parameterSetBasedMethodStrElseIfCase = @'
- elseif ('$operationId' -eq `$PsCmdlet.ParameterSetName ) {
+ elseif ($ParameterSetConditionsStr) {
 $additionalConditionStart$methodBlock$additionalConditionEnd
     }
 '@
@@ -426,6 +430,11 @@ $PagingBlockStrCmdletCall = @'
 $ValidateSetDefinitionString = @'
 
         [ValidateSet($ValidateSetString)]
+'@
+
+$ParameterAliasAttributeString = @'
+
+        [Alias($AliasString)]
 '@
 
 $successReturn = @'

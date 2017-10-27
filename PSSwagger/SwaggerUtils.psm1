@@ -1487,7 +1487,11 @@ function Get-PathFunctionBody
 
         [Parameter(Mandatory=$true)]
         [PSCustomObject]
-        $FlattenedParametersOnPSCmdlet
+        $FlattenedParametersOnPSCmdlet,
+
+        [Parameter(Mandatory=$true)]
+        [PSCustomObject]
+        $ParameterAliasMapping
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -1507,10 +1511,19 @@ function Get-PathFunctionBody
     $GetServiceCredentialStr = 'Get-AzServiceCredential'
 
     $parameterSetBasedMethodStr = ''
+    $ResourceIdParamCodeBlock = ''    
     foreach ($parameterSetDetail in $ParameterSetDetails) {
+
+        if(($ParameterSetDetail.OperationId -ne $ParameterSetDetail.ParameterSetName) -and
+           ($ParameterSetDetail.ParameterSetName.StartsWith('InputObject_', [System.StringComparison]::OrdinalIgnoreCase) -or
+            $ParameterSetDetail.ParameterSetName.StartsWith('ResourceId_', [System.StringComparison]::OrdinalIgnoreCase))) {
+            continue
+        }
+
         # Responses isn't actually used right now, but keeping this when we need to handle responses per parameter set
         $Responses = $parameterSetDetail.Responses
         $operationId = $parameterSetDetail.OperationId
+        $ParameterSetName = $parameterSetDetail.ParameterSetName
         $methodName = $parameterSetDetail.MethodName
         $operations = $parameterSetDetail.Operations
         $ParamList = $parameterSetDetail.ExpandedParamList
@@ -1537,11 +1550,10 @@ function Get-PathFunctionBody
                                     Models = $Info.Models
                                 }
 
-            $responseBody, $currentOutputTypeBlock = Get-Response @responseBodyParams
-
+            $GetResponseResult = Get-Response @responseBodyParams
             # For now, use the first non-empty output type
-            if ((-not $outputTypeBlock) -and $currentOutputTypeBlock) {
-                $outputTypeBlock = $currentOutputTypeBlock
+            if ((-not $outputTypeBlock) -and $GetResponseResult -and $GetResponseResult.OutputTypeBlock) {
+                $outputTypeBlock = $GetResponseResult.OutputTypeBlock
             }
         }
 
@@ -1567,6 +1579,39 @@ function Get-PathFunctionBody
             }
         }
 
+        $ParameterSetConditions = @("'$($parameterSetDetail.ParameterSetName)' -eq `$PsCmdlet.ParameterSetName")
+        if($parameterSetDetail.ContainsKey('ClonedParameterSetNames') -and $parameterSetDetail.ClonedParameterSetNames) {
+            $CloneParameterSetConditions = @()
+            $parameterSetDetail.ClonedParameterSetNames | ForEach-Object {
+                $CloneParameterSetConditions += @("'$_' -eq `$PsCmdlet.ParameterSetName")
+            }
+
+            if($CloneParameterSetConditions) {
+                $ParameterSetConditions += $CloneParameterSetConditions
+
+                if($parameterSetDetail.ContainsKey('ResourceIdParameters') -and $parameterSetDetail.ResourceIdParameters) {
+                    $ResourceIdParamCodeBlock += "if($($CloneParameterSetConditions -join ' -or ')) {
+        `$GetArmResourceIdParameterValue_params = @{
+            IdTemplate = '$($parameterSetDetail.EndpointRelativePath)'
+        }
+
+        if('ResourceId_$($parameterSetDetail.ParameterSetName)' -eq `$PsCmdlet.ParameterSetName) {
+            `$GetArmResourceIdParameterValue_params['Id'] = `$ResourceId
+        }
+        else {
+            `$GetArmResourceIdParameterValue_params['Id'] = `$InputObject.Id
+        }
+        `$ArmResourceIdParameterValues = Get-ArmResourceIdParameterValue @GetArmResourceIdParameterValue_params"
+                    $parameterSetDetail.ResourceIdParameters | ForEach-Object {
+                        $ResourceIdParamCodeBlock += "
+        `$$_ = `$ArmResourceIdParameterValues['$_']`n"
+                    }
+                    $ResourceIdParamCodeBlock += "    }"
+                }
+            }
+        }
+        $ParameterSetConditionsStr = $ParameterSetConditions -join ' -or '
+
         if ($parameterSetBasedMethodStr) {
             # Add the elseif condition
             $parameterSetBasedMethodStr += $executionContext.InvokeCommand.ExpandString($parameterSetBasedMethodStrElseIfCase)
@@ -1590,6 +1635,11 @@ function Get-PathFunctionBody
         }
 
         $FlattenedParametersBlock += $executionContext.InvokeCommand.ExpandString($constructFlattenedParameter)
+    }
+
+    $ParameterAliasMappingBlock = ''
+    $ParameterAliasMapping.GetEnumerator() | ForEach-Object {
+        $ParameterAliasMappingBlock += "`$$($_.Name) = `$$($_.Value)`n"
     }
 
     $body = $executionContext.InvokeCommand.ExpandString($functionBodyStr)
@@ -1638,7 +1688,8 @@ function Get-OutputType
         $DefinitionList
     )
 
-    $outputType = ""
+    $outputTypeBlock = $null
+    $outputType = $null
     if(Get-member -inputobject $schema -name '$ref')
     {
         $ref = $schema.'$ref'
@@ -1705,14 +1756,104 @@ function Get-OutputType
                     if($fullPathDataType)
                     {
                         $fullPathDataType = $fullPathDataType.Replace('[','').Replace(']','').Trim()
-                        $outputType += $executionContext.InvokeCommand.ExpandString($outputTypeStr)
+                        $outputType = $fullPathDataType
+                        $outputTypeBlock = $executionContext.InvokeCommand.ExpandString($outputTypeStr)
                     }
                 }
             }
         }
     }
 
-    return $outputType
+    return @{
+        OutputType      = $outputType
+        OutputTypeBlock = $outputTypeBlock
+    }
+}
+
+<#
+.DESCRIPTION
+    Utility function to get the parameter names declared in the Azure Resource Id (Endpoint path).
+    
+    Extraction logic follows the resource id guidelines provided by the Azure SDK team.
+    - ResourceId should have Get, optionally other operations like Patch, Put and Delete, etc.,
+    - Resource name parameter should be the last parameter in the endpoint path.
+
+    This function also extracts the output type of Get operation, which will be used as the type of InputObject parameter.
+    ResourceName return value will be used for generating alias value for Name parameter.
+#>
+function Get-AzureResourceIdParameters {
+    param(
+        [Parameter(Mandatory=$true)]
+        [PSCustomObject]
+        $JsonPathItemObject,
+
+        [Parameter(Mandatory=$true)]
+        [string]
+        $ResourceId,
+        
+        [Parameter(Mandatory=$true)]
+        [string]
+        $NameSpace, 
+
+        [Parameter(Mandatory=$true)]
+        [string]
+        $Models, 
+
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $DefinitionList
+    )
+
+    $GetPathItemObject = $JsonPathItemObject.value.PSObject.Properties | Where-Object {$_.Name -eq 'Get'}
+    if(-not $GetPathItemObject) {
+        Write-Debug "Get operation is available in $ResourceId"
+        return
+    }
+
+    $tokens = $ResourceId.Split('/', [System.StringSplitOptions]::RemoveEmptyEntries)
+    if (-not $tokens -or ($tokens.Count -lt 8)) {
+        Write-Debug -Message ("The specified endpoint '{0}' is not a valid resource identifier." -f $ResourceId)
+        return
+    }
+    $ResourceIdParameters = $tokens | Where-Object {$_ -match '{*}'} | Foreach-Object {
+        if ($_ -match '{*}') {
+            $parameterName = $_.Trim('{}')
+            if ($parameterName -ne 'SubscriptionId') {
+                $parameterName
+            }
+        }
+    }
+    if(-not $ResourceIdParameters -or ("{$($ResourceIdParameters[-1])}" -ne $tokens[-1])) {
+        return
+    }
+
+    $Responses = ""
+    if((Get-Member -InputObject $GetPathItemObject.value -Name 'responses') -and $GetPathItemObject.value.responses) {
+        $Responses = $GetPathItemObject.value.responses
+    }
+    if(-not $Responses) {
+        return
+    }
+
+    $GetResponse_Params = @{
+        Responses = $Responses.PSObject.Properties
+        Namespace = $Namespace
+        Models = $Models
+        DefinitionList = $DefinitionList
+    }
+
+    $ResponseResult = Get-Response @GetResponse_Params
+    $GetOperationOutputType = $ResponseResult.OutputType
+    $ModelsNamespace = "$Namespace.$Models"
+    if(-not $GetOperationOutputType -or -not $GetOperationOutputType.StartsWith($ModelsNamespace, [System.StringComparison]::OrdinalIgnoreCase)) {
+        return
+    }
+
+    return [ordered]@{
+        ResourceIdParameters     = $ResourceIdParameters
+        ResourceName             = $ResourceIdParameters[-1]
+        InputObjectParameterType = $GetOperationOutputType
+    }
 }
 
 function Get-Response
@@ -1738,7 +1879,8 @@ function Get-Response
 
     $outputTypeFlag = $false
     $responseBody = ""
-    $outputType = ""
+    $outputType = $null
+    $outputTypeBlock = $null
     $failWithDesc = ""
 
     $failWithDesc = ""
@@ -1758,7 +1900,9 @@ function Get-Response
                         "definitionList" = $definitionList
                     }
 
-                    $outputType = Get-OutputType @OutputTypeParams
+                    $outputTypeResult = Get-OutputType @OutputTypeParams
+                    $outputTypeBlock = $outputTypeResult.OutputTypeBlock
+                    $outputType = $outputTypeResult.OutputType
                     $outputTypeFlag = $true
                 }
             }
@@ -1783,7 +1927,11 @@ function Get-Response
 
     $responseBody += $executionContext.InvokeCommand.ExpandString($responseBodySwitchCase)
     
-    return $responseBody, $outputType
+    return @{
+        ResponseBody    = $responseBody
+        OutputType      = $OutputType
+        OutputTypeBlock = $OutputTypeBlock
+    }
 }
 function Get-CSharpModelName
 {

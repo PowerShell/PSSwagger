@@ -377,7 +377,7 @@ function Get-PathsPSMetadata {
             # When multiple operations are combined into single cmdlet,
             # adding first parameterset as the default parameterset name.
             if (-not $defaultParameterSetName) {
-                $defaultParameterSetName = $ParameterSetDetail.OperationId
+                $defaultParameterSetName = $ParameterSetDetail.ParameterSetName
             }
 
             $EndpointRelativePath = $ParameterSetDetail.EndpointRelativePath
