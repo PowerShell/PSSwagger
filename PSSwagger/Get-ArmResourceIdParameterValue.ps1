@@ -22,6 +22,9 @@ function Get-ArmResourceIdParameterValue {
         $IdTemplate
     )
 
+    Write-Verbose -Message ("Resource Id value is '{0}'" -f $Id)
+    Write-Debug -Message ("Resource IdTemplate is '{0}'" -f  $IdTemplate)
+    
     $IdTokens = $Id.Split('/', [System.StringSplitOptions]::RemoveEmptyEntries)
     $IdTemplateTokens = $IdTemplate.Split('/', [System.StringSplitOptions]::RemoveEmptyEntries)
     
@@ -33,9 +36,9 @@ function Get-ArmResourceIdParameterValue {
     $ResourceIdParameterValues = [ordered]@{}
     for ($i = 0; $i -lt $IdTemplateTokens.Count; $i++) {
         if ($IdTokens[$i] -ne $IdTemplateTokens[$i]) {
-            if ($IdTemplateTokens[$i] -notmatch '{*}') {
+            if ($IdTemplateTokens[$i] -notmatch '^{.*}$') {
                 Write-Error -Message ("Invalid resource id '{0}'. Expected id template is '{1}'." -f $Id, $IdTemplate) -ErrorId 'InvalidResourceIdValue'
-                return            
+                return
             }
     
             $ResourceIdParameterValues[$IdTemplateTokens[$i].Trim('{}')] = $IdTokens[$i]

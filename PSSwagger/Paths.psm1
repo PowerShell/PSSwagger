@@ -216,6 +216,14 @@ function Get-SwaggerSpecPathInfo
                 # Priority for parameter sets with mandatory parameters starts at 100
                 $Priority = 100
 
+                # Get Name parameter details, if exists.
+                # If Name parameter is already available, ResourceName parameter name will not be changed.
+                $NameParameterDetails = $ParametersTable.GetEnumerator() | Foreach-Object {
+                    if ($_.Value.Name -eq 'Name') {
+                        $_.Value
+                    }
+                }
+                    
                 $ParametersTable.GetEnumerator() | ForEach-Object {
                     if($_.Value.ContainsKey('Mandatory') -and $_.Value.Mandatory -eq '$true') {
                         $Priority++
@@ -223,6 +231,7 @@ function Get-SwaggerSpecPathInfo
 
                     # Add alias for the resource name parameter.
                     if($ResourceIdAndInputObjectDetails -and
+                       -not $NameParameterDetails -and
                        ($_.Value.Name -ne 'Name') -and
                        ($_.Value.Name -eq $ResourceIdAndInputObjectDetails.ResourceName)) {
                         $_.Value['Alias'] = 'Name'

@@ -1815,12 +1815,10 @@ function Get-AzureResourceIdParameters {
         Write-Debug -Message ("The specified endpoint '{0}' is not a valid resource identifier." -f $ResourceId)
         return
     }
-    $ResourceIdParameters = $tokens | Where-Object {$_ -match '{*}'} | Foreach-Object {
-        if ($_ -match '{*}') {
-            $parameterName = $_.Trim('{}')
-            if ($parameterName -ne 'SubscriptionId') {
-                $parameterName
-            }
+    $ResourceIdParameters = $tokens | Where-Object {$_ -match '^{.*}$'} | Foreach-Object {
+        $parameterName = $_.Trim('{}')
+        if ($parameterName -ne 'SubscriptionId') {
+            $parameterName
         }
     }
     if(-not $ResourceIdParameters -or ("{$($ResourceIdParameters[-1])}" -ne $tokens[-1])) {

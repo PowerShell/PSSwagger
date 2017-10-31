@@ -28,17 +28,18 @@ New-PSSwaggerModule -SpecificationPath <String> -Path <String> -AssemblyFileName
 
 ### SdkAssemblyWithSpecificationUri
 ```
-New-PSSwaggerModule -SpecificationUri <Uri> [-Credential <PSCredential>] [-UseDefaultCredential] -Path <String> -AssemblyFileName <String>
- [-ClientTypeName <String>] [-ModelsName <String>] -Name <String> [-Version <Version>] [-NoVersionFolder]
- [-DefaultCommandPrefix <String>] [-Header <String[]>] [-UseAzureCsharpGenerator]
+New-PSSwaggerModule -SpecificationUri <Uri> [-Credential <PSCredential>] [-UseDefaultCredential] -Path <String>
+ -AssemblyFileName <String> [-ClientTypeName <String>] [-ModelsName <String>] -Name <String>
+ [-Version <Version>] [-NoVersionFolder] [-DefaultCommandPrefix <String>] [-Header <String[]>]
+ [-UseAzureCsharpGenerator]
 ```
 
 ### SpecificationUri
 ```
-New-PSSwaggerModule -SpecificationUri <Uri> [-Credential <PSCredential>] [-UseDefaultCredential] -Path <String> -Name <String> [-Version <Version>]
- [-NoVersionFolder] [-DefaultCommandPrefix <String>] [-Header <String[]>] [-UseAzureCsharpGenerator]
- [-NoAssembly] [-PowerShellCorePath <String>] [-IncludeCoreFxAssembly] [-InstallToolsForAllUsers] [-TestBuild]
- [-SymbolPath <String>] [-ConfirmBootstrap]
+New-PSSwaggerModule -SpecificationUri <Uri> [-Credential <PSCredential>] [-UseDefaultCredential] -Path <String>
+ -Name <String> [-Version <Version>] [-NoVersionFolder] [-DefaultCommandPrefix <String>] [-Header <String[]>]
+ [-UseAzureCsharpGenerator] [-NoAssembly] [-PowerShellCorePath <String>] [-IncludeCoreFxAssembly]
+ [-InstallToolsForAllUsers] [-TestBuild] [-SymbolPath <String>] [-ConfirmBootstrap]
 ```
 
 ## DESCRIPTION
@@ -93,7 +94,7 @@ Accept wildcard characters: False
 ```
 
 ### -Credential
-Credentials to use when the SpecificationUri requires authentification. Will override -UseDefaultCredential when both are specified at the same time.
+Credential to use when the SpecificationUri requires authentication.
 
 ```yaml
 Type: PSCredential
@@ -107,9 +108,9 @@ Accept pipeline input: False
 Accept wildcard characters: False
 ```
 
-
 ### -UseDefaultCredential
-Use default credentials to download the SpecificationUri. Overridden by -Credential when both are specified at the same time.
+Use default credentials to download the SpecificationUri.
+Overridden by -Credential when both are specified at the same time.
 
 ```yaml
 Type: SwitchParameter

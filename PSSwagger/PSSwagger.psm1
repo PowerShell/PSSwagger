@@ -49,6 +49,9 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwa
 .PARAMETER Credential
     Credential to use when the SpecificationUri requires authentication.
 
+.PARAMETER UseDefaultCredential
+    Use default credentials to download the SpecificationUri. Overridden by -Credential when both are specified at the same time.
+
 .PARAMETER  AssemblyFileName
     File name of the pre-compiled SDK assembly.
     This assembly along with its dependencies should be available in '.\ref\fullclr\' folder under the target module version base path ($Path\$Name\$Version\).
