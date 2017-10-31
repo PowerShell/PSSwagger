@@ -12,7 +12,7 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
 
     BeforeAll {
         $PSSwaggerModulePath = Split-Path -Path $PSScriptRoot -Parent | Join-Path -ChildPath 'PSSwagger'
-        Import-Module -Name $PSSwaggerModulePath -Force -ArgumentList $true
+        $PSSwaggerModuleInfo = Import-Module -Name $PSSwaggerModulePath -Force -ArgumentList $true -PassThru
     }
 
     InModuleScope PSSwagger {
@@ -71,9 +71,9 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
         Context 'Get-XDGDirectory Unit Tests (Linux) (Default)' {
             Mock Get-OperatingSystemInfo -ModuleName PSSwaggerUtility {
                 return @{
-                    IsCore = $true
-                    IsLinux = $true
-                    IsMacOS = $false
+                    IsCore    = $true
+                    IsLinux   = $true
+                    IsMacOS   = $false
                     IsWindows = $false
                 }
             }
@@ -118,9 +118,9 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
         Context 'Get-XDGDirectory Unit Tests (Linux) (Custom)' {
             Mock Get-OperatingSystemInfo -ModuleName PSSwaggerUtility {
                 return @{
-                    IsCore = $true
-                    IsLinux = $true
-                    IsMacOS = $false
+                    IsCore    = $true
+                    IsLinux   = $true
+                    IsMacOS   = $false
                     IsWindows = $false
                 }
             }
@@ -128,11 +128,14 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
             Mock Get-EnvironmentVariable -ModuleName PSSwaggerUtility {
                 if ('HOME' -eq $Name) {
                     return '/hometest'
-                } elseif ('XDG_CACHE_HOME' -eq $Name) {
+                }
+                elseif ('XDG_CACHE_HOME' -eq $Name) {
                     return '/cacheHome'
-                } elseif ('XDG_CONFIG_HOME' -eq $Name) {
+                }
+                elseif ('XDG_CONFIG_HOME' -eq $Name) {
                     return '/configHome'
-                } elseif ('XDG_DATA_HOME' -eq $Name) {
+                }
+                elseif ('XDG_DATA_HOME' -eq $Name) {
                     return '/dataHome'
                 }
 
@@ -159,9 +162,9 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
         Context 'Get-XDGDirectory Unit Tests (Windows)' {
             Mock Get-OperatingSystemInfo -ModuleName PSSwaggerUtility {
                 return @{
-                    IsCore = $true
-                    IsLinux = $false
-                    IsMacOS = $false
+                    IsCore    = $true
+                    IsLinux   = $false
+                    IsMacOS   = $false
                     IsWindows = $true
                 }
             }
@@ -177,12 +180,12 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
             }
 
             It "Windows + Data" {
-                 $expectedPath = Join-Path -Path $env:LOCALAPPDATA -ChildPath 'Microsoft\Windows\PowerShell'
+                $expectedPath = Join-Path -Path $env:LOCALAPPDATA -ChildPath 'Microsoft\Windows\PowerShell'
                 Get-XDGDirectory -DirectoryType Data | should beexactly $expectedPath
             }
 
             It "Windows + Config" {
-                 $expectedPath = Join-Path -Path $env:LOCALAPPDATA -ChildPath 'Microsoft\Windows\PowerShell'
+                $expectedPath = Join-Path -Path $env:LOCALAPPDATA -ChildPath 'Microsoft\Windows\PowerShell'
                 Get-XDGDirectory -DirectoryType Config | should beexactly $expectedPath
             }
         }
@@ -313,6 +316,39 @@ Describe "PSSwagger Unit Tests" -Tag @('BVT', 'DRT', 'UnitTest', 'P0') {
             It "Convert-GenericTypeToString with 'System.Collections.Generic.Dictionary[string, string]' type" {
                 Convert-GenericTypeToString -Type ('System.Collections.Generic.Dictionary[string, string]' -as [type]) | Should BeExactly 'System.Collections.Generic.Dictionary[System.String,System.String]'
             }
+        }
+    }
+    
+    Context 'Get-ArmResourceIdParameterValue unit tests' {
+        BeforeAll {
+            . (Join-Path -Path $PSSwaggerModuleInfo.ModuleBase -ChildPath 'Get-ArmResourceIdParameterValue.ps1')
+            $IdTemplate = '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.DocumentDB/databaseAccounts/{accountName}'
+        }
+
+        It 'Get-ArmResourceIdParameterValue with invalid token in ResourceId value' {
+            $Id = '/subscriptions/362fb8f0-95fd-4f9a-9a4a-7cff0459a881/resourceGroups/testresourcegroup/providers/Microsoft.DocumentDB/databaseAccounts/contoso-databaseaccount'
+            $ResourceIdParameterValues = Get-ArmResourceIdParameterValue -Id $Id -IdTemplate $IdTemplate
+            $ResourceIdParameterValues | Should Not BeNullOrEmpty
+
+            $ExpectedResourceIdParameterValues = @{
+                'subscriptionId'    = '362fb8f0-95fd-4f9a-9a4a-7cff0459a881'
+                'resourceGroupName' = 'testresourcegroup'
+                'accountName'       = 'contoso-databaseaccount'
+            }
+            $ExpectedResourceIdParameterValues.GetEnumerator() | ForEach-Object {
+                $ResourceIdParameterValues[$_.Name] | Should BeExactly $_.Value
+            }                
+        }
+
+        It 'Get-ArmResourceIdParameterValue with invalid ResourceId value' {
+            Get-ArmResourceIdParameterValue -Id '/InvalidId' -IdTemplate $IdTemplate -ErrorVariable ev -ErrorAction SilentlyContinue | Should BeNullOrEmpty
+            $ev[0].FullyQualifiedErrorId | Should BeExactly 'InvalidResourceIdValue,Get-ArmResourceIdParameterValue'
+        }
+
+        It 'Get-ArmResourceIdParameterValue with invalid token in ResourceId value' {
+            $Id = '/subscriptions/362fb8f0-95fd-4f9a-9a4a-7cff0459a881/resourceGroupsInvalid/testresourcegroup/providers/Microsoft.DocumentDB/databaseAccounts/contoso-databaseaccount'
+            Get-ArmResourceIdParameterValue -Id $Id -IdTemplate $IdTemplate -ErrorVariable ev -ErrorAction SilentlyContinue | Should BeNullOrEmpty
+            $ev[0].FullyQualifiedErrorId | Should BeExactly 'InvalidResourceIdValue,Get-ArmResourceIdParameterValue'
         }
     }
 }

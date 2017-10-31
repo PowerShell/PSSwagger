@@ -910,6 +910,8 @@ function New-SwaggerSpecDefinitionCommand
     $body = ""
     $DefinitionTypeNamePrefix = "$ModelsNamespace."
     $ParameterSetPropertyString = ""
+    $ValueFromPipelineString = ''
+    $ValueFromPipelineByPropertyNameString = ''
     $parameterDefaultValueOption = ""
 
     $FunctionDetails.ParametersTable.GetEnumerator() | ForEach-Object {
@@ -926,6 +928,7 @@ function New-SwaggerSpecDefinitionCommand
                 $ValidateSetString = $ParameterDetails.ValidateSet
                 $ValidateSetDefinition = $executionContext.InvokeCommand.ExpandString($ValidateSetDefinitionString)
             }
+            $ParameterAliasAttribute = $null
             $paramblock += $executionContext.InvokeCommand.ExpandString($parameterDefString)
 
             $pDescription = $ParameterDetails.Description

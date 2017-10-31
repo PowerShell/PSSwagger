@@ -12,15 +12,15 @@ Import-Module (Join-Path "$PSScriptRoot" "TestUtilities.psm1")
 Describe "Basic API" -Tag ScenarioTest {
     BeforeAll {
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwaggerUtility" | `
-                       Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
+                Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
         Initialize-Test -GeneratedModuleName "Generated.Basic.Module" -GeneratedModuleVersion "0.0.1" -TestApiName "PsSwaggerTestBasic" `
-                        -TestSpecFileName "PsSwaggerTestBasicSpec.json" -TestDataFileName "PsSwaggerTestBasicData.json" `
-                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+            -TestSpecFileName "PsSwaggerTestBasicSpec.json" -TestDataFileName "PsSwaggerTestBasicData.json" `
+            -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
 
         # Import generated module
         Write-Verbose "Importing modules"
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
-                       Join-Path -ChildPath "Generated.Basic.Module")
+                Join-Path -ChildPath "Generated.Basic.Module")
         $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "PsSwaggerTestBasic" -TestRoutesFileName "PsSwaggerTestBasicRoutes.json" -Verbose
         if ($global:PSSwaggerTest_EnableTracing -and $script:EnableTracer) {
             $script:EnableTracer = $false
@@ -45,8 +45,7 @@ Describe "Basic API" -Tag ScenarioTest {
             $ModuleInfo.Author | Should be 'support@swagger.io'
             $ModuleInfo.CopyRight | Should be 'Apache 2.0'
 
-            if($PSVersionTable.PSVersion -ge '5.0.0')
-            {
+            if ($PSVersionTable.PSVersion -ge '5.0.0') {
                 $ModuleInfo.PrivateData.PSData.LicenseUri | Should be 'http://www.apache.org/licenses/LICENSE-2.0.html'
                 $ModuleInfo.PrivateData.PSData.ProjectUri | Should be 'http://www.swagger.io/support'
             }
@@ -61,15 +60,15 @@ Describe "Basic API" -Tag ScenarioTest {
 Describe "All Operations: Basic" -Tag ScenarioTest {
     BeforeAll {
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwaggerUtility" | `
-                       Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
+                Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
         Initialize-Test -GeneratedModuleName "Generated.TypesTest.Module" -GeneratedModuleVersion "0.0.1" -TestApiName "OperationTypes" `
-                        -TestSpecFileName "OperationTypesSpec.json" -TestDataFileName "OperationTypesData.json" `
-                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+            -TestSpecFileName "OperationTypesSpec.json" -TestDataFileName "OperationTypesData.json" `
+            -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
 
         # Import generated module
         Write-Verbose "Importing modules"
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
-                       Join-Path -ChildPath "Generated.TypesTest.Module")
+                Join-Path -ChildPath "Generated.TypesTest.Module")
         
         $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "OperationTypes" -TestMiddlewareFileNames "OperationTypesMiddleware.js" -TestRoutesFileName "OperationTypesRoutes.json"
         if ($global:PSSwaggerTest_EnableTracing -and $script:EnableTracer) {
@@ -125,7 +124,7 @@ Describe "All Operations: Basic" -Tag ScenarioTest {
         }
 
         It "Verify Path level common parameters" {
-            @('Get-CupCake2','New-CupCake2','Remove-CupCake2', 'Set-CupCake2') | ForEach-Object {
+            @('Get-CupCake2', 'New-CupCake2', 'Remove-CupCake2', 'Set-CupCake2') | ForEach-Object {
                 $Command = Get-Command $_
                 $Command.Parameters.ContainsKey('Id') | Should be $true
             }
@@ -140,15 +139,15 @@ Describe "All Operations: Basic" -Tag ScenarioTest {
 Describe "Get/List tests" -Tag ScenarioTest {
     BeforeAll {
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwaggerUtility" | `
-                       Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
+                Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
         Initialize-Test -GeneratedModuleName "Generated.GetList.Module" -GeneratedModuleVersion "0.0.1" -TestApiName "GetListTests" `
-                        -TestSpecFileName "GetListTestsSpec.json" -TestDataFileName "GetListTestsData.json" `
-                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+            -TestSpecFileName "GetListTestsSpec.json" -TestDataFileName "GetListTestsData.json" `
+            -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
 
         # Import generated module
         Write-Verbose "Importing modules"
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
-                       Join-Path -ChildPath "Generated.GetList.Module")
+                Join-Path -ChildPath "Generated.GetList.Module")
 
         $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "GetListTests" -TestRoutesFileName "GetListTestsRoutes.json"
         if ($global:PSSwaggerTest_EnableTracing -and $script:EnableTracer) {
@@ -185,15 +184,15 @@ Describe "Get/List tests" -Tag ScenarioTest {
 Describe "Optional parameter tests" -Tag ScenarioTest {
     BeforeAll {
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwaggerUtility" | `
-                       Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
+                Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
         Initialize-Test -GeneratedModuleName "Generated.Optional.Module" -GeneratedModuleVersion "0.0.2" -TestApiName "OptionalParametersTests" `
-                        -TestSpecFileName "OptionalParametersTestsSpec.json" -TestDataFileName "OptionalParametersTestsData.json" `
-                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+            -TestSpecFileName "OptionalParametersTestsSpec.json" -TestDataFileName "OptionalParametersTestsData.json" `
+            -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
 
         # Import generated module
         Write-Verbose "Importing modules"
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
-                       Join-Path -ChildPath "Generated.Optional.Module")
+                Join-Path -ChildPath "Generated.Optional.Module")
         $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "OptionalParametersTests" -TestRoutesFileName "OptionalParametersTestsRoutes.json"
         if ($global:PSSwaggerTest_EnableTracing -and $script:EnableTracer) {
             $script:EnableTracer = $false
@@ -243,19 +242,19 @@ Describe "Optional parameter tests" -Tag ScenarioTest {
     }
 }
 
-Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
+Describe "ParameterTypes tests" -Tag @('ParameterTypes', 'ScenarioTest') {
     BeforeAll {
         $ModuleName = 'Generated.ParamTypes.Module'        
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwaggerUtility" | `
-                       Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
+                Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
         Initialize-Test -GeneratedModuleName $ModuleName -GeneratedModuleVersion "0.0.2" -TestApiName "ParameterTypes" `
-                        -TestSpecFileName "ParameterTypesSpec.json" -TestDataFileName "ParameterTypesData.json" `
-                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+            -TestSpecFileName "ParameterTypesSpec.json" -TestDataFileName "ParameterTypesData.json" `
+            -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
 
         # Import generated module
         Write-Verbose "Importing modules"
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
-                       Join-Path -ChildPath $ModuleName)
+                Join-Path -ChildPath $ModuleName)
 
         $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "ParameterTypes"
         if ($global:PSSwaggerTest_EnableTracing -and $script:EnableTracer) {
@@ -379,8 +378,8 @@ Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
             $ev | Should BeNullOrEmpty
             
             $CommandNames = @('New-FieldDefinitionObject',
-                              'New-NamespaceNestedTypeObject',
-                              'New-KeyCredentialObject')
+                'New-NamespaceNestedTypeObject',
+                'New-KeyCredentialObject')
             $CommandNames | ForEach-Object {
                 $CommandList.Name -CContains $_ | Should be $True
             }
@@ -414,7 +413,7 @@ Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
             $OperationCommandInfo = Get-Command -Name Get-PathWithEnumDefinitionType -Module $ModuleName
 
             $OperationCommandInfo.Parameters.PolicyNameEnumParameter.ParameterType.ToString() | Should BeExactly 'System.String'
-            @('AppGwSslPolicy20150501', 'AppGwSslPolicy20170401','AppGwSslPolicy20170401S') | ForEach-Object {
+            @('AppGwSslPolicy20150501', 'AppGwSslPolicy20170401', 'AppGwSslPolicy20170401S') | ForEach-Object {
                 $OperationCommandInfo.Parameters.PolicyNameEnumParameter.Attributes.ValidValues -contains $_ | Should Be $true
             }
 
@@ -422,22 +421,22 @@ Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
             $NewObjectCommandInfo = Get-Command -Name New-ApplicationGatewaySslPolicyObject -Module $ModuleName
 
             $NewObjectCommandInfo.Parameters.PolicyType.ParameterType.ToString() | Should BeExactly 'System.String'
-            @('Predefined','Custom') | ForEach-Object {
+            @('Predefined', 'Custom') | ForEach-Object {
                 $NewObjectCommandInfo.Parameters.PolicyType.Attributes.ValidValues -contains $_ | Should Be $true
             }
 
             $NewObjectCommandInfo.Parameters.DisabledSslProtocols.ParameterType.ToString() | Should BeExactly 'System.String[]'
-            @('TLSv1_0','TLSv1_1', 'TLSv1_2') | ForEach-Object {
+            @('TLSv1_0', 'TLSv1_1', 'TLSv1_2') | ForEach-Object {
                 $NewObjectCommandInfo.Parameters.DisabledSslProtocols.Attributes.ValidValues -contains $_ | Should Be $true
             }
 
             $NewObjectCommandInfo.Parameters.PolicyName.ParameterType.ToString() | Should BeExactly 'System.String'
-            @('AppGwSslPolicy20150501', 'AppGwSslPolicy20170401','AppGwSslPolicy20170401S') | ForEach-Object {
+            @('AppGwSslPolicy20150501', 'AppGwSslPolicy20170401', 'AppGwSslPolicy20170401S') | ForEach-Object {
                 $NewObjectCommandInfo.Parameters.PolicyName.Attributes.ValidValues -contains $_ | Should Be $true
             }
 
             $NewObjectCommandInfo.Parameters.MinProtocolVersion.ParameterType.ToString() | Should BeExactly 'System.String'
-            @('TLSv1_0','TLSv1_1', 'TLSv1_2') | ForEach-Object {
+            @('TLSv1_0', 'TLSv1_1', 'TLSv1_2') | ForEach-Object {
                 $NewObjectCommandInfo.Parameters.MinProtocolVersion.Attributes.ValidValues -contains $_ | Should Be $true
             }
         }
@@ -448,18 +447,18 @@ Describe "ParameterTypes tests" -Tag @('ParameterTypes','ScenarioTest') {
     }
 }
 
-Describe "AzureExtensions" -Tag @('AzureExtension','ScenarioTest') {
+Describe "AzureExtensions" -Tag @('AzureExtension', 'ScenarioTest') {
     BeforeAll {
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwaggerUtility" | `
-                       Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
+                Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
         Initialize-Test -GeneratedModuleName "Generated.AzExt.Module" -GeneratedModuleVersion "1.3.3.7" -TestApiName "AzureExtensions" `
-                        -TestSpecFileName "AzureExtensionsSpec.json" -TestDataFileName "AzureExtensionsData.json" `
-                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+            -TestSpecFileName "AzureExtensionsSpec.json" -TestDataFileName "AzureExtensionsData.json" `
+            -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
 
         # Import generated module
         Write-Verbose "Importing modules"
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
-                       Join-Path -ChildPath "Generated.AzExt.Module")
+                Join-Path -ChildPath "Generated.AzExt.Module")
         
         $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "AzureExtensions" -TestRoutesFileName "AzureExtensionsRoutes.json"
         if ($global:PSSwaggerTest_EnableTracing -and $script:EnableTracer) {
@@ -569,7 +568,7 @@ Describe "AzureExtensions" -Tag @('AzureExtension','ScenarioTest') {
     }
 }
 
-Describe "Composite Swagger Tests" -Tag @('Composite','ScenarioTest') {
+Describe "Composite Swagger Tests" -Tag @('Composite', 'ScenarioTest') {
     Context "Module generation for composite swagger specs" {
         It "New-PSSwaggerModule with composite swagger spec" {            
             $ModuleName = 'CompositeSwaggerModule'
@@ -581,12 +580,13 @@ Describe "Composite Swagger Tests" -Tag @('Composite','ScenarioTest') {
             }
 
             Import-Module $PsSwaggerPath -Force
-            if((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
+            if ((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
                 & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -command "& {`$env:PSModulePath=`$env:PSModulePath_Backup;
                     Import-Module (Join-Path `"$PsSwaggerPath`" `"PSSwagger.psd1`") -Force -ArgumentList `$true;
                     New-PSSwaggerModule -SpecificationPath $SwaggerSpecPath -Name $ModuleName -UseAzureCsharpGenerator -Path $Path -NoAssembly -Verbose -ConfirmBootstrap;
                 }"
-            } else {
+            }
+            else {
                 New-PSSwaggerModule -SpecificationPath $SwaggerSpecPath -Name $ModuleName -UseAzureCsharpGenerator -Path $Path -NoAssembly -Verbose -ConfirmBootstrap
             }
         
@@ -626,18 +626,18 @@ Describe "Composite Swagger Tests" -Tag @('Composite','ScenarioTest') {
     }
 }
 
-Describe "AllOfDefinition" -Tag @('AllOf','ScenarioTest')  {
+Describe "AllOfDefinition" -Tag @('AllOf', 'ScenarioTest') {
     BeforeAll {
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwaggerUtility" | `
-                       Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
+                Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
         Initialize-Test -GeneratedModuleName "Generated.AllOfDefinition.Module" -TestApiName "AllOfDefinition" `
-                        -TestSpecFileName "AllOfDefinitionSpec.json"  `
-                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+            -TestSpecFileName "AllOfDefinitionSpec.json"  `
+            -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
 
         # Import generated module
         Write-Verbose "Importing modules"
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
-                       Join-Path -ChildPath "Generated.AllOfDefinition.Module")
+                Join-Path -ChildPath "Generated.AllOfDefinition.Module")
     }
 
     Context "AllOfDefinition" {
@@ -652,34 +652,34 @@ Describe "AllOfDefinition" -Tag @('AllOf','ScenarioTest')  {
     }
 }
 
-Describe "AuthTests" -Tag @('Auth','ScenarioTest') {
+Describe "AuthTests" -Tag @('Auth', 'ScenarioTest') {
     BeforeAll {
         # Generate all auth modules
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwaggerUtility" | `
-                       Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
+                Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
         Initialize-Test -GeneratedModuleName "Generated.BasicAuthTest.Module" -GeneratedModuleVersion "0.0.1" -TestApiName "AuthTests" `
-                        -TestSpecFileName "BasicAuthSpec.json" -TestDataFileName "AuthTestData.json" `
-                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
-         Initialize-Test -GeneratedModuleName "Generated.BasicAuthTestNoChallenge.Module" -GeneratedModuleVersion "0.0.1" -TestApiName "AuthTests" `
-                        -TestSpecFileName "BasicAuthSpecNoChallenge.json" -TestDataFileName "AuthTestData.json" `
-                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+            -TestSpecFileName "BasicAuthSpec.json" -TestDataFileName "AuthTestData.json" `
+            -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+        Initialize-Test -GeneratedModuleName "Generated.BasicAuthTestNoChallenge.Module" -GeneratedModuleVersion "0.0.1" -TestApiName "AuthTests" `
+            -TestSpecFileName "BasicAuthSpecNoChallenge.json" -TestDataFileName "AuthTestData.json" `
+            -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
         Initialize-Test -GeneratedModuleName "Generated.ApiKeyHeaderTest.Module" -GeneratedModuleVersion "0.0.1" -TestApiName "AuthTests" `
-                        -TestSpecFileName "ApiKeyHeaderSpec.json" -TestDataFileName "AuthTestData.json" `
-                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+            -TestSpecFileName "ApiKeyHeaderSpec.json" -TestDataFileName "AuthTestData.json" `
+            -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
         Initialize-Test -GeneratedModuleName "Generated.ApiKeyQueryTest.Module" -GeneratedModuleVersion "0.0.1" -TestApiName "AuthTests" `
-                        -TestSpecFileName "ApiKeyQuerySpec.json" -TestDataFileName "AuthTestData.json" `
-                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+            -TestSpecFileName "ApiKeyQuerySpec.json" -TestDataFileName "AuthTestData.json" `
+            -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
         
         # Import generated modules
         Write-Verbose "Importing modules"
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
-                       Join-Path -ChildPath "Generated.BasicAuthTest.Module")
+                Join-Path -ChildPath "Generated.BasicAuthTest.Module")
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
-                       Join-Path -ChildPath "Generated.BasicAuthTestNoChallenge.Module")
+                Join-Path -ChildPath "Generated.BasicAuthTestNoChallenge.Module")
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
-                       Join-Path -ChildPath "Generated.ApiKeyHeaderTest.Module") -Prefix "ApiKeyHeader"
+                Join-Path -ChildPath "Generated.ApiKeyHeaderTest.Module") -Prefix "ApiKeyHeader"
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
-                       Join-Path -ChildPath "Generated.ApiKeyQueryTest.Module") -Prefix "ApiKeyQuery"
+                Join-Path -ChildPath "Generated.ApiKeyQueryTest.Module") -Prefix "ApiKeyQuery"
 
         if ($global:PSSwaggerTest_EnableTracing -and $script:EnableTracer) {
             $script:EnableTracer = $false
@@ -697,12 +697,12 @@ Describe "AuthTests" -Tag @('Auth','ScenarioTest') {
             # Generate credential
             $username = "username"
             $password = ConvertTo-SecureString "password" -AsPlainText -Force
-            $creds = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $username,$password
+            $creds = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $username, $password
 
             # Run test
             try {
                 $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "AuthTests" -TestMiddlewareFileNames 'AuthTestMiddleware.js' `
-                                              -CustomServerParameters "--auth .\BasicAuth.js" # Contains function to verify a hardcoded basic auth header
+                    -CustomServerParameters "--auth .\BasicAuth.js" # Contains function to verify a hardcoded basic auth header
                 Get-Response -Credential $creds -Property "test"
             }
             finally {
@@ -714,12 +714,12 @@ Describe "AuthTests" -Tag @('Auth','ScenarioTest') {
             # Generate credential
             $username = "username"
             $password = ConvertTo-SecureString "passwordAlt" -AsPlainText -Force
-            $creds = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $username,$password
+            $creds = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $username, $password
 
             # Run test
             try {
                 $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "AuthTests" -TestMiddlewareFileNames 'AuthTestMiddlewareNoChallenge.js' `
-                                              -CustomServerParameters "--auth .\BasicAuthAltCreds.js" # Contains function to verify a hardcoded basic auth header
+                    -CustomServerParameters "--auth .\BasicAuthAltCreds.js" # Contains function to verify a hardcoded basic auth header
                 Get-ResponseUnchallenged -Credential $creds -Property "test"
             }
             finally {
@@ -731,12 +731,12 @@ Describe "AuthTests" -Tag @('Auth','ScenarioTest') {
             # Generate credential
             $username = "username1"
             $password = ConvertTo-SecureString "password" -AsPlainText -Force
-            $creds = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $username,$password
+            $creds = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $username, $password
 
             # Run test
             try {
                 $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "AuthTests" -TestMiddlewareFileNames 'AuthTestMiddleware.js' `
-                                              -CustomServerParameters "--auth .\BasicAuth.js" # Contains function to verify a hardcoded basic auth header
+                    -CustomServerParameters "--auth .\BasicAuth.js" # Contains function to verify a hardcoded basic auth header
                 { Get-Response -Credential $creds -Property "test" } | should throw 'Unauthorized'
             }
             finally {
@@ -748,12 +748,12 @@ Describe "AuthTests" -Tag @('Auth','ScenarioTest') {
             # Generate credential
             $username = "username"
             $password = ConvertTo-SecureString "password1" -AsPlainText -Force
-            $creds = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $username,$password
+            $creds = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $username, $password
 
             # Run test
             try {
                 $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "AuthTests" -TestMiddlewareFileNames 'AuthTestMiddleware.js' `
-                                              -CustomServerParameters "--auth .\BasicAuth.js" # Contains function to verify a hardcoded basic auth header
+                    -CustomServerParameters "--auth .\BasicAuth.js" # Contains function to verify a hardcoded basic auth header
                 { Get-Response -Credential $creds -Property "test" } | should throw 'Unauthorized'
             }
             finally {
@@ -764,7 +764,7 @@ Describe "AuthTests" -Tag @('Auth','ScenarioTest') {
         It "Allows overriding security requirement at operation level" {
             try {
                 $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "AuthTests" -TestMiddlewareFileNames 'AuthTestMiddleware.js' `
-                                              -CustomServerParameters "--auth .\ApiKeyWithQuery.js" # Contains function to verify a hardcoded API key in the query
+                    -CustomServerParameters "--auth .\ApiKeyWithQuery.js" # Contains function to verify a hardcoded API key in the query
                 Get-ResponseWithApiKey -APIKey "abc123" -Property "test"
             }
             finally {
@@ -787,7 +787,7 @@ Describe "AuthTests" -Tag @('Auth','ScenarioTest') {
         It "Succeeds with key" {
             try {
                 $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "AuthTests" -TestMiddlewareFileNames 'AuthTestMiddleware.js' `
-                                              -CustomServerParameters "--auth .\ApiKeyWithHeader.js" # Contains function to verify a hardcoded API key in the header
+                    -CustomServerParameters "--auth .\ApiKeyWithHeader.js" # Contains function to verify a hardcoded API key in the header
                 Get-ApiKeyHeaderResponse -APIKey "abc123" -Property "test"
             }
             finally {
@@ -798,7 +798,7 @@ Describe "AuthTests" -Tag @('Auth','ScenarioTest') {
         It "Fails with incorrect key" {
             try {
                 $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "AuthTests" -TestMiddlewareFileNames 'AuthTestMiddleware.js' `
-                                              -CustomServerParameters "--auth .\ApiKeyWithHeader.js" # Contains function to verify a hardcoded API key in the header
+                    -CustomServerParameters "--auth .\ApiKeyWithHeader.js" # Contains function to verify a hardcoded API key in the header
                 { Get-ApiKeyHeaderResponse -APIKey "abc12345" -Property "test" } | should throw 'Unauthorized'
             }
             finally {
@@ -811,7 +811,7 @@ Describe "AuthTests" -Tag @('Auth','ScenarioTest') {
         It "Succeeds with key" {
             try {
                 $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "AuthTests" -TestMiddlewareFileNames 'AuthTestMiddleware.js' `
-                                              -CustomServerParameters "--auth .\ApiKeyWithQuery.js" # Contains function to verify a hardcoded API key in the query
+                    -CustomServerParameters "--auth .\ApiKeyWithQuery.js" # Contains function to verify a hardcoded API key in the query
                 Get-ApiKeyQueryResponse -APIKey "abc123" -Property "test"
             }
             finally {
@@ -822,7 +822,7 @@ Describe "AuthTests" -Tag @('Auth','ScenarioTest') {
         It "Fails with incorrect key" {
             try {
                 $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "AuthTests" -TestMiddlewareFileNames 'AuthTestMiddleware.js' `
-                                              -CustomServerParameters "--auth .\ApiKeyWithQuery.js" # Contains function to verify a hardcoded API key in the query
+                    -CustomServerParameters "--auth .\ApiKeyWithQuery.js" # Contains function to verify a hardcoded API key in the query
                 { Get-ApiKeyQueryResponse -APIKey "abc12345" -Property "test" } | should throw 'Unauthorized'
             }
             finally {
@@ -832,18 +832,18 @@ Describe "AuthTests" -Tag @('Auth','ScenarioTest') {
     }
 }
 
-Describe "PSMetadataTests" -Tag @('PSMetadata','ScenarioTest')  {
+Describe "PSMetadataTests" -Tag @('PSMetadata', 'ScenarioTest') {
     BeforeAll {
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwaggerUtility" | `
-                       Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
+                Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
         Initialize-Test -GeneratedModuleName "Generated.PSMetadataTest.Module" -TestApiName "psmetadatatest" `
-                        -TestSpecFileName "PsMetadataModuleTest.json"  `
-                        -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+            -TestSpecFileName "PsMetadataModuleTest.json"  `
+            -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
 
         # Import generated module
         Write-Verbose "Importing modules"
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
-                       Join-Path -ChildPath "Generated.PSMetadataTest.Module")
+                Join-Path -ChildPath "Generated.PSMetadataTest.Module")
         if ($global:PSSwaggerTest_EnableTracing -and $script:EnableTracer) {
             $script:EnableTracer = $false
             {
@@ -863,7 +863,7 @@ Describe "PSMetadataTests" -Tag @('PSMetadata','ScenarioTest')  {
     }
 }
 
-Describe "Header scenario tests" -Tag @('Header','ScenarioTest')  {
+Describe "Header scenario tests" -Tag @('Header', 'ScenarioTest') {
     BeforeAll {
         $PsSwaggerPath = Split-Path -Path $PSScriptRoot -Parent | Join-Path -ChildPath "PSSwagger"
         Import-Module $PsSwaggerPath -Force
@@ -881,12 +881,13 @@ Describe "Header scenario tests" -Tag @('Header','ScenarioTest')  {
         $ModuleVersion = '1.1.1.1'
         $GeneratedModuleVersionPath = Join-Path -Path $GeneratedModuleBase -ChildPath $ModuleVersion
         $Header = '__Custom_HEADER_Content__'
-        if((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
+        if ((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
             & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\PowerShell.exe" -command "& {`$env:PSModulePath=`$env:PSModulePath_Backup;
                 Import-Module '$PsSwaggerPath' -Force -ArgumentList `$true;
                 New-PSSwaggerModule -SpecificationPath '$SwaggerSpecPath' -Name $ModuleName -Version '$ModuleVersion' -UseAzureCsharpGenerator -Path '$GeneratedPath' -NoAssembly -Verbose -ConfirmBootstrap -Header '$Header';
             }"
-        } else {
+        }
+        else {
             New-PSSwaggerModule -SpecificationPath $SwaggerSpecPath -Name $ModuleName -Version $ModuleVersion -UseAzureCsharpGenerator -Path $GeneratedPath -NoAssembly -Verbose -ConfirmBootstrap -Header $Header
         }
 
@@ -902,12 +903,13 @@ Describe "Header scenario tests" -Tag @('Header','ScenarioTest')  {
     It "Validate header comment from x-ms-code-generation-settings in the PSSwagger generated files" {
         $ModuleVersion = '2.2.2.2'
         $GeneratedModuleVersionPath = Join-Path -Path $GeneratedModuleBase -ChildPath $ModuleVersion
-        if((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
+        if ((Get-Variable -Name PSEdition -ErrorAction Ignore) -and ('Core' -eq $PSEdition)) {
             & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\PowerShell.exe" -command "& {`$env:PSModulePath=`$env:PSModulePath_Backup;
                 Import-Module '$PsSwaggerPath' -Force -ArgumentList `$true;
                 New-PSSwaggerModule -SpecificationPath '$SwaggerSpecPath' -Name $ModuleName -Version '$ModuleVersion' -UseAzureCsharpGenerator -Path '$GeneratedPath' -NoAssembly -Verbose -ConfirmBootstrap;
             }"
-        } else {
+        }
+        else {
             New-PSSwaggerModule -SpecificationPath $SwaggerSpecPath -Name $ModuleName -Version $ModuleVersion -UseAzureCsharpGenerator -Path $GeneratedPath -NoAssembly -Verbose -ConfirmBootstrap
         }
         
@@ -922,7 +924,7 @@ Describe "Header scenario tests" -Tag @('Header','ScenarioTest')  {
     }
 }
 
-Describe "Pre-compiled SDK Assmebly scenario tests" -Tag @('SDKAssembly','ScenarioTest')  {    
+Describe "Pre-compiled SDK Assmebly scenario tests" -Tag @('SDKAssembly', 'ScenarioTest') {    
     BeforeAll {
         $PsSwaggerPath = Split-Path -Path $PSScriptRoot -Parent | Join-Path -ChildPath "PSSwagger"
         Import-Module $PsSwaggerPath -Force
@@ -1130,7 +1132,7 @@ Describe "Pre-compiled SDK Assmebly scenario tests" -Tag @('SDKAssembly','Scenar
     }
 }
 
-Describe "Output type scenario tests" -Tag @('OutputType','ScenarioTest')  {
+Describe "Output type scenario tests" -Tag @('OutputType', 'ScenarioTest') {
     BeforeAll {
         $ModuleName = 'Generated.AzExt.OutputType.Module'
         $SwaggerSpecPath = Join-Path -Path $PSScriptRoot -ChildPath 'Data' | Join-Path -ChildPath 'AzureExtensions' | Join-Path -ChildPath 'AzureExtensionsSpec.json'
@@ -1159,7 +1161,7 @@ Describe "Output type scenario tests" -Tag @('OutputType','ScenarioTest')  {
     }
 }
 
-Describe 'New-PSSwaggerModule cmdlet parameter tests' -Tag @('CmdletParameterTest','ScenarioTest')  {
+Describe 'New-PSSwaggerModule cmdlet parameter tests' -Tag @('CmdletParameterTest', 'ScenarioTest') {
     BeforeAll {
         $ModuleName = 'Generated.Module.NoVersionFolder'
         $SwaggerSpecPath = Join-Path -Path $PSScriptRoot -ChildPath 'Data' | Join-Path -ChildPath 'AzureExtensions' | Join-Path -ChildPath 'AzureExtensionsSpec.json'
@@ -1184,5 +1186,135 @@ Describe 'New-PSSwaggerModule cmdlet parameter tests' -Tag @('CmdletParameterTes
 
         $ModuleInfo = Import-Module $GeneratedModuleBase -Force -PassThru
         $ModuleInfo.ModuleBase | Should Be $GeneratedModuleBase
+    }
+}
+
+Describe 'ResourceId and InputObject parameter set tests' -Tag @('InputObject', 'ResourceId', 'ScenarioTest') {
+    BeforeAll {
+        $ModuleName = 'Generated.Module.ArmResourceIdAndInputObject'
+        $SwaggerSpecPath = Join-Path -Path $PSScriptRoot -ChildPath 'Data' | Join-Path -ChildPath 'AzureSpecs' | Join-Path -ChildPath 'cosmos-db.json'
+        $GeneratedPath = Join-Path -Path $PSScriptRoot -ChildPath 'Generated'
+        $GeneratedModuleBase = Join-Path -Path $GeneratedPath -ChildPath $ModuleName
+        if (Test-Path -Path $GeneratedModuleBase -PathType Container) {
+            Remove-Item -Path $GeneratedModuleBase -Recurse -Force
+        }
+
+        $params = @{
+            SpecificationPath       = $SwaggerSpecPath
+            Name                    = $ModuleName
+            UseAzureCsharpGenerator = $true
+            Path                    = $GeneratedPath
+            ConfirmBootstrap        = $true
+            Verbose                 = $true
+        }
+        Invoke-NewPSSwaggerModuleCommand -NewPSSwaggerModuleParameters $params
+        Import-Module $GeneratedModuleBase -Force
+
+        $ExpectedCommandDetails = @{
+            'Get-DatabaseAccount'    = [ordered]@{
+                # Total parameter count includes the PowerShell default/common parameters.
+                ParameterSetsParameterCount = [ordered]@{
+                    'DatabaseAccounts_List'                = 11
+                    'DatabaseAccounts_ListByResourceGroup' = 12
+                    'DatabaseAccounts_Get'                 = 13
+                    'ResourceId_DatabaseAccounts_Get'      = 12
+                    'InputObject_DatabaseAccounts_Get'     = 12
+                }
+                InputObjectParameterSetName = 'InputObject_DatabaseAccounts_Get'
+                ResourceIdParameterSetName  = 'ResourceId_DatabaseAccounts_Get'
+                AccountNameParameterSetName = 'DatabaseAccounts_Get'
+            }
+
+            'New-DatabaseAccount'    = [ordered]@{
+                ParameterSetsParameterCount = [ordered]@{
+                    'DatabaseAccounts_CreateOrUpdate'             = 15
+                    'ResourceId_DatabaseAccounts_CreateOrUpdate'  = 14
+                    'InputObject_DatabaseAccounts_CreateOrUpdate' = 14
+                }
+                InputObjectParameterSetName = 'InputObject_DatabaseAccounts_CreateOrUpdate'
+                ResourceIdParameterSetName  = 'ResourceId_DatabaseAccounts_CreateOrUpdate'
+                AccountNameParameterSetName = 'DatabaseAccounts_CreateOrUpdate'
+            }
+
+            'Set-DatabaseAccount'    = [ordered]@{
+                ParameterSetsParameterCount = [ordered]@{
+                    'DatabaseAccounts_CreateOrUpdate'             = 15
+                    'ResourceId_DatabaseAccounts_CreateOrUpdate'  = 14
+                    'InputObject_DatabaseAccounts_CreateOrUpdate' = 14
+                }
+                InputObjectParameterSetName = 'InputObject_DatabaseAccounts_CreateOrUpdate'
+                ResourceIdParameterSetName  = 'ResourceId_DatabaseAccounts_CreateOrUpdate'
+                AccountNameParameterSetName = 'DatabaseAccounts_CreateOrUpdate'
+            }
+
+            'Update-DatabaseAccount' = [ordered]@{
+                ParameterSetsParameterCount = [ordered]@{
+                    'DatabaseAccounts_Patch'             = 15
+                    'ResourceId_DatabaseAccounts_Patch'  = 14
+                    'InputObject_DatabaseAccounts_Patch' = 14
+                }
+                InputObjectParameterSetName = 'InputObject_DatabaseAccounts_Patch'
+                ResourceIdParameterSetName  = 'ResourceId_DatabaseAccounts_Patch'
+                AccountNameParameterSetName = 'DatabaseAccounts_Patch'
+            }
+
+            'Remove-DatabaseAccount' = [ordered]@{
+                ParameterSetsParameterCount = [ordered]@{
+                    'DatabaseAccounts_Delete'             = 14
+                    'ResourceId_DatabaseAccounts_Delete'  = 13
+                    'InputObject_DatabaseAccounts_Delete' = 13
+                }
+                InputObjectParameterSetName = 'InputObject_DatabaseAccounts_Delete'
+                ResourceIdParameterSetName  = 'ResourceId_DatabaseAccounts_Delete'
+                AccountNameParameterSetName = 'DatabaseAccounts_Delete'
+            }
+        }
+    }
+
+    $ExpectedCommandDetails.GetEnumerator() | ForEach-Object {
+        $CmdletName = $_.Name
+        $CmdletDetails = $_.Value
+        $ParameterSetsParameterCount = $CmdletDetails.ParameterSetsParameterCount
+        $InputObjectParameterSetName = $CmdletDetails.InputObjectParameterSetName
+        $ResourceIdParameterSetName = $CmdletDetails.ResourceIdParameterSetName
+        $AccountNameParameterSetName = $CmdletDetails.AccountNameParameterSetName
+
+        It "Test ResourceName parameter and InputObject & ResourceId parameter sets of '$CmdletName' cmdlet" {
+            $CommandInfo = Get-Command -Module $ModuleName -Name $CmdletName
+
+            $CommandInfo.ParameterSets.Count | Should Be $ParameterSetsParameterCount.Keys.Count
+            
+            $ParameterSetsParameterCount.GetEnumerator() | ForEach-Object {
+                $CommandInfo.ParameterSets.Name -contains $_.Name | Should Be $true
+            }
+            $CommandInfo.ParameterSets | ForEach-Object {
+                $ParameterSetsParameterCount[$_.Name] | Should Be $_.Parameters.Count
+            }
+            
+            # InputObject parameter
+            $CommandInfo.Parameters.Keys -contains 'InputObject' | Should Be $true
+            $CommandInfo.Parameters.InputObject.ParameterType.ToString() | Should BeExactly 'Microsoft.PowerShell.Generated.Module.ArmResourceIdAndInputObject.v001.Models.DatabaseAccount'
+            $CommandInfo.Parameters.InputObject.ParameterSets.Keys.Count | Should Be 1
+            $CommandInfo.Parameters.InputObject.ParameterSets.Keys -contains $InputObjectParameterSetName | Should Be $true
+            $CommandInfo.Parameters.InputObject.Attributes.ValueFromPipeline | Should Be $true
+            $CommandInfo.Parameters.InputObject.Attributes.ValueFromPipelineByPropertyName | Should Be $false
+
+            # ResourceId parameter
+            $CommandInfo.Parameters.Keys -contains 'ResourceId' | Should Be $true
+            $CommandInfo.Parameters.ResourceId.ParameterType.ToString() | Should BeExactly 'System.String'
+            $CommandInfo.Parameters.ResourceId.ParameterSets.Keys.Count | Should Be 1
+            $CommandInfo.Parameters.ResourceId.ParameterSets.Keys -contains $ResourceIdParameterSetName | Should Be $true
+            $CommandInfo.Parameters.ResourceId.Attributes.ValueFromPipeline | Should Be $false
+            $CommandInfo.Parameters.ResourceId.Attributes.ValueFromPipelineByPropertyName | Should Be $true
+
+            # Name parameter with AccountName alias
+            $CommandInfo.Parameters.Keys -contains 'Name' | Should Be $true
+            $CommandInfo.Parameters.Name.ParameterType.ToString() | Should BeExactly 'System.String'
+            $CommandInfo.Parameters.Name.ParameterSets.Keys.Count | Should Be 1
+            $CommandInfo.Parameters.Name.ParameterSets.Keys -contains $AccountNameParameterSetName | Should Be $true
+            $CommandInfo.Parameters.Name.Attributes.ValueFromPipeline | Should Be $false
+            $CommandInfo.Parameters.Name.Attributes.ValueFromPipelineByPropertyName | Should Be $false
+            $CommandInfo.Parameters.Name.Aliases -contains 'AccountName' | Should Be $true
+        }
     }
 }

@@ -28,17 +28,18 @@ New-PSSwaggerModule -SpecificationPath <String> -Path <String> -AssemblyFileName
 
 ### SdkAssemblyWithSpecificationUri
 ```
-New-PSSwaggerModule -SpecificationUri <Uri> [-Credential <PSCredential>] [-UseDefaultCredential] -Path <String> -AssemblyFileName <String>
- [-ClientTypeName <String>] [-ModelsName <String>] -Name <String> [-Version <Version>] [-NoVersionFolder]
- [-DefaultCommandPrefix <String>] [-Header <String[]>] [-UseAzureCsharpGenerator]
+New-PSSwaggerModule -SpecificationUri <Uri> [-Credential <PSCredential>] [-UseDefaultCredential] -Path <String>
+ -AssemblyFileName <String> [-ClientTypeName <String>] [-ModelsName <String>] -Name <String>
+ [-Version <Version>] [-NoVersionFolder] [-DefaultCommandPrefix <String>] [-Header <String[]>]
+ [-UseAzureCsharpGenerator]
 ```
 
 ### SpecificationUri
 ```
-New-PSSwaggerModule -SpecificationUri <Uri> [-Credential <PSCredential>] [-UseDefaultCredential] -Path <String> -Name <String> [-Version <Version>]
- [-NoVersionFolder] [-DefaultCommandPrefix <String>] [-Header <String[]>] [-UseAzureCsharpGenerator]
- [-NoAssembly] [-PowerShellCorePath <String>] [-IncludeCoreFxAssembly] [-InstallToolsForAllUsers] [-TestBuild]
- [-SymbolPath <String>] [-ConfirmBootstrap]
+New-PSSwaggerModule -SpecificationUri <Uri> [-Credential <PSCredential>] [-UseDefaultCredential] -Path <String>
+ -Name <String> [-Version <Version>] [-NoVersionFolder] [-DefaultCommandPrefix <String>] [-Header <String[]>]
+ [-UseAzureCsharpGenerator] [-NoAssembly] [-PowerShellCorePath <String>] [-IncludeCoreFxAssembly]
+ [-InstallToolsForAllUsers] [-TestBuild] [-SymbolPath <String>] [-ConfirmBootstrap]
 ```
 
 ## DESCRIPTION
@@ -93,7 +94,8 @@ Accept wildcard characters: False
 ```
 
 ### -Credential
-Credentials to use when the SpecificationUri requires authentification. Will override -UseDefaultCredential when both are specified at the same time.
+Credential to use when the SpecificationUri requires authentication.
+It will override -UseDefaultCredential when both are specified at the same time.
 
 ```yaml
 Type: PSCredential
@@ -107,9 +109,9 @@ Accept pipeline input: False
 Accept wildcard characters: False
 ```
 
-
 ### -UseDefaultCredential
-Use default credentials to download the SpecificationUri. Overridden by -Credential when both are specified at the same time.
+Use default credentials to download the SpecificationUri.
+Overridden by -Credential when both are specified at the same time.
 
 ```yaml
 Type: SwitchParameter
@@ -141,7 +143,7 @@ Accept wildcard characters: False
 ### -AssemblyFileName
 File name of the pre-compiled SDK assembly.
 This assembly along with its dependencies should be available in '.\ref\fullclr\' folder under the target module version base path ($Path\$Name\$Version\\).
-If your generated module needs to work on PowerShell Core, place the coreclr assembly along with its depdencies under '.\ref\coreclr\' folder under the target module version base path ($Path\$Name\$Version\\).
+If your generated module needs to work on PowerShell Core, place the coreclr assembly along with its dependencies under '.\ref\coreclr\' folder under the target module version base path ($Path\$Name\$Version\\).
 For FullClr, the specified assembly should be available at "$Path\$Name\$Version\ref\fullclr\$AssemblyFileName".
 For CoreClr, the specified assembly should be available at "$Path\$Name\$Version\ref\coreclr\$AssemblyFileName".
 
@@ -280,6 +282,13 @@ Accept wildcard characters: False
 ### -UseAzureCsharpGenerator
 Switch to specify whether AzureCsharp code generator is required.
 By default, this command uses CSharp code generator.
+
+When this switch is specified and the resource id follows the guidelines of Azure Resource operations
+- The following additional parameter sets will be generated
+  - InputObject parameter set with the same object type returned by Get.
+Supports piping from Get operarion to action cmdlets.
+  - ResourceId parameter set which splits the resource id into component parts (supports piping from generic cmdlets).
+- Parameter name of Azure resource name parameter will be generated as 'Name' and the actual resource name parameter from the resource id will be added as an alias.
 
 ```yaml
 Type: SwitchParameter

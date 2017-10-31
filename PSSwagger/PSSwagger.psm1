@@ -47,12 +47,16 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwa
     Uri to a Swagger based JSON spec.
 
 .PARAMETER Credential
-    Credentials needed when SpecificationUri requires authentification.
+    Credential to use when the SpecificationUri requires authentication.
+    It will override -UseDefaultCredential when both are specified at the same time.
+
+.PARAMETER UseDefaultCredential
+    Use default credentials to download the SpecificationUri. Overridden by -Credential when both are specified at the same time.
 
 .PARAMETER  AssemblyFileName
     File name of the pre-compiled SDK assembly.
     This assembly along with its dependencies should be available in '.\ref\fullclr\' folder under the target module version base path ($Path\$Name\$Version\).
-    If your generated module needs to work on PowerShell Core, place the coreclr assembly along with its depdencies under '.\ref\coreclr\' folder under the target module version base path ($Path\$Name\$Version\).
+    If your generated module needs to work on PowerShell Core, place the coreclr assembly along with its dependencies under '.\ref\coreclr\' folder under the target module version base path ($Path\$Name\$Version\).
     For FullClr, the specified assembly should be available at "$Path\$Name\$Version\ref\fullclr\$AssemblyFileName".
     For CoreClr, the specified assembly should be available at "$Path\$Name\$Version\ref\coreclr\$AssemblyFileName".
 
@@ -117,8 +121,15 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwa
     Automatically consent to downloading nuget.exe or NuGet packages as required.
 
 .PARAMETER  UseAzureCsharpGenerator
-    Switch to specify whether AzureCsharp code generator is required. By default, this command uses CSharp code generator.
+    Switch to specify whether AzureCsharp code generator is required.
+    By default, this command uses CSharp code generator.
 
+    When this switch is specified and the resource id follows the guidelines of Azure Resource operations
+    - The following additional parameter sets will be generated
+      - InputObject parameter set with the same object type returned by Get. Supports piping from Get operarion to action cmdlets.
+      - ResourceId parameter set which splits the resource id into component parts (supports piping from generic cmdlets).
+    - Parameter name of Azure resource name parameter will be generated as 'Name' and the actual resource name parameter from the resource id will be added as an alias.
+    
 .INPUTS
 
 .OUTPUTS
@@ -639,6 +650,7 @@ function New-PSSwaggerModule {
         $CopyFilesMap['New-ArmServiceClient.ps1'] = 'New-ServiceClient.ps1'
         $CopyFilesMap['Test-FullRequirements.ps1'] = 'Test-FullRequirements.ps1'
         $CopyFilesMap['Test-CoreRequirements.ps1'] = 'Test-CoreRequirements.ps1'
+        $CopyFilesMap['Get-ArmResourceIdParameterValue.ps1'] = 'Get-ArmResourceIdParameterValue.ps1'
     }
     else {
         $CopyFilesMap['New-ServiceClient.ps1'] = 'New-ServiceClient.ps1'        

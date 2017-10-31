@@ -81,6 +81,18 @@ function Get-SwaggerSpecPathInfo
         Get-PathParamInfo @GetPathParamInfo_params
     }
 
+    $ResourceIdAndInputObjectDetails = $null
+    if($UseAzureCsharpGenerator) {
+        $GetResourceIdParameters_params = @{
+            JsonPathItemObject = $JsonPathItemObject
+            ResourceId         = $EndpointRelativePath
+            Namespace          = $SwaggerDict['Info'].NameSpace
+            Models             = $SwaggerDict['Info'].Models
+            DefinitionList     = $swaggerDict['Definitions']
+        }
+        $ResourceIdAndInputObjectDetails = Get-AzureResourceIdParameters @GetResourceIdParameters_params
+    }
+
     $JsonPathItemObject.value.PSObject.Properties | ForEach-Object {
         $longRunningOperation = $false
         $operationType = $_.Name
@@ -204,9 +216,25 @@ function Get-SwaggerSpecPathInfo
                 # Priority for parameter sets with mandatory parameters starts at 100
                 $Priority = 100
 
+                # Get Name parameter details, if exists.
+                # If Name parameter is already available, ResourceName parameter name will not be changed.
+                $NameParameterDetails = $ParametersTable.GetEnumerator() | Foreach-Object {
+                    if ($_.Value.Name -eq 'Name') {
+                        $_.Value
+                    }
+                }
+                    
                 $ParametersTable.GetEnumerator() | ForEach-Object {
                     if($_.Value.ContainsKey('Mandatory') -and $_.Value.Mandatory -eq '$true') {
                         $Priority++
+                    }
+
+                    # Add alias for the resource name parameter.
+                    if($ResourceIdAndInputObjectDetails -and
+                       -not $NameParameterDetails -and
+                       ($_.Value.Name -ne 'Name') -and
+                       ($_.Value.Name -eq $ResourceIdAndInputObjectDetails.ResourceName)) {
+                        $_.Value['Alias'] = 'Name'
                     }
                 }
 
@@ -221,6 +249,7 @@ function Get-SwaggerSpecPathInfo
                 Synopsis             = $FunctionSynopsis
                 ParameterDetails     = $ParametersTable
                 Responses            = $responses
+                ParameterSetName     = $operationId
                 OperationId          = $operationId
                 OperationType        = $operationType
                 EndpointRelativePath = $EndpointRelativePath
@@ -246,6 +275,68 @@ function Get-SwaggerSpecPathInfo
                     $ParameterSetDetail['UseOperationsSuffix'] = $true
                 }
             }
+            
+            $InputObjectParameterSetDetail = $null
+            $ResourceIdParameterSetDetail = $null
+            if($ResourceIdAndInputObjectDetails) {
+                # InputObject parameterset
+                $InputObjectParameterDetails = @{
+                    Name                  = 'InputObject'
+                    Type                  = $ResourceIdAndInputObjectDetails.InputObjectParameterType
+                    ValidateSet           = ''
+                    Mandatory             = '$true'
+                    Description           = "The input object of type $($ResourceIdAndInputObjectDetails.InputObjectParameterType)."
+                    IsParameter           = $true
+                    OriginalParameterName = 'InputObject'
+                    FlattenOnPSCmdlet     = $false
+                    ValueFromPipeline     = $true
+                }
+                $InputObjectParamSetParameterDetails = @{ 0 = $InputObjectParameterDetails }
+                $index = 1
+                $ClonedParameterSetDetail = $ParameterSetDetail.Clone()
+                $ClonedParameterSetDetail.ParameterDetails.GetEnumerator() | ForEach-Object {
+                    $paramDetails = $_.Value
+                    if($ResourceIdAndInputObjectDetails.ResourceIdParameters -notcontains $paramDetails.Name) {
+                        $InputObjectParamSetParameterDetails[$index++] = $paramDetails
+                    }
+                }
+                $ClonedParameterSetDetail.ParameterDetails = $InputObjectParamSetParameterDetails
+                $ClonedParameterSetDetail.Priority += 1
+                $ClonedParameterSetDetail.ParameterSetName = "InputObject_$($ClonedParameterSetDetail.ParameterSetName)"
+                $InputObjectParameterSetDetail = $ClonedParameterSetDetail
+
+                # ResourceId parameterset
+                $ResourceIdParameterDetails = @{
+                    Name                            = 'ResourceId'
+                    Type                            = 'System.String'
+                    ValidateSet                     = ''
+                    Mandatory                       = '$true'
+                    Description                     = 'The resource id.'
+                    IsParameter                     = $true
+                    OriginalParameterName           = 'ResourceId'
+                    FlattenOnPSCmdlet               = $false
+                    ValueFromPipelineByPropertyName = $true
+                }
+                $ResourceIdParamSetParameterDetails = @{ 0 = $ResourceIdParameterDetails }
+                $index = 1
+                $ClonedParameterSetDetail = $ParameterSetDetail.Clone()
+                $ClonedParameterSetDetail.ParameterDetails.GetEnumerator() | ForEach-Object {
+                    $paramDetails = $_.Value
+                    if($ResourceIdAndInputObjectDetails.ResourceIdParameters -notcontains $paramDetails.Name) {
+                        $ResourceIdParamSetParameterDetails[$index++] = $paramDetails
+                    }
+                }
+                $ClonedParameterSetDetail.ParameterDetails = $ResourceIdParamSetParameterDetails
+                $ClonedParameterSetDetail.Priority += 2
+                $ClonedParameterSetDetail.ParameterSetName = "ResourceId_$($ClonedParameterSetDetail.ParameterSetName)"
+                $ResourceIdParameterSetDetail = $ClonedParameterSetDetail
+
+                $ParameterSetDetail['ClonedParameterSetNames'] = @(
+                    "InputObject_$($ParameterSetDetail.ParameterSetName)",
+                    "ResourceId_$($ParameterSetDetail.ParameterSetName)"
+                )
+                $ParameterSetDetail['ResourceIdParameters'] = $ResourceIdAndInputObjectDetails.ResourceIdParameters
+            }
 
             $commandNames | ForEach-Object {
                 $FunctionDetails = @{}
@@ -266,6 +357,13 @@ function Get-SwaggerSpecPathInfo
                 } 
 
                 $ParameterSetDetails += $ParameterSetDetail
+                if($InputObjectParameterSetDetail) {
+                    $ParameterSetDetails += $InputObjectParameterSetDetail
+                }
+                if($ResourceIdParameterSetDetail) {
+                    $ParameterSetDetails += $ResourceIdParameterSetDetail
+                }
+    
                 $FunctionDetails['ParameterSetDetails'] = $ParameterSetDetails
                 $PathFunctionDetails[$_.name] = $FunctionDetails
             }
@@ -359,7 +457,7 @@ function Add-UniqueParameter {
 
         [Parameter(Mandatory=$true)]
         [string]
-        $OperationId,
+        $ParameterSetName,
 
         [Parameter(Mandatory=$true)]
         [hashtable]
@@ -383,14 +481,14 @@ function Add-UniqueParameter {
             $parametersToAdd[$parameterName] = @{
                 # We can grab details like Type, Name, ValidateSet from any of the parameter definitions
                 Details = $CandidateParameterDetails
-                ParameterSetInfo = @{$OperationId = @{
-                    Name = $OperationId
+                ParameterSetInfo = @{$ParameterSetName = @{
+                    Name = $ParameterSetName
                     Mandatory = $CandidateParameterDetails.Mandatory
                 }}
             }
         } else {
-            $parametersToAdd[$parameterName].ParameterSetInfo[$OperationId] = @{
-                                                                        Name = $OperationId
+            $parametersToAdd[$parameterName].ParameterSetInfo[$ParameterSetName] = @{
+                                                                        Name = $ParameterSetName
                                                                         Mandatory = $CandidateParameterDetails.Mandatory
                                                                     }
         }
@@ -537,7 +635,7 @@ function New-SwaggerPath
             if ($parameterRequiresAdding) {
                 $AddUniqueParameter_params = @{
                     ParameterDetails = $parameterDetails
-                    OperationId = $parameterSetDetail.OperationId
+                    ParameterSetName = $parameterSetDetail.ParameterSetName
                     ParametersToAdd = $parametersToAdd
                     ParameterHitCount = $parameterHitCount
                 }
@@ -761,15 +859,15 @@ function New-SwaggerPath
     foreach ($parameterSetDetail in $parameterSetDetails) {
         # Add parameter sets to paging parameter sets
         if ($topParameterToAdd -and $parameterSetDetail.ContainsKey('x-ms-pageable') -and $parameterSetDetail.'x-ms-pageable' -and (-not $isNextPageOperation)) {
-            $topParameterToAdd.ParameterSetInfo[$parameterSetDetail.OperationId] = @{
-                Name = $parameterSetDetail.OperationId
+            $topParameterToAdd.ParameterSetInfo[$parameterSetDetail.ParameterSetName] = @{
+                Name = $parameterSetDetail.ParameterSetName
                 Mandatory = '$false'
             }
         }
 
         if ($skipParameterToAdd -and $parameterSetDetail.ContainsKey('x-ms-pageable') -and $parameterSetDetail.'x-ms-pageable' -and (-not $isNextPageOperation)) {
-            $skipParameterToAdd.ParameterSetInfo[$parameterSetDetail.OperationId] = @{
-                Name = $parameterSetDetail.OperationId
+            $skipParameterToAdd.ParameterSetInfo[$parameterSetDetail.ParameterSetName] = @{
+                Name = $parameterSetDetail.ParameterSetName
                 Mandatory = '$false'
             }
         }
@@ -798,7 +896,7 @@ function New-SwaggerPath
             foreach ($additionalParameter in $securityParametersToAdd) {
                 if ($parameterDetails.Name -eq $additionalParameter.Parameter.Details.Name) {
                     $additionalParameter.IsConflictingWithOperationParameter = $true
-                    Write-Warning -Message ($LocalizedData.ParameterConflictAndResult -f ($additionalParameter.Parameter.Details.Name, $commandName, $parameterSetDetail.OperationId, $LocalizedData.CredentialParameterNotSupported))
+                    Write-Warning -Message ($LocalizedData.ParameterConflictAndResult -f ($additionalParameter.Parameter.Details.Name, $commandName, $parameterSetDetail.ParameterSetName, $LocalizedData.CredentialParameterNotSupported))
                 }
             }
             
@@ -855,19 +953,19 @@ function New-SwaggerPath
         # Pick the highest priority set among $nonUniqueParameterSets, but really it doesn't matter, cause...
         # Print warning that this generated cmdlet has ambiguous parameter sets
         $defaultParameterSet = $nonUniqueParameterSets | Sort-Object {$_.Priority} | Select-Object -First 1
-        $DefaultParameterSetName = $defaultParameterSet.OperationId
+        $DefaultParameterSetName = $defaultParameterSet.ParameterSetName
         $description = $defaultParameterSet.Description
         $synopsis = $defaultParameterSet.Synopsis
         Write-Warning -Message ($LocalizedData.CmdletHasAmbiguousParameterSets -f ($commandName))
     } elseif ($nonUniqueParameterSets.Length -eq 1) {
         # If there's only one non-unique, we can prevent errors by making this the default
-        $DefaultParameterSetName = $nonUniqueParameterSets[0].OperationId
+        $DefaultParameterSetName = $nonUniqueParameterSets[0].ParameterSetName
         $description = $nonUniqueParameterSets[0].Description
         $synopsis = $nonUniqueParameterSets[0].Synopsis
     } else {
         # Pick the highest priority set among all sets
         $defaultParameterSet = $parameterSetDetails | Sort-Object @{e = {$_.Priority -as [int] }} | Select-Object -First 1
-        $DefaultParameterSetName = $defaultParameterSet.OperationId
+        $DefaultParameterSetName = $defaultParameterSet.ParameterSetName
         $description = $defaultParameterSet.Description
         $synopsis = $defaultParameterSet.Synopsis        
     }
@@ -878,10 +976,22 @@ function New-SwaggerPath
     $parameterGroupsExpressionBlock = ""
     # Variable used to store all group expressions, concatenate, then store in $parameterGroupsExpressionBlock
     $parameterGroupsExpressions = @{}
+    $ParameterAliasMapping = @{}
     $parametersToAdd.GetEnumerator() | ForEach-Object {
         $parameterToAdd = $_.Value
+        $ValueFromPipelineString = ''
+        $ValueFromPipelineByPropertyNameString = ''
         if ($parameterToAdd) {
             $parameterName = $parameterToAdd.Details.Name
+            
+            if($parameterToAdd.Details.Containskey('ValueFromPipeline') -and $parameterToAdd.Details.ValueFromPipeline) {
+                $ValueFromPipelineString = ', ValueFromPipeline = $true'
+            }
+
+            if($parameterToAdd.Details.Containskey('ValueFromPipelineByPropertyName') -and $parameterToAdd.Details.ValueFromPipelineByPropertyName) {
+                $ValueFromPipelineByPropertyNameString = ', ValueFromPipelineByPropertyName = $true'
+            }
+
             $AllParameterSetsString = ''
             foreach ($parameterSetInfoEntry in $parameterToAdd.ParameterSetInfo.GetEnumerator()) {
                 $parameterSetInfo = $parameterSetInfoEntry.Value
@@ -901,7 +1011,19 @@ function New-SwaggerPath
                 $AllParameterSetsString = $executionContext.InvokeCommand.ExpandString($parameterAttributeString)
             }
 
-            $paramName = "`$$parameterName" 
+            $ParameterAliasAttribute = $null
+            # Parameter has Name as an alias, change the parameter name to Name and add the current parameter name as an alias.            
+            if ($parameterToAdd.Details.Containskey('Alias') -and 
+                $parameterToAdd.Details.Alias -and
+                ($parameterToAdd.Details.Alias -eq 'Name'))
+            {
+                $ParameterAliasMapping[$parameterName] = 'Name'
+                $AliasString = "'$parameterName'"
+                $parameterName = 'Name'
+                $ParameterAliasAttribute = $executionContext.InvokeCommand.ExpandString($ParameterAliasAttributeString)
+            }
+
+            $paramName = "`$$parameterName"
             $ValidateSetDefinition = $null
             if ($parameterToAdd.Details.ValidateSet)
             {
@@ -997,6 +1119,7 @@ function New-SwaggerPath
         SwaggerDict                       = $SwaggerDict
         SwaggerMetaDict                   = $SwaggerMetaDict
         FlattenedParametersOnPSCmdlet     = $flattenedParametersOnPSCmdlet
+        ParameterAliasMapping             = $ParameterAliasMapping
     }
     if($AuthenticationCommand) {
         $functionBodyParams['AuthenticationCommand'] = $AuthenticationCommand
