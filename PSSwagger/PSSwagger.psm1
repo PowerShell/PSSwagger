@@ -48,6 +48,7 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwa
 
 .PARAMETER Credential
     Credential to use when the SpecificationUri requires authentication.
+    It will override -UseDefaultCredential when both are specified at the same time.
 
 .PARAMETER UseDefaultCredential
     Use default credentials to download the SpecificationUri. Overridden by -Credential when both are specified at the same time.

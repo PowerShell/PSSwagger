@@ -95,6 +95,7 @@ Accept wildcard characters: False
 
 ### -Credential
 Credential to use when the SpecificationUri requires authentication.
+It will override -UseDefaultCredential when both are specified at the same time.
 
 ```yaml
 Type: PSCredential
