@@ -8,8 +8,17 @@ Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 .PARAMETER  TaskResult
     The started Task.
 
-.PARAMETER  IdTemplate
-    The unique resource identifier template of the Azure Resource.
+.PARAMETER  SkipInfo
+    Object containing skip parameters or $null. Should contain the properties: 'Count', 'Max'
+
+.PARAMETER  TopInfo
+    Object containing top parameters or $null. Should contain the properties: 'Count', 'Max'
+
+.PARAMETER  PageResult
+    Object containing page result. Should contain the property: 'Result'
+
+.PARAMETER  PageType
+    Expected type of task result when the result is a page.
 #>
 function Get-TaskResult {
     [CmdletBinding()]
