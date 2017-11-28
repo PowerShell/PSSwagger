@@ -205,3 +205,27 @@ function Get-ParameterGroupName {
         }
     }
 }
+
+function Get-FormattedFunctionContent {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$false)]
+        [string]
+        $Formatter,
+
+        [Parameter(Mandatory=$false)]
+        [string[]]
+        $Content
+    )
+
+    $singleStringContent = $Content | Out-String
+    $singleStringContent = $singleStringContent -replace "`r`n","`n"
+    $singleStringContent = $singleStringContent -replace "`r","`n"
+    if ($Formatter -eq 'None') {
+        $singleStringContent
+    } elseif ($Formatter -eq 'PSScriptAnalyzer') {
+        PSScriptAnalyzer\Invoke-Formatter -ScriptDefinition $singleStringContent
+    } else {
+        $singleStringContent
+    }
+}

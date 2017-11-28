@@ -36,6 +36,7 @@ serviceType | `string` | One of 'azure' or 'azure_stack', if this service is an 
 customAuthCommand | `string` | Specify a PowerShell cmdlet that should return a Microsoft.Rest.ServiceClientCredentials object that implements custom authentication logic.
 hostOverrideCommand | `string` | Specify a PowerShell cmdlet that should return a custom hostname string. Overrides the default host in the specification.
 noAuthChallenge | `bool` | Specify true to indicate that the service will not offer an authentication challenge, such as adding the WWW-Authenticate header to a 401 response. Default is false.
+formatter | `string` | Specify a formatter to use. One of: 'None', 'PSScriptAnalyzer'
 
 **Note**: These field names are taken from New-PSSwaggerModule cmdlet parameters. These field names will be renamed as per the cmdlet review updates for New-PSSwaggerModule cmdlet.
 

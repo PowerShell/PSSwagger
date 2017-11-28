@@ -658,7 +658,11 @@ function New-SwaggerDefinitionCommand
         [Parameter(Mandatory=$false)]
         [AllowEmptyString()]
         [string]
-        $HeaderContent
+        $HeaderContent,
+
+        [Parameter(Mandatory=$false)]
+        [string]
+        $Formatter = 'None'
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -686,7 +690,8 @@ function New-SwaggerDefinitionCommand
                 $FunctionsToExport += New-SwaggerSpecDefinitionCommand -FunctionDetails $FunctionDetails `
                                                                     -GeneratedCommandsPath $SwaggerDefinitionCommandsPath `
                                                                     -ModelsNamespace "$Namespace.$Models" `
-                                                                    -PSHeaderComment $PSHeaderComment
+                                                                    -PSHeaderComment $PSHeaderComment `
+                                                                    -Formatter $Formatter
             }
 
             New-SwaggerDefinitionFormatFile -FunctionDetails $FunctionDetails `
@@ -894,7 +899,11 @@ function New-SwaggerSpecDefinitionCommand
         [Parameter(Mandatory=$false)]
         [AllowEmptyString()]
         [string]
-        $PSHeaderComment
+        $PSHeaderComment,
+
+        [Parameter(Mandatory=$false)]
+        [string]
+        $Formatter = 'None'
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -948,7 +957,7 @@ function New-SwaggerSpecDefinitionCommand
     }
 
     $CommandFilePath = Join-Path -Path $GeneratedCommandsPath -ChildPath "$CommandName.ps1"
-    Out-File -InputObject @($PSHeaderComment, $CommandString) -FilePath $CommandFilePath -Encoding ascii -Force -Confirm:$false -WhatIf:$false
+    Out-File -InputObject (Get-FormattedFunctionContent -Content @($PSHeaderComment, $CommandString) -Formatter $Formatter) -FilePath $CommandFilePath -Encoding ascii -Force -Confirm:$false -WhatIf:$false
 
     Write-Verbose -Message ($LocalizedData.GeneratedDefinitionCommand -f ($commandName, $FunctionDetails.Name))
 
