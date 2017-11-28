@@ -29,6 +29,7 @@ Please refer to https://github.com/PowerShell/PSSwagger/blob/developer/README.md
         'Definitions.psm1',
         'New-ArmServiceClient.ps1',
         'New-ServiceClient.ps1',
+        'Get-TaskResult.ps1',
         'Paths.psm1',
         'PluralToSingularMap.json',
         'PSCommandVerbMap.ps1',
