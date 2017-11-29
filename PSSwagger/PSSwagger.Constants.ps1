@@ -59,6 +59,7 @@ if (Test-Path -Path `$ClrPath -PathType Container) {
 }
 
 . (Join-Path -Path `$PSScriptRoot -ChildPath 'New-ServiceClient.ps1')
+. (Join-Path -Path `$PSScriptRoot -ChildPath 'Get-TaskResult.ps1')
 $(if($UseAzureCsharpGenerator) {
 ". (Join-Path -Path `$PSScriptRoot -ChildPath 'Get-ArmResourceIdParameterValue.ps1')"
 })
@@ -213,8 +214,6 @@ if($GlobalParameters) {
     $ParameterAliasMappingBlock
     $ResourceIdParamCodeBlock
 
-    `$skippedCount = 0
-    `$returnedCount = 0
     $parameterSetBasedMethodStr else {
         Write-Verbose -Message 'Failed to map parameter set to operation method.'
         throw 'Module failed to find operation to execute.'
@@ -244,103 +243,6 @@ $methodBlockCmdletCall = @'
         `$taskResult = `$null
 '@
 
-$getTaskResultBlock = @'
-`$result = `$null
-        `$ErrorActionPreference = 'Stop'
-                    
-        `$null = `$taskResult.AsyncWaitHandle.WaitOne()
-                    
-        Write-Debug -Message "`$(`$taskResult | Out-String)"
-
-
-        if((Get-Member -InputObject `$taskResult -Name 'Result') -and
-           `$taskResult.Result -and
-           (Get-Member -InputObject `$taskResult.Result -Name 'Body') -and
-           `$taskResult.Result.Body)
-        {
-            Write-Verbose -Message 'Operation completed successfully.'
-            `$result = `$taskResult.Result.Body
-            Write-Debug -Message "`$(`$result | Out-String)"
-            $resultBlockStr
-        }
-        elseif(`$taskResult.IsFaulted)
-        {
-            Write-Verbose -Message 'Operation failed.'
-            if (`$taskResult.Exception)
-            {
-                if ((Get-Member -InputObject `$taskResult.Exception -Name 'InnerExceptions') -and `$taskResult.Exception.InnerExceptions)
-                {
-                    foreach (`$ex in `$taskResult.Exception.InnerExceptions)
-                    {
-                        Write-Error -Exception `$ex
-                    }
-                } elseif ((Get-Member -InputObject `$taskResult.Exception -Name 'InnerException') -and `$taskResult.Exception.InnerException)
-                {
-                    Write-Error -Exception `$taskResult.Exception.InnerException
-                } else {
-                    Write-Error -Exception `$taskResult.Exception
-                }
-            }
-        } 
-        elseif (`$taskResult.IsCanceled)
-        {
-            Write-Verbose -Message 'Operation got cancelled.'
-            Throw 'Operation got cancelled.'
-        }
-        else
-        {
-            Write-Verbose -Message 'Operation completed successfully.'
-        }
-'@
-
-$resultBlockWithSkipAndTop = @'
-if (`$result -is [$pageType]) {
-                    foreach (`$item in `$result) {
-                        if (`$skippedCount++ -lt `$Skip) {
-                        } else {
-                            if ((`$Top -eq -1) -or (`$returnedCount++ -lt `$Top)) {
-                                `$item
-                            } else {
-                                break
-                            }
-                        }
-                    }
-                } else {
-                    `$result
-                }
-'@
-
-$resultBlockWithTop = @'
-if (`$result -is [$pageType]) {
-                    foreach (`$item in `$result) {
-                        if ((`$Top -eq -1) -or (`$returnedCount++ -lt `$Top)) {
-                            `$item
-                        } else {
-                            break
-                        }
-                    }
-                } else {
-                    `$result
-                }
-'@
-
-$resultBlockWithSkip = @'
-if (`$result -is [$pageType]) {
-                    foreach (`$item in `$result) {
-                        if (`$skippedCount++ -lt `$Skip) {
-                        } else {
-                            `$item
-                        }
-                    }
-                } else {
-                    `$result
-                }
-'@
-
-$resultBlockNoPaging = @'
-$result
-'@
-
 $PathFunctionBodyAsJob = @'
 Write-Verbose -Message "Waiting for the operation to complete."
 
@@ -349,10 +251,19 @@ Write-Verbose -Message "Waiting for the operation to complete."
         param(    
             [Parameter(Mandatory = `$true)]
             [System.Threading.Tasks.Task]
-            `$TaskResult
+            `$TaskResult,
+
+            [Parameter(Mandatory = `$true)]
+			[string]
+			`$TaskHelperFilePath
         )
         if (`$TaskResult) {
-            $getTaskResult
+            . `$TaskHelperFilePath
+            `$TopInfo = $TopPagingObjectStr
+            `$SkipInfo = $SkipPagingObjectStr
+            `$PageResult = $PageResultPagingObjectStr
+            `$PageTypeType = $PageTypePagingObjectStr
+            Get-TaskResult -TaskResult `$TaskResult -SkipInfo `$SkipInfo -TopInfo `$TopInfo -PageResult `$PageResult -PageType `$PageTypeType
             $pagingBlock
         }
     }
@@ -364,6 +275,7 @@ Write-Verbose -Message "Waiting for the operation to complete."
         `$ScriptBlockParameters = New-Object -TypeName 'System.Collections.Generic.Dictionary[string,object]'
         `$ScriptBlockParameters['TaskResult'] = `$TaskResult
         `$ScriptBlockParameters['AsJob'] = `$AsJob
+        `$ScriptBlockParameters['TaskHelperFilePath'] = Join-Path -Path `$ExecutionContext.SessionState.Module.ModuleBase -ChildPath 'Get-TaskResult.ps1'
         `$PSCommonParameters.GetEnumerator() | ForEach-Object { `$ScriptBlockParameters[`$_.Name] = `$_.Value }
 
         Start-PSSwaggerJobHelper -ScriptBlock `$PSSwaggerJobScriptBlock ``
@@ -381,50 +293,56 @@ Write-Verbose -Message "Waiting for the operation to complete."
 
 $PathFunctionBodySynch = @'
 if (`$TaskResult) {
-        $getTaskResult
+        `$TopInfo = $TopPagingObjectStr
+        `$SkipInfo = $SkipPagingObjectStr
+        `$PageResult = $PageResultPagingObjectStr
+        `$PageTypeType = $PageTypePagingObjectStr
+        Get-TaskResult -TaskResult `$TaskResult -SkipInfo `$SkipInfo -TopInfo `$TopInfo -PageResult `$PageResult -PageType `$PageTypeType
         $pagingBlock
     }
 '@
 
-$PagingBlockStrFunctionCallWithTop = @'
-    
-        Write-Verbose -Message 'Flattening paged results.'
-        # Get the next page iff 1) there is a next page and 2) any result in the next page would be returned
-        while (`$result -and (Get-Member -InputObject `$result -Name '$NextLinkName') -and `$result.'$NextLinkName' -and ((`$Top -eq -1) -or (`$returnedCount -lt `$Top))) {
-            Write-Debug -Message "Retrieving next page: `$(`$result.'$NextLinkName')"
-            `$taskResult = $clientName$pagingOperations.$pagingOperationName(`$result.'$NextLinkName')
-             $getTaskResult
+$TopPagingObjectBlock = @'
+@{
+            'Count' = 0
+            'Max' = $Top
         }
 '@
 
-$PagingBlockStrFunctionCall = @'
-    
-        Write-Verbose -Message 'Flattening paged results.'
-        while (`$result -and (Get-Member -InputObject `$result -Name '$NextLinkName') -and `$result.'$NextLinkName') {
-            Write-Debug -Message "Retrieving next page: `$(`$result.'$NextLinkName')"
-            `$taskResult = $clientName$pagingOperations.$pagingOperationName(`$result.'$NextLinkName')
-             $getTaskResult
+$SkipPagingObjectBlock = @'
+@{
+            'Count' = 0
+            'Max' = $Skip
         }
 '@
 
-
-$PagingBlockStrCmdletCallWithTop = @'
-    
-        Write-Verbose -Message 'Flattening paged results.'
-        # Get the next page iff 1) there is a next page and 2) any result in the next page would be returned
-        while (`$result -and (Get-Member -InputObject `$result -Name '$NextLinkName') -and `$result.'$NextLinkName' -and ((`$Top -eq -1) -or (`$returnedCount -lt `$Top))) {
-            Write-Debug -Message "Retrieving next page: `$(`$result.'$NextLinkName')"
-            $Cmdlet $CmdletArgs
+$PageResultPagingObjectBlock = @'
+@{
+            'Result' = $null
         }
 '@
 
-$PagingBlockStrCmdletCall = @'
+$PageTypeObjectBlock = @'
+"$pageType" -as [Type]
+'@
+
+$PagingBlockStrGeneric = @'
     
         Write-Verbose -Message 'Flattening paged results.'
-        while (`$result -and (Get-Member -InputObject `$result -Name '$NextLinkName') -and `$result.'$NextLinkName') {
-            Write-Debug -Message "Retrieving next page: `$(`$result.'$NextLinkName')"
-            $Cmdlet $CmdletArgs
+        while (`$PageResult -and `$PageResult.Result -and (Get-Member -InputObject `$PageResult.Result -Name '$NextLinkName') -and `$PageResult.Result.'$NextLinkName' -and ((`$TopInfo -eq `$null) -or (`$TopInfo.Max -eq -1) -or (`$TopInfo.Count -lt `$TopInfo.Max))) {
+            `$PageResult.Result = `$null
+            Write-Debug -Message "Retrieving next page: `$(`$PageResult.Result.'$NextLinkName')"
+            $pagingOperationCall
         }
+'@
+
+$PagingOperationCallFunction = @'
+`$taskResult = $clientName$pagingOperations.$pagingOperationName(`$PageResult.Result.'$NextLinkName')
+            Get-TaskResult -TaskResult `$TaskResult -SkipInfo `$SkipInfo -TopInfo `$TopInfo -PageResult `$PageResult -PageType `$PageTypeType
+'@
+
+$PagingOperationCallCmdlet = @'
+$Cmdlet $CmdletArgs
 '@
 
 $ValidateSetDefinitionString = @'

@@ -679,7 +679,6 @@ function New-SwaggerPath
     $CmdletArgs = ''
     $pageType = 'Array'
     $PSCmdletOutputItemType = ''
-    $resultBlockStr = $resultBlockNoPaging
     if ($x_ms_pageableObject) {
         if ($x_ms_pageableObject.ReturnType -ne 'NONE') {
             $pageType = $x_ms_pageableObject.ReturnType
@@ -923,28 +922,28 @@ function New-SwaggerPath
             $parametersToAdd[$additionalParameter.Parameter.Details.Name] = $additionalParameter.Parameter
         }
     }
-    
-    if ($topParameterToAdd -and $skipParameterToAdd) {
-        $resultBlockStr = $executionContext.InvokeCommand.ExpandString($resultBlockWithSkipAndTop)
-    } elseif ($topParameterToAdd -and -not $skipParameterToAdd) {
-        $resultBlockStr = $executionContext.InvokeCommand.ExpandString($resultBlockWithTop)
-    } elseif (-not $topParameterToAdd -and $skipParameterToAdd) {
-        $resultBlockStr = $executionContext.InvokeCommand.ExpandString($resultBlockWithSkip)
+
+    $pagingOperationCall = $null
+    $PageResultPagingObjectStr = '$null'
+    $TopPagingObjectStr = '$null'
+    $SkipPagingObjectStr = '$null'
+    $PageTypePagingObjectStr = '$null'
+    if ($pagingOperations) {
+        $pagingOperationCall = $executionContext.InvokeCommand.ExpandString($PagingOperationCallFunction)
+    } elseif ($Cmdlet) {
+        $pagingOperationCall = $executionContext.InvokeCommand.ExpandString($PagingOperationCallCmdlet)
     }
 
-    $getTaskResult = $executionContext.InvokeCommand.ExpandString($getTaskResultBlock)
-
-    if ($pagingOperations) {
+    if ($pagingOperationCall) {
+        $pagingBlock = $executionContext.InvokeCommand.ExpandString($PagingBlockStrGeneric)
+        $PageResultPagingObjectStr = $PageResultPagingObjectBlock
+        $PageTypePagingObjectStr = $executionContext.InvokeCommand.ExpandString($PageTypeObjectBlock)
         if ($topParameterToAdd) {
-            $pagingBlock = $executionContext.InvokeCommand.ExpandString($PagingBlockStrFunctionCallWithTop)
-        } else {
-            $pagingBlock = $executionContext.InvokeCommand.ExpandString($PagingBlockStrFunctionCall)
+            $TopPagingObjectStr = $TopPagingObjectBlock
         }
-    } elseif ($Cmdlet) {
-        if ($topParameterToAdd) {
-            $pagingBlock = $executionContext.InvokeCommand.ExpandString($PagingBlockStrCmdletCallWithTop)
-        } else {
-            $pagingBlock = $executionContext.InvokeCommand.ExpandString($PagingBlockStrCmdletCall)
+
+        if ($skipParameterToAdd) {
+            $SkipPagingObjectStr = $SkipPagingObjectBlock
         }
     }
 
