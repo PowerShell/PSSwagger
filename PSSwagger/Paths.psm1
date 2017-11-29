@@ -403,6 +403,7 @@ function New-SwaggerSpecPathCommand
         $PSHeaderComment,
 
         [Parameter(Mandatory=$false)]
+        [ValidateSet('None', 'PSScriptAnalyzer')]
         [string]
         $Formatter = 'None'
     )
@@ -531,6 +532,7 @@ function New-SwaggerPath
         $PSHeaderComment,
 
         [Parameter(Mandatory=$false)]
+        [ValidateSet('None', 'PSScriptAnalyzer')]
         [string]
         $Formatter = 'None'
     )

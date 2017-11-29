@@ -209,11 +209,12 @@ function Get-ParameterGroupName {
 function Get-FormattedFunctionContent {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$true)]
+        [ValidateSet('None', 'PSScriptAnalyzer')]
         [string]
         $Formatter,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory=$true)]
         [string[]]
         $Content
     )

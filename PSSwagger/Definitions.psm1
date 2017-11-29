@@ -661,6 +661,7 @@ function New-SwaggerDefinitionCommand
         $HeaderContent,
 
         [Parameter(Mandatory=$false)]
+        [ValidateSet('None', 'PSScriptAnalyzer')]
         [string]
         $Formatter = 'None'
     )
@@ -902,6 +903,7 @@ function New-SwaggerSpecDefinitionCommand
         $PSHeaderComment,
 
         [Parameter(Mandatory=$false)]
+        [ValidateSet('None', 'PSScriptAnalyzer')]
         [string]
         $Formatter = 'None'
     )

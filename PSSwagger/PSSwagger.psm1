@@ -248,7 +248,7 @@ function New-PSSwaggerModule {
         [Parameter(Mandatory = $false, ParameterSetName = 'SdkAssemblyWithSpecificationUri')]
         [string]
         [ValidateSet('None', 'PSScriptAnalyzer')]
-        $Formatter = 'None'
+        $Formatter
     )
 
     if ($NoAssembly -and $IncludeCoreFxAssembly) {
@@ -479,8 +479,12 @@ function New-PSSwaggerModule {
         }
     }
 
-    if (-not $Formatter -and $PowerShellCodeGen['Formatter']) {
-        $Formatter = $PowerShellCodeGen['Formatter']
+    if (-not $Formatter) {
+        if ($PowerShellCodeGen['Formatter']) {
+            $Formatter = $PowerShellCodeGen['Formatter']
+        } else {
+            $Formatter = 'None'
+        }
     }
 
     if ($Formatter) {
