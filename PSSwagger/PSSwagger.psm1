@@ -489,7 +489,7 @@ function New-PSSwaggerModule {
 
     if ($Formatter) {
         if ($Formatter -eq 'PSScriptAnalyzer') {
-            if (-not (Get-Module PSScriptAnalyzer)) {
+            if (-not (Get-Module PSScriptAnalyzer -ListAvailable)) {
                 Write-Warning $LocalizedData.PSScriptAnalyzerMissing
                 $Formatter = 'None'
             }
