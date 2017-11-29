@@ -28,15 +28,15 @@ function Get-TaskResult {
         $TaskResult,
 
         [Parameter(Mandatory=$false)]
-        [PSObject]
-        $SkipInfo = $null,
+        [PSCustomObject]
+        $SkipInfo,
 
         [Parameter(Mandatory=$false)]
-        [PSObject]
-        $TopInfo = $null,
+        [PSCustomObject]
+        $TopInfo,
 
         [Parameter(Mandatory=$false)]
-        [PSObject]
+        [PSCustomObject]
         $PageResult,
 
         [Parameter(Mandatory=$false)]
