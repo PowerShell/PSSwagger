@@ -16,14 +16,14 @@ PowerShell command to generate the PowerShell commands for a given RESTful Web S
 New-PSSwaggerModule -SpecificationPath <String> -Path <String> -Name <String> [-Version <Version>]
  [-NoVersionFolder] [-DefaultCommandPrefix <String>] [-Header <String[]>] [-UseAzureCsharpGenerator]
  [-NoAssembly] [-PowerShellCorePath <String>] [-IncludeCoreFxAssembly] [-InstallToolsForAllUsers] [-TestBuild]
- [-SymbolPath <String>] [-ConfirmBootstrap]
+ [-SymbolPath <String>] [-ConfirmBootstrap] [-Formatter <String>]
 ```
 
 ### SdkAssemblyWithSpecificationPath
 ```
 New-PSSwaggerModule -SpecificationPath <String> -Path <String> -AssemblyFileName <String>
  [-ClientTypeName <String>] [-ModelsName <String>] -Name <String> [-Version <Version>] [-NoVersionFolder]
- [-DefaultCommandPrefix <String>] [-Header <String[]>] [-UseAzureCsharpGenerator]
+ [-DefaultCommandPrefix <String>] [-Header <String[]>] [-UseAzureCsharpGenerator][-Formatter <String>]
 ```
 
 ### SdkAssemblyWithSpecificationUri
@@ -31,7 +31,7 @@ New-PSSwaggerModule -SpecificationPath <String> -Path <String> -AssemblyFileName
 New-PSSwaggerModule -SpecificationUri <Uri> [-Credential <PSCredential>] [-UseDefaultCredential] -Path <String>
  -AssemblyFileName <String> [-ClientTypeName <String>] [-ModelsName <String>] -Name <String>
  [-Version <Version>] [-NoVersionFolder] [-DefaultCommandPrefix <String>] [-Header <String[]>]
- [-UseAzureCsharpGenerator]
+ [-UseAzureCsharpGenerator] [-Formatter <String>]
 ```
 
 ### SpecificationUri
@@ -39,7 +39,7 @@ New-PSSwaggerModule -SpecificationUri <Uri> [-Credential <PSCredential>] [-UseDe
 New-PSSwaggerModule -SpecificationUri <Uri> [-Credential <PSCredential>] [-UseDefaultCredential] -Path <String>
  -Name <String> [-Version <Version>] [-NoVersionFolder] [-DefaultCommandPrefix <String>] [-Header <String[]>]
  [-UseAzureCsharpGenerator] [-NoAssembly] [-PowerShellCorePath <String>] [-IncludeCoreFxAssembly]
- [-InstallToolsForAllUsers] [-TestBuild] [-SymbolPath <String>] [-ConfirmBootstrap]
+ [-InstallToolsForAllUsers] [-TestBuild] [-SymbolPath <String>] [-ConfirmBootstrap] [-Formatter <String>]
 ```
 
 ## DESCRIPTION
@@ -405,6 +405,20 @@ Aliases:
 Required: False
 Position: Named
 Default value: False
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -Formatter
+Specify a formatter to use. One of: 'None', 'PSScriptAnalyzer'
+```yaml
+Type: String
+Parameter Sets: SpecificationPath, SpecificationUri, SdkAssemblyWithSpecificationPath, SdkAssemblyWithSpecificationUri
+Aliases:
+
+Required: False
+Position: Named
+Default value: 'None'
 Accept pipeline input: False
 Accept wildcard characters: False
 ```

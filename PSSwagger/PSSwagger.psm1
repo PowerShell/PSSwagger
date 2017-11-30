@@ -130,6 +130,8 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwa
       - ResourceId parameter set which splits the resource id into component parts (supports piping from generic cmdlets).
     - Parameter name of Azure resource name parameter will be generated as 'Name' and the actual resource name parameter from the resource id will be added as an alias.
     
+.PARAMETER  Formatter
+    Specify a formatter to use. 
 .INPUTS
 
 .OUTPUTS
@@ -238,7 +240,15 @@ function New-PSSwaggerModule {
         [Parameter(Mandatory = $false, ParameterSetName = 'SpecificationPath')]
         [Parameter(Mandatory = $false, ParameterSetName = 'SpecificationUri')]
         [switch]
-        $ConfirmBootstrap
+        $ConfirmBootstrap,
+
+        [Parameter(Mandatory = $false, ParameterSetName = 'SpecificationPath')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SpecificationUri')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SdkAssemblyWithSpecificationPath')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SdkAssemblyWithSpecificationUri')]
+        [string]
+        [ValidateSet('None', 'PSScriptAnalyzer')]
+        $Formatter
     )
 
     if ($NoAssembly -and $IncludeCoreFxAssembly) {
@@ -442,6 +452,7 @@ function New-PSSwaggerModule {
         NoAuthChallenge       = $false
         NameSpacePrefix       = ''
         Header                = ''
+        Formatter             = ''
     }
 
     # Parse the JSON and populate the dictionary
@@ -465,6 +476,23 @@ function New-PSSwaggerModule {
     if (-not $PSMetaJsonObject) {
         foreach ($additionalSwaggerSpecPath in $SwaggerSpecFilePaths) {
             Get-PowerShellCodeGenSettings -Path $additionalSwaggerSpecPath -CodeGenSettings $PowerShellCodeGen
+        }
+    }
+
+    if (-not $Formatter) {
+        if ($PowerShellCodeGen['Formatter']) {
+            $Formatter = $PowerShellCodeGen['Formatter']
+        } else {
+            $Formatter = 'None'
+        }
+    }
+
+    if ($Formatter) {
+        if ($Formatter -eq 'PSScriptAnalyzer') {
+            if (-not (Get-Module PSScriptAnalyzer -ListAvailable)) {
+                Write-Warning $LocalizedData.PSScriptAnalyzerMissing
+                $Formatter = 'None'
+            }
         }
     }
 
@@ -608,13 +636,15 @@ function New-PSSwaggerModule {
         -SwaggerMetaDict $swaggerMetaDict `
         -SwaggerDict $swaggerDict `
         -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
-        -PSHeaderComment $PSHeaderComment
+        -PSHeaderComment $PSHeaderComment `
+        -Formatter $Formatter
 
     $FunctionsToExport += New-SwaggerDefinitionCommand -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
         -SwaggerMetaDict $swaggerMetaDict `
         -NameSpace $nameSpace `
         -Models $models `
-        -HeaderContent $HeaderContent
+        -HeaderContent $HeaderContent `
+        -Formatter $Formatter
 
     $RootModuleFilePath = Join-Path $outputDirectory "$Name.psm1"
     $testCoreModuleRequirements = ''

@@ -89,5 +89,6 @@ ConvertFrom-StringData @'
     InvalidHeaderFileExtension=Header '{0}' file extension should be '.txt'.
     InvalidHeaderFilePath=The specified value '{0}' for Header parameter is should be a valid file path.
     HeaderContentTwoHyphenWarning=The specified Header content has '--', replacing '--' with '=='.
+    PSScriptAnalyzerMissing=PSScriptAnalyzer specified as the formatter, but the module is not available on this machine. No formatting will be used. Run 'Install-Module -Name PSScriptAnalyzer -Repository PSGallery -Scope CurrentUser' to install the module.
 ###PSLOC
 '@
