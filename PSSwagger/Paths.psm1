@@ -935,10 +935,10 @@ function New-SwaggerPath
     }
 
     $pagingOperationCall = $null
-    $PageResultPagingObjectStr = '$null'
-    $TopPagingObjectStr = '$null'
-    $SkipPagingObjectStr = '$null'
-    $PageTypePagingObjectStr = '$null'
+    $PageResultPagingObjectStr = $null
+    $TopPagingObjectStr = $null
+    $SkipPagingObjectStr = $null
+    $PageTypePagingObjectStr = $null
     if ($pagingOperations) {
         $pagingOperationCall = $executionContext.InvokeCommand.ExpandString($PagingOperationCallFunction)
     } elseif ($Cmdlet) {
