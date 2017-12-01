@@ -208,12 +208,32 @@ if($GlobalParameters) {
 }
 )
     $clientName = New-ServiceClient @NewServiceClient_params
+$(if($oDataExpressionBlock) {
+"
     $oDataExpressionBlock
+"
+}
+if($parameterGroupsExpressionBlock) {
+"
     $parameterGroupsExpressionBlock
+"
+}
+if($flattenedParametersBlock){
+"
     $flattenedParametersBlock
+"
+}
+if($ParameterAliasMappingBlock) {
+"
     $ParameterAliasMappingBlock
+"
+}
+if($ResourceIdParamCodeBlock) {
+"
     $ResourceIdParamCodeBlock
-
+"
+}
+)
     $parameterSetBasedMethodStr else {
         Write-Verbose -Message 'Failed to map parameter set to operation method.'
         throw 'Module failed to find operation to execute.'
@@ -234,13 +254,13 @@ $additionalConditionStart$methodBlock$additionalConditionEnd
 
 $methodBlockFunctionCall = @'
         Write-Verbose -Message 'Performing operation $methodName on $clientName.'
-        `$taskResult = $clientName$operations.$methodName($ParamList)
+        `$TaskResult = $clientName$operations.$methodName($ParamList)
 '@
 
 $methodBlockCmdletCall = @'
         Write-Verbose -Message 'Calling cmdlet $Cmdlet.'
         $Cmdlet $CmdletArgs
-        `$taskResult = `$null
+        `$TaskResult = `$null
 '@
 
 $PathFunctionBodyAsJob = @'
@@ -259,11 +279,31 @@ Write-Verbose -Message "Waiting for the operation to complete."
         )
         if (`$TaskResult) {
             . `$TaskHelperFilePath
+            `$GetTaskResult_params = @{
+                TaskResult = `$TaskResult
+            }
+$(
+if($TopPagingObjectStr) {
+"
             `$TopInfo = $TopPagingObjectStr
+            `$GetTaskResult_params['TopInfo'] = `$TopInfo"
+}
+if($SkipPagingObjectStr) {
+"
             `$SkipInfo = $SkipPagingObjectStr
+            `$GetTaskResult_params['SkipInfo'] = `$SkipInfo"
+}
+if($PageResultPagingObjectStr) {
+"
             `$PageResult = $PageResultPagingObjectStr
-            `$PageTypeType = $PageTypePagingObjectStr
-            Get-TaskResult -TaskResult `$TaskResult -SkipInfo `$SkipInfo -TopInfo `$TopInfo -PageResult `$PageResult -PageType `$PageTypeType
+            `$GetTaskResult_params['PageResult'] = `$PageResult"
+}
+if($PageTypePagingObjectStr) {
+"
+            `$GetTaskResult_params['PageType'] = $PageTypePagingObjectStr"
+}
+)            
+            Get-TaskResult @GetTaskResult_params
             $pagingBlock
         }
     }
@@ -286,18 +326,38 @@ Write-Verbose -Message "Waiting for the operation to complete."
     else
     {
         Invoke-Command -ScriptBlock `$PSSwaggerJobScriptBlock ``
-                       -ArgumentList `$taskResult ``
+                       -ArgumentList `$TaskResult ``
                        @PSCommonParameters
     }
 '@
 
 $PathFunctionBodySynch = @'
 if (`$TaskResult) {
+        `$GetTaskResult_params = @{
+            TaskResult = `$TaskResult
+        }
+$(
+if($TopPagingObjectStr) {
+"
         `$TopInfo = $TopPagingObjectStr
+        `$GetTaskResult_params['TopInfo'] = `$TopInfo"
+}
+if($SkipPagingObjectStr) {
+"
         `$SkipInfo = $SkipPagingObjectStr
+        `$GetTaskResult_params['SkipInfo'] = `$SkipInfo"
+}
+if($PageResultPagingObjectStr) {
+"
         `$PageResult = $PageResultPagingObjectStr
-        `$PageTypeType = $PageTypePagingObjectStr
-        Get-TaskResult -TaskResult `$TaskResult -SkipInfo `$SkipInfo -TopInfo `$TopInfo -PageResult `$PageResult -PageType `$PageTypeType
+        `$GetTaskResult_params['PageResult'] = `$PageResult"
+}
+if($PageTypePagingObjectStr) {
+"
+        `$GetTaskResult_params['PageType'] = $PageTypePagingObjectStr"
+}
+)            
+        Get-TaskResult @GetTaskResult_params
         $pagingBlock
     }
 '@
@@ -323,7 +383,7 @@ $PageResultPagingObjectBlock = @'
 '@
 
 $PageTypeObjectBlock = @'
-"$pageType" -as [Type]
+'$pageType' -as [Type]
 '@
 
 $PagingBlockStrGeneric = @'
@@ -337,8 +397,10 @@ $PagingBlockStrGeneric = @'
 '@
 
 $PagingOperationCallFunction = @'
-`$taskResult = $clientName$pagingOperations.$pagingOperationName(`$PageResult.Result.'$NextLinkName')
-            Get-TaskResult -TaskResult `$TaskResult -SkipInfo `$SkipInfo -TopInfo `$TopInfo -PageResult `$PageResult -PageType `$PageTypeType
+`$TaskResult = $clientName$pagingOperations.$pagingOperationName(`$PageResult.Result.'$NextLinkName')
+            `$GetTaskResult_params['TaskResult'] = `$TaskResult
+            `$GetTaskResult_params['PageResult'] = `$PageResult
+            Get-TaskResult @GetTaskResult_params
 '@
 
 $PagingOperationCallCmdlet = @'
@@ -357,7 +419,7 @@ $ParameterAliasAttributeString = @'
 
 $successReturn = @'
 Write-Verbose "Operation completed with return code: `$responseStatusCode."
-                        $result = $taskResult.Result.Body
+                        $result = $TaskResult.Result.Body
                         Write-Verbose -Message "$($result | Out-String)"
                         $result
 '@
