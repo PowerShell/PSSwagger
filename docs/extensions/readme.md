@@ -11,7 +11,7 @@ These can also be used in the Swagger/OpenApi document.
 * [x-ps-cmdlet-infos](#x-ps-cmdlet-infos) - enables customization of generated commands for an operation.
 * [x-ps-parameter-info](#x-ps-parameter-info) - enables customization for generated command parameters.
 * [x-ps-output-format-info](#x-ps-output-format-info) - enables customization of output format views.
-
+* [x-ps-client-parameters](#x-ps-client-parameters) - enables customization of AutoRest ServiceClient properties.
 
 
 ## x-ps-code-generation-settings
@@ -65,6 +65,7 @@ moduleVersion | `string` | **Required**. Module version.
 description | `string` | **Required**. Module description.
 author | `string` | **Required**. Module author.
 guid | `string` | **Required**. Module guid. MUST be in the form of valid guid.
+commandDefaults | `x-ps-client-parameters` | Default client parameters to apply to all commands.
 .*| `string` or `bool` | Field name should be a valid parameters of either New-ModuleManifest or Update-ModuleManifest cmdlets. Value should be a valid string value, boolean for switch parameters, must be proper URL as string value for URI types - e.g., licenseUri, or array of strings if a parameter supports array of strings - e.g., Tags.
 
 **Example**:
@@ -111,6 +112,7 @@ description | `string` | Description of PowerShell Cmdlet. If not specified, des
 generateCommand | `bool` | Boolean to indicate whether a cmdlet is required or not. Default is true.
 defaultParameterSet | `string` | String value to indicate whether the specified OperationId or Definition name as the default parameter set name when multiple Operations or definitions are merged into the same cmdlet, e.g., Get and List operationIds can be combined into single cmdlet.
 generateOutputFormat | `bool` | Applicable to definitions only. Boolean to indicate whether output format file is required for this model type or not. Default value true.
+clientParameters | `x-ps-client-parameters` | Client parameters for this command. Overrides global parameters.
 
 **Examples**:
 1. x-ps-cmdlet-infos on operation
@@ -327,5 +329,25 @@ width | `int` | **Required**. Expected width of this property in output format.
             }
         }
     }
+}
+```
+
+## x-ps-client-parameters
+Defines property overrides for AutoRest ServiceClient classes.
+
+**Parent element**: `x-ps-module-info Object` or `x-ps-cmdlet-info Object`
+
+**Schema**:
+
+Field Name | Type | Description
+---|:---:|---
+AcceptLangugage| `string` | Preferred language for response.
+LongRunningOperationRetryTimeout | `int` | Retry timeout in seconds for Long Running Operations.
+
+**Examples**:
+```json5
+{
+    "AcceptLanguage": "EN-GB",
+    "LongRunningOperationRetryTimeout": 9001
 }
 ```

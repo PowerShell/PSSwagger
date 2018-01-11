@@ -191,10 +191,13 @@ if($hostOverrideCommand){
     $hostOverrideCommand
 `'@"
 }
+if($GlobalParameters -or $GlobalParametersStatic) {
+"
+    `$GlobalParameterHashtable = @{}
+    `$NewServiceClient_params['GlobalParameterHashtable'] = `$GlobalParameterHashtable
+"
+}
 if($GlobalParameters) {
-'
-    $GlobalParameterHashtable = @{} '
-    
     foreach($parameter in $GlobalParameters) {
 "    
     `$GlobalParameterHashtable['$parameter'] = `$null
@@ -203,8 +206,13 @@ if($GlobalParameters) {
     }
 "
     }
-"
-    `$NewServiceClient_params['GlobalParameterHashtable'] = `$GlobalParameterHashtable "
+}
+if ($GlobalParametersStatic) {
+    foreach ($entry in $GlobalParametersStatic.GetEnumerator()) {
+"    
+    `$GlobalParameterHashtable['$($entry.Name)'] = $($entry.Value)
+"     
+    }
 }
 )
     $clientName = New-ServiceClient @NewServiceClient_params
@@ -309,13 +317,13 @@ if($PageTypePagingObjectStr) {
     }
 
     `$PSCommonParameters = Get-PSCommonParameter -CallerPSBoundParameters `$PSBoundParameters
-
+    `$TaskHelperFilePath = Join-Path -Path `$ExecutionContext.SessionState.Module.ModuleBase -ChildPath 'Get-TaskResult.ps1'
     if(`$AsJob)
     {
         `$ScriptBlockParameters = New-Object -TypeName 'System.Collections.Generic.Dictionary[string,object]'
         `$ScriptBlockParameters['TaskResult'] = `$TaskResult
         `$ScriptBlockParameters['AsJob'] = `$AsJob
-        `$ScriptBlockParameters['TaskHelperFilePath'] = Join-Path -Path `$ExecutionContext.SessionState.Module.ModuleBase -ChildPath 'Get-TaskResult.ps1'
+        `$ScriptBlockParameters['TaskHelperFilePath'] = `$TaskHelperFilePath
         `$PSCommonParameters.GetEnumerator() | ForEach-Object { `$ScriptBlockParameters[`$_.Name] = `$_.Value }
 
         Start-PSSwaggerJobHelper -ScriptBlock `$PSSwaggerJobScriptBlock ``
@@ -326,7 +334,7 @@ if($PageTypePagingObjectStr) {
     else
     {
         Invoke-Command -ScriptBlock `$PSSwaggerJobScriptBlock ``
-                       -ArgumentList `$TaskResult ``
+                       -ArgumentList `$TaskResult,`$TaskHelperFilePath ``
                        @PSCommonParameters
     }
 '@
