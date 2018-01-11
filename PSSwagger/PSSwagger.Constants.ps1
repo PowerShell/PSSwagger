@@ -191,10 +191,13 @@ if($hostOverrideCommand){
     $hostOverrideCommand
 `'@"
 }
+if($GlobalParameters -or $GlobalParametersStatic) {
+"
+    `$GlobalParameterHashtable = @{}
+    `$NewServiceClient_params['GlobalParameterHashtable'] = `$GlobalParameterHashtable
+"
+}
 if($GlobalParameters) {
-'
-    $GlobalParameterHashtable = @{} '
-    
     foreach($parameter in $GlobalParameters) {
 "    
     `$GlobalParameterHashtable['$parameter'] = `$null
@@ -203,8 +206,13 @@ if($GlobalParameters) {
     }
 "
     }
-"
-    `$NewServiceClient_params['GlobalParameterHashtable'] = `$GlobalParameterHashtable "
+}
+if ($GlobalParametersStatic) {
+    foreach ($entry in $GlobalParametersStatic.GetEnumerator()) {
+"    
+    `$GlobalParameterHashtable['$($entry.Name)'] = $($entry.Value)
+"     
+    }
 }
 )
     $clientName = New-ServiceClient @NewServiceClient_params

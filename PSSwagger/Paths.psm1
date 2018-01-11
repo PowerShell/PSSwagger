@@ -135,30 +135,55 @@ function Get-SwaggerSpecPathInfo
            (Get-Member -InputObject $PSMetaPathJsonObject -Name $operationType)) {
             $PSMetaOperationJsonObject = $PSMetaPathJsonObject.$operationType
         }
-        
-        if($PSMetaOperationJsonObject -and
-           (Get-Member -InputObject $PSMetaOperationJsonObject -Name 'x-ps-cmdlet-infos')) {
-            $PSMetaOperationJsonObject.'x-ps-cmdlet-infos' | ForEach-Object {
-                $cmdletInfoOverrides += @{
-                    Name = $_.name
-                }
-            }
-        }
-        elseif ((Get-Member -InputObject $_.Value -Name 'x-ps-cmdlet-infos') -and $_.Value.'x-ps-cmdlet-infos') {
-            foreach ($cmdletMetadata in $_.Value.'x-ps-cmdlet-infos') {
-                $cmdletInfoOverride = @{}
-                if ((Get-Member -InputObject $cmdletMetadata -Name 'name') -and $cmdletMetadata.name) {
-                    $cmdletInfoOverride['name'] = $cmdletMetadata.name
-                }
-
-                $cmdletInfoOverrides += $cmdletInfoOverride
-            }
-        }
 
         if(Get-Member -InputObject $_.Value -Name 'OperationId')
         {
             $operationId = $_.Value.operationId
             Write-Verbose -Message ($LocalizedData.GettingSwaggerSpecPathInfo -f $operationId)
+
+            $defaultCommandNames = Get-PathCommandName -OperationId $operationId
+            if($PSMetaOperationJsonObject -and
+            (Get-Member -InputObject $PSMetaOperationJsonObject -Name 'x-ps-cmdlet-infos')) {
+                $PSMetaOperationJsonObject.'x-ps-cmdlet-infos' | ForEach-Object {
+                    $cmdletInfoOverride = @{
+                        Name = $_.name
+                        Metadata = $_
+                    }
+                    # If no name override is specified, apply all these overrides to each default command name
+                    if (-not $_.name) {
+                        foreach ($defaultCommandName in $defaultCommandNames) {
+                            $cmdletInfoOverrides += @{
+                                Name = $defaultCommandName.name
+                                Metadata = $cmdletInfoOverride.Metadata
+                            }
+                        }
+                    } else {
+                        $cmdletInfoOverrides += $cmdletInfoOverride
+                    }
+                }
+            }
+            elseif ((Get-Member -InputObject $_.Value -Name 'x-ps-cmdlet-infos') -and $_.Value.'x-ps-cmdlet-infos') {
+                foreach ($cmdletMetadata in $_.Value.'x-ps-cmdlet-infos') {
+                    $cmdletInfoOverride = @{
+                        Metadata = $cmdletMetadata
+                    }
+                    if ((Get-Member -InputObject $cmdletMetadata -Name 'name') -and $cmdletMetadata.name) {
+                        $cmdletInfoOverride['name'] = $cmdletMetadata.name
+                    }
+
+                    # If no name override is specified, apply all these overrides to each default command name
+                    if (-not (Get-Member -InputObject $cmdletMetadata -Name 'name')) {
+                        foreach ($defaultCommandName in $defaultCommandNames) {
+                            $cmdletInfoOverrides += @{
+                                Name = $defaultCommandName.name
+                                Metadata = $cmdletInfoOverride.Metadata
+                            }
+                        }
+                    } else {
+                        $cmdletInfoOverrides += $cmdletInfoOverride
+                    }
+                }
+            }
 
             $FunctionDescription = ""
             if((Get-Member -InputObject $_.value -Name 'description') -and $_.value.description) {
@@ -345,6 +370,10 @@ function Get-SwaggerSpecPathInfo
                 } else {
                     $FunctionDetails['CommandName'] = $_.name
                     $FunctionDetails['x-ms-long-running-operation'] = $longRunningOperation
+                }
+
+                if ($_.ContainsKey('Metadata') -and (-not $FunctionDetails.ContainsKey("Metadata"))) {
+                    $FunctionDetails['Metadata'] = $_.Metadata
                 }
 
                 if ($operationSecurityObject) {
@@ -558,6 +587,21 @@ function New-SwaggerPath
     $parameterHitCount = @{}
     $globalParameters = @()
     $x_ms_pageableObject = $null
+    $globalParametersStatic = @{}
+    # Process global metadata for commands
+    if ($SwaggerDict.ContainsKey('CommandDefaults')) {
+        foreach ($entry in $SwaggerDict['CommandDefaults'].GetEnumerator()) {
+            $globalParametersStatic[$entry.Name] = Get-ValueText($entry.Value)
+        }
+    }
+    # Process metadata for the overall command
+    if ($FunctionDetails.ContainsKey('Metadata')) {
+        if (Get-Member -InputObject $FunctionDetails['Metadata'] -Name 'ClientParameters') {
+            foreach ($property in (Get-Member -InputObject $FunctionDetails['Metadata'].ClientParameters -MemberType NoteProperty)) {
+                $globalParametersStatic[$property.Name] = Get-ValueText($FunctionDetails['Metadata'].ClientParameters.$($property.Name))
+            }
+        }
+    }
     foreach ($parameterSetDetail in $parameterSetDetails) {
         if ($parameterSetDetail.ContainsKey('x-ms-pageable') -and $parameterSetDetail.'x-ms-pageable' -and (-not $isNextPageOperation)) {
             if ($x_ms_pageableObject -and 
@@ -1144,6 +1188,9 @@ function New-SwaggerPath
     if($globalParameters) {
         $functionBodyParams['GlobalParameters'] = $globalParameters
     }
+    if ($globalParametersStatic) {
+        $functionBodyParams['GlobalParametersStatic'] = $globalParametersStatic
+    }
                            
     $pathGenerationPhaseResult = Get-PathFunctionBody @functionBodyParams
     $bodyObject = $pathGenerationPhaseResult.BodyObject
@@ -1542,4 +1589,28 @@ function Get-TemporaryCliXmlFilePath {
     $random = [Guid]::NewGuid().Guid
     $filePath = Join-Path -Path (Get-XDGDirectory -DirectoryType Cache) -ChildPath "$FullClientTypeName.$random.xml"
     return $filePath
+}
+<#
+.SYNOPSIS
+ Convert an object into a string to represents the value in PowerShell
+
+.EXAMPLE
+[string]this is a string => 'this is a string'
+[bool]true => $true
+[int]5 => 5
+#>
+function Get-ValueText {
+    param(
+        [Parameter(Mandatory=$true)]
+        [object]
+        $obj
+    )
+
+    if ($obj -is [string]) {
+        return "'$obj'"
+    } elseif ($obj -is [bool]) {
+        return "`$$obj"
+    } else {
+        return $obj
+    }
 }
