@@ -26,6 +26,7 @@ ConvertFrom-StringData @'
     DataTypeNotImplemented=Please get an implementation of '{0}' for '{1}'
     AutoRestNotInPath=Unable to find AutoRest in PATH environment. Ensure the PATH is updated.
     CscExeNotInPath=Unable to find CSC.exe in PATH environment. Ensure the PATH is updated with CSC.exe location.
+    IncorrectVersionOfCscExeInPath=The first CSC.exe in the PATH environment variable is the compiler included with Windows or the .NET framework. Please use the Microsoft.Net.Compilers package which contains the Roslyn CSC.exe, and ensure that package's CSC.exe comes first in your PATH environment variable.
     AutoRestError=AutoRest resulted in an error
     SwaggerParamsMissing=No parameters in the Swagger
     SwaggerDefinitionsMissing=No definitions in the Swagger
