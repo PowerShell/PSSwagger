@@ -814,7 +814,7 @@ function ConvertTo-CsharpCode {
         [byte[]]$data = New-Object -TypeName byte[] -ArgumentList 4096
         $fs = [System.IO.File]::OpenRead($csc.Source)
         try {
-            $fs.Read($data, 0, 4096)
+            $null = $fs.Read($data, 0, 4096)
         } finally {
             $fs.Dispose()
         }
