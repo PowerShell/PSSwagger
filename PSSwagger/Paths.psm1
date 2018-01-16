@@ -53,10 +53,10 @@ function Get-SwaggerSpecPathInfo
 
     $PSMetaPathJsonObject = $null
     if($PSMetaJsonObject) {
-        if(Get-Member -InputObject $PSMetaJsonObject.paths -Name $EndpointRelativePath) {
+        if((Get-Member -InputObject $PSMetaJsonObject -Name 'paths') -and (Get-Member -InputObject $PSMetaJsonObject.paths -Name $EndpointRelativePath)) {
             $PSMetaPathJsonObject = $PSMetaJsonObject.paths.$EndpointRelativePath
         }
-        elseif(Get-Member -InputObject $PSMetaJsonObject.'x-ms-paths' -Name $EndpointRelativePath) {
+        elseif((Get-Member -InputObject $PSMetaJsonObject -Name 'x-ms-paths') -and (Get-Member -InputObject $PSMetaJsonObject.'x-ms-paths' -Name $EndpointRelativePath)) {
             $PSMetaPathJsonObject = $PSMetaJsonObject.'x-ms-paths'.$EndpointRelativePath
         }
     }
