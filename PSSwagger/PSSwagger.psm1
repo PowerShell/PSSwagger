@@ -803,9 +803,41 @@ function ConvertTo-CsharpCode {
         throw $LocalizedData.AutoRestNotInPath
     }
 
-    if (-not (Get-OperatingSystemInfo).IsCore -and 
-        (-not (Get-Command -Name 'Csc.Exe' -ErrorAction Ignore))) {
-        throw $LocalizedData.CscExeNotInPath
+    if (-not (Get-OperatingSystemInfo).IsCore) {
+        if (-not (Get-Command -Name 'Csc.Exe' -ErrorAction Ignore)) {
+            throw $LocalizedData.CscExeNotInPath
+        }
+
+        $csc = Get-Command -Name 'Csc.Exe'
+        # The compiler Roslyn compiler is managed while the in-box compiler is native
+        # There's a better way to read the PE header using seeks but this is fine
+        [byte[]]$data = New-Object -TypeName byte[] -ArgumentList 4096
+        $fs = [System.IO.File]::OpenRead($csc.Source)
+        try {
+            $null = $fs.Read($data, 0, 4096)
+        } finally {
+            $fs.Dispose()
+        }
+
+        # Last 4 bytes of the 64-byte IMAGE_DOS_HEADER is pointer to IMAGE_NT_HEADER
+        $p_inh = [System.BitConverter]::ToUInt32($data, 60)
+        # Skip past 4 byte signature + 20 byte IMAGE_FILE_HEADER to get to IMAGE_OPTIONAL_HEADER
+        $p_ioh = $p_inh + 24
+        # Grab the magic header to determine 32-bit or 64-bit
+        $magic = [System.BitConverter]::ToUInt16($data, [int]$p_ioh)
+        if ($magic -eq 0x20b) {
+            # Skip to the end of IMAGE_OPTIONAL_HEADER64 to the first entry in the data directory array
+            $p_dataDirectory0 = [System.BitConverter]::ToUInt32($data, [int]$p_ioh + 224)
+        } else {
+            # Same thing, but for IMAGE_OPTIONAL_HEADER32
+            $p_dataDirectory0 = [System.BitConverter]::ToUInt32($data, [int]$p_ioh + 208)
+        }
+
+        if ($p_dataDirectory0 -eq 0) {
+            # If there is no entry, this is a native exe
+            # That means this is the in-box csc, which is not supported
+            throw $LocalizedData.IncorrectVersionOfCscExeInPath
+        }
     }
 
     $outputDirectory = $SwaggerMetaDict['outputDirectory']
