@@ -1318,3 +1318,101 @@ Describe 'ResourceId and InputObject parameter set tests' -Tag @('InputObject', 
         }
     }
 }
+
+Describe 'Client-side filtering tests (using metadata file)' -Tag @('ClientSideFilter', 'ScenarioTest') {
+    BeforeAll {
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwaggerUtility" | `
+                Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
+        Initialize-Test -GeneratedModuleName "Generated.ClientSideFilter.Spec" -GeneratedModuleVersion "0.0.1" -TestApiName "ClientSideFilterTests" `
+            -TestSpecFileName "ClientSideFilterBasicSpec.json" -TestDataFileName "ClientSideFilterData.json" `
+            -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+
+        # Import generated module
+        Write-Verbose "Importing modules"
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
+                Join-Path -ChildPath "Generated.ClientSideFilter.Spec")
+        
+        $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "ClientSideFilterTests" -TestRoutesFileName "ClientSideFilterRoutes.json"
+        if ($global:PSSwaggerTest_EnableTracing -and $script:EnableTracer) {
+            $script:EnableTracer = $false
+            {
+                Initialize-PSSwaggerDependencies -AcceptBootstrap
+                Import-Module "$PSScriptRoot\PSSwaggerTestTracing.psm1"
+                [Microsoft.Rest.ServiceClientTracing]::AddTracingInterceptor((New-PSSwaggerTestClientTracing))
+                [Microsoft.Rest.ServiceClientTracing]::IsEnabled = $true
+            }
+        }
+    }
+
+    It 'Adds append parameters' {
+        $cmdInfo = Get-Command Get-Resource
+        $parameterSet = $cmdInfo.ParameterSets | Where-Object { $_.Name -eq "Resources_Get" }
+        ($parameterSet.Parameters | Where-Object { $_.Name -eq "LastCreatedOn" }) | should not be $null
+        ($parameterSet.Parameters | Where-Object { $_.Name -eq "MaxUsers" }) | should not be $null
+    }
+
+    It 'Filters name with wildcard' {
+        ((Get-Resource -Name *def*).Count) | should be 2
+    }
+
+    It 'Filters users with less than' {
+        ((Get-Resource -MaxUsers 50).Count) | should be 2
+    }
+
+    It 'Filters dateTime with greater than or equal to' {
+        ((Get-Resource -LastCreatedOn ([DateTime]::Parse("1/20/2018 12:07:21 PM"))).Count) | should be 2
+    }
+
+    AfterAll {
+        Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
+    }
+}
+
+Describe 'Client-side filtering tests (using spec)' -Tag @('ClientSideFilter', 'ScenarioTest') {
+    BeforeAll {
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwaggerUtility" | `
+                Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
+        Initialize-Test -GeneratedModuleName "Generated.ClientSideFilter.Metadata" -GeneratedModuleVersion "0.0.1" -TestApiName "ClientSideFilterTests" `
+            -TestSpecFileName "ClientSideFilterSpecWithMetadata.json" -TestDataFileName "ClientSideFilterData.json" `
+            -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+
+        # Import generated module
+        Write-Verbose "Importing modules"
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
+                Join-Path -ChildPath "Generated.ClientSideFilter.Metadata")
+        
+        $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "ClientSideFilterTests" -TestRoutesFileName "ClientSideFilterRoutes.json"
+        if ($global:PSSwaggerTest_EnableTracing -and $script:EnableTracer) {
+            $script:EnableTracer = $false
+            {
+                Initialize-PSSwaggerDependencies -AcceptBootstrap
+                Import-Module "$PSScriptRoot\PSSwaggerTestTracing.psm1"
+                [Microsoft.Rest.ServiceClientTracing]::AddTracingInterceptor((New-PSSwaggerTestClientTracing))
+                [Microsoft.Rest.ServiceClientTracing]::IsEnabled = $true
+            }
+        }
+    }
+
+    It 'Adds append parameters' {
+        $cmdInfo = Get-Command Get-Resource
+        $parameterSet = $cmdInfo.ParameterSets | Where-Object { $_.Name -eq "Resources_Get" }
+        ($parameterSet.Parameters | Where-Object { $_.Name -eq "LastCreatedOn" }) | should not be $null
+        ($parameterSet.Parameters | Where-Object { $_.Name -eq "MaxUsers" }) | should not be $null
+    }
+
+    It 'Filters name with wildcard' {
+        ((Get-Resource -Name *def*).Count) | should be 2
+    }
+
+    It 'Filters users with less than' {
+        ((Get-Resource -MaxUsers 50).Count) | should be 2
+    }
+
+    It 'Filters dateTime with greater than or equal to' {
+        ((Get-Resource -LastCreatedOn ([DateTime]::Parse("1/20/2018 12:07:21 PM"))).Count) | should be 2
+    }
+
+    AfterAll {
+        Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
+    }
+}
