@@ -1347,8 +1347,10 @@ Describe 'Client-side filtering tests (using metadata file)' -Tag @('ClientSideF
     It 'Adds append parameters' {
         $cmdInfo = Get-Command Get-Resource
         $parameterSet = $cmdInfo.ParameterSets | Where-Object { $_.Name -eq "Resources_Get" }
-        ($parameterSet.Parameters | Where-Object { $_.Name -eq "LastCreatedOn" }) | should not be $null
-        ($parameterSet.Parameters | Where-Object { $_.Name -eq "MaxUsers" }) | should not be $null
+        $CommandInfo.Parameters.Keys -contains 'MaxUsers' | Should Be $true
+        $CommandInfo.Parameters.MaxUsers.ParameterType.ToString() | Should BeExactly 'System.Int32'
+        $CommandInfo.Parameters.Keys -contains 'LastCreatedOn' | Should Be $true
+        $CommandInfo.Parameters.LastCreatedOn.ParameterType.ToString() | Should BeExactly 'System.DateTime'
     }
 
     It 'Filters name with wildcard' {
@@ -1396,8 +1398,10 @@ Describe 'Client-side filtering tests (using spec)' -Tag @('ClientSideFilter', '
     It 'Adds append parameters' {
         $cmdInfo = Get-Command Get-Resource
         $parameterSet = $cmdInfo.ParameterSets | Where-Object { $_.Name -eq "Resources_Get" }
-        ($parameterSet.Parameters | Where-Object { $_.Name -eq "LastCreatedOn" }) | should not be $null
-        ($parameterSet.Parameters | Where-Object { $_.Name -eq "MaxUsers" }) | should not be $null
+        $CommandInfo.Parameters.Keys -contains 'MaxUsers' | Should Be $true
+        $CommandInfo.Parameters.MaxUsers.ParameterType.ToString() | Should BeExactly 'System.Int32'
+        $CommandInfo.Parameters.Keys -contains 'LastCreatedOn' | Should Be $true
+        $CommandInfo.Parameters.LastCreatedOn.ParameterType.ToString() | Should BeExactly 'System.DateTime'
     }
 
     It 'Filters name with wildcard' {

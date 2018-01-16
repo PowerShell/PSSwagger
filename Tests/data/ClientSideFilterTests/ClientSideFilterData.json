@@ -1,0 +1,19 @@
+{
+  "resources": [
+    {
+      "name": "abdef",
+      "users": 1,
+      "createdOn": "1/16/2018 12:07:21 PM"
+    },
+    {
+      "name": "defabghty",
+      "users": 10,
+      "createdOn": "1/20/2018 12:07:21 PM"
+    },
+    {
+      "name": "poiabuytr",
+      "users": 100,
+      "createdOn": "2/16/2018 12:07:21 PM"
+    }
+  ]
+}

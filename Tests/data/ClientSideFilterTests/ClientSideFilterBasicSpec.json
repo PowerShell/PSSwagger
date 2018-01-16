@@ -1,0 +1,90 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "version": "2018-01-16",
+        "title": "ClientSideFilterBasic",
+        "description": "Basic spec for client-side filter test"
+    },
+    "host": "localhost:3000",
+    "schemes": [
+        "http"
+    ],
+    "security": [],
+    "securityDefinitions": {},
+    "paths": {
+        "/resources/{name}": {
+            "get": {
+                "operationId": "Resources_Get",
+                "description": "Get a single resource by name",
+                "parameters": [
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "required": true,
+                        "type": "string",
+                        "description": "Name of resource"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieved resources",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Resource"
+                            }
+                        }
+                    }
+                },
+                "produces": [
+                    "application/json"
+                ],
+                "consumes": [
+                    "application/json"
+                ]
+            }
+        },
+        "/resources": {
+            "get": {
+                "operationId": "Resources_List",
+                "description": "Get all resources",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "Retrieved resources",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Resource"
+                            }
+                        }
+                    }
+                },
+                "produces": [
+                    "application/json"
+                ],
+                "consumes": [
+                    "application/json"
+                ]
+            }
+        }
+    },
+    "definitions": {
+        "Resource": {
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "users": {
+                    "type": "integer"
+                },
+                "createdOn": {
+                    "type": "string",
+                    "format": "date-time"
+                }
+            },
+            "description": "A resource"
+        }
+    },
+    "parameters": {}
+}
