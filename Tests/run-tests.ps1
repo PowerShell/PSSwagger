@@ -9,7 +9,6 @@
 #########################################################################################
 [CmdletBinding()]
 param(
-    [ValidateSet("All", "UnitTest", "ScenarioTest")]
     [string[]]$TestSuite = "All",
     [string[]]$TestName,
     [ValidateSet("net452", "netstandard1.7")]
