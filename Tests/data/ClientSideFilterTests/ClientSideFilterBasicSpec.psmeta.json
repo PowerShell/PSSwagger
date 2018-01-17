@@ -1,0 +1,44 @@
+{
+    "paths": {
+        "/resources/{name}": {
+            "get": {
+                "operationId": "Resources_Get",
+                "x-ps-cmdlet-infos": [{
+                    "clientSideFilter": {
+                        "serverSideResultCommand": ".",
+                        "serverSideResultParameterSet": "Resources_List",
+                        "clientSideParameterSet": "Resources_Get",
+                        "filters": [
+                            {
+                                "type": "wildcard",
+                                "parameter": "Name",
+                                "character": "*",
+                                "property": "Name"
+                            },
+                            {
+                                "type": "logicalOperation",
+                                "operation": ">=",
+                                "parameter": "LastCreatedOn",
+                                "appendParameterInfo": {
+                                    "type": "System.DateTime",
+                                    "required": false
+                                },
+                                "property": "CreatedOn"
+                            },
+                            {
+                                "type": "logicalOperation",
+                                "operation": "<",
+                                "parameter": "MaxUsers",
+                                "appendParameterInfo": {
+                                    "type": "int",
+                                    "required": false
+                                },
+                                "property": "Users"
+                            }
+                        ]
+                    }
+                }]
+            }
+        }
+    }
+}
