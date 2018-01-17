@@ -37,6 +37,7 @@ customAuthCommand | `string` | Specify a PowerShell cmdlet that should return a 
 hostOverrideCommand | `string` | Specify a PowerShell cmdlet that should return a custom hostname string. Overrides the default host in the specification.
 noAuthChallenge | `bool` | Specify true to indicate that the service will not offer an authentication challenge, such as adding the WWW-Authenticate header to a 401 response. Default is false.
 formatter | `string` | Specify a formatter to use. One of: 'None', 'PSScriptAnalyzer'
+defaultWildcardChar | `character` | Default wildcard character for auto-generated client-side filtering.
 
 **Note**: These field names are taken from New-PSSwaggerModule cmdlet parameters. These field names will be renamed as per the cmdlet review updates for New-PSSwaggerModule cmdlet.
 
@@ -113,6 +114,7 @@ generateCommand | `bool` | Boolean to indicate whether a cmdlet is required or n
 defaultParameterSet | `string` | String value to indicate whether the specified OperationId or Definition name as the default parameter set name when multiple Operations or definitions are merged into the same cmdlet, e.g., Get and List operationIds can be combined into single cmdlet.
 generateOutputFormat | `bool` | Applicable to definitions only. Boolean to indicate whether output format file is required for this model type or not. Default value true.
 clientParameters | `x-ps-client-parameters` | Client parameters for this command. Overrides global parameters.
+clientSideFilter | `x-ps-client-side-filter` | Client-side filter.
 
 **Examples**:
 1. x-ps-cmdlet-infos on operation
@@ -351,3 +353,57 @@ LongRunningOperationRetryTimeout | `int` | Retry timeout in seconds for Long Run
     "LongRunningOperationRetryTimeout": 9001
 }
 ```
+
+## x-ps-client-side-filter
+Defines client-side filters
+
+**Parent element**: `x-ps-cmdlet-info Object`
+
+**Schema**:
+
+Field Name | Type | Description
+---|:---:|---
+serverSideResultCommand | `string` | Cmdlet to run to get server-side results. Use "." to indicate the current cmdlet.
+serverSideResultParameterSet | `string` | Parameter set to get server-side results.
+clientSideParameterSet | `string` | Parameter set to get parameters from.
+filters | `x-ps-client-side-filter-definition[]` | Filters
+
+**Examples**:
+```json5
+{
+    "serverSideResultCommand": ".",
+    "serverSideResultParameterSet": "BatchAccount_List",
+    "clientSideParameterSet": "BatchAccount_Get",
+    "filters": ...
+}
+```
+
+## x-ps-client-side-filter-definition
+Defines a single client-side filter
+
+**Parent element**: `x-ps-client-side-filter Object`
+
+**Schema**:
+
+Field Name | Type | Description
+---|:---:|---
+type | `string` | Type of filter. Supported: 'wildcard', 'logicalOperation'
+parameter | `string` | Parameter containing the filter pattern or value.
+property | `string` | Property of the result object to filter on.
+appendParameterInfo | `x-ps-client-side-filter-definition[]` | Append this parameter to the cmdlet parameter list. Shouldn't be used if the parameter already exists. Properties: 'type' = PowerShell type name, 'required' = true or false if the new parameter should be required
+* | * | Additional properties for the current filter type. 'wildcard': 'character'. 'logicalOperation': 'operation'
+
+**Examples**:
+```json5
+{
+    "type": "wildcard",
+    "parameter": "Name",
+    "property": "Name",
+    "character": "*",
+    "appendParameterInfo": {
+        "type": "int",
+        "required": false
+    }
+}
+```
+
