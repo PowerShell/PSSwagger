@@ -452,7 +452,8 @@ function New-PSSwaggerModule {
         NoAuthChallenge       = $false
         NameSpacePrefix       = ''
         Header                = ''
-        Formatter             = ''
+        Formatter             = 'PSScriptAnalyzer'
+        DefaultWildcardChar   = '*'
     }
 
     # Parse the JSON and populate the dictionary
@@ -582,6 +583,100 @@ function New-PSSwaggerModule {
 
             }
         }
+
+        # Add extra metadata based on service type
+        if (($PowerShellCodeGen['ServiceType'] -eq 'azure') -or ($PowerShellCodeGen['ServiceType'] -eq 'azure_stack')) {
+            foreach ($entry in $PathFunctionDetails.GetEnumerator()) {
+                $hyphenIndex = $entry.Name.IndexOf("-")
+                if ($hyphenIndex -gt -1) {
+                    $commandVerb = $entry.Name.Substring(0, $hyphenIndex)
+                    # Add client-side filter metadata automatically if:
+                    #   1: If the command is a Get-* command
+                    #   2: A *_List parameter set exists
+                    #   3: A *_Get parameter set exists
+                    #   4: *_List required parameters are a subset of *_Get required parameters
+                    #   5: *_Get has a -Name parameter alias
+                    if ($commandVerb -eq 'Get') {
+                        $getParameters = @()
+                        $listParameters = $null
+                        $listOperationId = $null
+                        $getOperationId = $null
+                        $nameParameterOriginalName = $null # This ideally matches the object property name
+                        $nameParameterNormalName = $null # This is the one being switched out for -Name later
+                        foreach ($parameterSetDetails in $entry.Value.ParameterSetDetails) {
+                            if ($parameterSetDetails.OperationId.EndsWith("_Get") -and
+                            (-not ($parameterSetDetails.OperationId.StartsWith("InputObject_"))) -and
+                            (-not ($parameterSetDetails.OperationId.StartsWith("ResourceId_")))) {
+                                $getOperationId = $parameterSetDetails.OperationId
+                                foreach ($parametersDetail in $parameterSetDetails.ParameterDetails) {
+                                    foreach ($parameterDetailEntry in $parametersDetail.GetEnumerator()) {
+                                        $getParameters += $parameterDetailEntry.Value
+                                        if ($parameterDetailEntry.Value.ContainsKey('Alias')) {
+                                            if ($parameterDetailEntry.Value.Alias -eq 'Name') {
+                                                if ($parameterDetailEntry.Value.ContainsKey('OriginalParameterName')) {
+                                                    $nameParameterOriginalName = $parameterDetailEntry.Value.OriginalParameterName
+                                                } else {
+                                                    $nameParameterOriginalName = $parameterDetailEntry.Value.Name
+                                                }
+
+                                                $nameParameterNormalName = $parameterDetailEntry.Value.Name
+                                            }
+                                        }
+                                    }
+                                }
+                            } elseif ($parameterSetDetails.OperationId.EndsWith("_List")) {
+                                $listOperationId = $parameterSetDetails.OperationId
+                                $listParameters = @()
+                                foreach ($parametersDetail in $parameterSetDetails.ParameterDetails) {
+                                    foreach ($parameterDetailEntry in $parametersDetail.GetEnumerator()) {
+                                        $listParameters += $parameterDetailEntry.Value
+                                    }
+                                }
+                            }
+                        }
+
+                        if ($getParameters -and $listParameters -and $nameParameterOriginalName) {
+                            $valid = $true
+                            foreach ($parameterDetail in $listParameters) {
+                                if ($parameterDetail.Mandatory -eq '$true') {
+                                    $matchingGetParameter = $getParameters | Where-Object { ($_.Name -eq $parameterDetail.Name) -and ($_.Mandatory -eq '$true') }
+                                    if (-not $matchingGetParameter) {
+                                        $valid = $false
+                                        Write-Warning "Failed to add automatic client-side filter for candidate command '$($entry.Name)': Mandatory List parameter '$($parameterDetail.Name)' has no matching Get mandatory parameter. It will be impossible to guarantee execution of the List method before client-side filtering occurs."
+                                    }
+                                }
+                            }
+
+                            if ($valid) {
+                                if (-not $entry.Value.ContainsKey('Metadata')) {
+                                    $entry.Value['Metadata'] = New-Object -TypeName PSCustomObject
+                                }
+
+                                if (-not (Get-Member -InputObject $entry.Value['Metadata'] -Name 'ClientSideFilter')) {
+                                    $clientSideFilter = New-Object -TypeName PSCustomObject
+                                    # Use the current command for server-side results
+                                    Add-Member -InputObject $clientSideFilter -Name 'ServerSideResultCommand' -Value '.' -MemberType NoteProperty
+                                    # Use the list operation ID
+                                    Add-Member -InputObject $clientSideFilter -Name 'ServerSideResultParameterSet' -Value $listOperationId -MemberType NoteProperty
+                                    # Use the get operation ID
+                                    Add-Member -InputObject $clientSideFilter -Name 'ClientSideParameterSet' -Value $getOperationId -MemberType NoteProperty
+                                    # Create a wildcard filter for the Name parameter
+                                    $nameWildcardFilter = New-Object -TypeName PSCustomObject
+                                    Add-Member -InputObject $nameWildcardFilter -Name 'Type' -Value 'wildcard' -MemberType NoteProperty
+                                    Add-Member -InputObject $nameWildcardFilter -Name 'Parameter' -Value $nameParameterNormalName -MemberType NoteProperty
+                                    Add-Member -InputObject $nameWildcardFilter -Name 'Property' -Value 'Name' -MemberType NoteProperty
+                                    Add-Member -InputObject $nameWildcardFilter -Name 'Character' -Value $PowerShellCodeGen['DefaultWildcardChar'] -MemberType NoteProperty
+                                    $filters = @($nameWildcardFilter)
+                                    Add-Member -InputObject $clientSideFilter -Name 'Filters' -Value $filters -MemberType NoteProperty
+
+                                    Add-Member -InputObject $entry.Value['Metadata'] -Name 'ClientSideFilter' -Value $clientSideFilter -MemberType NoteProperty
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     $FullClrAssemblyFilePath = $null
@@ -677,6 +772,8 @@ function New-PSSwaggerModule {
 
     $CopyFilesMap = [ordered]@{
         'Get-TaskResult.ps1' = 'Get-TaskResult.ps1'
+        'Get-ApplicableFilters.ps1' = 'Get-ApplicableFilters.ps1'
+        'Test-FilteredResult.ps1' = 'Test-FilteredResult.ps1'
     }
     if ($UseAzureCsharpGenerator) {
         $CopyFilesMap['New-ArmServiceClient.ps1'] = 'New-ServiceClient.ps1'

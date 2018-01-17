@@ -1,5 +1,7 @@
 {
   "info": {
-    "x-ps-code-generation-settings": {}
+    "x-ps-code-generation-settings": {
+      "defaultWildcardChar": "*"
+    }
   }
 }

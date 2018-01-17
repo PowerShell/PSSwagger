@@ -1346,11 +1346,10 @@ Describe 'Client-side filtering tests (using metadata file)' -Tag @('ClientSideF
 
     It 'Adds append parameters' {
         $cmdInfo = Get-Command Get-Resource
-        $parameterSet = $cmdInfo.ParameterSets | Where-Object { $_.Name -eq "Resources_Get" }
-        $CommandInfo.Parameters.Keys -contains 'MaxUsers' | Should Be $true
-        $CommandInfo.Parameters.MaxUsers.ParameterType.ToString() | Should BeExactly 'System.Int32'
-        $CommandInfo.Parameters.Keys -contains 'LastCreatedOn' | Should Be $true
-        $CommandInfo.Parameters.LastCreatedOn.ParameterType.ToString() | Should BeExactly 'System.DateTime'
+        $cmdInfo.Parameters.Keys -contains 'MaxUsers' | Should Be $true
+        $cmdInfo.Parameters.MaxUsers.ParameterType.ToString() | Should BeExactly 'System.Int32'
+        $cmdInfo.Parameters.Keys -contains 'LastCreatedOn' | Should Be $true
+        $cmdInfo.Parameters.LastCreatedOn.ParameterType.ToString() | Should BeExactly 'System.DateTime'
     }
 
     It 'Filters name with wildcard' {
@@ -1358,15 +1357,15 @@ Describe 'Client-side filtering tests (using metadata file)' -Tag @('ClientSideF
     }
 
     It 'Filters users with less than' {
-        ((Get-Resource -MaxUsers 50).Count) | should be 2
+        ((Get-Resource -Name abdef -MaxUsers 50).Count) | should be 1
     }
 
     It 'Filters dateTime with greater than or equal to' {
-        ((Get-Resource -LastCreatedOn ([DateTime]::Parse("1/20/2018 12:07:21 PM"))).Count) | should be 2
+        ((Get-Resource -Name * -LastCreatedOn ([DateTime]::Parse("1/20/2018 12:07:21 PM"))).Count) | should be 2
     }
 
     It 'Multiple filters are &&ed together' {
-        ((Get-Resource -Name *y* -MaxUsers 100).Count) | should be 1
+        ((Get-Resource -Name * -MaxUsers 100).Count) | should be 2
     }
 
     AfterAll {
@@ -1401,11 +1400,10 @@ Describe 'Client-side filtering tests (using spec)' -Tag @('ClientSideFilter', '
 
     It 'Adds append parameters' {
         $cmdInfo = Get-Command Get-Resource
-        $parameterSet = $cmdInfo.ParameterSets | Where-Object { $_.Name -eq "Resources_Get" }
-        $CommandInfo.Parameters.Keys -contains 'MaxUsers' | Should Be $true
-        $CommandInfo.Parameters.MaxUsers.ParameterType.ToString() | Should BeExactly 'System.Int32'
-        $CommandInfo.Parameters.Keys -contains 'LastCreatedOn' | Should Be $true
-        $CommandInfo.Parameters.LastCreatedOn.ParameterType.ToString() | Should BeExactly 'System.DateTime'
+        $cmdInfo.Parameters.Keys -contains 'MaxUsers' | Should Be $true
+        $cmdInfo.Parameters.MaxUsers.ParameterType.ToString() | Should BeExactly 'System.Int32'
+        $cmdInfo.Parameters.Keys -contains 'LastCreatedOn' | Should Be $true
+        $cmdInfo.Parameters.LastCreatedOn.ParameterType.ToString() | Should BeExactly 'System.DateTime'
     }
 
     It 'Filters name with wildcard' {
@@ -1413,15 +1411,15 @@ Describe 'Client-side filtering tests (using spec)' -Tag @('ClientSideFilter', '
     }
 
     It 'Filters users with less than' {
-        ((Get-Resource -MaxUsers 50).Count) | should be 2
+        ((Get-Resource -Name abdef -MaxUsers 50).Count) | should be 1
     }
 
     It 'Filters dateTime with greater than or equal to' {
-        ((Get-Resource -LastCreatedOn ([DateTime]::Parse("1/20/2018 12:07:21 PM"))).Count) | should be 2
+        ((Get-Resource -Name * -LastCreatedOn ([DateTime]::Parse("1/20/2018 12:07:21 PM"))).Count) | should be 2
     }
 
     It 'Multiple filters are &&ed together' {
-        ((Get-Resource -Name *y* -MaxUsers 100).Count) | should be 1
+        ((Get-Resource -Name * -MaxUsers 100).Count) | should be 2
     }
 
     AfterAll {
