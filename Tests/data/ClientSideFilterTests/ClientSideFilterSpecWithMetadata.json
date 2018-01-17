@@ -46,6 +46,7 @@
                     "clientSideFilter": {
                         "serverSideResultCommand": ".",
                         "serverSideResultParameterSet": "Resources_List",
+                        "clientSideParameterSet": "Resources_Get",
                         "filters": [
                             {
                                 "type": "wildcard",
@@ -54,7 +55,8 @@
                                 "property": "Name"
                             },
                             {
-                                "type": "lessThanLogical",
+                                "type": "logicalOperation",
+                                "operation": ">=",
                                 "parameter": "LastCreatedOn",
                                 "appendParameterInfo": {
                                     "type": "System.DateTime",
@@ -63,7 +65,8 @@
                                 "property": "CreatedOn"
                             },
                             {
-                                "type": "lessThanLogical",
+                                "type": "logicalOperation",
+                                "operation": "<",
                                 "parameter": "MaxUsers",
                                 "appendParameterInfo": {
                                     "type": "int",

@@ -1365,6 +1365,10 @@ Describe 'Client-side filtering tests (using metadata file)' -Tag @('ClientSideF
         ((Get-Resource -LastCreatedOn ([DateTime]::Parse("1/20/2018 12:07:21 PM"))).Count) | should be 2
     }
 
+    It 'Multiple filters are &&ed together' {
+        ((Get-Resource -Name *y* -MaxUsers 100).Count) | should be 1
+    }
+
     AfterAll {
         Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
     }
@@ -1414,6 +1418,10 @@ Describe 'Client-side filtering tests (using spec)' -Tag @('ClientSideFilter', '
 
     It 'Filters dateTime with greater than or equal to' {
         ((Get-Resource -LastCreatedOn ([DateTime]::Parse("1/20/2018 12:07:21 PM"))).Count) | should be 2
+    }
+
+    It 'Multiple filters are &&ed together' {
+        ((Get-Resource -Name *y* -MaxUsers 100).Count) | should be 1
     }
 
     AfterAll {
