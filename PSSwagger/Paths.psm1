@@ -609,83 +609,83 @@ function New-SwaggerPath {
             }
         }
 
-        if (Get-Member -InputObject $FunctionDetails['Metadata'] -Name 'clientSideFilter') {
-            $clientSideFilter = $FunctionDetails['Metadata'].ClientSideFilter
-            $matchingParameters = @()
-            $serverSideFunctionDetails = $null
-            if ($clientSideFilter.ServerSideResultCommand -eq '.') {
-                $serverSideFunctionDetails = $FunctionDetails
-            }
-            else {
-                $serverSideFunctionDetails = $PathFunctionDetails[$clientSideFilter.ServerSideResultCommand]
-            }
-            if (-not $serverSideFunctionDetails) {
-                # Warning: Couldn't find specified server-side command
-                Write-Warning "Couldn't find server-side result operation: $($clientSideFilter.ServerSideResultCommand)"
-            }
-            else {
-                $serverSideParameterSet = $serverSideFunctionDetails['ParameterSetDetails'] | Where-Object { $_.OperationId -eq $clientSideFilter.ServerSideResultParameterSet}
-                if (-not $serverSideParameterSet) {
-                    # Warning: Couldn't find specified server-side parameter set
-                    Write-Warning "Couldn't find server-side result parameter set: $($clientSideFilter.ServerSideResultParameterSet)"
+        if (Get-Member -InputObject $FunctionDetails['Metadata'] -Name 'clientSideFilters') {
+            foreach ($clientSideFilter in $FunctionDetails['Metadata'].ClientSideFilters) {
+                $matchingParameters = @()
+                $serverSideFunctionDetails = $null
+                if ($clientSideFilter.ServerSideResultCommand -eq '.') {
+                    $serverSideFunctionDetails = $FunctionDetails
                 }
                 else {
-                    $clientSideParameterSet = $parameterSetDetails | Where-Object { $_.OperationId -eq $clientSideFilter.ClientSideParameterSet }
-                    if (-not $clientSideParameterSet) {
-                        Write-Warning "Couldn't find client-side parameter set: $($clientSideFilter.ClientSideParameterSet)"
+                    $serverSideFunctionDetails = $PathFunctionDetails[$clientSideFilter.ServerSideResultCommand]
+                }
+                if (-not $serverSideFunctionDetails) {
+                    # Warning: Couldn't find specified server-side command
+                    Write-Warning "Couldn't find server-side result operation: $($clientSideFilter.ServerSideResultCommand)"
+                }
+                else {
+                    $serverSideParameterSet = $serverSideFunctionDetails['ParameterSetDetails'] | Where-Object { $_.OperationId -eq $clientSideFilter.ServerSideResultParameterSet}
+                    if (-not $serverSideParameterSet) {
+                        # Warning: Couldn't find specified server-side parameter set
+                        Write-Warning "Couldn't find server-side result parameter set: $($clientSideFilter.ServerSideResultParameterSet)"
                     }
                     else {
-                        $valid = $true
-                        foreach ($parametersDetail in $serverSideParameterSet.ParameterDetails) {
-                            foreach ($parameterDetailEntry in $parametersDetail.GetEnumerator()) {
-                                if ($parameterDetailEntry.Value.Mandatory -eq '$true' -and
-                                ((-not $parameterDetailEntry.Value.ContainsKey('ReadOnlyGlobalParameter')) -or $parameterDetailEntry.Value.ReadOnlyGlobalParameter) -and
-                                ((-not $parameterDetailEntry.Value.ContainsKey('ConstantValue')) -or $parameterDetailEntry.Value.ConstantValue)) {
-                                    $clientSideParameter = $null
-                                    foreach ($pd in $clientSideParameterSet.ParameterDetails.GetEnumerator()) {
-                                        foreach ($entry in $pd.GetEnumerator()) {
-                                            if (($entry.Value.Mandatory -eq '$true') -and ($entry.Value.Name -eq $parameterDetailEntry.Value.Name)) {
-                                                $clientSideParameter = $entry
+                        $clientSideParameterSet = $parameterSetDetails | Where-Object { $_.OperationId -eq $clientSideFilter.ClientSideParameterSet }
+                        if (-not $clientSideParameterSet) {
+                            Write-Warning "Couldn't find client-side parameter set: $($clientSideFilter.ClientSideParameterSet)"
+                        }
+                        else {
+                            $valid = $true
+                            foreach ($parametersDetail in $serverSideParameterSet.ParameterDetails) {
+                                foreach ($parameterDetailEntry in $parametersDetail.GetEnumerator()) {
+                                    if ($parameterDetailEntry.Value.Mandatory -eq '$true' -and
+                                        ((-not $parameterDetailEntry.Value.ContainsKey('ReadOnlyGlobalParameter')) -or $parameterDetailEntry.Value.ReadOnlyGlobalParameter) -and
+                                        ((-not $parameterDetailEntry.Value.ContainsKey('ConstantValue')) -or $parameterDetailEntry.Value.ConstantValue)) {
+                                        $clientSideParameter = $null
+                                        foreach ($pd in $clientSideParameterSet.ParameterDetails.GetEnumerator()) {
+                                            foreach ($entry in $pd.GetEnumerator()) {
+                                                if (($entry.Value.Mandatory -eq '$true') -and ($entry.Value.Name -eq $parameterDetailEntry.Value.Name)) {
+                                                    $clientSideParameter = $entry
+                                                }
                                             }
                                         }
-                                    }
-                                    if (-not $clientSideParameterSet) {
-                                        # Warning: Missing client-side parameter
-                                        Write-Warning "Required server-side parameter '$($parameterDetailEntry.Value.Name)' is not required by the client-side, which will cause issues in client-side filtering. Can't include client-side filtering."
-                                        $valid = $false
-                                    }
-                                    else {
-                                        $matchingParameters += $parameterDetailEntry.Value.Name
+                                        if (-not $clientSideParameterSet) {
+                                            # Warning: Missing client-side parameter
+                                            Write-Warning "Required server-side parameter '$($parameterDetailEntry.Value.Name)' is not required by the client-side, which will cause issues in client-side filtering. Can't include client-side filtering."
+                                            $valid = $false
+                                        }
+                                        else {
+                                            $matchingParameters += $parameterDetailEntry.Value.Name
+                                        }
                                     }
                                 }
                             }
-                        }
 
-                        $filterBlock = $executionContext.InvokeCommand.ExpandString($FilterBlockStr)
+                            $filterBlock = $executionContext.InvokeCommand.ExpandString($FilterBlockStr)
+                        }
                     }
                 }
-            }
-
-            # If this is filled out, means that all the inputs were validated (except maybe the filter details)
-            if ($filterBlock) {
-                foreach ($filter in $clientSideFilter.Filters) {
-                    if (Get-Member -InputObject $filter -Name 'appendParameterInfo') {
-                        $parameterDetails = @{
-                            'Name'        = [Char]::ToUpper($filter.Parameter[0]) + $filter.Parameter.Substring(1)
-                            'Mandatory'   = '$false'
-                            'Type'        = $filter.AppendParameterInfo.Type
-                            'ValidateSet' = ''
-                            'Description' = 'Filter parameter'
-                            'IsParameter' = $true
+                # If this is filled out, means that all the inputs were validated (except maybe the filter details)
+                if ($filterBlock) {
+                    foreach ($filter in $clientSideFilter.Filters) {
+                        if (Get-Member -InputObject $filter -Name 'appendParameterInfo') {
+                            $parameterDetails = @{
+                                'Name'        = [Char]::ToUpper($filter.Parameter[0]) + $filter.Parameter.Substring(1)
+                                'Mandatory'   = '$false'
+                                'Type'        = $filter.AppendParameterInfo.Type
+                                'ValidateSet' = ''
+                                'Description' = 'Filter parameter'
+                                'IsParameter' = $true
+                            }
+                            $AddUniqueParameter_params = @{
+                                ParameterDetails          = $parameterDetails
+                                CandidateParameterDetails = $parameterDetails
+                                ParameterSetName          = $clientSideFilter.ClientSideParameterSet
+                                ParametersToAdd           = $parametersToAdd
+                                ParameterHitCount         = $parameterHitCount
+                            }
+                            Add-UniqueParameter @AddUniqueParameter_params
                         }
-                        $AddUniqueParameter_params = @{
-                            ParameterDetails          = $parameterDetails
-                            CandidateParameterDetails = $parameterDetails
-                            ParameterSetName          = $clientSideFilter.ClientSideParameterSet
-                            ParametersToAdd           = $parametersToAdd
-                            ParameterHitCount         = $parameterHitCount
-                        }
-                        Add-UniqueParameter @AddUniqueParameter_params
                     }
                 }
             }

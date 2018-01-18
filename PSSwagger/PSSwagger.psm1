@@ -601,7 +601,6 @@ function New-PSSwaggerModule {
                         $listParameters = $null
                         $listOperationId = $null
                         $getOperationId = $null
-                        $nameParameterOriginalName = $null # This ideally matches the object property name
                         $nameParameterNormalName = $null # This is the one being switched out for -Name later
                         foreach ($parameterSetDetails in $entry.Value.ParameterSetDetails) {
                             if ($parameterSetDetails.OperationId.EndsWith("_Get") -and
@@ -613,12 +612,6 @@ function New-PSSwaggerModule {
                                         $getParameters += $parameterDetailEntry.Value
                                         if ($parameterDetailEntry.Value.ContainsKey('Alias')) {
                                             if ($parameterDetailEntry.Value.Alias -eq 'Name') {
-                                                if ($parameterDetailEntry.Value.ContainsKey('OriginalParameterName')) {
-                                                    $nameParameterOriginalName = $parameterDetailEntry.Value.OriginalParameterName
-                                                } else {
-                                                    $nameParameterOriginalName = $parameterDetailEntry.Value.Name
-                                                }
-
                                                 $nameParameterNormalName = $parameterDetailEntry.Value.Name
                                             }
                                         }
@@ -635,7 +628,7 @@ function New-PSSwaggerModule {
                             }
                         }
 
-                        if ($getParameters -and $listParameters -and $nameParameterOriginalName) {
+                        if ($getParameters -and $listParameters) {
                             $valid = $true
                             foreach ($parameterDetail in $listParameters) {
                                 if ($parameterDetail.Mandatory -eq '$true') {
@@ -668,8 +661,8 @@ function New-PSSwaggerModule {
                                     Add-Member -InputObject $nameWildcardFilter -Name 'Character' -Value $PowerShellCodeGen['DefaultWildcardChar'] -MemberType NoteProperty
                                     $filters = @($nameWildcardFilter)
                                     Add-Member -InputObject $clientSideFilter -Name 'Filters' -Value $filters -MemberType NoteProperty
-
-                                    Add-Member -InputObject $entry.Value['Metadata'] -Name 'ClientSideFilter' -Value $clientSideFilter -MemberType NoteProperty
+                                    $allClientSideFilters = @($clientSideFilter)
+                                    Add-Member -InputObject $entry.Value['Metadata'] -Name 'ClientSideFilter' -Value $allClientSideFilters -MemberType NoteProperty
                                 }
                             }
                         }

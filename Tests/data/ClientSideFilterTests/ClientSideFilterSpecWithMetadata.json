@@ -43,7 +43,7 @@
                     "application/json"
                 ],
                 "x-ps-cmdlet-infos": [{
-                    "clientSideFilter": {
+                    "clientSideFilters": [{
                         "serverSideResultCommand": ".",
                         "serverSideResultParameterSet": "Resources_List",
                         "clientSideParameterSet": "Resources_Get",
@@ -75,7 +75,7 @@
                                 "property": "Users"
                             }
                         ]
-                    }
+                    }]
                 }]
             }
         },
