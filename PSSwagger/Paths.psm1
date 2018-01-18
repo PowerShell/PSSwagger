@@ -661,7 +661,9 @@ function New-SwaggerPath {
                                 }
                             }
 
-                            $filterBlock = $executionContext.InvokeCommand.ExpandString($FilterBlockStr)
+                            if ($valid) {
+                                $filterBlock = $executionContext.InvokeCommand.ExpandString($FilterBlockStr)
+                            }
                         }
                     }
                 }
