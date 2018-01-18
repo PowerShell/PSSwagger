@@ -42,7 +42,15 @@ function Test-WildcardFilterOnResult {
         $Filter
     )
 
-    $regex = $Filter.Value.Replace($Filter.Character, ".*")
+    foreach ($char in $Filter.Value) {
+        if ($char -ne $Filter.Character) {
+            $regex += "[$char]"
+        } else {
+            $regex += ".*"
+        }
+    }
+
+    $regex = $regex.Replace($Filter.Character, ".*")
     ($Result.($Filter.Property)) -match $regex
 }
 
