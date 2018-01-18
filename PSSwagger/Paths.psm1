@@ -617,7 +617,6 @@ function New-SwaggerPath {
                 $globalParametersStatic[$property.Name] = Get-ValueText($FunctionDetails['Metadata'].ClientParameters.$($property.Name))
             }
         }
-
         if (Get-Member -InputObject $FunctionDetails['Metadata'] -Name 'clientSideFilters') {
             foreach ($clientSideFilter in $FunctionDetails['Metadata'].ClientSideFilters) {
                 foreach ($filter in $clientSideFilter.Filters) {

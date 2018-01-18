@@ -299,13 +299,14 @@ function New-PSSwaggerModule {
         $ev = $null
 
         $webRequestParams = @{
-            'Uri' = $SpecificationUri
+            'Uri'     = $SpecificationUri
             'OutFile' = $SpecificationPath
         }
 
-        if($Credential -ne $null) {
+        if ($Credential -ne $null) {
             $webRequestParams['Credential'] = $Credential
-        } elseif ($UseDefaultCredential) {
+        }
+        elseif ($UseDefaultCredential) {
             $webRequestParams['UseDefaultCredential'] = $true
         }
 
@@ -483,7 +484,8 @@ function New-PSSwaggerModule {
     if (-not $Formatter) {
         if ($PowerShellCodeGen['Formatter']) {
             $Formatter = $PowerShellCodeGen['Formatter']
-        } else {
+        }
+        else {
             $Formatter = 'None'
         }
     }
@@ -604,8 +606,8 @@ function New-PSSwaggerModule {
                         $nameParameterNormalName = $null # This is the one being switched out for -Name later
                         foreach ($parameterSetDetails in $entry.Value.ParameterSetDetails) {
                             if ($parameterSetDetails.OperationId.EndsWith("_Get") -and
-                            (-not ($parameterSetDetails.OperationId.StartsWith("InputObject_"))) -and
-                            (-not ($parameterSetDetails.OperationId.StartsWith("ResourceId_")))) {
+                                (-not ($parameterSetDetails.OperationId.StartsWith("InputObject_"))) -and
+                                (-not ($parameterSetDetails.OperationId.StartsWith("ResourceId_")))) {
                                 $getOperationId = $parameterSetDetails.OperationId
                                 foreach ($parametersDetail in $parameterSetDetails.ParameterDetails) {
                                     foreach ($parameterDetailEntry in $parametersDetail.GetEnumerator()) {
@@ -615,9 +617,14 @@ function New-PSSwaggerModule {
                                                 $nameParameterNormalName = $parameterDetailEntry.Value.Name
                                             }
                                         }
+                                        elseif ($parameterDetailEntry.Value.Name -eq 'Name') {
+                                            # We're currently assuming this is a resource name
+                                            $nameParameterNormalName = $parameterDetailEntry.Value.Name
+                                        }
                                     }
                                 }
-                            } elseif ($parameterSetDetails.OperationId.EndsWith("_List")) {
+                            }
+                            elseif ($parameterSetDetails.OperationId.EndsWith("_List")) {
                                 $listOperationId = $parameterSetDetails.OperationId
                                 $listParameters = @()
                                 foreach ($parametersDetail in $parameterSetDetails.ParameterDetails) {
@@ -662,7 +669,7 @@ function New-PSSwaggerModule {
                                     $filters = @($nameWildcardFilter)
                                     Add-Member -InputObject $clientSideFilter -Name 'Filters' -Value $filters -MemberType NoteProperty
                                     $allClientSideFilters = @($clientSideFilter)
-                                    Add-Member -InputObject $entry.Value['Metadata'] -Name 'ClientSideFilter' -Value $allClientSideFilters -MemberType NoteProperty
+                                    Add-Member -InputObject $entry.Value['Metadata'] -Name 'ClientSideFilters' -Value $allClientSideFilters -MemberType NoteProperty
                                 }
                             }
                         }
@@ -765,9 +772,9 @@ function New-PSSwaggerModule {
         -PSHeaderComment $PSHeaderComment
 
     $CopyFilesMap = [ordered]@{
-        'Get-TaskResult.ps1' = 'Get-TaskResult.ps1'
+        'Get-TaskResult.ps1'        = 'Get-TaskResult.ps1'
         'Get-ApplicableFilters.ps1' = 'Get-ApplicableFilters.ps1'
-        'Test-FilteredResult.ps1' = 'Test-FilteredResult.ps1'
+        'Test-FilteredResult.ps1'   = 'Test-FilteredResult.ps1'
     }
     if ($UseAzureCsharpGenerator) {
         $CopyFilesMap['New-ArmServiceClient.ps1'] = 'New-ServiceClient.ps1'
@@ -906,7 +913,8 @@ function ConvertTo-CsharpCode {
         $fs = [System.IO.File]::OpenRead($csc.Source)
         try {
             $null = $fs.Read($data, 0, 4096)
-        } finally {
+        }
+        finally {
             $fs.Dispose()
         }
 
@@ -919,7 +927,8 @@ function ConvertTo-CsharpCode {
         if ($magic -eq 0x20b) {
             # Skip to the end of IMAGE_OPTIONAL_HEADER64 to the first entry in the data directory array
             $p_dataDirectory0 = [System.BitConverter]::ToUInt32($data, [int]$p_ioh + 224)
-        } else {
+        }
+        else {
             # Same thing, but for IMAGE_OPTIONAL_HEADER32
             $p_dataDirectory0 = [System.BitConverter]::ToUInt32($data, [int]$p_ioh + 208)
         }
