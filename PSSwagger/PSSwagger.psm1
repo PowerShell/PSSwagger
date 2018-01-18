@@ -635,7 +635,7 @@ function New-PSSwaggerModule {
                                     $matchingGetParameter = $getParameters | Where-Object { ($_.Name -eq $parameterDetail.Name) -and ($_.Mandatory -eq '$true') }
                                     if (-not $matchingGetParameter) {
                                         $valid = $false
-                                        Write-Warning "Failed to add automatic client-side filter for candidate command '$($entry.Name)': Mandatory List parameter '$($parameterDetail.Name)' has no matching Get mandatory parameter. It will be impossible to guarantee execution of the List method before client-side filtering occurs."
+                                        Write-Warning -Message ($LocalizedData.FailedToAddAutomaticFilter -f $entry.Name)
                                     }
                                 }
                             }

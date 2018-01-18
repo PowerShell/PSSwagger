@@ -636,19 +636,18 @@ function New-SwaggerPath {
                     $serverSideFunctionDetails = $PathFunctionDetails[$clientSideFilter.ServerSideResultCommand]
                 }
                 if (-not $serverSideFunctionDetails) {
-                    # Warning: Couldn't find specified server-side command
-                    Write-Warning "Couldn't find server-side result operation: $($clientSideFilter.ServerSideResultCommand)"
+                    Write-Warning -Message ($LocalizedData.CouldntFindServerSideResultOperation -f $clientSideFilter.ServerSideResultCommand)
                 }
                 else {
                     $serverSideParameterSet = $serverSideFunctionDetails['ParameterSetDetails'] | Where-Object { $_.OperationId -eq $clientSideFilter.ServerSideResultParameterSet}
                     if (-not $serverSideParameterSet) {
                         # Warning: Couldn't find specified server-side parameter set
-                        Write-Warning "Couldn't find server-side result parameter set: $($clientSideFilter.ServerSideResultParameterSet)"
+                        Write-Warning -Message ($LocalizedData.CouldntFindServerSideResultParameterSet -f $clientSideFilter.ServerSideResultParameterSet)
                     }
                     else {
                         $clientSideParameterSet = $parameterSetDetails | Where-Object { $_.OperationId -eq $clientSideFilter.ClientSideParameterSet }
                         if (-not $clientSideParameterSet) {
-                            Write-Warning "Couldn't find client-side parameter set: $($clientSideFilter.ClientSideParameterSet)"
+                            Write-Warning -Message ($LocalizedData.CouldntFindClientSideParameterSet -f $clientSideFilter.ClientSideParameterSet)
                         }
                         else {
                             $valid = $true
@@ -667,8 +666,7 @@ function New-SwaggerPath {
                                         }
                                         if (-not $clientSideParameterSet) {
                                             # Warning: Missing client-side parameter
-                                            Write-Warning "Required server-side parameter '$($parameterDetailEntry.Value.Name)' is not required by the client-side, which will cause issues in client-side filtering. Can't include client-side filtering."
-                                            $valid = $false
+                                            Write-Warning -Message ($LocalizedData.MissingRequiredFilterParameter -f $parameterDetailEntry.Value.Name)
                                         }
                                         else {
                                             $matchingParameters += $parameterDetailEntry.Value.Name

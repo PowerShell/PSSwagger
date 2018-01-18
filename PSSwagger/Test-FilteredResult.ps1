@@ -42,7 +42,7 @@ function Test-WildcardFilterOnResult {
         $Filter
     )
 
-    foreach ($char in $Filter.Value) {
+    foreach ($char in $Filter.Value.ToCharArray()) {
         if ($char -ne $Filter.Character) {
             $regex += "[$char]"
         } else {
@@ -50,7 +50,6 @@ function Test-WildcardFilterOnResult {
         }
     }
 
-    $regex = $regex.Replace($Filter.Character, ".*")
     ($Result.($Filter.Property)) -match $regex
 }
 
