@@ -387,11 +387,11 @@ Defines a single client-side filter
 
 Field Name | Type | Description
 ---|:---:|---
-type | `string` | Type of filter. Supported: 'wildcard', 'logicalOperation'
+type | `string` | Type of filter. Supported: 'wildcard', 'equalityOperator'. See: Filter Types
 parameter | `string` | Parameter containing the filter pattern or value.
 property | `string` | Property of the result object to filter on.
 appendParameterInfo | `x-ps-client-side-filter-definition[]` | Append this parameter to the cmdlet parameter list. Shouldn't be used if the parameter already exists. Properties: 'type' = PowerShell type name, 'required' = true or false if the new parameter should be required
-* | * | Additional properties for the current filter type. 'wildcard': 'character'. 'logicalOperation': 'operation'
+* | * | Additional properties for the current filter type. 'wildcard': 'character'. 'equalityOperator': 'operation'
 
 **Examples**:
 ```json5
@@ -407,3 +407,15 @@ appendParameterInfo | `x-ps-client-side-filter-definition[]` | Append this param
 }
 ```
 
+## Filter Types
+### Wildcard
+Replaces all instances of the wildcard character with ".*" and applies the input value as a regular expression. For example, the input "*a" is turned into the regular expression ".*a".
+
+-- Additional properties
+Character - a single character denoting the wildcard character, e.g. "*"
+
+### EqualityOperator
+Applies an equality operation. The right operand is the input value, while the left operand is the value of the object property specified.
+
+-- Additional properties
+Operation - one of: "<", "<=", "=", ">=", ">"

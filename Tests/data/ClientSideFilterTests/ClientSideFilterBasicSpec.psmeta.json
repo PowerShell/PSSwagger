@@ -16,7 +16,7 @@
                                 "property": "Name"
                             },
                             {
-                                "type": "logicalOperation",
+                                "type": "equalityOperator",
                                 "operation": ">=",
                                 "parameter": "LastCreatedOn",
                                 "appendParameterInfo": {
@@ -26,7 +26,7 @@
                                 "property": "CreatedOn"
                             },
                             {
-                                "type": "logicalOperation",
+                                "type": "equalityOperator",
                                 "operation": "<",
                                 "parameter": "MaxUsers",
                                 "appendParameterInfo": {

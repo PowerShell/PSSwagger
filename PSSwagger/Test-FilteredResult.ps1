@@ -25,8 +25,8 @@ function Test-FilteredResult {
     $ErrorActionPreference = 'Stop'
     if ($Filter.Type -eq 'wildcard') {
         Test-WildcardFilterOnResult -Filter $Filter -Result $Result
-    } elseif ($Filter.Type -eq 'logicalOperation') {
-        Test-LogicalFilterOnResult -Filter $Filter -Result $Result
+    } elseif ($Filter.Type -eq 'equalityOperator') {
+        Test-EqualityFilterOnResult -Filter $Filter -Result $Result
     }
 }
 
@@ -46,7 +46,7 @@ function Test-WildcardFilterOnResult {
     ($Result.($Filter.Property)) -match $regex
 }
 
-function Test-LogicalFilterOnResult {
+function Test-EqualityFilterOnResult {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory=$true)]

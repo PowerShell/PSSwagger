@@ -6,7 +6,7 @@ Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 
 .PARAMETER  Filters
     All filters to check for applicability. Required properties: 'Type', 'Value', 'Property'
-    Supported types: 'wildcard', 'logicalOperation'
+    Supported types: 'wildcard', 'equalityOperator'
 #>
 function Get-ApplicableFilters {
     [CmdletBinding()]
@@ -27,8 +27,8 @@ function Get-ApplicableFilters {
                 $res['Strict'] = $true
             }
         } 
-        elseif ($filter.Type -eq 'logicalOperation') {
-            if (Test-LogicalFilter -Filter $filter) {
+        elseif ($filter.Type -eq 'equalityOperator') {
+            if (Test-EqualityFilter -Filter $filter) {
                 $res['Strict'] = $true
             }
         }
@@ -50,7 +50,7 @@ function Test-WildcardFilter {
     ($Filter) -and ($Filter.Value -is [System.String]) -and ($Filter.Value.Contains($Filter.Character))
 }
 
-function Test-LogicalFilter {
+function Test-EqualityFilter {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory=$true)]
