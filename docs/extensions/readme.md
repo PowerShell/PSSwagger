@@ -37,7 +37,7 @@ customAuthCommand | `string` | Specify a PowerShell cmdlet that should return a 
 hostOverrideCommand | `string` | Specify a PowerShell cmdlet that should return a custom hostname string. Overrides the default host in the specification.
 noAuthChallenge | `bool` | Specify true to indicate that the service will not offer an authentication challenge, such as adding the WWW-Authenticate header to a 401 response. Default is false.
 formatter | `string` | Specify a formatter to use. One of: 'None', 'PSScriptAnalyzer'
-defaultWildcardChar | `character` | Default wildcard character for auto-generated client-side filtering.
+defaultWildcardChar | `character` | Default wildcard character for auto-generated client-side filtering. Defaults to '%'.
 
 **Note**: These field names are taken from New-PSSwaggerModule cmdlet parameters. These field names will be renamed as per the cmdlet review updates for New-PSSwaggerModule cmdlet.
 
@@ -412,7 +412,7 @@ appendParameterInfo | `x-ps-client-side-filter-definition[]` | Append this param
 Replaces all instances of the wildcard character with ".*" and applies the input value as a regular expression. For example, the input "*a" is turned into the regular expression ".*a".
 
 -- Additional properties
-Character - a single character denoting the wildcard character, e.g. "*"
+Character - a single character denoting the wildcard character, e.g. "*". Defaults to '%' if not specified.
 
 ### EqualityOperator
 Applies an equality operation. The right operand is the input value, while the left operand is the value of the object property specified.

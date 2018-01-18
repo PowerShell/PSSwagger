@@ -453,7 +453,7 @@ function New-PSSwaggerModule {
         NameSpacePrefix       = ''
         Header                = ''
         Formatter             = 'PSScriptAnalyzer'
-        DefaultWildcardChar   = '*'
+        DefaultWildcardChar   = '%'
     }
 
     # Parse the JSON and populate the dictionary
@@ -725,7 +725,8 @@ function New-PSSwaggerModule {
         -SwaggerDict $swaggerDict `
         -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
         -PSHeaderComment $PSHeaderComment `
-        -Formatter $Formatter
+        -Formatter $Formatter `
+        -PowerShellCodeGen $PowerShellCodeGen
 
     $FunctionsToExport += New-SwaggerDefinitionCommand -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
         -SwaggerMetaDict $swaggerMetaDict `

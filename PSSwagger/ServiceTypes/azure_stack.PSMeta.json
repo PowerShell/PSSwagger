@@ -1,7 +1,7 @@
 {
   "info": {
     "x-ps-code-generation-settings": {
-      "defaultWildcardChar": "*"
+      "defaultWildcardChar": "%"
     }
   }
 }

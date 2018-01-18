@@ -439,7 +439,11 @@ function New-SwaggerSpecPathCommand {
         [Parameter(Mandatory = $false)]
         [ValidateSet('None', 'PSScriptAnalyzer')]
         [string]
-        $Formatter = 'None'
+        $Formatter = 'None',
+
+        [Parameter(Mandatory = $false)]
+        [hashtable]
+        $PowerShellCodeGen
     )
     
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -453,7 +457,8 @@ function New-SwaggerSpecPathCommand {
             -PathFunctionDetails $PathFunctionDetails `
             -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
             -PSHeaderComment $PSHeaderComment `
-            -Formatter $Formatter
+            -Formatter $Formatter `
+            -PowerShellCodeGen $PowerShellCodeGen
     }
 
     return $FunctionsToExport
@@ -569,7 +574,11 @@ function New-SwaggerPath {
         [Parameter(Mandatory = $false)]
         [ValidateSet('None', 'PSScriptAnalyzer')]
         [string]
-        $Formatter = 'None'
+        $Formatter = 'None',
+
+        [Parameter(Mandatory = $false)]
+        [hashtable]
+        $PowerShellCodeGen
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -611,6 +620,13 @@ function New-SwaggerPath {
 
         if (Get-Member -InputObject $FunctionDetails['Metadata'] -Name 'clientSideFilters') {
             foreach ($clientSideFilter in $FunctionDetails['Metadata'].ClientSideFilters) {
+                foreach ($filter in $clientSideFilter.Filters) {
+                    if ($filter.Type -eq 'wildcard') {
+                        if (-not (Get-Member -InputObject $filter -Name 'Character')) {
+                            Add-Member -InputObject $filter -Name 'Character' -Value $PowerShellCodeGen['defaultWildcardChar'] -MemberType NoteProperty
+                        }
+                    }
+                }
                 $matchingParameters = @()
                 $serverSideFunctionDetails = $null
                 if ($clientSideFilter.ServerSideResultCommand -eq '.') {
