@@ -523,8 +523,8 @@ function New-PSSwaggerModule {
         $ModuleNameandVersionFolder = Join-Path -Path $Name -ChildPath $Version
 
         if ($outputDirectory.EndsWith($Name, [System.StringComparison]::OrdinalIgnoreCase)) {
-            $outputDirectory = Join-Path -Path $outputDirectory -ChildPath $ModuleVersion
-            $SymbolPath = Join-Path -Path $SymbolPath -ChildPath $ModuleVersion
+            $outputDirectory = Join-Path -Path $outputDirectory -ChildPath $Version
+            $SymbolPath = Join-Path -Path $SymbolPath -ChildPath $Version
         }
         elseif (-not $outputDirectory.EndsWith($ModuleNameandVersionFolder, [System.StringComparison]::OrdinalIgnoreCase)) {
             $outputDirectory = Join-Path -Path $outputDirectory -ChildPath $ModuleNameandVersionFolder
