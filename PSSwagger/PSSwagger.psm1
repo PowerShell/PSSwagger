@@ -455,6 +455,7 @@ function New-PSSwaggerModule {
         Header                = ''
         Formatter             = 'PSScriptAnalyzer'
         DefaultWildcardChar   = '%'
+        AzureDefaults         = $null
     }
 
     # Parse the JSON and populate the dictionary
@@ -587,7 +588,10 @@ function New-PSSwaggerModule {
         }
 
         # Add extra metadata based on service type
-        if (($PowerShellCodeGen['ServiceType'] -eq 'azure') -or ($PowerShellCodeGen['ServiceType'] -eq 'azure_stack')) {
+        if (($PowerShellCodeGen['ServiceType'] -eq 'azure') -or ($PowerShellCodeGen['ServiceType'] -eq 'azure_stack') -and
+        ($PowerShellCodeGen.ContainsKey('azureDefaults') -and $PowerShellCodeGen['azureDefaults'] -and
+         (-not (Get-Member -InputObject $PowerShellCodeGen['azureDefaults'] -Name 'clientSideFiltering')) -or
+         ($PowerShellCodeGen['azureDefaults'].ClientSideFiltering))) {
             foreach ($entry in $PathFunctionDetails.GetEnumerator()) {
                 $hyphenIndex = $entry.Name.IndexOf("-")
                 if ($hyphenIndex -gt -1) {
@@ -662,10 +666,9 @@ function New-PSSwaggerModule {
                                     Add-Member -InputObject $clientSideFilter -Name 'ClientSideParameterSet' -Value $getOperationId -MemberType NoteProperty
                                     # Create a wildcard filter for the Name parameter
                                     $nameWildcardFilter = New-Object -TypeName PSCustomObject
-                                    Add-Member -InputObject $nameWildcardFilter -Name 'Type' -Value 'wildcard' -MemberType NoteProperty
+                                    Add-Member -InputObject $nameWildcardFilter -Name 'Type' -Value 'powershellWildcard' -MemberType NoteProperty
                                     Add-Member -InputObject $nameWildcardFilter -Name 'Parameter' -Value $nameParameterNormalName -MemberType NoteProperty
                                     Add-Member -InputObject $nameWildcardFilter -Name 'Property' -Value 'Name' -MemberType NoteProperty
-                                    Add-Member -InputObject $nameWildcardFilter -Name 'Character' -Value $PowerShellCodeGen['DefaultWildcardChar'] -MemberType NoteProperty
                                     $filters = @($nameWildcardFilter)
                                     Add-Member -InputObject $clientSideFilter -Name 'Filters' -Value $filters -MemberType NoteProperty
                                     $allClientSideFilters = @($clientSideFilter)

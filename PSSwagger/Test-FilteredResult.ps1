@@ -27,6 +27,8 @@ function Test-FilteredResult {
         Test-WildcardFilterOnResult -Filter $Filter -Result $Result
     } elseif ($Filter.Type -eq 'equalityOperator') {
         Test-EqualityFilterOnResult -Filter $Filter -Result $Result
+    } elseif ($Filter.Type -eq 'powershellWildcard') {
+        Test-PSWildcardFilterOnResult -Filter $Filter -Result $Result
     }
 }
 
@@ -76,4 +78,20 @@ function Test-EqualityFilterOnResult {
     } elseif ($Filter.Operation -eq '>') {
         ($Result.($Filter.Property) -gt $Filter.Value)
     }
+}
+
+function Test-PSWildcardFilterOnResult {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [object]
+        $Result,
+
+        [Parameter(Mandatory=$true)]
+        [PSCustomObject]
+        $Filter
+    )
+
+    $pattern = [WildcardPattern]::Get($Filter.Value, [System.Management.Automation.WildcardOptions]::IgnoreCase)
+    $pattern.IsMatch(($Result.($Filter.Property)))
 }

@@ -38,6 +38,7 @@ hostOverrideCommand | `string` | Specify a PowerShell cmdlet that should return 
 noAuthChallenge | `bool` | Specify true to indicate that the service will not offer an authentication challenge, such as adding the WWW-Authenticate header to a 401 response. Default is false.
 formatter | `string` | Specify a formatter to use. One of: 'None', 'PSScriptAnalyzer'
 defaultWildcardChar | `character` | Default wildcard character for auto-generated client-side filtering. Defaults to '%'.
+azureDefaults | `x-ps-msazure-defaults` | Defaults for Microsoft Azure services.
 
 **Note**: These field names are taken from New-PSSwaggerModule cmdlet parameters. These field names will be renamed as per the cmdlet review updates for New-PSSwaggerModule cmdlet.
 
@@ -387,7 +388,7 @@ Defines a single client-side filter
 
 Field Name | Type | Description
 ---|:---:|---
-type | `string` | Type of filter. Supported: 'wildcard', 'equalityOperator'. See: Filter Types
+type | `string` | Type of filter. Supported: 'wildcard', 'equalityOperator', 'powershellWildcard'. See: Filter Types
 parameter | `string` | Parameter containing the filter pattern or value.
 property | `string` | Property of the result object to filter on.
 appendParameterInfo | `x-ps-client-side-filter-definition[]` | Append this parameter to the cmdlet parameter list. Shouldn't be used if the parameter already exists. Properties: 'type' = PowerShell type name, 'required' = true or false if the new parameter should be required
@@ -407,6 +408,24 @@ appendParameterInfo | `x-ps-client-side-filter-definition[]` | Append this param
 }
 ```
 
+## x-ps-msazure-defaults
+Default settings for Microsoft Azure services.
+
+**Parent element**: `x-ps-code-generation-settings Object`
+
+**Schema**:
+
+Field Name | Type | Description
+---|:---:|---
+* | * | Additional properties for the current filter type. 'wildcard': 'character'. 'equalityOperator': 'operation'
+
+**Examples**:
+```json5
+{
+    "clientSideFiltering": true
+}
+```
+
 ## Filter Types
 ### Wildcard
 Replaces all instances of the wildcard character with ".*" and applies the input value as a regular expression. For example, the input "*a" is turned into the regular expression ".*a".
@@ -419,3 +438,6 @@ Applies an equality operation. The right operand is the input value, while the l
 
 -- Additional properties
 Operation - one of: "<", "<=", "=", ">=", ">"
+
+### PowerShellWildcard
+Uses the PowerShell wildcard patterns ("*", "[", "?") to match. See the class "System.Management.Automation.WildcardPattern".

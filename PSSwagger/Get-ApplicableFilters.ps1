@@ -31,6 +31,10 @@ function Get-ApplicableFilters {
             if (Test-EqualityFilter -Filter $filter) {
                 $res['Strict'] = $true
             }
+        } elseif ($filter.Type -eq 'powershellWildcard') {
+            if (Test-PSWildcardFilter -Filter $filter) {
+                $res['Strict'] = $true
+            }
         }
         if ($res['Strict'] -or $filter.Value) {
             $res
@@ -60,4 +64,15 @@ function Test-EqualityFilter {
 
     # Must be specified
     ($Filter -and $Filter.Value)
+}
+
+function Test-PSWildcardFilter {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [PSCustomObject]
+        $Filter
+    )
+
+    ($Filter) -and ($Filter.Value -is [System.String]) -and [WildcardPattern]::ContainsWildcardCharacters($Filter.Value)
 }
