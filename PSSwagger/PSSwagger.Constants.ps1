@@ -60,6 +60,8 @@ if (Test-Path -Path `$ClrPath -PathType Container) {
 
 . (Join-Path -Path `$PSScriptRoot -ChildPath 'New-ServiceClient.ps1')
 . (Join-Path -Path `$PSScriptRoot -ChildPath 'Get-TaskResult.ps1')
+. (Join-Path -Path `$PSScriptRoot -ChildPath 'Get-ApplicableFilters.ps1')
+. (Join-Path -Path `$PSScriptRoot -ChildPath 'Test-FilteredResult.ps1')
 $(if($UseAzureCsharpGenerator) {
 ". (Join-Path -Path `$PSScriptRoot -ChildPath 'Get-ArmResourceIdParameterValue.ps1')"
 })
@@ -242,6 +244,7 @@ if($ResourceIdParamCodeBlock) {
 "
 }
 )
+$FilterBlock
     $parameterSetBasedMethodStr else {
         Write-Verbose -Message 'Failed to map parameter set to operation method.'
         throw 'Module failed to find operation to execute.'
@@ -560,3 +563,59 @@ Copyright (c) Microsoft Corporation. All rights reserved.
 Licensed under the MIT License. See License.txt in the project root for license information.
 '@
 
+$FilterBlockStr = @'
+`$filterInfos = @(
+$(
+    $prependComma = $false
+    foreach ($filter in $clientSideFilter.Filters) {
+        if ($prependComma) {
+            ", "
+        } else {
+            $prependComma = $true
+        }
+
+"@{
+    'Type' = '$($filter.Type)'
+    'Value' = `$$($filter.Parameter)
+    'Property' = '$($filter.Property)'"
+        foreach ($property in (Get-Member -InputObject $filter -MemberType NoteProperty)) {
+            if (($property.Name -eq 'Type') -or ($property.Name -eq 'Parameter') -or ($property.Name -eq 'Property') -or ($property.Name -eq 'AppendParameterInfo')) {
+                continue
+            }
+
+"
+    '$($property.Name)' = '$($filter.($property.Name))'"
+        }
+"
+}"
+    }
+))
+`$applicableFilters = Get-ApplicableFilters -Filters `$filterInfos
+if (`$applicableFilters | Where-Object { `$_.Strict }) {
+    Write-Verbose -Message 'Performing server-side call ''$(if ($clientSideFilter.ServerSideResultCommand -eq '.') { $commandName } else { $clientSideFilter.ServerSideResultCommand }) -$($matchingParameters -join " -")'''
+    `$serverSideCall_params = @{
+$(
+    foreach ($matchingParam in $matchingParameters) {
+"       '$matchingParam' = `$$matchingParam
+"
+    }
+)
+}
+
+`$serverSideResults = $(if ($clientSideFilter.ServerSideResultCommand -eq '.') { $commandName } else { $clientSideFilter.ServerSideResultCommand }) @serverSideCall_params
+foreach (`$serverSideResult in `$serverSideResults) {
+    `$valid = `$true
+    foreach (`$applicableFilter in `$applicableFilters) {
+        if (-not (Test-FilteredResult -Result `$serverSideResult -Filter `$applicableFilter.Filter)) {
+            `$valid = `$false
+            break
+        }
+    }
+
+    if (`$valid) {
+        `$serverSideResult
+    }
+}
+return
+}
+'@
