@@ -26,6 +26,7 @@ ConvertFrom-StringData @'
     DataTypeNotImplemented=Please get an implementation of '{0}' for '{1}'
     AutoRestNotInPath=Unable to find AutoRest in PATH environment. Ensure the PATH is updated.
     CscExeNotInPath=Unable to find CSC.exe in PATH environment. Ensure the PATH is updated with CSC.exe location.
+    IncorrectVersionOfCscExeInPath=The first CSC.exe in the PATH environment variable is the compiler included with Windows or the .NET framework. Please use the Microsoft.Net.Compilers package which contains the Roslyn CSC.exe, and ensure that package's CSC.exe comes first in your PATH environment variable.
     AutoRestError=AutoRest resulted in an error
     SwaggerParamsMissing=No parameters in the Swagger
     SwaggerDefinitionsMissing=No definitions in the Swagger
@@ -90,5 +91,10 @@ ConvertFrom-StringData @'
     InvalidHeaderFilePath=The specified value '{0}' for Header parameter is should be a valid file path.
     HeaderContentTwoHyphenWarning=The specified Header content has '--', replacing '--' with '=='.
     PSScriptAnalyzerMissing=PSScriptAnalyzer specified as the formatter, but the module is not available on this machine. No formatting will be used. Run 'Install-Module -Name PSScriptAnalyzer -Repository PSGallery -Scope CurrentUser' to install the module.
+    CouldntFindServerSideResultOperation=Couldn't find server-side result operation: {0}
+    CouldntFindServerSideResultParameterSet=Couldn't find server-side result parameter set: {0}
+    CouldntFindClientSideParameterSet=Couldn't find client-side parameter set: {0}
+    MissingRequiredFilterParameter=Required server-side parameter '{0}' is not required by the client-side, which will cause issues in client-side filtering. Can't include client-side filtering.
+    FailedToAddAutomaticFilter=Failed to add automatic client-side filter for candidate command '{0}': Mandatory List parameter '{1}' has no matching Get mandatory parameter. It will be impossible to guarantee execution of the List method before client-side filtering occurs.
 ###PSLOC
 '@

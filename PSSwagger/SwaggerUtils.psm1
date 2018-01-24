@@ -1510,7 +1510,11 @@ function Get-PathFunctionBody
 
         [Parameter(Mandatory=$false)]
         [PSCustomObject]
-        $GlobalParametersStatic
+        $GlobalParametersStatic,
+
+        [Parameter(Mandatory=$false)]
+        [string]
+        $FilterBlock
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
