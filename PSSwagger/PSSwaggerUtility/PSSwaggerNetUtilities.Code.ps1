@@ -3,7 +3,7 @@
 // Licensed under the MIT license.
 
 // PSSwaggerUtility Module
-namespace Microsoft.PowerShell.Commands.PSSwagger
+namespace $($LocalizedData.CSharpNamespace)
 {
 	using Microsoft.Rest;
 	using System;

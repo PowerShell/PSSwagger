@@ -7,6 +7,9 @@
 # PSSwaggerUtility Module
 #
 #########################################################################################
+Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
+Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwaggerUtility.Resources.psd1
+
 function Get-BasicAuthCredentials {
     [CmdletBinding()]
     param(
@@ -19,5 +22,5 @@ function Get-BasicAuthCredentials {
         $Credential = Get-Credential
     }
 
-    New-Object -TypeName 'Microsoft.PowerShell.Commands.PSSwagger.BasicAuthenticationCredentialsEx' -ArgumentList $Credential.UserName,$Credential.Password
+    New-Object -TypeName "$($LocalizedData.CSharpNamespace).BasicAuthenticationCredentialsEx" -ArgumentList $Credential.UserName,$Credential.Password
 }

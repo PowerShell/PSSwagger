@@ -132,6 +132,14 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwa
     
 .PARAMETER  Formatter
     Specify a formatter to use. 
+
+.PARAMETER  CopyUtilityModuleToOutput
+    Copy the utility module to the output generated module. This has the effect of hardcoding the version of the utility module used by the generated module. The copied utility module must be re-signed if it was originally signed.
+
+.PARAMETER  AddUtilityDependencies
+    Ensure any external assemblies required by the utility module are included somewhere in the module. This has the effect of making the utility module offline-compatible.
+
+
 .INPUTS
 
 .OUTPUTS
@@ -248,7 +256,21 @@ function New-PSSwaggerModule {
         [Parameter(Mandatory = $false, ParameterSetName = 'SdkAssemblyWithSpecificationUri')]
         [string]
         [ValidateSet('None', 'PSScriptAnalyzer')]
-        $Formatter
+        $Formatter,
+
+        [Parameter(Mandatory = $false, ParameterSetName = 'SpecificationPath')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SpecificationUri')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SdkAssemblyWithSpecificationPath')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SdkAssemblyWithSpecificationUri')]
+        [switch]
+        $CopyUtilityModuleToOutput,
+
+        [Parameter(Mandatory = $false, ParameterSetName = 'SpecificationPath')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SpecificationUri')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SdkAssemblyWithSpecificationPath')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SdkAssemblyWithSpecificationUri')]
+        [switch]
+        $AddUtilityDependencies
     )
 
     if ($NoAssembly -and $IncludeCoreFxAssembly) {
@@ -798,6 +820,71 @@ function New-PSSwaggerModule {
         Copy-PSFileWithHeader -SourceFilePath (Join-Path -Path "$PSScriptRoot" -ChildPath $_.Name) `
             -DestinationFilePath (Join-Path -Path "$outputDirectory" -ChildPath $_.Value) `
             -PSHeaderComment $PSHeaderComment
+    }
+
+    if ($CopyUtilityModuleToOutput) {
+        Write-Verbose -Message $LocalizedData.CopyingUtilityModule
+        $utilityModuleInfo = Get-Module PSSwaggerUtility
+        $existingPath = (Join-Path -Path $outputDirectory -ChildPath PSSwaggerUtility)
+        # TODO: resources
+        Write-Warning -Message ($LocalizedData.ReSignUtilityModuleWarning -f $existingPath)
+        if (Test-Path -Path $existingPath) {
+            $null = Remove-Item -Path $existingPath -Recurse -Force
+        }
+
+        $null = New-Item -Path $existingPath -ItemType Directory -Force
+        foreach ($item in Get-ChildItem -Path $utilityModuleInfo.ModuleBase) {
+            if ($item.Name -eq 'PSSwaggerClientTracing.psm1') {
+                Write-Warning -Message $LocalizedData.TracingDisabled
+                Copy-Item -Path (Join-Path -Path $PSScriptRoot -ChildPath 'PSSwaggerClientTracing_Dummy.psm1') -Destination (Join-Path -Path $existingPath -ChildPath $item.Name)
+            } else {
+                $content = Remove-AuthenticodeSignatureBlock -Path $item.FullName
+                if ($item.Name -eq 'PSSwaggerUtility.Resources.psd1') {
+                    $namespaceIndex = $content | Select-String -Pattern "CSharpNamespace=Microsoft.PowerShell.Commands.PSSwagger"
+                    $content[$namespaceIndex.LineNumber-1] = "    CSharpNamespace=$($SwaggerDict['info'].NameSpace)"
+                }
+
+                $content | Out-File -FilePath (Join-Path -Path $existingPath -ChildPath $item.Name)
+            }
+        }
+
+        # Check for fullclr and coreclr dependencies
+        if ($AddUtilityDependencies) {
+            $externalReferencesFrameworks = @('net4', 'netstandard1')
+            $clrs = @('fullclr', 'coreclr')
+            for ($i = 0; $i -lt $clrs.Length; $i++) {
+                $localUtilityRefPath = Join-Path -Path $existingPath -ChildPath "ref" | Join-Path -ChildPath $clrs[$i]
+                if (-not (Test-Path -Path $localUtilityRefPath)) {
+                    $null = New-Item -Path $localUtilityRefPath -ItemType Directory
+                }
+
+                $externalReferences = Get-PSSwaggerExternalDependencies -Framework $externalReferencesFrameworks[$i]
+                # Check if the references already exist in the generated module's ref folder
+                foreach ($entry in $externalReferences.GetEnumerator()) {
+                    $reference = $entry.Value
+                    $download = $false
+                    foreach ($ref in $reference.References) {
+                        $inModulePath = Join-Path -Path $outputDirectory -ChildPath "ref" | Join-Path -ChildPath $clrs[$i] | Join-Path -ChildPath $ref
+                        if (-not (Test-Path -Path $inModulePath)) {
+                            $download = $true
+                        }
+                    }
+
+                    if ($download) {
+                        # Doesn't exist, so download copy to $localUtilityRefPath
+                        $userConsent = Initialize-PSSwaggerLocalTool -Framework @($externalReferencesFrameworks[$i]) -AcceptBootstrap:$ConfirmBootstrap
+                        $extraRefs = Get-PSSwaggerDependency -PackageName $reference.PackageName `
+                                                            -References $reference.References `
+                                                            -Framework $reference.Framework `
+                                                            -RequiredVersion $reference.RequiredVersion `
+                                                            -Install -BootstrapConsent:$ConfirmBootstrap
+                        foreach ($extraRef in $extraRefs) {
+                            Copy-Item -Path $extraRef -Destination (Join-Path -Path $localUtilityRefPath -ChildPath (Split-Path -Path $extraRef -Leaf))
+                        }
+                    }
+                }
+            }
+        }
     }
 
     Write-Verbose -Message ($LocalizedData.SuccessfullyGeneratedModule -f $Name, $outputDirectory)

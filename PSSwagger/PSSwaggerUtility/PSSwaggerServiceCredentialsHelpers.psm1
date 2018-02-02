@@ -7,6 +7,9 @@
 # PSSwaggerUtility Module
 #
 #########################################################################################
+Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
+Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwaggerUtility.Resources.psd1
+
 function Get-BasicAuthCredentialInternal {
     [CmdletBinding()]
     param(
@@ -15,13 +18,13 @@ function Get-BasicAuthCredentialInternal {
         $Credential
     )
 
-    if(('Microsoft.PowerShell.Commands.PSSwagger.PSBasicAuthenticationEx' -as [Type]))
+    if(("$($LocalizedData.CSharpNamespace).PSBasicAuthenticationEx" -as [Type]))
     {
         # If the Extended type exists, use it
-        New-Object -TypeName 'Microsoft.PowerShell.Commands.PSSwagger.PSBasicAuthenticationEx' -ArgumentList $Credential.UserName,$Credential.Password
+        New-Object -TypeName "$($LocalizedData.CSharpNamespace).PSBasicAuthenticationEx" -ArgumentList $Credential.UserName,$Credential.Password
     } else {
         # Otherwise this version should exist
-        New-Object -TypeName 'Microsoft.PowerShell.Commands.PSSwagger.PSBasicAuthentication' -ArgumentList $Credential.UserName,$Credential.Password
+        New-Object -TypeName "$($LocalizedData.CSharpNamespace).PSBasicAuthentication" -ArgumentList $Credential.UserName,$Credential.Password
     }
 }
 
@@ -41,12 +44,12 @@ function Get-ApiKeyCredentialInternal {
         $Name
     )
 
-    New-Object -TypeName 'Microsoft.PowerShell.Commands.PSSwagger.PSApiKeyAuthentication' -ArgumentList $APIKey,$Location,$Name
+    New-Object -TypeName "$($LocalizedData.CSharpNamespace).PSApiKeyAuthentication" -ArgumentList $APIKey,$Location,$Name
 }
 
 function Get-EmptyAuthCredentialInternal {
     [CmdletBinding()]
     param()
 
-    New-Object -TypeName 'Microsoft.PowerShell.Commands.PSSwagger.PSDummyAuthentication'
+    New-Object -TypeName "$($LocalizedData.CSharpNamespace).PSDummyAuthentication"
 }

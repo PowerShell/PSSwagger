@@ -24,13 +24,14 @@ function Remove-AuthenticodeSignatureBlock {
     )
 
     $content = Get-Content -Path $Path
-    if ($content) {
-        $sigStartOneIndexed = $content | Select-String "# SIG # Begin signature block"
-        $sigEnd = $content | Select-String "# SIG # End signature block"
-        if ($sigEnd -and $sigStartOneIndexed) {
-            $content[0..($sigStartOneIndexed.LineNumber-2)]
-        } else {
-            $content
+    $skip = $false
+    foreach ($line in $content) {
+        if ($line -eq "# SIG # Begin signature block") {
+            $skip = $true
+        } elseif ($line -eq "# SIG # End signature block") {
+            $skip = $false
+        } elseif (-not $skip) {
+            $line
         }
     }
 }
@@ -861,10 +862,18 @@ function Initialize-PSSwaggerDependencies {
 
     if ($AllFrameworks) {
         $framework = @('netstandard1', 'net4')
+        $clr = 'fullclr'
     } else {
         $framework = if ((Get-OperatingSystemInfo).IsCore) { 'netstandard1' } else { 'net4' }
+        $clr = 'coreclr'
     }
-    $null = Initialize-PSSwaggerLocalTool -AllUsers:$AllUsers -Azure:$Azure -Framework $framework -AcceptBootstrap:$AcceptBootstrap
+
+    # Assume if any ref folder is non-empty, we don't need to init local tools - weird workaround for offline scenario
+    if ((-not (Get-ChildItem -Path (Join-Path -Path "$PSScriptRoot" -ChildPath 'ref' | Join-Path -ChildPath $clr) -ErrorAction Ignore)) -and
+         -not (Get-ChildItem -Path (Join-Path -Path "$PSScriptRoot" -ChildPath .. | Join-Path -ChildPath 'ref' | Join-Path -ChildPath $clr) -ErrorAction Ignore)) {
+        $null = Initialize-PSSwaggerLocalTool -AllUsers:$AllUsers -Azure:$Azure -Framework $framework -AcceptBootstrap:$AcceptBootstrap
+    }
+    
     $null = Initialize-PSSwaggerUtilities
 }
 
@@ -1695,15 +1704,23 @@ function Initialize-PSSwaggerUtilities {
 
     $PSSwaggerJobAssemblyPath = $null
     $PSSwaggerJobAssemblyUnsafePath = $null
-    if(('Microsoft.PowerShell.Commands.PSSwagger.PSSwaggerJob' -as [Type]) -and
-    (Test-Path -Path [Microsoft.PowerShell.Commands.PSSwagger.PSSwaggerJob].Assembly.Location -PathType Leaf))
+    if ((Get-OperatingSystemInfo).IsCore) {
+        $externalReferencesFramework = 'netstandard1.'
+        $clr = 'coreclr'
+    } else {
+        $externalReferencesFramework = 'net4'
+        $clr = 'fullclr'
+    }
+    
+    if(("$($LocalizedData.CSharpNamespace).PSSwaggerJob" -as [Type]) -and
+    (Test-Path -Path ("$($LocalizedData.CSharpNamespace).PSSwaggerJob" -as [Type]).Assembly.Location -PathType Leaf))
     {
         # This is for re-import scenario.
-        $PSSwaggerJobAssemblyPath = [Microsoft.PowerShell.Commands.PSSwagger.PSSwaggerJob].Assembly.Location
-        if(('Microsoft.PowerShell.Commands.PSSwagger.PSBasicAuthenticationEx' -as [Type]) -and
-        (Test-Path -Path [Microsoft.PowerShell.Commands.PSSwagger.PSBasicAuthenticationEx].Assembly.Location -PathType Leaf))
+        $PSSwaggerJobAssemblyPath = ("$($LocalizedData.CSharpNamespace).PSSwaggerJob" -as [Type]).Assembly.Location
+        if(("$($LocalizedData.CSharpNamespace).PSBasicAuthenticationEx" -as [Type]) -and
+        (Test-Path -Path ("$($LocalizedData.CSharpNamespace).PSBasicAuthenticationEx" -as [Type]).Assembly.Location -PathType Leaf))
         {
-            $PSSwaggerJobAssemblyUnsafePath = [Microsoft.PowerShell.Commands.PSSwagger.PSBasicAuthenticationEx].Assembly.Location
+            $PSSwaggerJobAssemblyUnsafePath = ("$($LocalizedData.CSharpNamespace).PSBasicAuthenticationEx" -as [Type]).Assembly.Location
         }
     }
     else
@@ -1721,6 +1738,7 @@ function Initialize-PSSwaggerUtilities {
             }
 
             $PSSwaggerJobSourceString = Remove-AuthenticodeSignatureBlock -Path $PSSwaggerJobFilePath | Out-String
+            $PSSwaggerJobSourceString = $ExecutionContext.InvokeCommand.ExpandString($PSSwaggerJobSourceString)
             Add-Type -AssemblyName System.Net.Http
             $RequiredAssemblies = @(
                 [System.Management.Automation.PSCmdlet].Assembly.FullName,
@@ -1731,14 +1749,9 @@ function Initialize-PSSwaggerUtilities {
             )
 
             if ((Get-OperatingSystemInfo).IsCore) {
-                $externalReferencesFramework = 'netstandard1.'
-                $clr = 'coreclr'
                 # On core CLR, these "additional" assemblies are required due to type redirection
                 $RequiredAssemblies += 'System.Threading.Tasks'
                 $RequiredAssemblies += 'System.Threading'
-            } else {
-                $externalReferencesFramework = 'net4'
-                $clr = 'fullclr'
             }
 
             $externalReferences = Get-PSSwaggerExternalDependencies -Framework $externalReferencesFramework
@@ -1747,9 +1760,13 @@ function Initialize-PSSwaggerUtilities {
                 $getDependency = $false
                 foreach ($ref in $reference.References) {
                     $path = (Join-Path -Path "$PSScriptRoot" -ChildPath "ref" | Join-Path -ChildPath $clr | Join-Path -ChildPath $ref)
+                    $parentPath = (Join-Path -Path "$PSScriptRoot" -ChildPath .. | Join-Path -ChildPath "ref" | Join-Path -ChildPath $clr | Join-Path -ChildPath $ref)
                     if (Test-Path -Path $path) {
                         Add-Type -Path $path
                         $RequiredAssemblies += $path
+                    } elseif (Test-Path -Path $parentPath) {
+                        Add-Type -Path $parentPath
+                        $RequiredAssemblies += $parentPath
                     } else {
                         $getDependency = $true
                         break
@@ -1786,11 +1803,11 @@ function Initialize-PSSwaggerUtilities {
         }
     }
 
-    if(('Microsoft.PowerShell.Commands.PSSwagger.PSBasicAuthenticationEx' -as [Type]) -and
-    (Test-Path -Path [Microsoft.PowerShell.Commands.PSSwagger.PSBasicAuthenticationEx].Assembly.Location -PathType Leaf))
+    if(("$($LocalizedData.CSharpNamespace).PSBasicAuthenticationEx" -as [Type]) -and
+    (Test-Path -Path ("$($LocalizedData.CSharpNamespace).PSBasicAuthenticationEx" -as [Type]).Assembly.Location -PathType Leaf))
     {
         # This is for re-import scenario.
-        $PSSwaggerJobAssemblyUnsafePath = [Microsoft.PowerShell.Commands.PSSwagger.PSBasicAuthenticationEx].Assembly.Location
+        $PSSwaggerJobAssemblyUnsafePath = ("$($LocalizedData.CSharpNamespace).PSBasicAuthenticationEx" -as [Type]).Assembly.Location
     }
     elseif (-not (Get-OperatingSystemInfo).IsCore)
     {
@@ -1807,6 +1824,7 @@ function Initialize-PSSwaggerUtilities {
             }
 
             $PSSwaggerJobSourceString = Remove-AuthenticodeSignatureBlock -Path $PSSwaggerJobFilePath | Out-String
+            $PSSwaggerJobSourceString = $ExecutionContext.InvokeCommand.ExpandString($PSSwaggerJobSourceString)
             Add-Type -AssemblyName System.Net.Http
             $compilerParameters = New-Object -TypeName System.CodeDom.Compiler.CompilerParameters
             $compilerParameters.CompilerOptions = '/debug:full /optimize+ /unsafe'
@@ -1825,9 +1843,13 @@ function Initialize-PSSwaggerUtilities {
                 $getDependency = $false
                 foreach ($ref in $reference.References) {
                     $path = (Join-Path -Path "$PSScriptRoot" -ChildPath "ref" | Join-Path -ChildPath $clr | Join-Path -ChildPath $ref)
+                    $parentPath = (Join-Path -Path "$PSScriptRoot" -ChildPath .. | Join-Path -ChildPath "ref" | Join-Path -ChildPath $clr | Join-Path -ChildPath $ref)
                     if (Test-Path -Path $path) {
                         Add-Type -Path $path
-                        $compilerParameters.ReferencedAssemblies.Add($ref)
+                        $compilerParameters.ReferencedAssemblies.Add($path)
+                    } elseif (Test-Path -Path $parentPath) {
+                        Add-Type -Path $parentPath
+                        $compilerParameters.ReferencedAssemblies.Add($parentPath)
                     } else {
                         $getDependency = $true
                         break
@@ -1905,12 +1927,12 @@ function Initialize-PSSwaggerUtilities {
         }
     }
 
-    if(-not ('Microsoft.PowerShell.Commands.PSSwagger.PSSwaggerJob' -as [Type]))
+    if(-not ("$($LocalizedData.CSharpNamespace).PSSwaggerJob" -as [Type]))
     {
         Write-Error -Message ($LocalizedData.FailedToAddType -f ('PSSwaggerJob'))
     }
 
-    if((-not (Get-OperatingSystemInfo).IsCore) -and (-not ('Microsoft.PowerShell.Commands.PSSwagger.PSBasicAuthenticationEx' -as [Type])))
+    if((-not (Get-OperatingSystemInfo).IsCore) -and (-not ("$($LocalizedData.CSharpNamespace).PSBasicAuthenticationEx" -as [Type])))
     {
         Write-Error -Message ($LocalizedData.FailedToAddType -f ('PSBasicAuthenticationEx'))
     }
