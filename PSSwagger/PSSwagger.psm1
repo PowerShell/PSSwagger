@@ -826,7 +826,6 @@ function New-PSSwaggerModule {
         Write-Verbose -Message $LocalizedData.CopyingUtilityModule
         $utilityModuleInfo = Get-Module PSSwaggerUtility
         $existingPath = (Join-Path -Path $outputDirectory -ChildPath PSSwaggerUtility)
-        # TODO: resources
         Write-Warning -Message ($LocalizedData.ReSignUtilityModuleWarning -f $existingPath)
         if (Test-Path -Path $existingPath) {
             $null = Remove-Item -Path $existingPath -Recurse -Force
