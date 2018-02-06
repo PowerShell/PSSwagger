@@ -199,11 +199,11 @@ function Initialize-Test {
         & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\PowerShell.exe" -command "& {`$env:PSModulePath=`$env:PSModulePath_Backup;
             Import-Module (Join-Path `"$PsSwaggerPath`" `"PSSwagger.psd1`") -Force;
             Initialize-PSSwaggerDependencies -AllFrameworks -AcceptBootstrap -Azure:`$$UseAzureCSharpGenerator;
-            New-PSSwaggerModule -SpecificationPath (Join-Path -Path `"$testCaseDataLocation`" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Version $GeneratedModuleVersion -Verbose -NoAssembly -UseAzureCSharpGenerator:`$$UseAzureCSharpGenerator -CopyUtilityModuleToOutput:`$$CopyUtilityModuleToOutput -AddUtilityDependencies:`$$CopyUtilityModuleToOutput -ConfirmBootstrap;
+            New-PSSwaggerModule -SpecificationPath (Join-Path -Path `"$testCaseDataLocation`" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Version $GeneratedModuleVersion -Verbose -NoAssembly -UseAzureCSharpGenerator:`$$UseAzureCSharpGenerator -CopyUtilityModuleToOutput:`$$CopyUtilityModuleToOutput -ConfirmBootstrap;
         }"
     } else {
         Import-Module (Join-Path "$PsSwaggerPath" "PSSwagger.psd1") -Force
-        New-PSSwaggerModule -SpecificationPath (Join-Path -Path "$testCaseDataLocation" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Version $GeneratedModuleVersion -Verbose -NoAssembly -UseAzureCSharpGenerator:$UseAzureCSharpGenerator -CopyUtilityModuleToOutput:$CopyUtilityModuleToOutput -AddUtilityDependencies:$CopyUtilityModuleToOutput -ConfirmBootstrap
+        New-PSSwaggerModule -SpecificationPath (Join-Path -Path "$testCaseDataLocation" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Version $GeneratedModuleVersion -Verbose -NoAssembly -UseAzureCSharpGenerator:$UseAzureCSharpGenerator -CopyUtilityModuleToOutput:$CopyUtilityModuleToOutput -ConfirmBootstrap
     }
     
     if ($TestDataFileName) {

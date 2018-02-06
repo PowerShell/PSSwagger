@@ -611,9 +611,9 @@ function New-PSSwaggerModule {
 
         # Add extra metadata based on service type
         if (($PowerShellCodeGen['ServiceType'] -eq 'azure') -or ($PowerShellCodeGen['ServiceType'] -eq 'azure_stack') -and
-        ($PowerShellCodeGen.ContainsKey('azureDefaults') -and $PowerShellCodeGen['azureDefaults'] -and
-         (-not (Get-Member -InputObject $PowerShellCodeGen['azureDefaults'] -Name 'clientSideFiltering')) -or
-         ($PowerShellCodeGen['azureDefaults'].ClientSideFiltering))) {
+            ($PowerShellCodeGen.ContainsKey('azureDefaults') -and $PowerShellCodeGen['azureDefaults'] -and
+                (-not (Get-Member -InputObject $PowerShellCodeGen['azureDefaults'] -Name 'clientSideFiltering')) -or
+                ($PowerShellCodeGen['azureDefaults'].ClientSideFiltering))) {
             foreach ($entry in $PathFunctionDetails.GetEnumerator()) {
                 $hyphenIndex = $entry.Name.IndexOf("-")
                 if ($hyphenIndex -gt -1) {
@@ -833,55 +833,27 @@ function New-PSSwaggerModule {
 
         $null = New-Item -Path $existingPath -ItemType Directory -Force
         foreach ($item in Get-ChildItem -Path $utilityModuleInfo.ModuleBase) {
+            $filePath = $item.FullName
             if ($item.Name -eq 'PSSwaggerClientTracing.psm1') {
                 Write-Warning -Message $LocalizedData.TracingDisabled
-                Copy-Item -Path (Join-Path -Path $PSScriptRoot -ChildPath 'PSSwaggerClientTracing_Dummy.psm1') -Destination (Join-Path -Path $existingPath -ChildPath $item.Name)
-            } else {
-                $content = Remove-AuthenticodeSignatureBlock -Path $item.FullName
+                $filePath = Join-Path -Path $PSScriptRoot -ChildPath 'PSSwaggerClientTracing_Dummy.psm1'
+            } 
+            elseif ($item.Name -eq 'PSSwaggerServiceCredentialsHelpers.psm1') {
+                Write-Warning -Message $LocalizedData.CredentialsDisabled
+                $filePath = Join-Path -Path $PSScriptRoot -ChildPath 'PSSwaggerServiceCredentialsHelpers_Dummy.psm1'
+            }
+            elseif (($item.Name -eq 'PSSwaggerNetUtilities.Code.ps1') -or ($item.Name -eq 'PSSwaggerNetUtilities.Unsafe.Code.ps1')) {
+                $filePath = $null
+            }
+
+            if ($filePath) {
+                $content = Remove-AuthenticodeSignatureBlock -Path $filePath
                 if ($item.Name -eq 'PSSwaggerUtility.Resources.psd1') {
                     $namespaceIndex = $content | Select-String -Pattern "CSharpNamespace=Microsoft.PowerShell.Commands.PSSwagger"
-                    $content[$namespaceIndex.LineNumber-1] = "    CSharpNamespace=$($SwaggerDict['info'].NameSpace)"
+                    $content[$namespaceIndex.LineNumber - 1] = "    CSharpNamespace=$($SwaggerDict['info'].NameSpace)"
                 }
 
                 $content | Out-File -FilePath (Join-Path -Path $existingPath -ChildPath $item.Name)
-            }
-        }
-
-        # Check for fullclr and coreclr dependencies
-        if ($AddUtilityDependencies) {
-            $externalReferencesFrameworks = @('net4', 'netstandard1')
-            $clrs = @('fullclr', 'coreclr')
-            for ($i = 0; $i -lt $clrs.Length; $i++) {
-                $localUtilityRefPath = Join-Path -Path $existingPath -ChildPath "ref" | Join-Path -ChildPath $clrs[$i]
-                if (-not (Test-Path -Path $localUtilityRefPath)) {
-                    $null = New-Item -Path $localUtilityRefPath -ItemType Directory
-                }
-
-                $externalReferences = Get-PSSwaggerExternalDependencies -Framework $externalReferencesFrameworks[$i]
-                # Check if the references already exist in the generated module's ref folder
-                foreach ($entry in $externalReferences.GetEnumerator()) {
-                    $reference = $entry.Value
-                    $download = $false
-                    foreach ($ref in $reference.References) {
-                        $inModulePath = Join-Path -Path $outputDirectory -ChildPath "ref" | Join-Path -ChildPath $clrs[$i] | Join-Path -ChildPath $ref
-                        if (-not (Test-Path -Path $inModulePath)) {
-                            $download = $true
-                        }
-                    }
-
-                    if ($download) {
-                        # Doesn't exist, so download copy to $localUtilityRefPath
-                        $userConsent = Initialize-PSSwaggerLocalTool -Framework @($externalReferencesFrameworks[$i]) -AcceptBootstrap:$ConfirmBootstrap
-                        $extraRefs = Get-PSSwaggerDependency -PackageName $reference.PackageName `
-                                                            -References $reference.References `
-                                                            -Framework $reference.Framework `
-                                                            -RequiredVersion $reference.RequiredVersion `
-                                                            -Install -BootstrapConsent:$ConfirmBootstrap
-                        foreach ($extraRef in $extraRefs) {
-                            Copy-Item -Path $extraRef -Destination (Join-Path -Path $localUtilityRefPath -ChildPath (Split-Path -Path $extraRef -Leaf))
-                        }
-                    }
-                }
             }
         }
     }

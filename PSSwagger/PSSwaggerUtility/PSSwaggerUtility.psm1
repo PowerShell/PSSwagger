@@ -1726,18 +1726,34 @@ function Initialize-PSSwaggerUtilities {
     else
     {
         # Compile the regular utilities
+        $coreCodeFileName = 'PSSwaggerNetUtilities.Core.Code.ps1'
         $codeFileName = 'PSSwaggerNetUtilities.Code.ps1'
         $PSSwaggerJobFilePath = Join-Path -Path $PSScriptRoot -ChildPath $codeFileName
-        if(Test-Path -Path $PSSwaggerJobFilePath -PathType Leaf)
+        $PSSwaggerCoreJobFilePath = Join-Path -Path $PSScriptRoot -ChildPath $coreCodeFileName
+        if(Test-Path -Path $PSSwaggerCoreJobFilePath -PathType Leaf)
         {
+            $useExternalDependencies = $false
             if ((Get-OperatingSystemInfo).IsWindows) {
-                $sig = Get-AuthenticodeSignature -FilePath $PSSwaggerJobFilePath
+                $sig = Get-AuthenticodeSignature -FilePath $PSSwaggerCoreJobFilePath
                 if (('Valid' -ne $sig.Status) -and ('NotSigned' -ne $sig.Status)) {
-                    throw ($LocalizedData.CodeFileSignatureValidationFailed -f ($codeFileName))
+                    throw ($LocalizedData.CodeFileSignatureValidationFailed -f ($coreCodeFileName))
                 }
             }
 
-            $PSSwaggerJobSourceString = Remove-AuthenticodeSignatureBlock -Path $PSSwaggerJobFilePath | Out-String
+            $PSSwaggerJobSourceString = Remove-AuthenticodeSignatureBlock -Path $PSSwaggerCoreJobFilePath
+            if (Test-Path -Path $PSSwaggerJobFilePath -PathType Leaf) {
+                $useExternalDependencies = $true
+                if ((Get-OperatingSystemInfo).IsWindows) {
+                    $sig = Get-AuthenticodeSignature -FilePath $PSSwaggerJobFilePath
+                    if (('Valid' -ne $sig.Status) -and ('NotSigned' -ne $sig.Status)) {
+                        throw ($LocalizedData.CodeFileSignatureValidationFailed -f ($codeFileName))
+                    }
+                }
+
+                $PSSwaggerJobSourceString = $PSSwaggerJobSourceString + (Remove-AuthenticodeSignatureBlock -Path $PSSwaggerJobFilePath)
+            }
+
+            $PSSwaggerJobSourceString = $PSSwaggerJobSourceString | Out-String
             $PSSwaggerJobSourceString = $ExecutionContext.InvokeCommand.ExpandString($PSSwaggerJobSourceString)
             Add-Type -AssemblyName System.Net.Http
             $RequiredAssemblies = @(
@@ -1754,35 +1770,37 @@ function Initialize-PSSwaggerUtilities {
                 $RequiredAssemblies += 'System.Threading'
             }
 
-            $externalReferences = Get-PSSwaggerExternalDependencies -Framework $externalReferencesFramework
-            foreach ($entry in ($externalReferences.GetEnumerator() | Sort-Object { $_.Value.LoadOrder })) {
-                $reference = $entry.Value
-                $getDependency = $false
-                foreach ($ref in $reference.References) {
-                    $path = (Join-Path -Path "$PSScriptRoot" -ChildPath "ref" | Join-Path -ChildPath $clr | Join-Path -ChildPath $ref)
-                    $parentPath = (Join-Path -Path "$PSScriptRoot" -ChildPath .. | Join-Path -ChildPath "ref" | Join-Path -ChildPath $clr | Join-Path -ChildPath $ref)
-                    if (Test-Path -Path $path) {
-                        Add-Type -Path $path
-                        $RequiredAssemblies += $path
-                    } elseif (Test-Path -Path $parentPath) {
-                        Add-Type -Path $parentPath
-                        $RequiredAssemblies += $parentPath
-                    } else {
-                        $getDependency = $true
-                        break
+            if ($useExternalDependencies) {
+                $externalReferences = Get-PSSwaggerExternalDependencies -Framework $externalReferencesFramework
+                foreach ($entry in ($externalReferences.GetEnumerator() | Sort-Object { $_.Value.LoadOrder })) {
+                    $reference = $entry.Value
+                    $getDependency = $false
+                    foreach ($ref in $reference.References) {
+                        $path = (Join-Path -Path "$PSScriptRoot" -ChildPath "ref" | Join-Path -ChildPath $clr | Join-Path -ChildPath $ref)
+                        $parentPath = (Join-Path -Path "$PSScriptRoot" -ChildPath .. | Join-Path -ChildPath "ref" | Join-Path -ChildPath $clr | Join-Path -ChildPath $ref)
+                        if (Test-Path -Path $path) {
+                            Add-Type -Path $path
+                            $RequiredAssemblies += $path
+                        } elseif (Test-Path -Path $parentPath) {
+                            Add-Type -Path $parentPath
+                            $RequiredAssemblies += $parentPath
+                        } else {
+                            $getDependency = $true
+                            break
+                        }
                     }
-                }
 
-                if ($getDependency) {
-                    $userConsent = Initialize-PSSwaggerLocalTool -Framework @($externalReferencesFramework)
-                    $extraRefs = Get-PSSwaggerDependency -PackageName $reference.PackageName `
-                                                        -References $reference.References `
-                                                        -Framework $reference.Framework `
-                                                        -RequiredVersion $reference.RequiredVersion `
-                                                        -Install -BootstrapConsent:$userConsent
-                    if ($extraRefs) {
-                        foreach ($ref in $extraRefs) {
-                            $RequiredAssemblies += $ref
+                    if ($getDependency) {
+                        $userConsent = Initialize-PSSwaggerLocalTool -Framework @($externalReferencesFramework)
+                        $extraRefs = Get-PSSwaggerDependency -PackageName $reference.PackageName `
+                                                            -References $reference.References `
+                                                            -Framework $reference.Framework `
+                                                            -RequiredVersion $reference.RequiredVersion `
+                                                            -Install -BootstrapConsent:$userConsent
+                        if ($extraRefs) {
+                            foreach ($ref in $extraRefs) {
+                                $RequiredAssemblies += $ref
+                            }
                         }
                     }
                 }
@@ -1906,7 +1924,7 @@ function Initialize-PSSwaggerUtilities {
         Import-Module -Name $PSSwaggerJobAssemblyPath -Verbose:$false
     }
 
-    if (-not (Get-OperatingSystemInfo).IsCore) {
+    if ((-not (Get-OperatingSystemInfo).IsCore) -and $PSSwaggerJobAssemblyUnsafePath) {
         $externalReferences = Get-PSSwaggerExternalDependencies -Framework $externalReferencesFramework
         foreach ($entry in ($externalReferences.GetEnumerator() | Sort-Object { $_.Value.LoadOrder })) {
             $reference = $entry.Value
@@ -1932,7 +1950,7 @@ function Initialize-PSSwaggerUtilities {
         Write-Error -Message ($LocalizedData.FailedToAddType -f ('PSSwaggerJob'))
     }
 
-    if((-not (Get-OperatingSystemInfo).IsCore) -and (-not ("$($LocalizedData.CSharpNamespace).PSBasicAuthenticationEx" -as [Type])))
+    if((-not (Get-OperatingSystemInfo).IsCore) -and $PSSwaggerJobAssemblyUnsafePath -and (-not ("$($LocalizedData.CSharpNamespace).PSBasicAuthenticationEx" -as [Type])))
     {
         Write-Error -Message ($LocalizedData.FailedToAddType -f ('PSBasicAuthenticationEx'))
     }

@@ -99,5 +99,6 @@ ConvertFrom-StringData @'
     CopyingUtilityModule=Copying utility module to generated module...
     ReSignUtilityModuleWarning=The local copy of the utility module at '{0}' should be signed or re-signed before distribution.
     TracingDisabled=Local utility module copies have service-level tracing disabled. This includes, but is not limited to, tracing what is sent and received from the service.
+    CredentialsDisabled=Local utility module copies have built-in service credential types disabled.
 ###PSLOC
 '@
