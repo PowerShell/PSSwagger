@@ -1704,6 +1704,7 @@ function Initialize-PSSwaggerUtilities {
 
     $PSSwaggerJobAssemblyPath = $null
     $PSSwaggerJobAssemblyUnsafePath = $null
+    $useExternalDependencies = $true
     if ((Get-OperatingSystemInfo).IsCore) {
         $externalReferencesFramework = 'netstandard1.'
         $clr = 'coreclr'
@@ -1905,16 +1906,18 @@ function Initialize-PSSwaggerUtilities {
 
     if(Test-Path -LiteralPath $PSSwaggerJobAssemblyPath -PathType Leaf)
     {
-        $externalReferences = Get-PSSwaggerExternalDependencies -Framework $externalReferencesFramework
-        foreach ($entry in ($externalReferences.GetEnumerator() | Sort-Object { $_.Value.LoadOrder })) {
-            $reference = $entry.Value
-            $extraRefs = Get-PSSwaggerDependency -PackageName $reference.PackageName `
-                                                        -References $reference.References `
-                                                        -Framework $reference.Framework `
-                                                        -RequiredVersion $reference.RequiredVersion
-            if ($extraRefs) {
-                foreach ($extraRef in $extraRefs) {
-                    Add-Type -Path $extraRef
+        if ($useExternalDependencies) {
+            $externalReferences = Get-PSSwaggerExternalDependencies -Framework $externalReferencesFramework
+            foreach ($entry in ($externalReferences.GetEnumerator() | Sort-Object { $_.Value.LoadOrder })) {
+                $reference = $entry.Value
+                $extraRefs = Get-PSSwaggerDependency -PackageName $reference.PackageName `
+                                                            -References $reference.References `
+                                                            -Framework $reference.Framework `
+                                                            -RequiredVersion $reference.RequiredVersion
+                if ($extraRefs) {
+                    foreach ($extraRef in $extraRefs) {
+                        Add-Type -Path $extraRef
+                    }
                 }
             }
         }
