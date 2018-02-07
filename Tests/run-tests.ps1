@@ -133,9 +133,9 @@ if (-not $azureRmProfile) {
 }
 
 $powershellFolder = $null
-$srcPath = Join-Path -Path $PSScriptRoot -ChildPath .. | Join-Path -ChildPath PSSwagger
+$srcPath = (Resolve-Path -Path (Join-Path -Path $PSScriptRoot -ChildPath .. | Join-Path -ChildPath PSSwagger)).Path
 $srcPath += [System.IO.Path]::DirectorySeparatorChar
-$modulePath = Join-Path -Path $PSScriptRoot -ChildPath ..
+$modulePath = (Resolve-Path -Path (Join-Path -Path $PSScriptRoot -ChildPath ..)).Path
 $modulePath += [System.IO.Path]::DirectorySeparatorChar
 if ("netstandard1.7" -eq $TestFramework) {
     # beta > alpha
@@ -152,7 +152,7 @@ if ($EnableTracing) {
     $executeTestsCommand += ";`$global:PSSwaggerTest_EnableTracing=`$true"
 }
 
-$srcPath = Join-Path -Path $PSScriptRoot -ChildPath .. | Join-Path -ChildPath PSSwagger
+$srcPath = (Resolve-Path -Path (Join-Path -Path $PSScriptRoot -ChildPath .. | Join-Path -ChildPath PSSwagger)).Path
 $srcPath += [System.IO.Path]::DirectorySeparatorChar
 $executeTestsCommand += @"
     ;`$verbosepreference=`'continue`';

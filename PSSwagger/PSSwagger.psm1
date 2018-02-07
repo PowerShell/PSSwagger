@@ -132,6 +132,14 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwa
     
 .PARAMETER  Formatter
     Specify a formatter to use. 
+
+.PARAMETER  CopyUtilityModuleToOutput
+    Copy the utility module to the output generated module. This has the effect of hardcoding the version of the utility module used by the generated module. The copied utility module must be re-signed if it was originally signed.
+
+.PARAMETER  AddUtilityDependencies
+    Ensure any external assemblies required by the utility module are included somewhere in the module. This has the effect of making the utility module offline-compatible.
+
+
 .INPUTS
 
 .OUTPUTS
@@ -248,7 +256,21 @@ function New-PSSwaggerModule {
         [Parameter(Mandatory = $false, ParameterSetName = 'SdkAssemblyWithSpecificationUri')]
         [string]
         [ValidateSet('None', 'PSScriptAnalyzer')]
-        $Formatter
+        $Formatter,
+
+        [Parameter(Mandatory = $false, ParameterSetName = 'SpecificationPath')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SpecificationUri')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SdkAssemblyWithSpecificationPath')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SdkAssemblyWithSpecificationUri')]
+        [switch]
+        $CopyUtilityModuleToOutput,
+
+        [Parameter(Mandatory = $false, ParameterSetName = 'SpecificationPath')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SpecificationUri')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SdkAssemblyWithSpecificationPath')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SdkAssemblyWithSpecificationUri')]
+        [switch]
+        $AddUtilityDependencies
     )
 
     if ($NoAssembly -and $IncludeCoreFxAssembly) {
@@ -589,9 +611,9 @@ function New-PSSwaggerModule {
 
         # Add extra metadata based on service type
         if (($PowerShellCodeGen['ServiceType'] -eq 'azure') -or ($PowerShellCodeGen['ServiceType'] -eq 'azure_stack') -and
-        ($PowerShellCodeGen.ContainsKey('azureDefaults') -and $PowerShellCodeGen['azureDefaults'] -and
-         (-not (Get-Member -InputObject $PowerShellCodeGen['azureDefaults'] -Name 'clientSideFiltering')) -or
-         ($PowerShellCodeGen['azureDefaults'].ClientSideFiltering))) {
+            ($PowerShellCodeGen.ContainsKey('azureDefaults') -and $PowerShellCodeGen['azureDefaults'] -and
+                (-not (Get-Member -InputObject $PowerShellCodeGen['azureDefaults'] -Name 'clientSideFiltering')) -or
+                ($PowerShellCodeGen['azureDefaults'].ClientSideFiltering))) {
             foreach ($entry in $PathFunctionDetails.GetEnumerator()) {
                 $hyphenIndex = $entry.Name.IndexOf("-")
                 if ($hyphenIndex -gt -1) {
@@ -798,6 +820,42 @@ function New-PSSwaggerModule {
         Copy-PSFileWithHeader -SourceFilePath (Join-Path -Path "$PSScriptRoot" -ChildPath $_.Name) `
             -DestinationFilePath (Join-Path -Path "$outputDirectory" -ChildPath $_.Value) `
             -PSHeaderComment $PSHeaderComment
+    }
+
+    if ($CopyUtilityModuleToOutput) {
+        Write-Verbose -Message $LocalizedData.CopyingUtilityModule
+        $utilityModuleInfo = Get-Module PSSwaggerUtility
+        $existingPath = (Join-Path -Path $outputDirectory -ChildPath PSSwaggerUtility)
+        Write-Warning -Message ($LocalizedData.ReSignUtilityModuleWarning -f $existingPath)
+        if (Test-Path -Path $existingPath) {
+            $null = Remove-Item -Path $existingPath -Recurse -Force
+        }
+
+        $null = New-Item -Path $existingPath -ItemType Directory -Force
+        foreach ($item in Get-ChildItem -Path $utilityModuleInfo.ModuleBase) {
+            $filePath = $item.FullName
+            if ($item.Name -eq 'PSSwaggerClientTracing.psm1') {
+                Write-Warning -Message $LocalizedData.TracingDisabled
+                $filePath = Join-Path -Path $PSScriptRoot -ChildPath 'PSSwaggerClientTracing_Dummy.psm1'
+            } 
+            elseif ($item.Name -eq 'PSSwaggerServiceCredentialsHelpers.psm1') {
+                Write-Warning -Message $LocalizedData.CredentialsDisabled
+                $filePath = Join-Path -Path $PSScriptRoot -ChildPath 'PSSwaggerServiceCredentialsHelpers_Dummy.psm1'
+            }
+            elseif (($item.Name -eq 'PSSwaggerNetUtilities.Code.ps1') -or ($item.Name -eq 'PSSwaggerNetUtilities.Unsafe.Code.ps1')) {
+                $filePath = $null
+            }
+
+            if ($filePath) {
+                $content = Remove-AuthenticodeSignatureBlock -Path $filePath
+                if ($item.Name -eq 'PSSwaggerUtility.Resources.psd1') {
+                    $namespaceIndex = $content | Select-String -Pattern "CSharpNamespace=Microsoft.PowerShell.Commands.PSSwagger"
+                    $content[$namespaceIndex.LineNumber - 1] = "    CSharpNamespace=$($SwaggerDict['info'].NameSpace)"
+                }
+
+                $content | Out-File -FilePath (Join-Path -Path $existingPath -ChildPath $item.Name)
+            }
+        }
     }
 
     Write-Verbose -Message ($LocalizedData.SuccessfullyGeneratedModule -f $Name, $outputDirectory)

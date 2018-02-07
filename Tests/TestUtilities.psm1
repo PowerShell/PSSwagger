@@ -175,8 +175,9 @@ function Initialize-Test {
         [string]$TestDataFileName,
         [string]$PsSwaggerPath,
         [string]$TestRootPath,
-        [string]$GeneratedModuleVersion,
-        [switch]$UseAzureCSharpGenerator
+        [string]$GeneratedModuleVersion = "0.0.1",
+        [switch]$UseAzureCSharpGenerator,
+        [switch]$CopyUtilityModuleToOutput
     )
 
     # TODO: Pass all these locations dynamically - See issues/17
@@ -198,11 +199,11 @@ function Initialize-Test {
         & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\PowerShell.exe" -command "& {`$env:PSModulePath=`$env:PSModulePath_Backup;
             Import-Module (Join-Path `"$PsSwaggerPath`" `"PSSwagger.psd1`") -Force;
             Initialize-PSSwaggerDependencies -AllFrameworks -AcceptBootstrap -Azure:`$$UseAzureCSharpGenerator;
-            New-PSSwaggerModule -SpecificationPath (Join-Path -Path `"$testCaseDataLocation`" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Verbose -NoAssembly -UseAzureCSharpGenerator:`$$UseAzureCSharpGenerator -ConfirmBootstrap;
+            New-PSSwaggerModule -SpecificationPath (Join-Path -Path `"$testCaseDataLocation`" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Version $GeneratedModuleVersion -Verbose -NoAssembly -UseAzureCSharpGenerator:`$$UseAzureCSharpGenerator -CopyUtilityModuleToOutput:`$$CopyUtilityModuleToOutput -ConfirmBootstrap;
         }"
     } else {
         Import-Module (Join-Path "$PsSwaggerPath" "PSSwagger.psd1") -Force
-        New-PSSwaggerModule -SpecificationPath (Join-Path -Path "$testCaseDataLocation" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Verbose -NoAssembly -UseAzureCSharpGenerator:$UseAzureCSharpGenerator -ConfirmBootstrap
+        New-PSSwaggerModule -SpecificationPath (Join-Path -Path "$testCaseDataLocation" -ChildPath $TestSpecFileName) -Path "$generatedModulesPath" -Name $GeneratedModuleName -Version $GeneratedModuleVersion -Verbose -NoAssembly -UseAzureCSharpGenerator:$UseAzureCSharpGenerator -CopyUtilityModuleToOutput:$CopyUtilityModuleToOutput -ConfirmBootstrap
     }
     
     if ($TestDataFileName) {

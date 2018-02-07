@@ -2,7 +2,7 @@
   "info": {
     "x-ps-code-generation-settings": {
       "azureDefaults": {
-        "clientSideFiltering": false
+        "clientSideFiltering": true
       }
     }
   }
