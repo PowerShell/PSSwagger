@@ -683,11 +683,13 @@ function New-SwaggerDefinitionCommand
 
     $DefinitionFunctionsDetails.GetEnumerator() | ForEach-Object {        
         $FunctionDetails = $_.Value
+        $GenerateDefinitionCmdlet = ($FunctionDetails.ContainsKey('GenerateDefinitionCmdlet') -and ($FunctionDetails['GenerateDefinitionCmdlet'] -eq $true))
         # Denifitions defined as x_ms_client_flatten are not used as an object anywhere. 
         # Also AutoRest doesn't generate a Model class for the definitions declared as x_ms_client_flatten for other definitions.
-        if((-not $FunctionDetails.IsUsedAs_x_ms_client_flatten) -and $FunctionDetails.IsModel)
+        if(((-not $FunctionDetails.IsUsedAs_x_ms_client_flatten) -and $FunctionDetails.IsModel) -or 
+           $GenerateDefinitionCmdlet)
         {
-            if ($FunctionDetails.ContainsKey('GenerateDefinitionCmdlet') -and ($FunctionDetails['GenerateDefinitionCmdlet'] -eq $true)) {
+            if ($GenerateDefinitionCmdlet) {
                 $FunctionsToExport += New-SwaggerSpecDefinitionCommand -FunctionDetails $FunctionDetails `
                                                                     -GeneratedCommandsPath $SwaggerDefinitionCommandsPath `
                                                                     -ModelsNamespace "$Namespace.$Models" `
