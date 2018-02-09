@@ -162,6 +162,21 @@ function ConvertTo-SwaggerDictionary {
         $swaggerDict['Info']['Header'] = $Header
     }
 
+    if ((Get-Member -InputObject $swaggerDocObject.info -Name 'x-ps-module-info') -and
+        (Get-Member -InputObject $swaggerDocObject.info.'x-ps-module-info' -Name 'commandDefaults')) {
+        $swaggerDict['CommandDefaults'] = @{}
+        foreach ($property in (Get-Member -InputObject $swaggerDocObject.info.'x-ps-module-info'.commandDefaults -MemberType NoteProperty)) {
+            $swaggerDict['CommandDefaults'][$property.Name] = $swaggerDocObject.info.'x-ps-module-info'.commandDefaults.$($property.Name)
+        }
+    } elseif ($PSMetaJsonObject -and (Get-Member -InputObject $PSMetaJsonObject -Name 'info') -and
+              (Get-Member -InputObject $PSMetaJsonObject.info -Name 'x-ps-module-info') -and
+              (Get-Member -InputObject $PSMetaJsonObject.info.'x-ps-module-info' -Name 'commandDefaults')) {
+        $swaggerDict['CommandDefaults'] = @{}
+        foreach ($property in (Get-Member -InputObject $PSMetaJsonObject.info.'x-ps-module-info'.commandDefaults -MemberType NoteProperty)) {
+            $swaggerDict['CommandDefaults'][$property.Name] = $PSMetaJsonObject.info.'x-ps-module-info'.commandDefaults.$($property.Name)
+        }
+    }
+
     $SwaggerParameters = @{}
     $SwaggerDefinitions = @{}
     $SwaggerPaths = @{}
@@ -1491,7 +1506,15 @@ function Get-PathFunctionBody
 
         [Parameter(Mandatory=$true)]
         [PSCustomObject]
-        $ParameterAliasMapping
+        $ParameterAliasMapping,
+
+        [Parameter(Mandatory=$false)]
+        [PSCustomObject]
+        $GlobalParametersStatic,
+
+        [Parameter(Mandatory=$false)]
+        [string]
+        $FilterBlock
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState

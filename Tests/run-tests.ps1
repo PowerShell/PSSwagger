@@ -11,6 +11,7 @@
 param(
     [ValidateSet("All", "UnitTest", "ScenarioTest")]
     [string[]]$TestSuite = "All",
+    [string]$Tag,
     [string[]]$TestName,
     [ValidateSet("net452", "netstandard1.7")]
     [string]$TestFramework = "net452",
@@ -132,9 +133,9 @@ if (-not $azureRmProfile) {
 }
 
 $powershellFolder = $null
-$srcPath = Join-Path -Path $PSScriptRoot -ChildPath .. | Join-Path -ChildPath PSSwagger
+$srcPath = (Resolve-Path -Path (Join-Path -Path $PSScriptRoot -ChildPath .. | Join-Path -ChildPath PSSwagger)).Path
 $srcPath += [System.IO.Path]::DirectorySeparatorChar
-$modulePath = Join-Path -Path $PSScriptRoot -ChildPath ..
+$modulePath = (Resolve-Path -Path (Join-Path -Path $PSScriptRoot -ChildPath ..)).Path
 $modulePath += [System.IO.Path]::DirectorySeparatorChar
 if ("netstandard1.7" -eq $TestFramework) {
     # beta > alpha
@@ -151,12 +152,12 @@ if ($EnableTracing) {
     $executeTestsCommand += ";`$global:PSSwaggerTest_EnableTracing=`$true"
 }
 
-$srcPath = Join-Path -Path $PSScriptRoot -ChildPath .. | Join-Path -ChildPath PSSwagger
+$srcPath = (Resolve-Path -Path (Join-Path -Path $PSScriptRoot -ChildPath .. | Join-Path -ChildPath PSSwagger)).Path
 $srcPath += [System.IO.Path]::DirectorySeparatorChar
 $executeTestsCommand += @"
     ;`$verbosepreference=`'continue`';
     `$env:PSModulePath=`"$srcPath;$modulePath;`$env:PSModulePath`";
-    Invoke-Pester -Script `'$PSScriptRoot`' -ExcludeTag KnownIssue -OutputFormat NUnitXml -OutputFile ScenarioTestResults.xml -Verbose;
+    Invoke-Pester -Script `'$PSScriptRoot`' -ExcludeTag KnownIssue -OutputFormat NUnitXml -OutputFile ScenarioTestResults.xml -Verbose
 "@
 # Set up Pester params
 $pesterParams = @{'ExcludeTag' = 'KnownIssue'; 'OutputFormat' = 'NUnitXml'; 'OutputFile' = 'TestResults.xml'}
@@ -164,14 +165,15 @@ if ($PSBoundParameters.ContainsKey('TestName')) {
     $executeTestsCommand += " -TestName `"$TestName`""
 }
 
-if ($TestSuite.Contains("All")) {
+if (-not $Tag) {
     Write-Verbose "Invoking all tests."
 }
 else {
-    Write-Verbose "Running only tests with tag: $TestSuite"
-    $executeTestsCommand += " -Tag $TestSuite"
+    Write-Verbose "Running only tests with tag: $Tag"
+    $executeTestsCommand += " -Tag $Tag"
 }
 
+$executeTestsCommand += ";"
 Write-Verbose "Dependency versions:"
 Write-Verbose " -- AzureRM.Profile: $($azureRmProfile.Version)"
 Write-Verbose " -- Pester: $((get-command invoke-pester).Version)"

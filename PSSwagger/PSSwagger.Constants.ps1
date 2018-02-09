@@ -41,7 +41,12 @@ Microsoft.PowerShell.Core\Set-StrictMode -Version Latest
 # If the user supplied -Prefix to Import-Module, that applies to the nested module as well
 # Force import the nested module again without -Prefix
 if (-not (Get-Command Get-OperatingSystemInfo -Module PSSwaggerUtility -ErrorAction Ignore)) {
-    Import-Module PSSwaggerUtility -Force
+    # Simply doing "Import-Module PSSwaggerUtility" doesn't work for local case
+	if (Test-Path -Path (Join-Path -Path `$PSScriptRoot -ChildPath PSSwaggerUtility)) {
+		Import-Module (Join-Path -Path `$PSScriptRoot -ChildPath PSSwaggerUtility) -Force
+	} else {
+		Import-Module PSSwaggerUtility -Force
+	}
 }
 
 if ((Get-OperatingSystemInfo).IsCore) {
@@ -60,6 +65,8 @@ if (Test-Path -Path `$ClrPath -PathType Container) {
 
 . (Join-Path -Path `$PSScriptRoot -ChildPath 'New-ServiceClient.ps1')
 . (Join-Path -Path `$PSScriptRoot -ChildPath 'Get-TaskResult.ps1')
+. (Join-Path -Path `$PSScriptRoot -ChildPath 'Get-ApplicableFilters.ps1')
+. (Join-Path -Path `$PSScriptRoot -ChildPath 'Test-FilteredResult.ps1')
 $(if($UseAzureCsharpGenerator) {
 ". (Join-Path -Path `$PSScriptRoot -ChildPath 'Get-ArmResourceIdParameterValue.ps1')"
 })
@@ -191,10 +198,13 @@ if($hostOverrideCommand){
     $hostOverrideCommand
 `'@"
 }
+if($GlobalParameters -or $GlobalParametersStatic) {
+"
+    `$GlobalParameterHashtable = @{}
+    `$NewServiceClient_params['GlobalParameterHashtable'] = `$GlobalParameterHashtable
+"
+}
 if($GlobalParameters) {
-'
-    $GlobalParameterHashtable = @{} '
-    
     foreach($parameter in $GlobalParameters) {
 "    
     `$GlobalParameterHashtable['$parameter'] = `$null
@@ -203,8 +213,13 @@ if($GlobalParameters) {
     }
 "
     }
-"
-    `$NewServiceClient_params['GlobalParameterHashtable'] = `$GlobalParameterHashtable "
+}
+if ($GlobalParametersStatic) {
+    foreach ($entry in $GlobalParametersStatic.GetEnumerator()) {
+"    
+    `$GlobalParameterHashtable['$($entry.Name)'] = $($entry.Value)
+"     
+    }
 }
 )
     $clientName = New-ServiceClient @NewServiceClient_params
@@ -234,6 +249,7 @@ if($ResourceIdParamCodeBlock) {
 "
 }
 )
+$FilterBlock
     $parameterSetBasedMethodStr else {
         Write-Verbose -Message 'Failed to map parameter set to operation method.'
         throw 'Module failed to find operation to execute.'
@@ -309,13 +325,13 @@ if($PageTypePagingObjectStr) {
     }
 
     `$PSCommonParameters = Get-PSCommonParameter -CallerPSBoundParameters `$PSBoundParameters
-
+    `$TaskHelperFilePath = Join-Path -Path `$ExecutionContext.SessionState.Module.ModuleBase -ChildPath 'Get-TaskResult.ps1'
     if(`$AsJob)
     {
         `$ScriptBlockParameters = New-Object -TypeName 'System.Collections.Generic.Dictionary[string,object]'
         `$ScriptBlockParameters['TaskResult'] = `$TaskResult
         `$ScriptBlockParameters['AsJob'] = `$AsJob
-        `$ScriptBlockParameters['TaskHelperFilePath'] = Join-Path -Path `$ExecutionContext.SessionState.Module.ModuleBase -ChildPath 'Get-TaskResult.ps1'
+        `$ScriptBlockParameters['TaskHelperFilePath'] = `$TaskHelperFilePath
         `$PSCommonParameters.GetEnumerator() | ForEach-Object { `$ScriptBlockParameters[`$_.Name] = `$_.Value }
 
         Start-PSSwaggerJobHelper -ScriptBlock `$PSSwaggerJobScriptBlock ``
@@ -326,7 +342,7 @@ if($PageTypePagingObjectStr) {
     else
     {
         Invoke-Command -ScriptBlock `$PSSwaggerJobScriptBlock ``
-                       -ArgumentList `$TaskResult ``
+                       -ArgumentList `$TaskResult,`$TaskHelperFilePath ``
                        @PSCommonParameters
     }
 '@
@@ -552,3 +568,59 @@ Copyright (c) Microsoft Corporation. All rights reserved.
 Licensed under the MIT License. See License.txt in the project root for license information.
 '@
 
+$FilterBlockStr = @'
+`$filterInfos = @(
+$(
+    $prependComma = $false
+    foreach ($filter in $clientSideFilter.Filters) {
+        if ($prependComma) {
+            ", "
+        } else {
+            $prependComma = $true
+        }
+
+"@{
+    'Type' = '$($filter.Type)'
+    'Value' = `$$($filter.Parameter)
+    'Property' = '$($filter.Property)'"
+        foreach ($property in (Get-Member -InputObject $filter -MemberType NoteProperty)) {
+            if (($property.Name -eq 'Type') -or ($property.Name -eq 'Parameter') -or ($property.Name -eq 'Property') -or ($property.Name -eq 'AppendParameterInfo')) {
+                continue
+            }
+
+"
+    '$($property.Name)' = '$($filter.($property.Name))'"
+        }
+"
+}"
+    }
+))
+`$applicableFilters = Get-ApplicableFilters -Filters `$filterInfos
+if (`$applicableFilters | Where-Object { `$_.Strict }) {
+    Write-Verbose -Message 'Performing server-side call ''$(if ($clientSideFilter.ServerSideResultCommand -eq '.') { $commandName } else { $clientSideFilter.ServerSideResultCommand }) -$($matchingParameters -join " -")'''
+    `$serverSideCall_params = @{
+$(
+    foreach ($matchingParam in $matchingParameters) {
+"       '$matchingParam' = `$$matchingParam
+"
+    }
+)
+}
+
+`$serverSideResults = $(if ($clientSideFilter.ServerSideResultCommand -eq '.') { $commandName } else { $clientSideFilter.ServerSideResultCommand }) @serverSideCall_params
+foreach (`$serverSideResult in `$serverSideResults) {
+    `$valid = `$true
+    foreach (`$applicableFilter in `$applicableFilters) {
+        if (-not (Test-FilteredResult -Result `$serverSideResult -Filter `$applicableFilter.Filter)) {
+            `$valid = `$false
+            break
+        }
+    }
+
+    if (`$valid) {
+        `$serverSideResult
+    }
+}
+return
+}
+'@

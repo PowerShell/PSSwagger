@@ -17,15 +17,6 @@ function Get-BasicAuthCredentialInternal {
         [PSCredential]
         $Credential
     )
-
-    if(("$($LocalizedData.CSharpNamespace).PSBasicAuthenticationEx" -as [Type]))
-    {
-        # If the Extended type exists, use it
-        New-Object -TypeName "$($LocalizedData.CSharpNamespace).PSBasicAuthenticationEx" -ArgumentList $Credential.UserName,$Credential.Password
-    } else {
-        # Otherwise this version should exist
-        New-Object -TypeName "$($LocalizedData.CSharpNamespace).PSBasicAuthentication" -ArgumentList $Credential.UserName,$Credential.Password
-    }
 }
 
 function Get-ApiKeyCredentialInternal {
@@ -43,13 +34,9 @@ function Get-ApiKeyCredentialInternal {
         [string]
         $Name
     )
-
-    New-Object -TypeName "$($LocalizedData.CSharpNamespace).PSApiKeyAuthentication" -ArgumentList $APIKey,$Location,$Name
 }
 
 function Get-EmptyAuthCredentialInternal {
     [CmdletBinding()]
     param()
-
-    New-Object -TypeName "$($LocalizedData.CSharpNamespace).PSDummyAuthentication"
 }

@@ -14,15 +14,14 @@ Import-Module (Join-Path -Path $PSScriptRoot -ChildPath SwaggerUtils.psm1) -Disa
 . "$PSScriptRoot\PSSwagger.Constants.ps1" -Force
 Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwagger.Resources.psd1
 
-function Get-SwaggerSpecPathInfo
-{
+function Get-SwaggerSpecPathInfo {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [PSObject]
         $JsonPathItemObject,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [PSCustomObject] 
         $PathFunctionDetails,
 
@@ -38,11 +37,11 @@ function Get-SwaggerSpecPathInfo
         [hashtable]
         $DefinitionFunctionsDetails,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [hashtable]
         $ParameterGroupCache,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [PSCustomObject]
         $PSMetaJsonObject
     )
@@ -52,37 +51,36 @@ function Get-SwaggerSpecPathInfo
     $EndpointRelativePath = $JsonPathItemObject.Name
 
     $PSMetaPathJsonObject = $null
-    if($PSMetaJsonObject) {
-        if(Get-Member -InputObject $PSMetaJsonObject.paths -Name $EndpointRelativePath) {
+    if ($PSMetaJsonObject) {
+        if ((Get-Member -InputObject $PSMetaJsonObject -Name 'paths') -and (Get-Member -InputObject $PSMetaJsonObject.paths -Name $EndpointRelativePath)) {
             $PSMetaPathJsonObject = $PSMetaJsonObject.paths.$EndpointRelativePath
         }
-        elseif(Get-Member -InputObject $PSMetaJsonObject.'x-ms-paths' -Name $EndpointRelativePath) {
+        elseif ((Get-Member -InputObject $PSMetaJsonObject -Name 'x-ms-paths') -and (Get-Member -InputObject $PSMetaJsonObject.'x-ms-paths' -Name $EndpointRelativePath)) {
             $PSMetaPathJsonObject = $PSMetaJsonObject.'x-ms-paths'.$EndpointRelativePath
         }
     }
 
     # First get path level common parameters, if any, which will be common to all operations in this swagger path.
     $PathCommonParameters = @{}
-    if(Get-Member -InputObject $JsonPathItemObject.value -Name 'Parameters')
-    {
+    if (Get-Member -InputObject $JsonPathItemObject.value -Name 'Parameters') {
         $PSMetaParametersJsonObject = $null
-        if($PSMetaPathJsonObject -and (Get-Member -InputObject $PSMetaPathJsonObject -Name 'parameters')) {
+        if ($PSMetaPathJsonObject -and (Get-Member -InputObject $PSMetaPathJsonObject -Name 'parameters')) {
             $PSMetaParametersJsonObject = $PSMetaPathJsonObject.'parameters'
         }
 
         $GetPathParamInfo_params = @{
-            JsonPathItemObject = $JsonPathItemObject.Value
-            SwaggerDict = $swaggerDict
+            JsonPathItemObject         = $JsonPathItemObject.Value
+            SwaggerDict                = $swaggerDict
             DefinitionFunctionsDetails = $DefinitionFunctionsDetails
-            ParameterGroupCache = $ParameterGroupCache
-            ParametersTable = $PathCommonParameters
+            ParameterGroupCache        = $ParameterGroupCache
+            ParametersTable            = $PathCommonParameters
             PSMetaParametersJsonObject = $PSMetaParametersJsonObject
         }
         Get-PathParamInfo @GetPathParamInfo_params
     }
 
     $ResourceIdAndInputObjectDetails = $null
-    if($UseAzureCsharpGenerator) {
+    if ($UseAzureCsharpGenerator) {
         $GetResourceIdParameters_params = @{
             JsonPathItemObject = $JsonPathItemObject
             ResourceId         = $EndpointRelativePath
@@ -114,59 +112,93 @@ function Get-SwaggerSpecPathInfo
             if ((Get-Member -InputObject $_.Value.'x-ms-pageable' -Name 'nextLinkName')) {
                 if ($_.Value.'x-ms-pageable'.'nextLinkName') {
                     $x_ms_pageableObject['nextLinkName'] = $_.Value.'x-ms-pageable'.'nextLinkName'
-                } else {
+                }
+                else {
                     $x_ms_pageableObject = $null
                 }
             }
         }
 
-        if(Get-Member -InputObject $_.Value -Name 'security')
-        {
+        if (Get-Member -InputObject $_.Value -Name 'security') {
             $operationSecurityObject = $_.Value.'security'
-        } elseif ($swaggerDict.ContainsKey('Security')) {
+        }
+        elseif ($swaggerDict.ContainsKey('Security')) {
             $operationSecurityObject = $swaggerDict['Security']
-        } else {
+        }
+        else {
             $operationSecurityObject = $null
         }
 
         $cmdletInfoOverrides = @()
         $PSMetaOperationJsonObject = $null
-        if($PSMetaPathJsonObject -and
-           (Get-Member -InputObject $PSMetaPathJsonObject -Name $operationType)) {
+        if ($PSMetaPathJsonObject -and
+            (Get-Member -InputObject $PSMetaPathJsonObject -Name $operationType)) {
             $PSMetaOperationJsonObject = $PSMetaPathJsonObject.$operationType
         }
-        
-        if($PSMetaOperationJsonObject -and
-           (Get-Member -InputObject $PSMetaOperationJsonObject -Name 'x-ps-cmdlet-infos')) {
-            $PSMetaOperationJsonObject.'x-ps-cmdlet-infos' | ForEach-Object {
-                $cmdletInfoOverrides += @{
-                    Name = $_.name
-                }
-            }
-        }
-        elseif ((Get-Member -InputObject $_.Value -Name 'x-ps-cmdlet-infos') -and $_.Value.'x-ps-cmdlet-infos') {
-            foreach ($cmdletMetadata in $_.Value.'x-ps-cmdlet-infos') {
-                $cmdletInfoOverride = @{}
-                if ((Get-Member -InputObject $cmdletMetadata -Name 'name') -and $cmdletMetadata.name) {
-                    $cmdletInfoOverride['name'] = $cmdletMetadata.name
-                }
 
-                $cmdletInfoOverrides += $cmdletInfoOverride
-            }
-        }
-
-        if(Get-Member -InputObject $_.Value -Name 'OperationId')
-        {
+        if (Get-Member -InputObject $_.Value -Name 'OperationId') {
             $operationId = $_.Value.operationId
             Write-Verbose -Message ($LocalizedData.GettingSwaggerSpecPathInfo -f $operationId)
 
+            $defaultCommandNames = Get-PathCommandName -OperationId $operationId
+            if ($PSMetaOperationJsonObject -and
+                (Get-Member -InputObject $PSMetaOperationJsonObject -Name 'x-ps-cmdlet-infos')) {
+                $PSMetaOperationJsonObject.'x-ps-cmdlet-infos' | ForEach-Object {
+                    $metadataName = $null
+                    if (Get-Member -InputObject $_ -Name 'name') {
+                        $metadataName = $_.name
+                    }
+
+                    $cmdletInfoOverride = @{
+                        Name     = $metadataName
+                        Metadata = $_
+                    }
+
+                    # If no name override is specified, apply all these overrides to each default command name
+                    if (-not $metadataName) {
+                        foreach ($defaultCommandName in $defaultCommandNames) {
+                            $cmdletInfoOverrides += @{
+                                Name     = $defaultCommandName.name
+                                Metadata = $cmdletInfoOverride.Metadata
+                            }
+                        }
+                    }
+                    else {
+                        $cmdletInfoOverrides += $cmdletInfoOverride
+                    }
+                }
+            }
+            elseif ((Get-Member -InputObject $_.Value -Name 'x-ps-cmdlet-infos') -and $_.Value.'x-ps-cmdlet-infos') {
+                foreach ($cmdletMetadata in $_.Value.'x-ps-cmdlet-infos') {
+                    $cmdletInfoOverride = @{
+                        Metadata = $cmdletMetadata
+                    }
+                    if ((Get-Member -InputObject $cmdletMetadata -Name 'name') -and $cmdletMetadata.name) {
+                        $cmdletInfoOverride['name'] = $cmdletMetadata.name
+                    }
+
+                    # If no name override is specified, apply all these overrides to each default command name
+                    if (-not (Get-Member -InputObject $cmdletMetadata -Name 'name')) {
+                        foreach ($defaultCommandName in $defaultCommandNames) {
+                            $cmdletInfoOverrides += @{
+                                Name     = $defaultCommandName.name
+                                Metadata = $cmdletInfoOverride.Metadata
+                            }
+                        }
+                    }
+                    else {
+                        $cmdletInfoOverrides += $cmdletInfoOverride
+                    }
+                }
+            }
+
             $FunctionDescription = ""
-            if((Get-Member -InputObject $_.value -Name 'description') -and $_.value.description) {
+            if ((Get-Member -InputObject $_.value -Name 'description') -and $_.value.description) {
                 $FunctionDescription = $_.value.description 
             }
 
             $FunctionSynopsis = ''
-            if((Get-Member -InputObject $_.value -Name 'Summary') -and $_.value.Summary) {
+            if ((Get-Member -InputObject $_.value -Name 'Summary') -and $_.value.Summary) {
                 $FunctionSynopsis = $_.value.Summary 
             }
             
@@ -175,44 +207,43 @@ function Get-SwaggerSpecPathInfo
             $PathCommonParameters.GetEnumerator() | ForEach-Object {
                 # Cloning the common parameters object so that some values can be updated.
                 $PathCommonParamDetails = $_.Value.Clone()
-                if($PathCommonParamDetails.ContainsKey('OriginalParameterName') -and $PathCommonParamDetails.OriginalParameterName)
-                {
+                if ($PathCommonParamDetails.ContainsKey('OriginalParameterName') -and $PathCommonParamDetails.OriginalParameterName) {
                     $PathCommonParamDetails['OriginalParameterName'] = ''
                 }
                 $ParametersTable[$_.Key] = $PathCommonParamDetails
             }
 
             $PSMetaParametersJsonObject = $null
-            if($PSMetaOperationJsonObject -and (Get-Member -InputObject $PSMetaOperationJsonObject -Name 'parameters')) {
+            if ($PSMetaOperationJsonObject -and (Get-Member -InputObject $PSMetaOperationJsonObject -Name 'parameters')) {
                 $PSMetaParametersJsonObject = $PSMetaOperationJsonObject.'parameters'
             }
 
             $GetPathParamInfo_params2 = @{
-                JsonPathItemObject = $_.value
-                SwaggerDict = $swaggerDict
+                JsonPathItemObject         = $_.value
+                SwaggerDict                = $swaggerDict
                 DefinitionFunctionsDetails = $DefinitionFunctionsDetails
-                ParameterGroupCache = $ParameterGroupCache
-                ParametersTable = $ParametersTable
+                ParameterGroupCache        = $ParameterGroupCache
+                ParametersTable            = $ParametersTable
                 PSMetaParametersJsonObject = $PSMetaParametersJsonObject
             }
             Get-PathParamInfo @GetPathParamInfo_params2
 
             $responses = ""
-            if((Get-Member -InputObject $_.value -Name 'responses') -and $_.value.responses) {
+            if ((Get-Member -InputObject $_.value -Name 'responses') -and $_.value.responses) {
                 $responses = $_.value.responses 
             }
 
-            if($cmdletInfoOverrides)
-            {
+            if ($cmdletInfoOverrides) {
                 $commandNames = $cmdletInfoOverrides
-            } else {
+            }
+            else {
                 $commandNames = Get-PathCommandName -OperationId $operationId
             }
             
             # Priority of a parameterset will be used to determine the default parameterset of a cmdlet.
             $Priority = 0
             $ParametersCount = Get-HashtableKeyCount -Hashtable $ParametersTable
-            if($ParametersCount) {
+            if ($ParametersCount) {
                 # Priority for parameter sets with mandatory parameters starts at 100
                 $Priority = 100
 
@@ -225,21 +256,21 @@ function Get-SwaggerSpecPathInfo
                 }
                     
                 $ParametersTable.GetEnumerator() | ForEach-Object {
-                    if($_.Value.ContainsKey('Mandatory') -and $_.Value.Mandatory -eq '$true') {
+                    if ($_.Value.ContainsKey('Mandatory') -and $_.Value.Mandatory -eq '$true') {
                         $Priority++
                     }
 
                     # Add alias for the resource name parameter.
-                    if($ResourceIdAndInputObjectDetails -and
-                       -not $NameParameterDetails -and
-                       ($_.Value.Name -ne 'Name') -and
-                       ($_.Value.Name -eq $ResourceIdAndInputObjectDetails.ResourceName)) {
+                    if ($ResourceIdAndInputObjectDetails -and
+                        -not $NameParameterDetails -and
+                        ($_.Value.Name -ne 'Name') -and
+                        ($_.Value.Name -eq $ResourceIdAndInputObjectDetails.ResourceName)) {
                         $_.Value['Alias'] = 'Name'
                     }
                 }
 
                 # If there are no mandatory parameters, use the parameter count as the priority.                
-                if($Priority -eq 100) {
+                if ($Priority -eq 100) {
                     $Priority = $ParametersCount
                 }
             }
@@ -264,21 +295,21 @@ function Get-SwaggerSpecPathInfo
             }
 
             # There's probably a better way to do this...
-            $opIdValues = $operationId -split "_",2
-            if(-not $opIdValues -or ($opIdValues.Count -ne 2)) {
+            $opIdValues = $operationId -split "_", 2
+            if (-not $opIdValues -or ($opIdValues.Count -ne 2)) {
                 $approximateVerb = $operationId
-            } else {
+            }
+            else {
                 $approximateVerb = $opIdValues[1]
                 if ((-not $UseAzureCsharpGenerator) -and 
-                    (Test-OperationNameInDefinitionList -Name $opIdValues[0] -SwaggerDict $swaggerDict))
-                { 
+                    (Test-OperationNameInDefinitionList -Name $opIdValues[0] -SwaggerDict $swaggerDict)) { 
                     $ParameterSetDetail['UseOperationsSuffix'] = $true
                 }
             }
             
             $InputObjectParameterSetDetail = $null
             $ResourceIdParameterSetDetail = $null
-            if($ResourceIdAndInputObjectDetails) {
+            if ($ResourceIdAndInputObjectDetails) {
                 # InputObject parameterset
                 $InputObjectParameterDetails = @{
                     Name                  = 'InputObject'
@@ -296,7 +327,7 @@ function Get-SwaggerSpecPathInfo
                 $ClonedParameterSetDetail = $ParameterSetDetail.Clone()
                 $ClonedParameterSetDetail.ParameterDetails.GetEnumerator() | ForEach-Object {
                     $paramDetails = $_.Value
-                    if($ResourceIdAndInputObjectDetails.ResourceIdParameters -notcontains $paramDetails.Name) {
+                    if ($ResourceIdAndInputObjectDetails.ResourceIdParameters -notcontains $paramDetails.Name) {
                         $InputObjectParamSetParameterDetails[$index++] = $paramDetails
                     }
                 }
@@ -322,7 +353,7 @@ function Get-SwaggerSpecPathInfo
                 $ClonedParameterSetDetail = $ParameterSetDetail.Clone()
                 $ClonedParameterSetDetail.ParameterDetails.GetEnumerator() | ForEach-Object {
                     $paramDetails = $_.Value
-                    if($ResourceIdAndInputObjectDetails.ResourceIdParameters -notcontains $paramDetails.Name) {
+                    if ($ResourceIdAndInputObjectDetails.ResourceIdParameters -notcontains $paramDetails.Name) {
                         $ResourceIdParamSetParameterDetails[$index++] = $paramDetails
                     }
                 }
@@ -342,9 +373,14 @@ function Get-SwaggerSpecPathInfo
                 $FunctionDetails = @{}
                 if ($PathFunctionDetails.ContainsKey($_.name)) {
                     $FunctionDetails = $PathFunctionDetails[$_.name]
-                } else {
+                }
+                else {
                     $FunctionDetails['CommandName'] = $_.name
                     $FunctionDetails['x-ms-long-running-operation'] = $longRunningOperation
+                }
+
+                if ($_.ContainsKey('Metadata') -and (-not $FunctionDetails.ContainsKey("Metadata"))) {
+                    $FunctionDetails['Metadata'] = $_.Metadata
                 }
 
                 if ($operationSecurityObject) {
@@ -357,10 +393,10 @@ function Get-SwaggerSpecPathInfo
                 } 
 
                 $ParameterSetDetails += $ParameterSetDetail
-                if($InputObjectParameterSetDetail) {
+                if ($InputObjectParameterSetDetail) {
                     $ParameterSetDetails += $InputObjectParameterSetDetail
                 }
-                if($ResourceIdParameterSetDetail) {
+                if ($ResourceIdParameterSetDetail) {
                     $ParameterSetDetails += $ResourceIdParameterSetDetail
                 }
     
@@ -368,20 +404,18 @@ function Get-SwaggerSpecPathInfo
                 $PathFunctionDetails[$_.name] = $FunctionDetails
             }
         }
-        elseif(-not ((Get-Member -InputObject $_ -Name 'Name') -and ($_.Name -eq 'Parameters')))
-        {
+        elseif (-not ((Get-Member -InputObject $_ -Name 'Name') -and ($_.Name -eq 'Parameters'))) {
             $Message = $LocalizedData.UnsupportedSwaggerProperties -f ('JsonPathItemObject', $($_.Value | Out-String))
             Write-Warning -Message $Message
         }
     }
 }
 
-function New-SwaggerSpecPathCommand
-{
+function New-SwaggerSpecPathCommand {
     [CmdletBinding()]
     param
     (
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [hashtable]
         $PathFunctionDetails,
 
@@ -393,19 +427,23 @@ function New-SwaggerSpecPathCommand
         [hashtable]
         $SwaggerDict,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [hashtable]
         $DefinitionFunctionsDetails,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [AllowEmptyString()]
         [string]
         $PSHeaderComment,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [ValidateSet('None', 'PSScriptAnalyzer')]
         [string]
-        $Formatter = 'None'
+        $Formatter = 'None',
+
+        [Parameter(Mandatory = $false)]
+        [hashtable]
+        $PowerShellCodeGen
     )
     
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -414,12 +452,13 @@ function New-SwaggerSpecPathCommand
     Preprocess-PagingOperations -PathFunctionDetails $PathFunctionDetails
     $PathFunctionDetails.GetEnumerator() | ForEach-Object {
         $FunctionsToExport += New-SwaggerPath -FunctionDetails $_.Value `
-                                              -SwaggerMetaDict $SwaggerMetaDict `
-                                              -SwaggerDict $SwaggerDict `
-                                              -PathFunctionDetails $PathFunctionDetails `
-                                              -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
-                                              -PSHeaderComment $PSHeaderComment `
-                                              -Formatter $Formatter
+            -SwaggerMetaDict $SwaggerMetaDict `
+            -SwaggerDict $SwaggerDict `
+            -PathFunctionDetails $PathFunctionDetails `
+            -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
+            -PSHeaderComment $PSHeaderComment `
+            -Formatter $Formatter `
+            -PowerShellCodeGen $PowerShellCodeGen
     }
 
     return $FunctionsToExport
@@ -431,7 +470,7 @@ These are single page operations and should never be unrolled (in the case of -n
 function Preprocess-PagingOperations {
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [hashtable]
         $PathFunctionDetails
     )
@@ -453,23 +492,23 @@ function Add-UniqueParameter {
     [CmdletBinding()]
     param
     (
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [hashtable]
         $ParameterDetails,
         
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [hashtable]
         $CandidateParameterDetails,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]
         $ParameterSetName,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [hashtable]
         $ParametersToAdd,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [hashtable]
         $ParameterHitCount
     )
@@ -477,7 +516,7 @@ function Add-UniqueParameter {
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
 
     $parameterName = $CandidateParameterDetails.Name
-    if($parameterDetails.IsParameter) {
+    if ($parameterDetails.IsParameter) {
         if (-not $parameterHitCount.ContainsKey($parameterName)) {
             $parameterHitCount[$parameterName] = 0
         }
@@ -486,27 +525,28 @@ function Add-UniqueParameter {
         if (-not ($parametersToAdd.ContainsKey($parameterName))) {
             $parametersToAdd[$parameterName] = @{
                 # We can grab details like Type, Name, ValidateSet from any of the parameter definitions
-                Details = $CandidateParameterDetails
+                Details          = $CandidateParameterDetails
                 ParameterSetInfo = @{$ParameterSetName = @{
-                    Name = $ParameterSetName
-                    Mandatory = $CandidateParameterDetails.Mandatory
-                }}
+                        Name      = $ParameterSetName
+                        Mandatory = $CandidateParameterDetails.Mandatory
+                    }
+                }
             }
-        } else {
+        }
+        else {
             $parametersToAdd[$parameterName].ParameterSetInfo[$ParameterSetName] = @{
-                                                                        Name = $ParameterSetName
-                                                                        Mandatory = $CandidateParameterDetails.Mandatory
-                                                                    }
+                Name      = $ParameterSetName
+                Mandatory = $CandidateParameterDetails.Mandatory
+            }
         }
     }
 }
 
-function New-SwaggerPath
-{
+function New-SwaggerPath {
     [CmdletBinding()]
     param
     (
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [hashtable]
         $FunctionDetails,
 
@@ -522,19 +562,23 @@ function New-SwaggerPath
         [hashtable]
         $PathFunctionDetails,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [hashtable]
         $DefinitionFunctionsDetails,
         
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [AllowEmptyString()]
         [string]
         $PSHeaderComment,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [ValidateSet('None', 'PSScriptAnalyzer')]
         [string]
-        $Formatter = 'None'
+        $Formatter = 'None',
+
+        [Parameter(Mandatory = $false)]
+        [hashtable]
+        $PowerShellCodeGen
     )
 
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -558,6 +602,110 @@ function New-SwaggerPath
     $parameterHitCount = @{}
     $globalParameters = @()
     $x_ms_pageableObject = $null
+    $globalParametersStatic = @{}
+    $filterBlock = $null
+    # Process global metadata for commands
+    if ($SwaggerDict.ContainsKey('CommandDefaults')) {
+        foreach ($entry in $SwaggerDict['CommandDefaults'].GetEnumerator()) {
+            $globalParametersStatic[$entry.Name] = Get-ValueText($entry.Value)
+        }
+    }
+    # Process metadata for the overall command
+    if ($FunctionDetails.ContainsKey('Metadata')) {
+        if (Get-Member -InputObject $FunctionDetails['Metadata'] -Name 'ClientParameters') {
+            foreach ($property in (Get-Member -InputObject $FunctionDetails['Metadata'].ClientParameters -MemberType NoteProperty)) {
+                $globalParametersStatic[$property.Name] = Get-ValueText($FunctionDetails['Metadata'].ClientParameters.$($property.Name))
+            }
+        }
+        if (Get-Member -InputObject $FunctionDetails['Metadata'] -Name 'clientSideFilters') {
+            foreach ($clientSideFilter in $FunctionDetails['Metadata'].ClientSideFilters) {
+                foreach ($filter in $clientSideFilter.Filters) {
+                    if ($filter.Type -eq 'wildcard') {
+                        if (-not (Get-Member -InputObject $filter -Name 'Character')) {
+                            Add-Member -InputObject $filter -Name 'Character' -Value $PowerShellCodeGen['defaultWildcardChar'] -MemberType NoteProperty
+                        }
+                    }
+                }
+                $matchingParameters = @()
+                $serverSideFunctionDetails = $null
+                if ($clientSideFilter.ServerSideResultCommand -eq '.') {
+                    $serverSideFunctionDetails = $FunctionDetails
+                }
+                else {
+                    $serverSideFunctionDetails = $PathFunctionDetails[$clientSideFilter.ServerSideResultCommand]
+                }
+                if (-not $serverSideFunctionDetails) {
+                    Write-Warning -Message ($LocalizedData.CouldntFindServerSideResultOperation -f $clientSideFilter.ServerSideResultCommand)
+                }
+                else {
+                    $serverSideParameterSet = $serverSideFunctionDetails['ParameterSetDetails'] | Where-Object { $_.OperationId -eq $clientSideFilter.ServerSideResultParameterSet}
+                    if (-not $serverSideParameterSet) {
+                        # Warning: Couldn't find specified server-side parameter set
+                        Write-Warning -Message ($LocalizedData.CouldntFindServerSideResultParameterSet -f $clientSideFilter.ServerSideResultParameterSet)
+                    }
+                    else {
+                        $clientSideParameterSet = $parameterSetDetails | Where-Object { $_.OperationId -eq $clientSideFilter.ClientSideParameterSet }
+                        if (-not $clientSideParameterSet) {
+                            Write-Warning -Message ($LocalizedData.CouldntFindClientSideParameterSet -f $clientSideFilter.ClientSideParameterSet)
+                        }
+                        else {
+                            $valid = $true
+                            foreach ($parametersDetail in $serverSideParameterSet.ParameterDetails) {
+                                foreach ($parameterDetailEntry in $parametersDetail.GetEnumerator()) {
+                                    if ($parameterDetailEntry.Value.Mandatory -eq '$true' -and
+                                        ((-not $parameterDetailEntry.Value.ContainsKey('ReadOnlyGlobalParameter')) -or $parameterDetailEntry.Value.ReadOnlyGlobalParameter) -and
+                                        ((-not $parameterDetailEntry.Value.ContainsKey('ConstantValue')) -or $parameterDetailEntry.Value.ConstantValue)) {
+                                        $clientSideParameter = $null
+                                        foreach ($pd in $clientSideParameterSet.ParameterDetails.GetEnumerator()) {
+                                            foreach ($entry in $pd.GetEnumerator()) {
+                                                if (($entry.Value.Mandatory -eq '$true') -and ($entry.Value.Name -eq $parameterDetailEntry.Value.Name)) {
+                                                    $clientSideParameter = $entry
+                                                }
+                                            }
+                                        }
+                                        if (-not $clientSideParameterSet) {
+                                            # Warning: Missing client-side parameter
+                                            Write-Warning -Message ($LocalizedData.MissingRequiredFilterParameter -f $parameterDetailEntry.Value.Name)
+                                        }
+                                        else {
+                                            $matchingParameters += $parameterDetailEntry.Value.Name
+                                        }
+                                    }
+                                }
+                            }
+
+                            if ($valid) {
+                                $filterBlock = $executionContext.InvokeCommand.ExpandString($FilterBlockStr)
+                            }
+                        }
+                    }
+                }
+                # If this is filled out, means that all the inputs were validated (except maybe the filter details)
+                if ($filterBlock) {
+                    foreach ($filter in $clientSideFilter.Filters) {
+                        if (Get-Member -InputObject $filter -Name 'appendParameterInfo') {
+                            $parameterDetails = @{
+                                'Name'        = [Char]::ToUpper($filter.Parameter[0]) + $filter.Parameter.Substring(1)
+                                'Mandatory'   = '$false'
+                                'Type'        = $filter.AppendParameterInfo.Type
+                                'ValidateSet' = ''
+                                'Description' = 'Filter parameter'
+                                'IsParameter' = $true
+                            }
+                            $AddUniqueParameter_params = @{
+                                ParameterDetails          = $parameterDetails
+                                CandidateParameterDetails = $parameterDetails
+                                ParameterSetName          = $clientSideFilter.ClientSideParameterSet
+                                ParametersToAdd           = $parametersToAdd
+                                ParameterHitCount         = $parameterHitCount
+                            }
+                            Add-UniqueParameter @AddUniqueParameter_params
+                        }
+                    }
+                }
+            }
+        }
+    }
     foreach ($parameterSetDetail in $parameterSetDetails) {
         if ($parameterSetDetail.ContainsKey('x-ms-pageable') -and $parameterSetDetail.'x-ms-pageable' -and (-not $isNextPageOperation)) {
             if ($x_ms_pageableObject -and 
@@ -566,10 +714,11 @@ function New-SwaggerPath
                 ($x_ms_pageableObject.ReturnType -ne $parameterSetDetail.ReturnType)) {
                 Write-Warning -Message ($LocalizedData.MultiplePageReturnTypes -f ($commandName))
                 $x_ms_pageableObject.ReturnType = 'NONE'
-            } elseif (-not $x_ms_pageableObject) {
+            }
+            elseif (-not $x_ms_pageableObject) {
                 $x_ms_pageableObject = $parameterSetDetail.'x-ms-pageable'
                 $x_ms_pageableObject['ReturnType'] = $parameterSetDetail.ReturnType
-                if($parameterSetDetail.ContainsKey('PSCmdletOutputItemType')) {
+                if ($parameterSetDetail.ContainsKey('PSCmdletOutputItemType')) {
                     $x_ms_pageableObject['PSCmdletOutputItemType'] = $parameterSetDetail.PSCmdletOutputItemType
                 }
                 if ($x_ms_pageableObject.Containskey('operationName')) {
@@ -600,7 +749,8 @@ function New-SwaggerPath
                         if ($matchingCurrentParameter) {
                             $cmdletArgsPageParameterSet += "-$($pagingParameter.Name) `$$($pagingParameter.Name) "
                             $cmdletArgsNoPaging += "-$($pagingParameter.Name) `$$($pagingParameter.Name) "
-                        } else {
+                        }
+                        else {
                             $unmatchedParameters += $pagingParameter
                             $cmdletArgsPageParameterSet += "-$($pagingParameter.Name) `$Page.NextPageLink "
                             $cmdletArgsNoPaging += "-$($pagingParameter.Name) `$result.NextPageLink "
@@ -614,7 +764,8 @@ function New-SwaggerPath
                     $x_ms_pageableObject['Cmdlet'] = $pagingFunctionDetails.Value.CommandName
                     $x_ms_pageableObject['CmdletArgsPage'] = $cmdletArgsPageParameterSet.Trim()
                     $x_ms_pageableObject['CmdletArgsPaging'] = $cmdletArgsNoPaging.Trim()
-                } else {
+                }
+                else {
                     $x_ms_pageableObject['Operations'] = $parameterSetDetail.Operations
                     $x_ms_pageableObject['MethodName'] = "$($parameterSetDetail.MethodName.Substring(0, $parameterSetDetail.MethodName.IndexOf('WithHttpMessagesAsync')))NextWithHttpMessagesAsync"
                 }
@@ -628,9 +779,11 @@ function New-SwaggerPath
                 # Check if a global has been added already
                 if ($parametersToAdd.ContainsKey("$($parameterDetails.Name)Global")) {
                     $parameterRequiresAdding = $false
-                } elseif ($parameterDetails.ContainsKey('ReadOnlyGlobalParameter') -and $parameterDetails.ReadOnlyGlobalParameter) {
+                }
+                elseif ($parameterDetails.ContainsKey('ReadOnlyGlobalParameter') -and $parameterDetails.ReadOnlyGlobalParameter) {
                     $parameterRequiresAdding = $false
-                } else {
+                }
+                else {
                     $globalParameterName = $parameterDetails.Name
                     $globalParameterValue = "```$$($parameterDetails.Name)"
                     if ($parameterDetails.ContainsKey('ConstantValue') -and $parameterDetails.ConstantValue) {
@@ -645,9 +798,9 @@ function New-SwaggerPath
 
             if ($parameterRequiresAdding) {
                 $AddUniqueParameter_params = @{
-                    ParameterDetails = $parameterDetails
-                    ParameterSetName = $parameterSetDetail.ParameterSetName
-                    ParametersToAdd = $parametersToAdd
+                    ParameterDetails  = $parameterDetails
+                    ParameterSetName  = $parameterSetDetail.ParameterSetName
+                    ParametersToAdd   = $parametersToAdd
                     ParameterHitCount = $parameterHitCount
                 }
 
@@ -656,9 +809,10 @@ function New-SwaggerPath
                         $AddUniqueParameter_params['CandidateParameterDetails'] = $parameterDetailEntry.Value
                         Add-UniqueParameter @AddUniqueParameter_params
                     }
-                } elseif($parameterDetails.ContainsKey('FlattenOnPSCmdlet') -and $parameterDetails.FlattenOnPSCmdlet) {
+                }
+                elseif ($parameterDetails.ContainsKey('FlattenOnPSCmdlet') -and $parameterDetails.FlattenOnPSCmdlet) {
                     $DefinitionName = ($parameterDetails.Type -split '[.]')[-1]
-                    if($DefinitionFunctionsDetails.ContainsKey($DefinitionName)) {
+                    if ($DefinitionFunctionsDetails.ContainsKey($DefinitionName)) {
                         $DefinitionDetails = $DefinitionFunctionsDetails[$DefinitionName]
                         $flattenedParametersOnPSCmdlet[$parameterDetails.Name] = $DefinitionDetails
                         $DefinitionDetails.ParametersTable.GetEnumerator() | ForEach-Object {
@@ -666,14 +820,16 @@ function New-SwaggerPath
                             Add-UniqueParameter @AddUniqueParameter_params
                         }
                     }
-                    else{
-                        Throw ($LocalizedData.InvalidPSMetaFlattenParameter -f ($parameterDetails.Name,$parameterDetails.Type))
+                    else {
+                        Throw ($LocalizedData.InvalidPSMetaFlattenParameter -f ($parameterDetails.Name, $parameterDetails.Type))
                     }
-                } else {
+                }
+                else {
                     $AddUniqueParameter_params['CandidateParameterDetails'] = $parameterDetails
                     Add-UniqueParameter @AddUniqueParameter_params
                 }
-            } else {
+            }
+            else {
                 # This magic string is here to distinguish local vs global parameters with the same name, e.g. in the Azure Resources API
                 $parametersToAdd["$($parameterDetails.Name)Global"] = $null
             }
@@ -693,7 +849,7 @@ function New-SwaggerPath
     if ($x_ms_pageableObject) {
         if ($x_ms_pageableObject.ReturnType -ne 'NONE') {
             $pageType = $x_ms_pageableObject.ReturnType
-            if($x_ms_pageableObject.ContainsKey('PSCmdletOutputItemType')) {
+            if ($x_ms_pageableObject.ContainsKey('PSCmdletOutputItemType')) {
                 $PSCmdletOutputItemType = $x_ms_pageableObject.PSCmdletOutputItemType                
             }
         }
@@ -701,7 +857,8 @@ function New-SwaggerPath
         if ($x_ms_pageableObject.ContainsKey('Operations')) {
             $pagingOperations = $x_ms_pageableObject.Operations
             $pagingOperationName = $x_ms_pageableObject.MethodName
-        } else {
+        }
+        else {
             $Cmdlet = $x_ms_pageableObject.Cmdlet
             $CmdletArgs = $x_ms_pageableObject.CmdletArgsPaging
         }
@@ -711,34 +868,34 @@ function New-SwaggerPath
         }
 
         $topParameterToAdd = @{
-            Details = @{
-                Name = 'Top'
-                Type = 'int'
-                Mandatory = '$false'
-                Description = 'Return the top N items as specified by the parameter value. Applies after the -Skip parameter.'
-                IsParameter = $true
-                ValidateSet = $null
+            Details          = @{
+                Name         = 'Top'
+                Type         = 'int'
+                Mandatory    = '$false'
+                Description  = 'Return the top N items as specified by the parameter value. Applies after the -Skip parameter.'
+                IsParameter  = $true
+                ValidateSet  = $null
                 ExtendedData = @{
-                    Type = 'int'
+                    Type            = 'int'
                     HasDefaultValue = $true
-                    DefaultValue = -1
+                    DefaultValue    = -1
                 }
             }
             ParameterSetInfo = @{}
         }
 
         $skipParameterToAdd = @{
-            Details = @{
-                Name = 'Skip'
-                Type = 'int'
-                Mandatory = '$false'
-                Description = 'Skip the first N items as specified by the parameter value.'
-                IsParameter = $true
-                ValidateSet = $null
+            Details          = @{
+                Name         = 'Skip'
+                Type         = 'int'
+                Mandatory    = '$false'
+                Description  = 'Skip the first N items as specified by the parameter value.'
+                IsParameter  = $true
+                ValidateSet  = $null
                 ExtendedData = @{
-                    Type = 'int'
+                    Type            = 'int'
                     HasDefaultValue = $true
-                    DefaultValue = -1
+                    DefaultValue    = -1
                 }
             }
             ParameterSetInfo = @{}
@@ -792,34 +949,36 @@ function New-SwaggerPath
                 if ($type -eq 'basic') {
                     # For Basic Authentication, allow the user to pass in a PSCredential object.
                     $credentialParameter = @{
-                        Details = @{
-                            Name = 'Credential'
-                            Type = 'PSCredential'
-                            Mandatory = '$true'
-                            Description = 'User credentials.'
-                            IsParameter = $true
-                            ValidateSet = $null
+                        Details          = @{
+                            Name         = 'Credential'
+                            Type         = 'PSCredential'
+                            Mandatory    = '$true'
+                            Description  = 'User credentials.'
+                            IsParameter  = $true
+                            ValidateSet  = $null
                             ExtendedData = @{
-                                Type = 'PSCredential'
+                                Type            = 'PSCredential'
                                 HasDefaultValue = $false
                             }
                         }
                         ParameterSetInfo = @{}
                     }
                     $securityParametersToAdd += @{
-                        Parameter = $credentialParameter
+                        Parameter                           = $credentialParameter
                         IsConflictingWithOperationParameter = $false
                     }
                     # If the service is specified to not issue authentication challenges, we can't rely on HttpClientHandler
                     if ($PowerShellCodeGen['NoAuthChallenge'] -and ($PowerShellCodeGen['NoAuthChallenge'] -eq $true)) {
                         $AuthenticationCommand = 'param([pscredential]$Credential) Get-AutoRestCredential -Credential $Credential'
                         $AuthenticationCommandArgumentName = 'Credential'
-                    } else {
+                    }
+                    else {
                         # Use an empty service client credentials object because we're using HttpClientHandler instead
                         $AuthenticationCommand = 'Get-AutoRestCredential'
                         $AddHttpClientHandler = $true
                     }
-                } elseif ($type -eq 'apiKey') {
+                }
+                elseif ($type -eq 'apiKey') {
                     if (-not (Get-Member -InputObject $securityDefinition -Name 'name')) {
                         throw ($LocalizedData.SecurityDefinitionMissingProperty -f ($firstSecurityObject.Name, 'name'))
                     }
@@ -833,27 +992,28 @@ function New-SwaggerPath
                     # For API key authentication, the user should supply the API key, but the in location and the name are generated from the spec
                     # In addition, we'd be unable to authenticate without the API key, so make it mandatory
                     $credentialParameter = @{
-                        Details = @{
-                            Name = 'APIKey'
-                            Type = 'string'
-                            Mandatory = '$true'
-                            Description = 'API key given by service owner.'
-                            IsParameter = $true
-                            ValidateSet = $null
+                        Details          = @{
+                            Name         = 'APIKey'
+                            Type         = 'string'
+                            Mandatory    = '$true'
+                            Description  = 'API key given by service owner.'
+                            IsParameter  = $true
+                            ValidateSet  = $null
                             ExtendedData = @{
-                                Type = 'string'
+                                Type            = 'string'
                                 HasDefaultValue = $false
                             }
                         }
                         ParameterSetInfo = @{}
                     }
                     $securityParametersToAdd += @{
-                        Parameter = $credentialParameter
+                        Parameter                           = $credentialParameter
                         IsConflictingWithOperationParameter = $false
                     }
                     $AuthenticationCommand = "param([string]`$APIKey) Get-AutoRestCredential -APIKey `$APIKey -Location '$in' -Name '$name'"
                     $AuthenticationCommandArgumentName = 'APIKey'
-                } else {
+                }
+                else {
                     Write-Warning -Message ($LocalizedData.UnsupportedAuthenticationType -f ($type))
                 }
             }
@@ -870,14 +1030,14 @@ function New-SwaggerPath
         # Add parameter sets to paging parameter sets
         if ($topParameterToAdd -and $parameterSetDetail.ContainsKey('x-ms-pageable') -and $parameterSetDetail.'x-ms-pageable' -and (-not $isNextPageOperation)) {
             $topParameterToAdd.ParameterSetInfo[$parameterSetDetail.ParameterSetName] = @{
-                Name = $parameterSetDetail.ParameterSetName
+                Name      = $parameterSetDetail.ParameterSetName
                 Mandatory = '$false'
             }
         }
 
         if ($skipParameterToAdd -and $parameterSetDetail.ContainsKey('x-ms-pageable') -and $parameterSetDetail.'x-ms-pageable' -and (-not $isNextPageOperation)) {
             $skipParameterToAdd.ParameterSetInfo[$parameterSetDetail.ParameterSetName] = @{
-                Name = $parameterSetDetail.ParameterSetName
+                Name      = $parameterSetDetail.ParameterSetName
                 Mandatory = '$false'
             }
         }
@@ -941,7 +1101,8 @@ function New-SwaggerPath
     $PageTypePagingObjectStr = $null
     if ($pagingOperations) {
         $pagingOperationCall = $executionContext.InvokeCommand.ExpandString($PagingOperationCallFunction)
-    } elseif ($Cmdlet) {
+    }
+    elseif ($Cmdlet) {
         $pagingOperationCall = $executionContext.InvokeCommand.ExpandString($PagingOperationCallCmdlet)
     }
 
@@ -967,12 +1128,14 @@ function New-SwaggerPath
         $description = $defaultParameterSet.Description
         $synopsis = $defaultParameterSet.Synopsis
         Write-Warning -Message ($LocalizedData.CmdletHasAmbiguousParameterSets -f ($commandName))
-    } elseif ($nonUniqueParameterSets.Length -eq 1) {
+    }
+    elseif ($nonUniqueParameterSets.Length -eq 1) {
         # If there's only one non-unique, we can prevent errors by making this the default
         $DefaultParameterSetName = $nonUniqueParameterSets[0].ParameterSetName
         $description = $nonUniqueParameterSets[0].Description
         $synopsis = $nonUniqueParameterSets[0].Synopsis
-    } else {
+    }
+    else {
         # Pick the highest priority set among all sets
         $defaultParameterSet = $parameterSetDetails | Sort-Object @{e = {$_.Priority -as [int] }} | Select-Object -First 1
         $DefaultParameterSetName = $defaultParameterSet.ParameterSetName
@@ -994,11 +1157,11 @@ function New-SwaggerPath
         if ($parameterToAdd) {
             $parameterName = $parameterToAdd.Details.Name
             
-            if($parameterToAdd.Details.Containskey('ValueFromPipeline') -and $parameterToAdd.Details.ValueFromPipeline) {
+            if ($parameterToAdd.Details.Containskey('ValueFromPipeline') -and $parameterToAdd.Details.ValueFromPipeline) {
                 $ValueFromPipelineString = ', ValueFromPipeline = $true'
             }
 
-            if($parameterToAdd.Details.Containskey('ValueFromPipelineByPropertyName') -and $parameterToAdd.Details.ValueFromPipelineByPropertyName) {
+            if ($parameterToAdd.Details.Containskey('ValueFromPipelineByPropertyName') -and $parameterToAdd.Details.ValueFromPipelineByPropertyName) {
                 $ValueFromPipelineByPropertyNameString = ', ValueFromPipelineByPropertyName = $true'
             }
 
@@ -1010,7 +1173,8 @@ function New-SwaggerPath
                 if ($AllParameterSetsString) {
                     # Two tabs
                     $AllParameterSetsString += [Environment]::NewLine + "        " + $executionContext.InvokeCommand.ExpandString($parameterAttributeString)
-                } else {
+                }
+                else {
                     $AllParameterSetsString = $executionContext.InvokeCommand.ExpandString($parameterAttributeString)
                 }
             }
@@ -1025,8 +1189,7 @@ function New-SwaggerPath
             # Parameter has Name as an alias, change the parameter name to Name and add the current parameter name as an alias.            
             if ($parameterToAdd.Details.Containskey('Alias') -and 
                 $parameterToAdd.Details.Alias -and
-                ($parameterToAdd.Details.Alias -eq 'Name'))
-            {
+                ($parameterToAdd.Details.Alias -eq 'Name')) {
                 $ParameterAliasMapping[$parameterName] = 'Name'
                 $AliasString = "'$parameterName'"
                 $parameterName = 'Name'
@@ -1035,8 +1198,7 @@ function New-SwaggerPath
 
             $paramName = "`$$parameterName"
             $ValidateSetDefinition = $null
-            if ($parameterToAdd.Details.ValidateSet)
-            {
+            if ($parameterToAdd.Details.ValidateSet) {
                 $ValidateSetString = $parameterToAdd.Details.ValidateSet
                 $ValidateSetDefinition = $executionContext.InvokeCommand.ExpandString($ValidateSetDefinitionString)
             }
@@ -1047,7 +1209,8 @@ function New-SwaggerPath
                 if ($parameterToAdd.Details.ExtendedData.ContainsKey('IsODataParameter') -and $parameterToAdd.Details.ExtendedData.IsODataParameter) {
                     $paramType = "[$($parameterToAdd.Details.Type)]$paramType"
                     $oDataExpression += "    if (`$$parameterName) { `$oDataQuery += `"&```$$parameterName=`$$parameterName`" }" + [Environment]::NewLine
-                } else {
+                }
+                else {
                     # Assuming you can't group ODataQuery parameters
                     if ($parameterToAdd.Details.ContainsKey('x_ms_parameter_grouping') -and $parameterToAdd.Details.'x_ms_parameter_grouping') {
                         $parameterGroupPropertyName = $parameterToAdd.Details.Name
@@ -1055,7 +1218,8 @@ function New-SwaggerPath
                         $fullGroupName = $parameterToAdd.Details.ExtendedData.GroupType
                         if ($parameterGroupsExpressions.ContainsKey($groupName)) {
                             $parameterGroupsExpression = $parameterGroupsExpressions[$groupName]
-                        } else {
+                        }
+                        else {
                             $parameterGroupsExpression = $executionContext.InvokeCommand.ExpandString($parameterGroupCreateExpression)
                         }
 
@@ -1069,12 +1233,15 @@ function New-SwaggerPath
                             if ($parameterToAdd.Details.ExtendedData.DefaultValue) {
                                 if ([NullString]::Value -eq $parameterToAdd.Details.ExtendedData.DefaultValue) {
                                     $parameterDefaultValue = "[NullString]::Value"
-                                } elseif ("System.String" -eq $parameterToAdd.Details.ExtendedData.Type) {
+                                }
+                                elseif ("System.String" -eq $parameterToAdd.Details.ExtendedData.Type) {
                                     $parameterDefaultValue = "`"$($parameterToAdd.Details.ExtendedData.DefaultValue)`""
-                                } else {
+                                }
+                                else {
                                     $parameterDefaultValue = "$($parameterToAdd.Details.ExtendedData.DefaultValue)"
                                 }
-                            } else {
+                            }
+                            else {
                                 $parameterDefaultValue = "`$null"
                             }
 
@@ -1086,13 +1253,15 @@ function New-SwaggerPath
                 $paramBlock += $executionContext.InvokeCommand.ExpandString($parameterDefString)
                 $pDescription = $parameterToAdd.Details.Description
                 $paramHelp += $executionContext.InvokeCommand.ExpandString($helpParamStr)
-            } elseif($parameterToAdd.Details.Containskey('Type')) {
+            }
+            elseif ($parameterToAdd.Details.Containskey('Type')) {
                 $paramType = "[$($parameterToAdd.Details.Type)]$paramType"
 
                 $paramblock += $executionContext.InvokeCommand.ExpandString($parameterDefString)
                 $pDescription = $parameterToAdd.Details.Description
                 $paramHelp += $executionContext.InvokeCommand.ExpandString($helpParamStr)
-            } else {
+            }
+            else {
                 Write-Warning ($LocalizedData.ParameterMissingFromAutoRestCode -f ($parameterName, $commandName))
             }
         }
@@ -1112,44 +1281,50 @@ function New-SwaggerPath
     if ($isLongRunningOperation) {
         if ($paramBlock) {
             $ParamBlockReplaceStr = $paramBlock + ",`r`n" + $AsJobParameterString
-        } else {
+        }
+        else {
             $ParamBlockReplaceStr = $AsJobParameterString
         }
 
         $PathFunctionBody = $executionContext.InvokeCommand.ExpandString($PathFunctionBodyAsJob)
-    } else {
+    }
+    else {
         $ParamBlockReplaceStr = $paramBlock
         $PathFunctionBody = $executionContext.InvokeCommand.ExpandString($PathFunctionBodySynch)
     }
 
     $functionBodyParams = @{
-        ParameterSetDetails               = $parameterSetDetails
-        ODataExpressionBlock              = $oDataExpressionBlock
-        ParameterGroupsExpressionBlock    = $parameterGroupsExpressionBlock
-        SwaggerDict                       = $SwaggerDict
-        SwaggerMetaDict                   = $SwaggerMetaDict
-        FlattenedParametersOnPSCmdlet     = $flattenedParametersOnPSCmdlet
-        ParameterAliasMapping             = $ParameterAliasMapping
+        ParameterSetDetails            = $parameterSetDetails
+        ODataExpressionBlock           = $oDataExpressionBlock
+        ParameterGroupsExpressionBlock = $parameterGroupsExpressionBlock
+        SwaggerDict                    = $SwaggerDict
+        SwaggerMetaDict                = $SwaggerMetaDict
+        FlattenedParametersOnPSCmdlet  = $flattenedParametersOnPSCmdlet
+        ParameterAliasMapping          = $ParameterAliasMapping
+        FilterBlock                    = $FilterBlock
     }
-    if($AuthenticationCommand) {
+    if ($AuthenticationCommand) {
         $functionBodyParams['AuthenticationCommand'] = $AuthenticationCommand
         $functionBodyParams['AuthenticationCommandArgumentName'] = $AuthenticationCommandArgumentName
     }
-    if($AddHttpClientHandler) {
+    if ($AddHttpClientHandler) {
         $functionBodyParams['AddHttpClientHandler'] = $AddHttpClientHandler
     }    
-    if($hostOverrideCommand) {
+    if ($hostOverrideCommand) {
         $functionBodyParams['hostOverrideCommand'] = $hostOverrideCommand
     }
-    if($globalParameters) {
+    if ($globalParameters) {
         $functionBodyParams['GlobalParameters'] = $globalParameters
+    }
+    if ($globalParametersStatic) {
+        $functionBodyParams['GlobalParametersStatic'] = $globalParametersStatic
     }
                            
     $pathGenerationPhaseResult = Get-PathFunctionBody @functionBodyParams
     $bodyObject = $pathGenerationPhaseResult.BodyObject
 
     $body = $bodyObject.Body
-    if($PSCmdletOutputItemType){
+    if ($PSCmdletOutputItemType) {
         $fullPathDataType = $PSCmdletOutputItemType
         $outputTypeBlock = $executionContext.InvokeCommand.ExpandString($outputTypeStr)
     }
@@ -1159,15 +1334,16 @@ function New-SwaggerPath
 
     if ($UseAzureCsharpGenerator) {
         $dependencyInitFunction = "Initialize-PSSwaggerDependencies -Azure"
-    } else {
+    }
+    else {
         $dependencyInitFunction = "Initialize-PSSwaggerDependencies"
     }
     
     $CommandString = $executionContext.InvokeCommand.ExpandString($advFnSignatureForPath)
     $GeneratedCommandsPath = Join-Path -Path (Join-Path -Path $SwaggerMetaDict['outputDirectory'] -ChildPath $GeneratedCommandsName) `
-                                       -ChildPath 'SwaggerPathCommands'
+        -ChildPath 'SwaggerPathCommands'
 
-    if(-not (Test-Path -Path $GeneratedCommandsPath -PathType Container)) {
+    if (-not (Test-Path -Path $GeneratedCommandsPath -PathType Container)) {
         $null = New-Item -Path $GeneratedCommandsPath -ItemType Directory
     }
 
@@ -1183,18 +1359,18 @@ function Set-ExtendedCodeMetadata {
     [CmdletBinding()]
     param
     (
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]
         $MainClientTypeName,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]
         $CliXmlTmpPath
     )
 
     $resultRecord = @{
         VerboseMessages = @()
-        ErrorMessages = @()
+        ErrorMessages   = @()
         WarningMessages = @()
     }
     
@@ -1214,16 +1390,17 @@ function Set-ExtendedCodeMetadata {
             $methodNames = @()
             $operations = ''
             $operationsWithSuffix = ''
-            $opIdValues = $operationId -split '_',2 
-            if(-not $opIdValues -or ($opIdValues.count -ne 2)) {
-                $methodNames += $operationId + 'WithHttpMessagesAsync'
-                $methodNames += $operationId + 'Method' + 'WithHttpMessagesAsync'
-            } else {            
-                $operationName = $opIdValues[0]
-                $operationType = $opIdValues[1]
+            $opIdValues = $operationId -split '_', 2 
+            if (-not $opIdValues -or ($opIdValues.count -ne 2)) {
+                # I'm sure there's other stuff but what? Need to check what AutoRest is using. Their CSharpNamer thing?
+                $methodNames += $operationId.Replace("-", "") + 'WithHttpMessagesAsync'
+                $methodNames += $operationId.Replace("-", "") + 'Method' + 'WithHttpMessagesAsync'
+            }
+            else {            
+                $operationName = $opIdValues[0].Replace("-", "")
+                $operationType = $opIdValues[1].Replace("-", "")
                 $operations = ".$operationName"
-                if ($parameterSetDetail['UseOperationsSuffix'] -and $parameterSetDetail['UseOperationsSuffix'])
-                { 
+                if ($parameterSetDetail['UseOperationsSuffix'] -and $parameterSetDetail['UseOperationsSuffix']) { 
                     $operationsWithSuffix = $operations + 'Operations'
                 }
 
@@ -1250,16 +1427,15 @@ function Set-ExtendedCodeMetadata {
                 $matchingParamDetail = $paramObject.GetEnumerator() | Where-Object { $_.Value.Name -eq $propertyName } | Select-Object -First 1 -ErrorAction Ignore
                 if ($matchingParamDetail) {
                     $setSingleParameterMetadataParms = @{
-                                                            CommandName = $FunctionDetails['CommandName']
-                                                            Name = $matchingParamDetail.Value.Name
-                                                            HasDefaultValue = $false
-                                                            IsGrouped = $false
-                                                            Type = $_.PropertyType
-                                                            MatchingParamDetail = $matchingParamDetail.Value
-                                                            ResultRecord = $resultRecord
-                                                        }
-                    if (-not (Set-SingleParameterMetadata @setSingleParameterMetadataParms))
-                    {
+                        CommandName         = $FunctionDetails['CommandName']
+                        Name                = $matchingParamDetail.Value.Name
+                        HasDefaultValue     = $false
+                        IsGrouped           = $false
+                        Type                = $_.PropertyType
+                        MatchingParamDetail = $matchingParamDetail.Value
+                        ResultRecord        = $resultRecord
+                    }
+                    if (-not (Set-SingleParameterMetadata @setSingleParameterMetadataParms)) {
                         Export-CliXml -InputObject $ResultRecord -Path $CliXmlTmpPath
                         $errorOccurred = $true
                         return
@@ -1280,12 +1456,14 @@ function Set-ExtendedCodeMetadata {
                         $errorOccurred = $true
                         return
                     }
-                } else {
+                }
+                else {
                     $parameterSetDetail['Operations'] = $operationsWithSuffix
                 }
 
                 $clientType = $propertyObject.PropertyType
-            } elseif ($operations) {
+            }
+            elseif ($operations) {
                 $operationName = $operations.Substring(1)
                 $propertyObject = $clientType.GetProperties() | Where-Object { $_.Name -eq $operationName } | Select-Object -First 1 -ErrorAction Ignore
                 if (-not $propertyObject) {
@@ -1331,9 +1509,9 @@ function Set-ExtendedCodeMetadata {
                 # All Types should be converted to their string names, otherwise the CLI XML gets too large
                 $type = $_.ParameterType.ToString()
                 $metadata = @{
-                    Name = Get-PascalCasedString -Name $_.Name
+                    Name            = Get-PascalCasedString -Name $_.Name
                     HasDefaultValue = $hasDefaultValue
-                    Type = $type
+                    Type            = $type
                 }
 
                 $matchingParamDetail = $paramObject.GetEnumerator() | Where-Object { $_.Value.Name -eq $metadata.Name } | Select-Object -First 1 -ErrorAction Ignore
@@ -1349,17 +1527,16 @@ function Set-ExtendedCodeMetadata {
                             $matchingGroupedParameterDetailEntry = $matchingParamDetail.'x_ms_parameter_grouping_group'.GetEnumerator() | Where-Object { $_.Value.Name -eq $parameterGroupProperty.Name } | Select-Object -First 1 -ErrorAction Ignore
                             if ($matchingGroupedParameterDetailEntry) {
                                 $setSingleParameterMetadataParms = @{
-                                    CommandName = $FunctionDetails['CommandName']
-                                    Name = $matchingParamDetail.Name
-                                    HasDefaultValue = $false
-                                    IsGrouped = $true
-                                    Type = $_.PropertyType
+                                    CommandName         = $FunctionDetails['CommandName']
+                                    Name                = $matchingParamDetail.Name
+                                    HasDefaultValue     = $false
+                                    IsGrouped           = $true
+                                    Type                = $_.PropertyType
                                     MatchingParamDetail = $matchingGroupedParameterDetailEntry.Value
-                                    ResultRecord = $resultRecord
+                                    ResultRecord        = $resultRecord
                                 }
 
-                                if (-not (Set-SingleParameterMetadata @setSingleParameterMetadataParms))
-                                {
+                                if (-not (Set-SingleParameterMetadata @setSingleParameterMetadataParms)) {
                                     Export-CliXml -InputObject $ResultRecord -Path $CliXmlTmpPath
                                     $errorOccurred = $true
                                     return
@@ -1368,24 +1545,24 @@ function Set-ExtendedCodeMetadata {
                                 $matchingGroupedParameterDetailEntry.Value.ExtendedData.GroupType = $parameterGroupType.ToString()
                             }
                         }
-                    } else {
+                    }
+                    else {
                         # Single parameter
                         $setSingleParameterMetadataParms = @{
-                            CommandName = $FunctionDetails['CommandName']
-                            Name = $_.Name
-                            HasDefaultValue = $hasDefaultValue
-                            IsGrouped = $false
-                            Type = $_.ParameterType
+                            CommandName         = $FunctionDetails['CommandName']
+                            Name                = $_.Name
+                            HasDefaultValue     = $hasDefaultValue
+                            IsGrouped           = $false
+                            Type                = $_.ParameterType
                             MatchingParamDetail = $matchingParamDetail
-                            ResultRecord = $resultRecord
+                            ResultRecord        = $resultRecord
                         }
 
                         if ($hasDefaultValue) {
                             $setSingleParameterMetadataParms['DefaultValue'] = $_.DefaultValue
                         }
 
-                        if (-not (Set-SingleParameterMetadata @setSingleParameterMetadataParms))
-                        {
+                        if (-not (Set-SingleParameterMetadata @setSingleParameterMetadataParms)) {
                             Export-CliXml -InputObject $ResultRecord -Path $CliXmlTmpPath
                             $errorOccurred = $true
                             return
@@ -1395,13 +1572,15 @@ function Set-ExtendedCodeMetadata {
                     }
                     
                     $ParamList += $paramToAdd
-                } else {
+                }
+                else {
                     if ($metadata.Type.StartsWith("Microsoft.Rest.Azure.OData.ODataQuery``1")) {
                         if ($oDataQueryFound) {
                             $resultRecord.ErrorMessages += ($LocalizedData.MultipleODataQueriesOneFunction -f ($operationId))
                             Export-CliXml -InputObject $resultRecord -Path $CliXmlTmpPath
                             return
-                        } else {
+                        }
+                        else {
                             # Escape backticks
                             $oDataQueryType = $metadata.Type.Replace("``", "````")
                             $ParamList += "`$(if (`$oDataQuery) { New-Object -TypeName `"$oDataQueryType`" -ArgumentList `$oDataQuery } else { `$null })"
@@ -1438,7 +1617,7 @@ function Set-ExtendedCodeMetadata {
 
 function Convert-GenericTypeToString {
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [Type]$Type
     )
 
@@ -1457,46 +1636,46 @@ function Convert-GenericTypeToString {
 
 function Set-SingleParameterMetadata {
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]
         $CommandName,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]
         $Name,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [bool]
         $HasDefaultValue,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [bool]
         $IsGrouped,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [System.Type]
         $Type,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [hashtable]
         $MatchingParamDetail,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [hashtable]
         $ResultRecord,
 
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [object]
         $DefaultValue
     )
     
     $name = Get-PascalCasedString -Name $_.Name
     $metadata = @{
-                    Name = $name
-                    HasDefaultValue = $HasDefaultValue
-                    Type = $Type.ToString()
-                    ParamToAdd = "`$$name"
-                }
+        Name            = $name
+        HasDefaultValue = $HasDefaultValue
+        Type            = $Type.ToString()
+        ParamToAdd      = "`$$name"
+    }
 
     if ($HasDefaultValue) {
         # Setting this default value actually matter, but we might as well
@@ -1506,13 +1685,15 @@ function Set-SingleParameterMetadata {
                 # This is the part that works around PS automatic string coercion
                 $metadata.ParamToAdd = "`$(if (`$PSBoundParameters.ContainsKey('$($metadata.Name)')) { $($metadata.ParamToAdd) } else { [NullString]::Value })"
             }
-        } elseif ("System.Nullable``1[System.Boolean]" -eq $metadata.Type) {
-            if($DefaultValue -ne $null) {
+        }
+        elseif ("System.Nullable``1[System.Boolean]" -eq $metadata.Type) {
+            if ($DefaultValue -ne $null) {
                 $DefaultValue = "`$$DefaultValue"
             }
 
             $metadata.Type = "switch"
-        } else {
+        }
+        else {
             $DefaultValue = $_.DefaultValue
             if (-not ($_.ParameterType.IsValueType) -and $DefaultValue) {
                 $ResultRecord.ErrorMessages += $LocalizedData.ReferenceTypeDefaultValueNotSupported -f ($metadata.Name, $metadata.Type, $CommandName)
@@ -1521,7 +1702,8 @@ function Set-SingleParameterMetadata {
         }
 
         $metadata['DefaultValue'] = $DefaultValue
-    } else {
+    }
+    else {
         if ('$false' -eq $matchingParamDetail.Mandatory -and (-not $IsGrouped)) {
             # This happens in the case of optional path parameters, even if the path parameter is at the end
             $ResultRecord.WarningMessages += ($LocalizedData.OptionalParameterNowRequired -f ($metadata.Name, $CommandName))
@@ -1534,7 +1716,7 @@ function Set-SingleParameterMetadata {
 
 function Get-TemporaryCliXmlFilePath {
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]
         $FullClientTypeName
     )
@@ -1542,4 +1724,30 @@ function Get-TemporaryCliXmlFilePath {
     $random = [Guid]::NewGuid().Guid
     $filePath = Join-Path -Path (Get-XDGDirectory -DirectoryType Cache) -ChildPath "$FullClientTypeName.$random.xml"
     return $filePath
+}
+<#
+.SYNOPSIS
+ Convert an object into a string to represents the value in PowerShell
+
+.EXAMPLE
+[string]this is a string => 'this is a string'
+[bool]true => $true
+[int]5 => 5
+#>
+function Get-ValueText {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]
+        $obj
+    )
+
+    if ($obj -is [string]) {
+        return "'$obj'"
+    }
+    elseif ($obj -is [bool]) {
+        return "`$$obj"
+    }
+    else {
+        return $obj
+    }
 }

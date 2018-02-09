@@ -132,6 +132,14 @@ Microsoft.PowerShell.Utility\Import-LocalizedData  LocalizedData -filename PSSwa
     
 .PARAMETER  Formatter
     Specify a formatter to use. 
+
+.PARAMETER  CopyUtilityModuleToOutput
+    Copy the utility module to the output generated module. This has the effect of hardcoding the version of the utility module used by the generated module. The copied utility module must be re-signed if it was originally signed.
+
+.PARAMETER  AddUtilityDependencies
+    Ensure any external assemblies required by the utility module are included somewhere in the module. This has the effect of making the utility module offline-compatible.
+
+
 .INPUTS
 
 .OUTPUTS
@@ -248,7 +256,21 @@ function New-PSSwaggerModule {
         [Parameter(Mandatory = $false, ParameterSetName = 'SdkAssemblyWithSpecificationUri')]
         [string]
         [ValidateSet('None', 'PSScriptAnalyzer')]
-        $Formatter
+        $Formatter,
+
+        [Parameter(Mandatory = $false, ParameterSetName = 'SpecificationPath')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SpecificationUri')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SdkAssemblyWithSpecificationPath')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SdkAssemblyWithSpecificationUri')]
+        [switch]
+        $CopyUtilityModuleToOutput,
+
+        [Parameter(Mandatory = $false, ParameterSetName = 'SpecificationPath')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SpecificationUri')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SdkAssemblyWithSpecificationPath')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'SdkAssemblyWithSpecificationUri')]
+        [switch]
+        $AddUtilityDependencies
     )
 
     if ($NoAssembly -and $IncludeCoreFxAssembly) {
@@ -299,13 +321,14 @@ function New-PSSwaggerModule {
         $ev = $null
 
         $webRequestParams = @{
-            'Uri' = $SpecificationUri
+            'Uri'     = $SpecificationUri
             'OutFile' = $SpecificationPath
         }
 
-        if($Credential -ne $null) {
+        if ($Credential -ne $null) {
             $webRequestParams['Credential'] = $Credential
-        } elseif ($UseDefaultCredential) {
+        }
+        elseif ($UseDefaultCredential) {
             $webRequestParams['UseDefaultCredential'] = $true
         }
 
@@ -452,7 +475,9 @@ function New-PSSwaggerModule {
         NoAuthChallenge       = $false
         NameSpacePrefix       = ''
         Header                = ''
-        Formatter             = ''
+        Formatter             = 'PSScriptAnalyzer'
+        DefaultWildcardChar   = '%'
+        AzureDefaults         = $null
     }
 
     # Parse the JSON and populate the dictionary
@@ -482,7 +507,8 @@ function New-PSSwaggerModule {
     if (-not $Formatter) {
         if ($PowerShellCodeGen['Formatter']) {
             $Formatter = $PowerShellCodeGen['Formatter']
-        } else {
+        }
+        else {
             $Formatter = 'None'
         }
     }
@@ -519,8 +545,8 @@ function New-PSSwaggerModule {
         $ModuleNameandVersionFolder = Join-Path -Path $Name -ChildPath $Version
 
         if ($outputDirectory.EndsWith($Name, [System.StringComparison]::OrdinalIgnoreCase)) {
-            $outputDirectory = Join-Path -Path $outputDirectory -ChildPath $ModuleVersion
-            $SymbolPath = Join-Path -Path $SymbolPath -ChildPath $ModuleVersion
+            $outputDirectory = Join-Path -Path $outputDirectory -ChildPath $Version
+            $SymbolPath = Join-Path -Path $SymbolPath -ChildPath $Version
         }
         elseif (-not $outputDirectory.EndsWith($ModuleNameandVersionFolder, [System.StringComparison]::OrdinalIgnoreCase)) {
             $outputDirectory = Join-Path -Path $outputDirectory -ChildPath $ModuleNameandVersionFolder
@@ -582,6 +608,100 @@ function New-PSSwaggerModule {
 
             }
         }
+
+        # Add extra metadata based on service type
+        if (($PowerShellCodeGen['ServiceType'] -eq 'azure') -or ($PowerShellCodeGen['ServiceType'] -eq 'azure_stack') -and
+            ($PowerShellCodeGen.ContainsKey('azureDefaults') -and $PowerShellCodeGen['azureDefaults'] -and
+                (-not (Get-Member -InputObject $PowerShellCodeGen['azureDefaults'] -Name 'clientSideFiltering')) -or
+                ($PowerShellCodeGen['azureDefaults'].ClientSideFiltering))) {
+            foreach ($entry in $PathFunctionDetails.GetEnumerator()) {
+                $hyphenIndex = $entry.Name.IndexOf("-")
+                if ($hyphenIndex -gt -1) {
+                    $commandVerb = $entry.Name.Substring(0, $hyphenIndex)
+                    # Add client-side filter metadata automatically if:
+                    #   1: If the command is a Get-* command
+                    #   2: A *_List parameter set exists
+                    #   3: A *_Get parameter set exists
+                    #   4: *_List required parameters are a subset of *_Get required parameters
+                    #   5: *_Get has a -Name parameter alias
+                    if ($commandVerb -eq 'Get') {
+                        $getParameters = @()
+                        $listParameters = $null
+                        $listOperationId = $null
+                        $getOperationId = $null
+                        $nameParameterNormalName = $null # This is the one being switched out for -Name later
+                        foreach ($parameterSetDetails in $entry.Value.ParameterSetDetails) {
+                            if ($parameterSetDetails.OperationId.EndsWith("_Get") -and
+                                (-not ($parameterSetDetails.OperationId.StartsWith("InputObject_"))) -and
+                                (-not ($parameterSetDetails.OperationId.StartsWith("ResourceId_")))) {
+                                $getOperationId = $parameterSetDetails.OperationId
+                                foreach ($parametersDetail in $parameterSetDetails.ParameterDetails) {
+                                    foreach ($parameterDetailEntry in $parametersDetail.GetEnumerator()) {
+                                        $getParameters += $parameterDetailEntry.Value
+                                        if ($parameterDetailEntry.Value.ContainsKey('Alias')) {
+                                            if ($parameterDetailEntry.Value.Alias -eq 'Name') {
+                                                $nameParameterNormalName = $parameterDetailEntry.Value.Name
+                                            }
+                                        }
+                                        elseif ($parameterDetailEntry.Value.Name -eq 'Name') {
+                                            # We're currently assuming this is a resource name
+                                            $nameParameterNormalName = $parameterDetailEntry.Value.Name
+                                        }
+                                    }
+                                }
+                            }
+                            elseif ($parameterSetDetails.OperationId.EndsWith("_List")) {
+                                $listOperationId = $parameterSetDetails.OperationId
+                                $listParameters = @()
+                                foreach ($parametersDetail in $parameterSetDetails.ParameterDetails) {
+                                    foreach ($parameterDetailEntry in $parametersDetail.GetEnumerator()) {
+                                        $listParameters += $parameterDetailEntry.Value
+                                    }
+                                }
+                            }
+                        }
+
+                        if ($getParameters -and $listParameters) {
+                            $valid = $true
+                            foreach ($parameterDetail in $listParameters) {
+                                if ($parameterDetail.Mandatory -eq '$true') {
+                                    $matchingGetParameter = $getParameters | Where-Object { ($_.Name -eq $parameterDetail.Name) -and ($_.Mandatory -eq '$true') }
+                                    if (-not $matchingGetParameter) {
+                                        $valid = $false
+                                        Write-Warning -Message ($LocalizedData.FailedToAddAutomaticFilter -f $entry.Name)
+                                    }
+                                }
+                            }
+
+                            if ($valid) {
+                                if (-not $entry.Value.ContainsKey('Metadata')) {
+                                    $entry.Value['Metadata'] = New-Object -TypeName PSCustomObject
+                                }
+
+                                if (-not (Get-Member -InputObject $entry.Value['Metadata'] -Name 'ClientSideFilter')) {
+                                    $clientSideFilter = New-Object -TypeName PSCustomObject
+                                    # Use the current command for server-side results
+                                    Add-Member -InputObject $clientSideFilter -Name 'ServerSideResultCommand' -Value '.' -MemberType NoteProperty
+                                    # Use the list operation ID
+                                    Add-Member -InputObject $clientSideFilter -Name 'ServerSideResultParameterSet' -Value $listOperationId -MemberType NoteProperty
+                                    # Use the get operation ID
+                                    Add-Member -InputObject $clientSideFilter -Name 'ClientSideParameterSet' -Value $getOperationId -MemberType NoteProperty
+                                    # Create a wildcard filter for the Name parameter
+                                    $nameWildcardFilter = New-Object -TypeName PSCustomObject
+                                    Add-Member -InputObject $nameWildcardFilter -Name 'Type' -Value 'powershellWildcard' -MemberType NoteProperty
+                                    Add-Member -InputObject $nameWildcardFilter -Name 'Parameter' -Value $nameParameterNormalName -MemberType NoteProperty
+                                    Add-Member -InputObject $nameWildcardFilter -Name 'Property' -Value 'Name' -MemberType NoteProperty
+                                    $filters = @($nameWildcardFilter)
+                                    Add-Member -InputObject $clientSideFilter -Name 'Filters' -Value $filters -MemberType NoteProperty
+                                    $allClientSideFilters = @($clientSideFilter)
+                                    Add-Member -InputObject $entry.Value['Metadata'] -Name 'ClientSideFilters' -Value $allClientSideFilters -MemberType NoteProperty
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     $FullClrAssemblyFilePath = $null
@@ -637,7 +757,8 @@ function New-PSSwaggerModule {
         -SwaggerDict $swaggerDict `
         -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
         -PSHeaderComment $PSHeaderComment `
-        -Formatter $Formatter
+        -Formatter $Formatter `
+        -PowerShellCodeGen $PowerShellCodeGen
 
     $FunctionsToExport += New-SwaggerDefinitionCommand -DefinitionFunctionsDetails $DefinitionFunctionsDetails `
         -SwaggerMetaDict $swaggerMetaDict `
@@ -676,7 +797,9 @@ function New-PSSwaggerModule {
         -PSHeaderComment $PSHeaderComment
 
     $CopyFilesMap = [ordered]@{
-        'Get-TaskResult.ps1' = 'Get-TaskResult.ps1'
+        'Get-TaskResult.ps1'        = 'Get-TaskResult.ps1'
+        'Get-ApplicableFilters.ps1' = 'Get-ApplicableFilters.ps1'
+        'Test-FilteredResult.ps1'   = 'Test-FilteredResult.ps1'
     }
     if ($UseAzureCsharpGenerator) {
         $CopyFilesMap['New-ArmServiceClient.ps1'] = 'New-ServiceClient.ps1'
@@ -697,6 +820,42 @@ function New-PSSwaggerModule {
         Copy-PSFileWithHeader -SourceFilePath (Join-Path -Path "$PSScriptRoot" -ChildPath $_.Name) `
             -DestinationFilePath (Join-Path -Path "$outputDirectory" -ChildPath $_.Value) `
             -PSHeaderComment $PSHeaderComment
+    }
+
+    if ($CopyUtilityModuleToOutput) {
+        Write-Verbose -Message $LocalizedData.CopyingUtilityModule
+        $utilityModuleInfo = Get-Module PSSwaggerUtility
+        $existingPath = (Join-Path -Path $outputDirectory -ChildPath PSSwaggerUtility)
+        Write-Warning -Message ($LocalizedData.ReSignUtilityModuleWarning -f $existingPath)
+        if (Test-Path -Path $existingPath) {
+            $null = Remove-Item -Path $existingPath -Recurse -Force
+        }
+
+        $null = New-Item -Path $existingPath -ItemType Directory -Force
+        foreach ($item in Get-ChildItem -Path $utilityModuleInfo.ModuleBase) {
+            $filePath = $item.FullName
+            if ($item.Name -eq 'PSSwaggerClientTracing.psm1') {
+                Write-Warning -Message $LocalizedData.TracingDisabled
+                $filePath = Join-Path -Path $PSScriptRoot -ChildPath 'PSSwaggerClientTracing_Dummy.psm1'
+            } 
+            elseif ($item.Name -eq 'PSSwaggerServiceCredentialsHelpers.psm1') {
+                Write-Warning -Message $LocalizedData.CredentialsDisabled
+                $filePath = Join-Path -Path $PSScriptRoot -ChildPath 'PSSwaggerServiceCredentialsHelpers_Dummy.psm1'
+            }
+            elseif (($item.Name -eq 'PSSwaggerNetUtilities.Code.ps1') -or ($item.Name -eq 'PSSwaggerNetUtilities.Unsafe.Code.ps1')) {
+                $filePath = $null
+            }
+
+            if ($filePath) {
+                $content = Remove-AuthenticodeSignatureBlock -Path $filePath
+                if ($item.Name -eq 'PSSwaggerUtility.Resources.psd1') {
+                    $namespaceIndex = $content | Select-String -Pattern "CSharpNamespace=Microsoft.PowerShell.Commands.PSSwagger"
+                    $content[$namespaceIndex.LineNumber - 1] = "    CSharpNamespace=$($SwaggerDict['info'].NameSpace)"
+                }
+
+                $content | Out-File -FilePath (Join-Path -Path $existingPath -ChildPath $item.Name)
+            }
+        }
     }
 
     Write-Verbose -Message ($LocalizedData.SuccessfullyGeneratedModule -f $Name, $outputDirectory)
@@ -803,9 +962,43 @@ function ConvertTo-CsharpCode {
         throw $LocalizedData.AutoRestNotInPath
     }
 
-    if (-not (Get-OperatingSystemInfo).IsCore -and 
-        (-not (Get-Command -Name 'Csc.Exe' -ErrorAction Ignore))) {
-        throw $LocalizedData.CscExeNotInPath
+    if (-not (Get-OperatingSystemInfo).IsCore) {
+        if (-not (Get-Command -Name 'Csc.Exe' -ErrorAction Ignore)) {
+            throw $LocalizedData.CscExeNotInPath
+        }
+
+        $csc = Get-Command -Name 'Csc.Exe'
+        # The compiler Roslyn compiler is managed while the in-box compiler is native
+        # There's a better way to read the PE header using seeks but this is fine
+        [byte[]]$data = New-Object -TypeName byte[] -ArgumentList 4096
+        $fs = [System.IO.File]::OpenRead($csc.Source)
+        try {
+            $null = $fs.Read($data, 0, 4096)
+        }
+        finally {
+            $fs.Dispose()
+        }
+
+        # Last 4 bytes of the 64-byte IMAGE_DOS_HEADER is pointer to IMAGE_NT_HEADER
+        $p_inh = [System.BitConverter]::ToUInt32($data, 60)
+        # Skip past 4 byte signature + 20 byte IMAGE_FILE_HEADER to get to IMAGE_OPTIONAL_HEADER
+        $p_ioh = $p_inh + 24
+        # Grab the magic header to determine 32-bit or 64-bit
+        $magic = [System.BitConverter]::ToUInt16($data, [int]$p_ioh)
+        if ($magic -eq 0x20b) {
+            # Skip to the end of IMAGE_OPTIONAL_HEADER64 to the first entry in the data directory array
+            $p_dataDirectory0 = [System.BitConverter]::ToUInt32($data, [int]$p_ioh + 224)
+        }
+        else {
+            # Same thing, but for IMAGE_OPTIONAL_HEADER32
+            $p_dataDirectory0 = [System.BitConverter]::ToUInt32($data, [int]$p_ioh + 208)
+        }
+
+        if ($p_dataDirectory0 -eq 0) {
+            # If there is no entry, this is a native exe
+            # That means this is the in-box csc, which is not supported
+            throw $LocalizedData.IncorrectVersionOfCscExeInPath
+        }
     }
 
     $outputDirectory = $SwaggerMetaDict['outputDirectory']

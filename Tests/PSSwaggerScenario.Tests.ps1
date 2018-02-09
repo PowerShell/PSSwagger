@@ -1318,3 +1318,166 @@ Describe 'ResourceId and InputObject parameter set tests' -Tag @('InputObject', 
         }
     }
 }
+
+Describe 'Client-side filtering tests (using metadata file)' -Tag @('ClientSideFilter', 'ScenarioTest') {
+    BeforeAll {
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwaggerUtility" | `
+                Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
+        Initialize-Test -GeneratedModuleName "Generated.ClientSideFilter.Spec" -GeneratedModuleVersion "0.0.1" -TestApiName "ClientSideFilterTests" `
+            -TestSpecFileName "ClientSideFilterBasicSpec.json" -TestDataFileName "ClientSideFilterData.json" `
+            -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+
+        # Import generated module
+        Write-Verbose "Importing modules"
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
+                Join-Path -ChildPath "Generated.ClientSideFilter.Spec")
+        
+        $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "ClientSideFilterTests" -TestRoutesFileName "ClientSideFilterRoutes.json"
+        if ($global:PSSwaggerTest_EnableTracing -and $script:EnableTracer) {
+            $script:EnableTracer = $false
+            {
+                Initialize-PSSwaggerDependencies -AcceptBootstrap
+                Import-Module "$PSScriptRoot\PSSwaggerTestTracing.psm1"
+                [Microsoft.Rest.ServiceClientTracing]::AddTracingInterceptor((New-PSSwaggerTestClientTracing))
+                [Microsoft.Rest.ServiceClientTracing]::IsEnabled = $true
+            }
+        }
+    }
+
+    It 'Adds append parameters' {
+        $cmdInfo = Get-Command Get-Resource
+        $cmdInfo.Parameters.Keys -contains 'MaxUsers' | Should Be $true
+        $cmdInfo.Parameters.MaxUsers.ParameterType.ToString() | Should BeExactly 'System.Int32'
+        $cmdInfo.Parameters.Keys -contains 'LastCreatedOn' | Should Be $true
+        $cmdInfo.Parameters.LastCreatedOn.ParameterType.ToString() | Should BeExactly 'System.DateTime'
+    }
+
+    It 'Filters name with wildcard' {
+        ((Get-Resource -Name *def*).Count) | should be 2
+    }
+
+    It 'Filters users with less than' {
+        ((Get-Resource -Name abdef -MaxUsers 50).Count) | should be 1
+    }
+
+    It 'Filters dateTime with greater than or equal to' {
+        ((Get-Resource -Name * -LastCreatedOn ([DateTime]::Parse("1/20/2018 12:07:21 PM"))).Count) | should be 2
+    }
+
+    It 'Multiple filters are &&ed together' {
+        ((Get-Resource -Name * -MaxUsers 100).Count) | should be 2
+    }
+
+    AfterAll {
+        Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
+    }
+}
+
+Describe 'Client-side filtering tests (using spec)' -Tag @('ClientSideFilter', 'ScenarioTest') {
+    BeforeAll {
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwaggerUtility" | `
+                Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
+        Initialize-Test -GeneratedModuleName "Generated.ClientSideFilter.Metadata" -GeneratedModuleVersion "0.0.1" -TestApiName "ClientSideFilterTests" `
+            -TestSpecFileName "ClientSideFilterSpecWithMetadata.json" -TestDataFileName "ClientSideFilterData.json" `
+            -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+
+        # Import generated module
+        Write-Verbose "Importing modules"
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | `
+                Join-Path -ChildPath "Generated.ClientSideFilter.Metadata")
+        
+        $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "ClientSideFilterTests" -TestRoutesFileName "ClientSideFilterRoutes.json"
+        if ($global:PSSwaggerTest_EnableTracing -and $script:EnableTracer) {
+            $script:EnableTracer = $false
+            {
+                Initialize-PSSwaggerDependencies -AcceptBootstrap
+                Import-Module "$PSScriptRoot\PSSwaggerTestTracing.psm1"
+                [Microsoft.Rest.ServiceClientTracing]::AddTracingInterceptor((New-PSSwaggerTestClientTracing))
+                [Microsoft.Rest.ServiceClientTracing]::IsEnabled = $true
+            }
+        }
+    }
+
+    It 'Adds append parameters' {
+        $cmdInfo = Get-Command Get-Resource
+        $cmdInfo.Parameters.Keys -contains 'MaxUsers' | Should Be $true
+        $cmdInfo.Parameters.MaxUsers.ParameterType.ToString() | Should BeExactly 'System.Int32'
+        $cmdInfo.Parameters.Keys -contains 'LastCreatedOn' | Should Be $true
+        $cmdInfo.Parameters.LastCreatedOn.ParameterType.ToString() | Should BeExactly 'System.DateTime'
+    }
+
+    It 'Filters name with wildcard' {
+        ((Get-Resource -Name *def*).Count) | should be 2
+    }
+
+    It 'Filters users with less than' {
+        ((Get-Resource -Name abdef -MaxUsers 50).Count) | should be 1
+    }
+
+    It 'Filters dateTime with greater than or equal to' {
+        ((Get-Resource -Name * -LastCreatedOn ([DateTime]::Parse("1/20/2018 12:07:21 PM"))).Count) | should be 2
+    }
+
+    It 'Multiple filters are &&ed together' {
+        ((Get-Resource -Name * -MaxUsers 100).Count) | should be 2
+    }
+
+    AfterAll {
+        Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
+    }
+}
+
+Describe "Tests for local utility module" -Tag @('ScenarioTest', 'LocalUtilityCopy') {
+    BeforeAll {
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwaggerUtility" | `
+                Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
+        Initialize-Test -GeneratedModuleName "Generated.Basic.Module" -GeneratedModuleVersion "0.0.2" -TestApiName "PsSwaggerTestBasic" `
+            -TestSpecFileName "PsSwaggerTestBasicSpec.json" -TestDataFileName "PsSwaggerTestBasicData.json" `
+            -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot -CopyUtilityModuleToOutput
+
+        $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "PsSwaggerTestBasic" -TestRoutesFileName "PsSwaggerTestBasicRoutes.json" -Verbose
+        if ($global:PSSwaggerTest_EnableTracing -and $script:EnableTracer) {
+            $script:EnableTracer = $false
+            {
+                Initialize-PSSwaggerDependencies -AcceptBootstrap
+                Import-Module "$PSScriptRoot\PSSwaggerTestTracing.psm1"
+                [Microsoft.Rest.ServiceClientTracing]::AddTracingInterceptor((New-PSSwaggerTestClientTracing))
+                [Microsoft.Rest.ServiceClientTracing]::IsEnabled = $true
+            }
+        }
+    }
+
+    It "Test when global utility module is not available" {
+        $moduleDir = Join-Path -Path $PSScriptRoot -ChildPath "Generated" | Join-Path -ChildPath "Generated.Basic.Module" | Join-Path -ChildPath "0.0.2"
+        $psd1Path = (Join-Path -Path $moduleDir -ChildPath "Generated.Basic.Module.psd1")
+        $moduleInfo = Test-ModuleManifest -Path $psd1Path
+        $functions = $moduleInfo.ExportedFunctions.GetEnumerator() | Select-Object -ExpandProperty Value
+        $functions += 'Test-PSSwaggerUtilityFunction'
+        Copy-Item -Path (Join-Path -Path $PSScriptRoot -ChildPath "data" | Join-Path -ChildPath "LooseCommands" | Join-Path -ChildPath "Test-PSSwaggerUtilityFunction.ps1") -Destination `
+                  (Join-Path -Path $moduleDir -ChildPath "Generated.PowerShell.Commands" | Join-Path -ChildPath "SwaggerPathCommands")
+        New-ModuleManifest -Path $psd1Path -Guid $moduleInfo.Guid -Author $moduleInfo.Author -ModuleVersion $moduleInfo.Version -Copyright $moduleInfo.Copyright `
+                           -Description $moduleInfo.Description -FunctionsToExport $functions -RootModule $moduleInfo.RootModule
+        $command  = "`$modules = Get-Module PSSwaggerUtility -ListAvailable;"
+        $command += "while (`$modules) { "
+        $command += "foreach (`$module in `$modules) { "
+        $command += "`$path = (Get-Module PSSwaggerUtility -ListAvailable).ModuleBase;"
+        $command += "`$path = Split-Path -Path `$path -Parent;"
+        $command += "`$dirChar = [System.IO.Path]::DirectorySeparatorChar;"
+        $command += "`$env:PSModulePath = `$env:PSModulePath.Replace(`$path + ';', '').Replace(`$path + `$dirChar + ';', '');"
+        # This handles the case where the path is at the end
+        $command += "`$env:PSModulePath = `$env:PSModulePath.Replace(`$path, '').Replace(`$path + `$dirChar, '');"
+        $command += " }"
+        $command += "`$modules = Get-Module PSSwaggerUtility -ListAvailable;"
+        $command += " }"
+        $command += "Import-Module '$psd1Path' -Force;"
+        $command += "Test-PSSwaggerUtilityFunction"
+        $result = & powershell -command $command
+        # This verifies that the locally copied utility module is being used instead of anything else
+        $result | should be $null
+    }
+
+    AfterAll {
+        # Stop node server
+        Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
+    }
+}
