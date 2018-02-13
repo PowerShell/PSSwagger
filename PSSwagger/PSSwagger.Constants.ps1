@@ -465,15 +465,18 @@ $outputTypeStr = @'
 
 $createObjectStr = @'
 
-    `$Object = New-Object -TypeName $DefinitionTypeName
-
-    `$PSBoundParameters.GetEnumerator() | ForEach-Object { 
+    `$Object = New-Object -TypeName $DefinitionTypeName -ArgumentList $DefinitionArgumentList
+$(
+    if ($DefinitionArgumentList -eq '@()') {
+"    `$PSBoundParameters.GetEnumerator() | ForEach-Object { 
         if(Get-Member -InputObject `$Object -Name `$_.Key -MemberType Property)
         {
             `$Object.`$(`$_.Key) = `$_.Value
         }
     }
-
+"
+    }
+)
     if(Get-Member -InputObject `$Object -Name Validate -MemberType Method)
     {
         `$Object.Validate()

@@ -1379,8 +1379,26 @@ function Set-ExtendedCodeMetadata {
     }
     
     $resultRecord.VerboseMessages += $LocalizedData.ExtractingMetadata
-
-    $PathFunctionDetails = Import-CliXml -Path $CliXmlTmpPath
+    $parameters = Import-CliXml -Path $CliXmlTmpPath
+    $PathFunctionDetails = $parameters['PathFunctionDetails']
+    $DefinitionFunctionDetails = $parameters['DefinitionFunctionDetails']
+    $Namespace = $parameters['Namespace']
+    $Models = $parameters['Models']
+    $DefinitionFunctionDetails.GetEnumerator() | ForEach-Object {
+        $fullModelTypeName = ('{0}.{1}.{2}' -f ($Namespace, $Models, $_.Name))
+        $fullModelType = $fullModelTypeName -as [Type]
+        if ($fullModelType) {
+            $nonDefaultConstructor = $fullModelType.GetConstructors() | Where-Object { $_.GetParameters().Length -gt 0 } | Select-Object -First 1
+            # When available, use the non-default constructor to build objects (for read-only properties)
+            if ($nonDefaultConstructor) {
+                $nonDefaultConstructorParameters = @()
+                $nonDefaultConstructor.GetParameters() | ForEach-Object {
+                    $nonDefaultConstructorParameters += $_.Name
+                }
+                $_.Value['NonDefaultConstructor'] = $nonDefaultConstructorParameters
+            }
+        }
+    }
     $errorOccurred = $false
     $PathFunctionDetails.GetEnumerator() | ForEach-Object {
         $FunctionDetails = $_.Value
@@ -1615,7 +1633,7 @@ function Set-ExtendedCodeMetadata {
         }
     }
 
-    $resultRecord.Result = $PathFunctionDetails
+    $resultRecord.Result = $parameters
     Export-CliXml -InputObject $resultRecord -Path $CliXmlTmpPath
 }
 

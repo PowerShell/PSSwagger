@@ -734,7 +734,10 @@ function New-PSSwaggerModule {
     $NameSpace = $SwaggerDict['info'].NameSpace
     $FullClientTypeName = $Namespace + '.' + $SwaggerDict['Info'].ClientTypeName
 
-    $PathFunctionDetails = Update-PathFunctionDetails -PathFunctionDetails $PathFunctionDetails -FullClientTypeName $FullClientTypeName
+    $updateResult = Update-PathFunctionDetails -PathFunctionDetails $PathFunctionDetails -DefinitionFunctionDetails $DefinitionFunctionsDetails -FullClientTypeName $FullClientTypeName -Namespace $Namespace -Models $Models
+    $PathFunctionDetails = $updateResult['PathFunctionDetails']
+    $DefinitionFunctionsDetails = $updateResult['DefinitionFunctionDetails']
+    
     if (-not $PathFunctionDetails) {
         return
     }
@@ -870,6 +873,18 @@ function Update-PathFunctionDetails {
         $PathFunctionDetails,
 
         [Parameter(Mandatory = $true)]
+        [PSCustomObject]
+        $DefinitionFunctionDetails,
+
+        [Parameter(Mandatory = $true)]
+        [string]
+        $Namespace,
+
+        [Parameter(Mandatory = $true)]
+        [string]
+        $Models,
+
+        [Parameter(Mandatory = $true)]
         [string]
         $FullClientTypeName
     )
@@ -877,7 +892,13 @@ function Update-PathFunctionDetails {
     $cliXmlTmpPath = Get-TemporaryCliXmlFilePath -FullClientTypeName $FullClientTypeName
 
     try {
-        Export-CliXml -InputObject $PathFunctionDetails -Path $cliXmlTmpPath
+        $metadataExtractionParameters = @{
+            'PathFunctionDetails' = $PathFunctionDetails
+            'DefinitionFunctionDetails' = $DefinitionFunctionDetails
+            'Namespace' = $Namespace
+            'Models' = $Models
+        }
+        Export-CliXml -InputObject $metadataExtractionParameters -Path $cliXmlTmpPath
         $PathsPsm1FilePath = Join-Path -Path $PSScriptRoot -ChildPath Paths.psm1
         $command = @"
             Add-Type -Path '$FullClrAssemblyFilePath'

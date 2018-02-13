@@ -934,7 +934,15 @@ function New-SwaggerSpecDefinitionCommand
     $ValueFromPipelineString = ''
     $ValueFromPipelineByPropertyNameString = ''
     $parameterDefaultValueOption = ""
-
+    $DefinitionArgumentList = "@()"
+    if ($FunctionDetails.ContainsKey('NonDefaultConstructor')) {
+        $DefinitionArgumentList = "@("
+        $FunctionDetails['NonDefaultConstructor'] | ForEach-Object {
+            $DefinitionArgumentList += "`$$($_[0])$($_.Substring(1)),"
+        }
+        $DefinitionArgumentList = $DefinitionArgumentList.Substring(0, $DefinitionArgumentList.Length-1)
+        $DefinitionArgumentList += ")"
+    }
     $FunctionDetails.ParametersTable.GetEnumerator() | ForEach-Object {
         $ParameterDetails = $_.Value
         if (-not ($ParameterDetails.ContainsKey('Discriminator')) -or (-not $ParameterDetails.Discriminator)) {
