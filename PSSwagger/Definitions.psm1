@@ -582,6 +582,7 @@ function Expand-SwaggerDefinition
                                                                     else
                                                                     {
                                                                         $FunctionDetails.ParametersTable[$RefParameterName] = $RefFunctionDetails.ParametersTable[$RefParameterName]
+                                                                        $FunctionDetails.ParametersTable[$RefParameterName]['Source'] = $ReferencedDefinitionName
                                                                     }
                                                                 }
                                                             }
@@ -600,7 +601,7 @@ function Expand-SwaggerDefinition
                                                                                $DefinitionFunctionsDetails[$ReferencedDefinitionName].ExpandedParameters)
                                                                             {
                                                                                 $RefFunctionDetails = $DefinitionFunctionsDetails[$ReferencedDefinitionName]
-                                                                                Copy-FunctionDetailsParameters -RefFunctionDetails $RefFunctionDetails -FunctionDetails $FunctionDetails
+                                                                                Copy-FunctionDetailsParameters -RefFunctionDetails $RefFunctionDetails -FunctionDetails $FunctionDetails -Source $ReferencedDefinitionName
                                                                             }
                                                                             else
                                                                             {
@@ -779,7 +780,11 @@ function Copy-FunctionDetailsParameters {
         $RefFunctionDetails,
 
         [Parameter(Mandatory = $true)]
-        $FunctionDetails
+        $FunctionDetails,
+
+        [Parameter(Mandatory = $false)]
+        [string]
+        $Source
     )
 
     $RefFunctionDetails.ParametersTable.GetEnumerator() | ForEach-Object {
@@ -793,6 +798,9 @@ function Copy-FunctionDetailsParameters {
                                                                     else
                                                                     {
                                                                         $FunctionDetails.ParametersTable[$RefParameterName] = $RefFunctionDetails.ParametersTable[$RefParameterName]
+                                                                        if ($Source) {
+                                                                            $FunctionDetails.ParametersTable[$RefParameterName]['Source'] = $Source
+                                                                        }
                                                                     }
                                                                 }
                                                             }

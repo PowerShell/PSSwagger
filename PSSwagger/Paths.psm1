@@ -816,8 +816,12 @@ function New-SwaggerPath {
                         $DefinitionDetails = $DefinitionFunctionsDetails[$DefinitionName]
                         $flattenedParametersOnPSCmdlet[$parameterDetails.Name] = $DefinitionDetails
                         $DefinitionDetails.ParametersTable.GetEnumerator() | ForEach-Object {
-                            $AddUniqueParameter_params['CandidateParameterDetails'] = $_.value
-                            Add-UniqueParameter @AddUniqueParameter_params
+                            if (-not $UseAzureCsharpGenerator -or (-not $_.value.ContainsKey('Source') -or ($_.value['Source'] -ne 'Resource') `
+                                        -or ($_.value['Name'] -ne 'Name'))) {
+                                $AddUniqueParameter_params['CandidateParameterDetails'] = $_.value
+                                Add-UniqueParameter @AddUniqueParameter_params 
+                                $_.value['IsFlattened'] = $true
+                            }
                         }
                     }
                     else {

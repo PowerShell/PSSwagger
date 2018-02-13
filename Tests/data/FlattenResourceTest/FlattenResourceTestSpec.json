@@ -1,0 +1,140 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "version": "2015-12-01-preview",
+    "title": "FlattenResourceTest",
+    "description": "Flatten resource test"
+  },
+  "host": "localhost:3000",
+  "schemes": [
+    "http"
+  ],
+  "paths": {
+    "/cupcakeRecipes/a/b/c/d/e/f/{recipeName}": {
+      "get": {
+        "tags": [
+          "CupcakeRecipes"
+        ],
+        "summary": "Returns the requested cupcake.",
+        "description": "Get an existing Cupcake.",
+        "operationId": "CupcakeRecipes_Get",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/parameters/RecipeNameParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/CupcakeRecipe"
+            }
+          },
+          "404": {
+            "description": "NOT FOUND"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "CupcakeRecipes"
+        ],
+        "description": "Creates or Updates a Cupcake Recipe.",
+        "summary": "Creates or Updates a Cupcake Recipe.",
+        "operationId": "CupcakeRecipes_CreateOrUpdate",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/parameters/RecipeNameParameter"
+          },
+          {
+            "$ref": "#/parameters/NewRecipeParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/CupcakeRecipe"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Resource": {
+      "description": "Base resource object.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "readOnly": true,
+          "description": "Name of the resource.",
+          "type": "string"
+        }
+      },
+      "x-ms-azure-resource": true
+    },
+    "CupcakeRecipe": {
+      "description": "Cupcake recipe",
+      "type": "object",
+      "properties": {
+        "properties": {
+          "description": "Quota properties.",
+          "x-ms-client-flatten": true,
+          "$ref": "#/definitions/CupcakeRecipeProperties"
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/Resource"
+        }
+      ]
+    },
+    "CupcakeRecipeProperties": {
+      "description": "Properties for a recipe",
+      "type": "object",
+      "properties": {
+        "flavor": {
+          "description": "Flavor of cupcake this will make yum",
+          "type": "string"
+        }
+      }
+    }
+  },
+  "parameters": {
+    "RecipeNameParameter": {
+      "description": "Name of the recipe.",
+      "name": "recipeName",
+      "type": "string",
+      "required": true,
+      "in": "path",
+      "x-ms-parameter-location": "method"
+    },
+    "NewRecipeParameter": {
+      "description": "New recipe to create.",
+      "name": "newRecipe",
+      "in": "body",
+      "required": true,
+      "schema": {
+        "$ref": "#/definitions/CupcakeRecipe"
+      },
+      "x-ms-parameter-location": "method"
+    }
+  },
+  "securityDefinitions": {
+  },
+  "security": [
+  ]
+}

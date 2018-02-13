@@ -1481,3 +1481,16 @@ Describe "Tests for local utility module" -Tag @('ScenarioTest', 'LocalUtilityCo
         Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
     }
 }
+
+Describe "Flattening Azure Resource test" -Tag @('ScenarioTest', 'FlattenAzureResource') {
+    It "Generates and imports module with flattened Azure resource" {
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwaggerUtility" | `
+                Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
+        Initialize-Test -GeneratedModuleName "Generated.FlattenResourceTest" -GeneratedModuleVersion "0.0.2" -TestApiName "FlattenResourceTest" `
+            -TestSpecFileName "FlattenResourceTestSpec.json" -UseAzureCSharpGenerator `
+            -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+        $modulePath = (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | Join-Path -ChildPath "Generated.FlattenResourceTest")
+        $output = & powershell -command "Import-Module '$modulePath'"
+        $output | should be $null
+    }
+}
