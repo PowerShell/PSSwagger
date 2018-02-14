@@ -464,10 +464,17 @@ $outputTypeStr = @'
 '@
 
 $createObjectStr = @'
-
+$(
+    if ($switchParameters) {
+        $switchParameters | ForEach-Object {
+"   `$$($_)Value = if (`$PSBoundParameters.ContainsKey('$($_)')) { `$$($_) } else { `$null }
+"     
+        }
+    }
+)
     `$Object = New-Object -TypeName $DefinitionTypeName -ArgumentList $DefinitionArgumentList
 $(
-    if ($DefinitionArgumentList -eq '@()') {
+    if (-not $FunctionDetails.ContainsKey('NonDefaultConstructor')) {
 "    `$PSBoundParameters.GetEnumerator() | ForEach-Object { 
         if(Get-Member -InputObject `$Object -Name `$_.Key -MemberType Property)
         {

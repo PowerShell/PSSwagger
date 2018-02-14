@@ -1382,6 +1382,8 @@ function Set-ExtendedCodeMetadata {
     $parameters = Import-CliXml -Path $CliXmlTmpPath
     $PathFunctionDetails = $parameters['PathFunctionDetails']
     $DefinitionFunctionDetails = $parameters['DefinitionFunctionDetails']
+    $ConstructorInfo = @{}
+    $parameters['ConstructorInfo'] = $ConstructorInfo
     $Namespace = $parameters['Namespace']
     $Models = $parameters['Models']
     $DefinitionFunctionDetails.GetEnumerator() | ForEach-Object {
@@ -1391,11 +1393,15 @@ function Set-ExtendedCodeMetadata {
             $nonDefaultConstructor = $fullModelType.GetConstructors() | Where-Object { $_.GetParameters().Length -gt 0 } | Select-Object -First 1
             # When available, use the non-default constructor to build objects (for read-only properties)
             if ($nonDefaultConstructor) {
-                $nonDefaultConstructorParameters = @()
+                $nonDefaultConstructorParameters = @{}
                 $nonDefaultConstructor.GetParameters() | ForEach-Object {
-                    $nonDefaultConstructorParameters += $_.Name
+                    $nonDefaultConstructorParameters[$_.Name] = @{
+                        'Name' = $_.Name
+                        'Type' = $_.ParameterType
+                        'Position' = $_.Position
+                    }
                 }
-                $_.Value['NonDefaultConstructor'] = $nonDefaultConstructorParameters
+                $ConstructorInfo[$_.Name] = $nonDefaultConstructorParameters
             }
         }
     }

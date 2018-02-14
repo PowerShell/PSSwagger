@@ -935,10 +935,17 @@ function New-SwaggerSpecDefinitionCommand
     $ValueFromPipelineByPropertyNameString = ''
     $parameterDefaultValueOption = ""
     $DefinitionArgumentList = "@()"
+    $switchParameters = @()
     if ($FunctionDetails.ContainsKey('NonDefaultConstructor')) {
         $DefinitionArgumentList = "@("
-        $FunctionDetails['NonDefaultConstructor'] | ForEach-Object {
-            $DefinitionArgumentList += "`$$($_[0])$($_.Substring(1)),"
+        $FunctionDetails['NonDefaultConstructor'].GetEnumerator() | Sort-Object { $_.Value.Position } | ForEach-Object {
+            if ($FunctionDetails.ParametersTable.ContainsKey($_.Name) -and 
+                    $FunctionDetails.ParametersTable[$_.Name]['Type'] -eq 'switch') {
+                $DefinitionArgumentList += "`$$($_.Name)Value,"
+                $switchParameters += $_.Name
+            } else {
+                $DefinitionArgumentList += "`$$($_.Name),"
+            }
         }
         $DefinitionArgumentList = $DefinitionArgumentList.Substring(0, $DefinitionArgumentList.Length-1)
         $DefinitionArgumentList += ")"
@@ -949,7 +956,15 @@ function New-SwaggerSpecDefinitionCommand
             $isParamMandatory = $ParameterDetails.Mandatory
             $parameterName = $ParameterDetails.Name
             $paramName = "`$$parameterName" 
-            $paramType = "[$($ParameterDetails.Type)]$([Environment]::NewLine)        "
+            $paramType = $ParameterDetails.Type -as [Type]
+            if ($paramType -and $paramType.IsValueType) {
+                if ($paramType -ne [System.Management.Automation.SwitchParameter]) {
+                    $paramType = "System.Nullable``1[$paramType]"
+                }
+            } else {
+                $paramType = $ParameterDetails.Type
+            }
+            $paramType = "[$paramType]$([Environment]::NewLine)        "
             $AllParameterSetsString = $executionContext.InvokeCommand.ExpandString($parameterAttributeString)
             $ValidateSetDefinition = $null
             if ($ParameterDetails.ValidateSet)

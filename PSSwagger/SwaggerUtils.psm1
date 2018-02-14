@@ -881,7 +881,6 @@ function Flatten-ParameterTable {
         $AllParameterDetails
     )
     foreach ($parameterEntry in $DefinitionFunctionsDetails[$ReferenceTypeName]['ParametersTable'].GetEnumerator()) {
-        Write-Host "Flatten Parameter $($parameterEntry.Key)" -BackgroundColor DarkCyan
         if ($AllParameterDetails.ContainsKey($parameterEntry.Key)) {
             throw $LocalizedData.DuplicateExpandedProperty -f ($parameterEntry.Key)
         }

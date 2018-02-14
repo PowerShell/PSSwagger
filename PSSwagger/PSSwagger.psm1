@@ -733,13 +733,15 @@ function New-PSSwaggerModule {
 
     $NameSpace = $SwaggerDict['info'].NameSpace
     $FullClientTypeName = $Namespace + '.' + $SwaggerDict['Info'].ClientTypeName
-
     $updateResult = Update-PathFunctionDetails -PathFunctionDetails $PathFunctionDetails -DefinitionFunctionDetails $DefinitionFunctionsDetails -FullClientTypeName $FullClientTypeName -Namespace $Namespace -Models $Models
-    $PathFunctionDetails = $updateResult['PathFunctionDetails']
-    $DefinitionFunctionsDetails = $updateResult['DefinitionFunctionDetails']
-    
-    if (-not $PathFunctionDetails) {
+    if (-not $updateResult) {
         return
+    }
+
+    $PathFunctionDetails = $updateResult['PathFunctionDetails']
+    $ConstructorInfo = $updateResult['ConstructorInfo']
+    $ConstructorInfo.GetEnumerator() | ForEach-Object {
+        $DefinitionFunctionsDetails[$_.Name]['NonDefaultConstructor'] = $_.Value
     }
 
     # Need to expand the definitions early as parameter flattening feature requires the parameters list of the definition/model types.

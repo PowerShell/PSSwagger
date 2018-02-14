@@ -616,7 +616,7 @@ Describe "Composite Swagger Tests" -Tag @('Composite', 'ScenarioTest') {
 
             # Validate expanded parameter types with referenced definition
             $command = Get-Command -Name New-ProductObject -Module $ModuleName            
-            $command.Parameters.IntParamName.ParameterType.Name | Should be 'Int64'
+            $command.Parameters.IntParamName.ParameterType.Name | Should be 'Nullable`1'
             
             $command.Parameters.Tags.ParameterType.Name | Should be 'string'
             $command.Parameters.StartDate.ParameterType.Name | Should be 'string'
