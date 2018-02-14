@@ -58,48 +58,6 @@ $script:CSharpReservedWords = @(
     'unsafe', 'ushort', 'using', 'virtual', 'void',
     'volatile', 'while', 'yield', 'var'
 )
-<#			expr_05.set_Item(' ', "Space");
-			expr_05.set_Item('!', "ExclamationMark");
-			expr_05.set_Item('"', "QuotationMark");
-			expr_05.set_Item('#', "NumberSign");
-			expr_05.set_Item('$', "DollarSign");
-			expr_05.set_Item('%', "PercentSign");
-			expr_05.set_Item('&', "Ampersand");
-			expr_05.set_Item('\'', "Apostrophe");
-			expr_05.set_Item('(', "LeftParenthesis");
-			expr_05.set_Item(')', "RightParenthesis");
-			expr_05.set_Item('*', "Asterisk");
-			expr_05.set_Item('+', "PlusSign");
-			expr_05.set_Item(',', "Comma");
-			expr_05.set_Item('-', "HyphenMinus");
-			expr_05.set_Item('.', "FullStop");
-			expr_05.set_Item('/', "Slash");
-			expr_05.set_Item('0', "Zero");
-			expr_05.set_Item('1', "One");
-			expr_05.set_Item('2', "Two");
-			expr_05.set_Item('3', "Three");
-			expr_05.set_Item('4', "Four");
-			expr_05.set_Item('5', "Five");
-			expr_05.set_Item('6', "Six");
-			expr_05.set_Item('7', "Seven");
-			expr_05.set_Item('8', "Eight");
-			expr_05.set_Item('9', "Nine");
-			expr_05.set_Item(':', "Colon");
-			expr_05.set_Item(';', "Semicolon");
-			expr_05.set_Item('<', "LessThanSign");
-			expr_05.set_Item('=', "EqualSign");
-			expr_05.set_Item('>', "GreaterThanSign");
-			expr_05.set_Item('?', "QuestionMark");
-			expr_05.set_Item('@', "AtSign");
-			expr_05.set_Item('[', "LeftSquareBracket");
-			expr_05.set_Item('\\', "Backslash");
-			expr_05.set_Item(']', "RightSquareBracket");
-			expr_05.set_Item('^', "CircumflexAccent");
-			expr_05.set_Item('`', "GraveAccent");
-			expr_05.set_Item('{', "LeftCurlyBracket");
-			expr_05.set_Item('|', "VerticalBar");
-			expr_05.set_Item('}', "RightCurlyBracket");
-			expr_05.set_Item('~', "Tilde");#>
 $script:AutoRestLaticCharacters = @{
     " " = "Space";
     "!" = "ExclamationMark";
@@ -2000,7 +1958,7 @@ function Get-CSharpModelName {
             }
         }
     }
-    
+
     # Remove special characters
     $Name = $Name -replace '[^a-zA-Z0-9_-]', ''
 
