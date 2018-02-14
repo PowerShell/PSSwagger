@@ -57,6 +57,20 @@ Describe "Basic API" -Tag ScenarioTest {
     }
 }
 
+Describe "Basic API + Odd Operation IDs" -Tag @('ScenarioTest', 'OddOperationId') {
+    Context "Basic API + Odd Operation IDs tests" {
+        It "Can generate the module" {
+            Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwaggerUtility" | `
+                Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
+            Initialize-Test -GeneratedModuleName "Generated.BasicOdd.Module" -GeneratedModuleVersion "0.0.1" -TestApiName "PsSwaggerTestBasic" `
+                -TestSpecFileName "PsSwaggerTestBasicOddOpIdSpec.json" -TestDataFileName "PsSwaggerTestBasicData.json" `
+                -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+            (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | Join-Path -ChildPath "Generated.BasicOdd.Module" | `
+               Join-Path -ChildPath "0.0.1" | Join-Path -ChildPath "Generated.BasicOdd.Module.psd1") | should exist
+        }
+    }
+}
+
 Describe "All Operations: Basic" -Tag ScenarioTest {
     BeforeAll {
         Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwaggerUtility" | `
