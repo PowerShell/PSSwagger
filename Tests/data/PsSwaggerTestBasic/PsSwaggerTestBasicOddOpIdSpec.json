@@ -26,7 +26,7 @@
         "/cupcakes/{flavor}": {
             "get": {
                 "summary": "Get some cupcakes",
-                "operationId": "123GetCUPCAKES$",
+                "operationId": "123Get-CUPCAKES$",
                 "description": "Gets all cupcakes with matching flavor",
                 "parameters": [
                     {
