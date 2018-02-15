@@ -1420,13 +1420,13 @@ function Set-ExtendedCodeMetadata {
             $operationsWithSuffix = ''
             $opIdValues = $operationId -split '_', 2 
             if (-not $opIdValues -or ($opIdValues.count -ne 2)) {
-                # I'm sure there's other stuff but what? Need to check what AutoRest is using. Their CSharpNamer thing?
-                $methodNames += $operationId.Replace("-", "") + 'WithHttpMessagesAsync'
-                $methodNames += $operationId.Replace("-", "") + 'Method' + 'WithHttpMessagesAsync'
+                $normalizedOperationId = Get-CSharpMethodName -Name $operationId
+                $methodNames += $normalizedOperationId + 'WithHttpMessagesAsync'
+                $methodNames += $normalizedOperationId + 'Method' + 'WithHttpMessagesAsync'
             }
-            else {            
-                $operationName = $opIdValues[0].Replace("-", "")
-                $operationType = $opIdValues[1].Replace("-", "")
+            else {           
+                $operationName = (Get-CSharpModelName -Name $opIdValues[0]).Replace("-","") 
+                $operationType = Get-CSharpMethodName -Name $opIdValues[1]
                 $operations = ".$operationName"
                 if ($parameterSetDetail['UseOperationsSuffix'] -and $parameterSetDetail['UseOperationsSuffix']) { 
                     $operationsWithSuffix = $operations + 'Operations'
