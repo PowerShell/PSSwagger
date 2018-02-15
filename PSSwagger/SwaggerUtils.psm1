@@ -1978,35 +1978,6 @@ function Get-CSharpMethodName {
     )
 
     # Eventually load the AutoRest dll - for now this doesn't work without the dotnet CLI available, so have to hack around it for now
-    # Including the code to get the AutoRest.CSharp dll location
-    <#
-    $command = Get-Command autorest
-	$path = ""
-    if ($command) {
-        $output = & autorest --version
-        foreach ($line in $output) {
-            if ($line.Contains("@microsoft.azure/autorest.csharp")) {
-                $index = $line.Length - 1
-                while (-not $path -or -not (Test-Path -Path $path)) {
-                    $path = $line[$index] + $path
-                    $index -= 1
-                }
-
-                break
-            }
-        }
-		
-		if ($path) {
-			$path = (Get-ChildItem -Path "$path$([System.IO.Path]::DirectorySeparatorChar)autorest.csharp.dll" -File -Recurse | Select-Object -First 1).FullName
-		} else {
-			$path = Join-Path -Path $env:UserProfile -ChildPath ".autorest" | Join-Path -ChildPath "plugins" | Join-Path -ChildPath "autorest"
-			$versions = @()
-			foreach ($item in Get-ChildItem $path -Directory) {
-				$versions += Split-Path -Path $item.FullName -Leaf
-			}
-			$path = Join-Path -Path $path -ChildPath ($versions | Sort-Object -Descending | Select-Object -First 1) | Join-Path -ChildPath "autorest.csharp.dll"
-		}
-    }#>
     Get-CSharpModelName -Name $Name -ReplaceBasicLatinCharacters
 }
 
