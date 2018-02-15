@@ -1946,7 +1946,7 @@ function Get-CSharpModelName {
 
     # Below logic is as per AutoRest
     $Name = $Name -replace '[[]]', 'Sequence'
-    if ($ReplaceBasicLatinCharacters) {
+    if ($ReplaceBasicLatinCharacters -and $script:AutoRestLaticCharacters.ContainsKey($Name[0]+"")) {
         $chars = $Name.ToCharArray()
         $Name = ""
         foreach ($char in $chars) {

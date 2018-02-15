@@ -1397,7 +1397,7 @@ function Set-ExtendedCodeMetadata {
                 $methodNames += $normalizedOperationId + 'Method' + 'WithHttpMessagesAsync'
             }
             else {           
-                $operationName = Get-CSharpMethodName -Name $opIdValues[0] 
+                $operationName = (Get-CSharpModelName -Name $opIdValues[0]).Replace("-","") 
                 $operationType = Get-CSharpMethodName -Name $opIdValues[1]
                 $operations = ".$operationName"
                 if ($parameterSetDetail['UseOperationsSuffix'] -and $parameterSetDetail['UseOperationsSuffix']) { 
