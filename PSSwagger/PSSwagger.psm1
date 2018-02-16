@@ -853,7 +853,7 @@ function New-PSSwaggerModule {
                     $content[$namespaceIndex.LineNumber - 1] = "    CSharpNamespace=$($SwaggerDict['info'].NameSpace)"
                 }
 
-                $content | Out-File -FilePath (Join-Path -Path $existingPath -ChildPath $item.Name)
+                $content | Out-File -FilePath (Join-Path -Path $existingPath -ChildPath $item.Name) -Encoding ASCII -Force
             }
         }
     }
