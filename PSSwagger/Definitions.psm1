@@ -582,6 +582,7 @@ function Expand-SwaggerDefinition
                                                                     else
                                                                     {
                                                                         $FunctionDetails.ParametersTable[$RefParameterName] = $RefFunctionDetails.ParametersTable[$RefParameterName]
+                                                                        $FunctionDetails.ParametersTable[$RefParameterName]['Source'] = $ReferencedDefinitionName
                                                                     }
                                                                 }
                                                             }
@@ -600,7 +601,7 @@ function Expand-SwaggerDefinition
                                                                                $DefinitionFunctionsDetails[$ReferencedDefinitionName].ExpandedParameters)
                                                                             {
                                                                                 $RefFunctionDetails = $DefinitionFunctionsDetails[$ReferencedDefinitionName]
-                                                                                Copy-FunctionDetailsParameters -RefFunctionDetails $RefFunctionDetails -FunctionDetails $FunctionDetails
+                                                                                Copy-FunctionDetailsParameters -RefFunctionDetails $RefFunctionDetails -FunctionDetails $FunctionDetails -Source $ReferencedDefinitionName
                                                                             }
                                                                             else
                                                                             {
@@ -779,7 +780,11 @@ function Copy-FunctionDetailsParameters {
         $RefFunctionDetails,
 
         [Parameter(Mandatory = $true)]
-        $FunctionDetails
+        $FunctionDetails,
+
+        [Parameter(Mandatory = $false)]
+        [string]
+        $Source
     )
 
     $RefFunctionDetails.ParametersTable.GetEnumerator() | ForEach-Object {
@@ -793,6 +798,9 @@ function Copy-FunctionDetailsParameters {
                                                                     else
                                                                     {
                                                                         $FunctionDetails.ParametersTable[$RefParameterName] = $RefFunctionDetails.ParametersTable[$RefParameterName]
+                                                                        if ($Source) {
+                                                                            $FunctionDetails.ParametersTable[$RefParameterName]['Source'] = $Source
+                                                                        }
                                                                     }
                                                                 }
                                                             }
@@ -926,14 +934,37 @@ function New-SwaggerSpecDefinitionCommand
     $ValueFromPipelineString = ''
     $ValueFromPipelineByPropertyNameString = ''
     $parameterDefaultValueOption = ""
-
+    $DefinitionArgumentList = "@()"
+    $switchParameters = @()
+    if ($FunctionDetails.ContainsKey('NonDefaultConstructor')) {
+        $DefinitionArgumentList = "@("
+        $FunctionDetails['NonDefaultConstructor'].GetEnumerator() | Sort-Object { $_.Value.Position } | ForEach-Object {
+            if ($FunctionDetails.ParametersTable.ContainsKey($_.Name) -and 
+                    $FunctionDetails.ParametersTable[$_.Name]['Type'] -eq 'switch') {
+                $DefinitionArgumentList += "`$$($_.Name)Value,"
+                $switchParameters += $_.Name
+            } else {
+                $DefinitionArgumentList += "`$$($_.Name),"
+            }
+        }
+        $DefinitionArgumentList = $DefinitionArgumentList.Substring(0, $DefinitionArgumentList.Length-1)
+        $DefinitionArgumentList += ")"
+    }
     $FunctionDetails.ParametersTable.GetEnumerator() | ForEach-Object {
         $ParameterDetails = $_.Value
         if (-not ($ParameterDetails.ContainsKey('Discriminator')) -or (-not $ParameterDetails.Discriminator)) {
             $isParamMandatory = $ParameterDetails.Mandatory
             $parameterName = $ParameterDetails.Name
             $paramName = "`$$parameterName" 
-            $paramType = "[$($ParameterDetails.Type)]$([Environment]::NewLine)        "
+            $paramType = $ParameterDetails.Type -as [Type]
+            if ($paramType -and $paramType.IsValueType) {
+                if ($paramType -ne [System.Management.Automation.SwitchParameter]) {
+                    $paramType = "System.Nullable``1[$paramType]"
+                }
+            } else {
+                $paramType = $ParameterDetails.Type
+            }
+            $paramType = "[$paramType]$([Environment]::NewLine)        "
             $AllParameterSetsString = $executionContext.InvokeCommand.ExpandString($parameterAttributeString)
             $ValidateSetDefinition = $null
             if ($ParameterDetails.ValidateSet)

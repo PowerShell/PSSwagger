@@ -816,8 +816,12 @@ function New-SwaggerPath {
                         $DefinitionDetails = $DefinitionFunctionsDetails[$DefinitionName]
                         $flattenedParametersOnPSCmdlet[$parameterDetails.Name] = $DefinitionDetails
                         $DefinitionDetails.ParametersTable.GetEnumerator() | ForEach-Object {
-                            $AddUniqueParameter_params['CandidateParameterDetails'] = $_.value
-                            Add-UniqueParameter @AddUniqueParameter_params
+                            if (-not $UseAzureCsharpGenerator -or (-not $_.value.ContainsKey('Source') -or ($_.value['Source'] -ne 'Resource') `
+                                        -or ($_.value['Name'] -ne 'Name'))) {
+                                $AddUniqueParameter_params['CandidateParameterDetails'] = $_.value
+                                Add-UniqueParameter @AddUniqueParameter_params 
+                                $_.value['IsFlattened'] = $true
+                            }
                         }
                     }
                     else {
@@ -1375,8 +1379,32 @@ function Set-ExtendedCodeMetadata {
     }
     
     $resultRecord.VerboseMessages += $LocalizedData.ExtractingMetadata
-
-    $PathFunctionDetails = Import-CliXml -Path $CliXmlTmpPath
+    $parameters = Import-CliXml -Path $CliXmlTmpPath
+    $PathFunctionDetails = $parameters['PathFunctionDetails']
+    $DefinitionFunctionDetails = $parameters['DefinitionFunctionDetails']
+    $ConstructorInfo = @{}
+    $parameters['ConstructorInfo'] = $ConstructorInfo
+    $Namespace = $parameters['Namespace']
+    $Models = $parameters['Models']
+    $DefinitionFunctionDetails.GetEnumerator() | ForEach-Object {
+        $fullModelTypeName = ('{0}.{1}.{2}' -f ($Namespace, $Models, $_.Name))
+        $fullModelType = $fullModelTypeName -as [Type]
+        if ($fullModelType) {
+            $nonDefaultConstructor = $fullModelType.GetConstructors() | Where-Object { $_.GetParameters().Length -gt 0 } | Select-Object -First 1
+            # When available, use the non-default constructor to build objects (for read-only properties)
+            if ($nonDefaultConstructor) {
+                $nonDefaultConstructorParameters = @{}
+                $nonDefaultConstructor.GetParameters() | ForEach-Object {
+                    $nonDefaultConstructorParameters[$_.Name] = @{
+                        'Name' = $_.Name
+                        'Type' = $_.ParameterType
+                        'Position' = $_.Position
+                    }
+                }
+                $ConstructorInfo[$_.Name] = $nonDefaultConstructorParameters
+            }
+        }
+    }
     $errorOccurred = $false
     $PathFunctionDetails.GetEnumerator() | ForEach-Object {
         $FunctionDetails = $_.Value
@@ -1611,7 +1639,7 @@ function Set-ExtendedCodeMetadata {
         }
     }
 
-    $resultRecord.Result = $PathFunctionDetails
+    $resultRecord.Result = $parameters
     Export-CliXml -InputObject $resultRecord -Path $CliXmlTmpPath
 }
 

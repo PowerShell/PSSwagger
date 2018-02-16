@@ -630,7 +630,7 @@ Describe "Composite Swagger Tests" -Tag @('Composite', 'ScenarioTest') {
 
             # Validate expanded parameter types with referenced definition
             $command = Get-Command -Name New-ProductObject -Module $ModuleName            
-            $command.Parameters.IntParamName.ParameterType.Name | Should be 'Int64'
+            $command.Parameters.IntParamName.ParameterType.Name | Should be 'Nullable`1'
             
             $command.Parameters.Tags.ParameterType.Name | Should be 'string'
             $command.Parameters.StartDate.ParameterType.Name | Should be 'string'
@@ -1493,5 +1493,18 @@ Describe "Tests for local utility module" -Tag @('ScenarioTest', 'LocalUtilityCo
     AfterAll {
         # Stop node server
         Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
+    }
+}
+
+Describe "Flattening Azure Resource test" -Tag @('ScenarioTest', 'FlattenAzureResource') {
+    It "Generates and imports module with flattened Azure resource" {
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger" | Join-Path -ChildPath "PSSwaggerUtility" | `
+                Join-Path -ChildPath "PSSwaggerUtility.psd1") -Force
+        Initialize-Test -GeneratedModuleName "Generated.FlattenResourceTest" -GeneratedModuleVersion "0.0.2" -TestApiName "FlattenResourceTest" `
+            -TestSpecFileName "FlattenResourceTestSpec.json" -UseAzureCSharpGenerator `
+            -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot
+        $modulePath = (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | Join-Path -ChildPath "Generated.FlattenResourceTest")
+        $output = & powershell -command "Import-Module '$modulePath'"
+        $output | should be $null
     }
 }

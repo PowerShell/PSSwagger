@@ -876,7 +876,7 @@ function Expand-Parameters {
         [hashtable]
         $AllParameterDetails
     )
-
+    
     # Expand unexpanded x-ms-client-flatten
     # Leave it unexpanded afterwards
     if ($DefinitionFunctionsDetails[$ReferenceTypeName].ContainsKey('Unexpanded_x_ms_client_flatten_DefinitionNames') -and
@@ -1647,7 +1647,7 @@ function Get-PathFunctionBody {
         $DefinitionDetails = $_.Value
         $FlattenedParamType = $DefinitionDetails.Name
 
-        $FlattenedParametersList = $DefinitionDetails.ParametersTable.GetEnumerator() | ForEach-Object { $_.Name }
+        $FlattenedParametersList = $DefinitionDetails.ParametersTable.GetEnumerator() | ForEach-Object { if ($_.Value.ContainsKey('IsFlattened') -and $_.Value['IsFlattened']) { $_.Name } }
         $FlattenedParametersListStr = ''
         if ($FlattenedParametersList) {
             $FlattenedParametersListStr = "@('$($flattenedParametersList -join "', '")')"
@@ -1827,7 +1827,8 @@ function Get-AzureResourceIdParameters {
             $parameterName
         }
     }
-    if (-not $ResourceIdParameters -or ("{$($ResourceIdParameters[-1])}" -ne $tokens[-1])) {
+    $lastResourceIdParameter = if ($ResourceIdParameters -is [string]) { $ResourceIdParameters } else { $ResourceIdParameters[-1] }
+    if(-not $lastResourceIdParameter -or ("{$lastResourceIdParameter}" -ne $tokens[-1])) {
         return
     }
 
@@ -1855,7 +1856,7 @@ function Get-AzureResourceIdParameters {
 
     return [ordered]@{
         ResourceIdParameters     = $ResourceIdParameters
-        ResourceName             = $ResourceIdParameters[-1]
+        ResourceName             = $lastResourceIdParameter
         InputObjectParameterType = $GetOperationOutputType
     }
 }
