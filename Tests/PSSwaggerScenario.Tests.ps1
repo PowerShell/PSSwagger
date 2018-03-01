@@ -1448,6 +1448,21 @@ Describe "Tests for local utility module" -Tag @('ScenarioTest', 'LocalUtilityCo
         Initialize-Test -GeneratedModuleName "Generated.Basic.Module" -GeneratedModuleVersion "0.0.2" -TestApiName "PsSwaggerTestBasic" `
             -TestSpecFileName "PsSwaggerTestBasicSpec.json" -TestDataFileName "PsSwaggerTestBasicData.json" `
             -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot -CopyUtilityModuleToOutput
+        Initialize-Test -GeneratedModuleName "Generated.Basic.Module.Dupe1" -GeneratedModuleVersion "0.0.2" -TestApiName "PsSwaggerTestBasic" `
+            -TestSpecFileName "PsSwaggerTestBasicSpec.json" -TestDataFileName "PsSwaggerTestBasicData.json" `
+            -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot -CopyUtilityModuleToOutput
+        Initialize-Test -GeneratedModuleName "Generated.Basic.Module.Dupe2" -GeneratedModuleVersion "0.0.2" -TestApiName "PsSwaggerTestBasic" `
+            -TestSpecFileName "PsSwaggerTestBasicSpec.json" -TestDataFileName "PsSwaggerTestBasicData.json" `
+            -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot -CopyUtilityModuleToOutput -DefaultCommandPrefix 'Not'
+        
+        Copy-Item -Path (Join-Path -Path $PSScriptRoot -ChildPath "data" | Join-Path -ChildPath "PSSwaggerServiceCredentialsHelpers.psm1") `
+            -Destination (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | Join-Path -ChildPath "Generated.Basic.Module.Dupe1" | `
+                          Join-Path -ChildPath "0.0.2" | Join-Path -ChildPath "PSSwaggerUtility" | Join-Path -ChildPath "PSSwaggerServiceCredentialsHelpers.psm1") `
+                          -Force
+         Copy-Item -Path (Join-Path -Path $PSScriptRoot -ChildPath "data" | Join-Path -ChildPath "PSSwaggerServiceCredentialsHelpers.psm1") `
+            -Destination (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | Join-Path -ChildPath "Generated.Basic.Module.Dupe2" | `
+                          Join-Path -ChildPath "0.0.2" | Join-Path -ChildPath "PSSwaggerUtility" | Join-Path -ChildPath "PSSwaggerServiceCredentialsHelpers.psm1") `
+                          -Force
 
         $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "PsSwaggerTestBasic" -TestRoutesFileName "PsSwaggerTestBasicRoutes.json" -Verbose
         if ($global:PSSwaggerTest_EnableTracing -and $script:EnableTracer) {
@@ -1488,6 +1503,15 @@ Describe "Tests for local utility module" -Tag @('ScenarioTest', 'LocalUtilityCo
         $result = & powershell -command $command
         # This verifies that the locally copied utility module is being used instead of anything else
         $result | should be $null
+    }
+
+    It "Test running commands from two modules with local utility modules" {
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | Join-Path -ChildPath "Generated.Basic.Module.Dupe1")
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | Join-Path -ChildPath "Generated.Basic.Module.Dupe2")
+        $results = Get-Cupcake -Flavor chocolate -ErrorVariable ev
+        $ev | should be $null
+        $results = Get-NotCupcake -Flavor chocolate -ErrorVariable ev
+        $ev | should be $null
     }
 
     AfterAll {
