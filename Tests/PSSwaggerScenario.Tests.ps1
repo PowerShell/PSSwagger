@@ -54,6 +54,7 @@ Describe "Basic API" -Tag ScenarioTest {
 
     AfterAll {
         Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
+        Remove-Module -Name Generated.Basic.Module
     }
 }
 
@@ -147,6 +148,7 @@ Describe "All Operations: Basic" -Tag ScenarioTest {
 
     AfterAll {
         Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
+        Remove-Module -Name Generated.TypesTest.Module
     }
 }
 
@@ -192,6 +194,7 @@ Describe "Get/List tests" -Tag ScenarioTest {
 
     AfterAll {
         Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
+        Remove-Module -Name Generated.GetList.Module
     }
 }
 
@@ -253,6 +256,7 @@ Describe "Optional parameter tests" -Tag ScenarioTest {
 
     AfterAll {
         Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
+        Remove-Module -Name Generated.Optional.Module
     }
 }
 
@@ -458,6 +462,7 @@ Describe "ParameterTypes tests" -Tag @('ParameterTypes', 'ScenarioTest') {
 
     AfterAll {
         Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
+        Remove-Module -Name Generated.ParamTypes.Module
     }
 }
 
@@ -579,6 +584,7 @@ Describe "AzureExtensions" -Tag @('AzureExtension', 'ScenarioTest') {
 
     AfterAll {
         Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
+        Remove-Module -Name Generated.AzExt.Module
     }
 }
 
@@ -636,6 +642,8 @@ Describe "Composite Swagger Tests" -Tag @('Composite', 'ScenarioTest') {
             $command.Parameters.StartDate.ParameterType.Name | Should be 'string'
             $command.Parameters.EndDate.ParameterType.Name | Should be 'string'
             $command.Parameters.ContainerUrl.ParameterType.Name | Should be 'uri'
+
+            Remove-Module -Name CompositeSwaggerModule
         }
     }
 }
@@ -663,6 +671,10 @@ Describe "AllOfDefinition" -Tag @('AllOf', 'ScenarioTest') {
             $guitar.ISTuned | should be $true
             $guitar.NumberOfStrings | should be $null
         }
+    }
+
+    AfterAll {
+        Remove-Module -Name Generated.AllOfDefinition.Module
     }
 }
 
@@ -844,6 +856,13 @@ Describe "AuthTests" -Tag @('Auth', 'ScenarioTest') {
             }
         }
     }
+
+    AfterAll {
+        Remove-Module -Name "Generated.BasicAuthTest.Module"
+        Remove-Module -Name "Generated.BasicAuthTestNoChallenge.Module"
+        Remove-Module -Name "Generated.ApiKeyHeaderTest.Module"
+        Remove-Module -Name "Generated.ApiKeyQueryTest.Module"
+    }
 }
 
 Describe "PSMetadataTests" -Tag @('PSMetadata', 'ScenarioTest') {
@@ -874,6 +893,10 @@ Describe "PSMetadataTests" -Tag @('PSMetadata', 'ScenarioTest') {
             Get-Command Get-Cupcake -Module Generated.PSMetadataTest.Module -ErrorAction Ignore | should BeNullOrEmpty
             Get-Command List-Cupcakes -Module Generated.PSMetadataTest.Module | should not BeNullOrEmpty
         }
+    }
+
+    AfterAll {
+        Remove-Module -Name Generated.PSMetadataTest.Module
     }
 }
 
@@ -1173,6 +1196,10 @@ Describe "Output type scenario tests" -Tag @('OutputType', 'ScenarioTest') {
         $CommandInfo = Get-Command -Name Get-IotHubResourceEventHubConsumerGroup -Module $ModuleName
         $CommandInfo.OutputType.Type.ToString() | Should BeExactly 'System.String'
     }
+
+    AfterAll {
+        Remove-Module -Name Generated.AzExt.OutputType.Module
+    }
 }
 
 Describe 'New-PSSwaggerModule cmdlet parameter tests' -Tag @('CmdletParameterTest', 'ScenarioTest') {
@@ -1331,6 +1358,10 @@ Describe 'ResourceId and InputObject parameter set tests' -Tag @('InputObject', 
             $CommandInfo.Parameters.Name.Aliases -contains 'AccountName' | Should Be $true
         }
     }
+
+    AfterAll {
+        Remove-Module -Name Generated.Module.ArmResourceIdAndInputObject
+    }
 }
 
 Describe 'Client-side filtering tests (using metadata file)' -Tag @('ClientSideFilter', 'ScenarioTest') {
@@ -1384,6 +1415,7 @@ Describe 'Client-side filtering tests (using metadata file)' -Tag @('ClientSideF
 
     AfterAll {
         Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
+        Remove-Module -Name Generated.ClientSideFilter.Spec
     }
 }
 
@@ -1438,6 +1470,7 @@ Describe 'Client-side filtering tests (using spec)' -Tag @('ClientSideFilter', '
 
     AfterAll {
         Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
+        Remove-Module -Name Generated.ClientSideFilter.Metadata
     }
 }
 
@@ -1448,6 +1481,21 @@ Describe "Tests for local utility module" -Tag @('ScenarioTest', 'LocalUtilityCo
         Initialize-Test -GeneratedModuleName "Generated.Basic.Module" -GeneratedModuleVersion "0.0.2" -TestApiName "PsSwaggerTestBasic" `
             -TestSpecFileName "PsSwaggerTestBasicSpec.json" -TestDataFileName "PsSwaggerTestBasicData.json" `
             -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot -CopyUtilityModuleToOutput
+        Initialize-Test -GeneratedModuleName "Generated.Basic.Module.Dupe1" -GeneratedModuleVersion "0.0.2" -TestApiName "PsSwaggerTestBasic" `
+            -TestSpecFileName "PsSwaggerTestBasicSpec.json" -TestDataFileName "PsSwaggerTestBasicData.json" `
+            -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot -CopyUtilityModuleToOutput
+        Initialize-Test -GeneratedModuleName "Generated.Basic.Module.Dupe2" -GeneratedModuleVersion "0.0.2" -TestApiName "PsSwaggerTestBasic" `
+            -TestSpecFileName "PsSwaggerTestBasicSpec.json" -TestDataFileName "PsSwaggerTestBasicData.json" `
+            -PsSwaggerPath (Join-Path -Path $PSScriptRoot -ChildPath ".." | Join-Path -ChildPath "PSSwagger") -TestRootPath $PSScriptRoot -CopyUtilityModuleToOutput -DefaultCommandPrefix 'Not'
+        
+        Copy-Item -Path (Join-Path -Path $PSScriptRoot -ChildPath "data" | Join-Path -ChildPath "PSSwaggerServiceCredentialsHelpers.psm1") `
+            -Destination (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | Join-Path -ChildPath "Generated.Basic.Module.Dupe1" | `
+                          Join-Path -ChildPath "0.0.2" | Join-Path -ChildPath "PSSwaggerUtility" | Join-Path -ChildPath "PSSwaggerServiceCredentialsHelpers.psm1") `
+                          -Force
+         Copy-Item -Path (Join-Path -Path $PSScriptRoot -ChildPath "data" | Join-Path -ChildPath "PSSwaggerServiceCredentialsHelpers.psm1") `
+            -Destination (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | Join-Path -ChildPath "Generated.Basic.Module.Dupe2" | `
+                          Join-Path -ChildPath "0.0.2" | Join-Path -ChildPath "PSSwaggerUtility" | Join-Path -ChildPath "PSSwaggerServiceCredentialsHelpers.psm1") `
+                          -Force
 
         $processes = Start-JsonServer -TestRootPath $PSScriptRoot -TestApiName "PsSwaggerTestBasic" -TestRoutesFileName "PsSwaggerTestBasicRoutes.json" -Verbose
         if ($global:PSSwaggerTest_EnableTracing -and $script:EnableTracer) {
@@ -1490,9 +1538,20 @@ Describe "Tests for local utility module" -Tag @('ScenarioTest', 'LocalUtilityCo
         $result | should be $null
     }
 
+    It "Test running commands from two modules with local utility modules" {
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | Join-Path -ChildPath "Generated.Basic.Module.Dupe1")
+        Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "Generated" | Join-Path -ChildPath "Generated.Basic.Module.Dupe2")
+        $results = Get-Cupcake -Flavor chocolate -ErrorVariable ev
+        $ev | should be $null
+        $results = Get-NotCupcake -Flavor chocolate -ErrorVariable ev
+        $ev | should be $null
+    }
+
     AfterAll {
         # Stop node server
         Stop-JsonServer -JsonServerProcess $processes.ServerProcess -NodeProcess $processes.NodeProcess
+        Remove-Module -Name "Generated.Basic.Module.Dupe1" -ErrorAction Ignore
+        Remove-Module -Name "Generated.Basic.Module.Dupe2" -ErrorAction Ignore
     }
 }
 

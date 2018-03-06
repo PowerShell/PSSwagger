@@ -74,9 +74,11 @@
                 "responses": {
                     "200": {
                         "description": "A cupcake entity with matching flavor.",
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/definitions/Cupcake"
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Cupcake"
+                            }
                         }
                     },
                     "default": {

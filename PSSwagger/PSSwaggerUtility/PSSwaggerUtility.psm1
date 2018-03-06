@@ -1811,7 +1811,7 @@ function Initialize-PSSwaggerUtilities {
             $null = New-Item -Path $TempPath -ItemType Directory -Force
 			
 			# Compile the main utility assembly
-            $PSSwaggerJobAssemblyPath = Join-Path -Path $TempPath -ChildPath 'Microsoft.PowerShell.PSSwagger.Utility.dll'
+            $PSSwaggerJobAssemblyPath = Join-Path -Path $TempPath -ChildPath "$($LocalizedData.CSharpNamespace).Utility.dll"
 
             Add-Type -ReferencedAssemblies $RequiredAssemblies `
                     -TypeDefinition $PSSwaggerJobSourceString `
@@ -1895,7 +1895,7 @@ function Initialize-PSSwaggerUtilities {
             $null = New-Item -Path $TempPath -ItemType Directory -Force
                 
             # Compile the main utility assembly
-            $PSSwaggerJobAssemblyUnsafePath = Join-Path -Path $TempPath -ChildPath 'Microsoft.PowerShell.PSSwagger.Utility.Unsafe.dll'
+            $PSSwaggerJobAssemblyUnsafePath = Join-Path -Path $TempPath -ChildPath "$($LocalizedData.CSharpNamespace).Utility.Unsafe.dll"
             $compilerParameters.OutputAssembly = $PSSwaggerJobAssemblyUnsafePath
             
             Add-Type -TypeDefinition $PSSwaggerJobSourceString `
