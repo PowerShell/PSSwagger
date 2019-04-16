@@ -1,15 +1,11 @@
-| Gitter | AppVeyor (Windows) |
-|--------------------------|--------------------------|
-| [![gitter-image][]][gitter-site] | [![av-image][]][av-site] |
-
-[av-image]: https://ci.appveyor.com/api/projects/status/lx8ibbw9wjlpsu8u
-[av-site]: https://ci.appveyor.com/project/PowerShell/psswagger
-[gitter-image]: https://badges.gitter.im/PowerShell/PSSwagger.svg
-[gitter-site]: https://gitter.im/PowerShell/PSSwagger
 
 # PSSwagger
 
 A PowerShell module with commands to generate the PowerShell commands for a given RESTful Web Services using Swagger/OpenAPI documents.
+
+*PSSwagger is no longer being developed*, but do not fret! AutoRest is now able to generate cmdlets directly, without needing PSSwagger. Please refer to: https://devblogs.microsoft.com/powershell/cmdlets-via-autorest/
+
+This repository remains available for reference but pull requests and new issues will not be monitored.
 
 # PSSwagger Documentation
 
